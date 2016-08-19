@@ -1,0 +1,36 @@
+﻿<html>
+<head>
+	<script>
+		function upload() {
+
+
+			var xhr = new XMLHttpRequest();
+
+			xhr.open('POST', 'http://localhost:9000/files', true);
+
+			//xhr.onload = function() {
+			//	if (xhr.status === 200) {
+			//		alert('The file was successfully sent to the queue.');
+			//	} else {
+			//		alert('An error occurred!');
+			//	}
+			//};
+
+			//xhr.onerror = function(e) {
+			//	alert('An error occurred!');
+			//};
+
+			var droppedFile = document.getElementById(("droppedFile")).files[0];
+			xhr.send(droppedFile);
+		}
+	</script>
+</head>
+
+<body>
+<form>
+	<input type="file" name="droppedFile" id="droppedFile"/>
+	<input type="button" value="Upload" onclick="upload()"/>
+</form>
+</body>
+
+</html>
