@@ -8,11 +8,11 @@ tusdotnet is being actively developed and is currently in early alpha, meaning i
 
 ## Installation
 
-Clone this repository and compile using Visual Studio 2015. Include "tusdotnet.dll" in your project (or just include the source code).
+Clone this repository and compile using Visual Studio 2015. Include `tusdotnet.dll` in your project (or just include the source code).
 
 ## How to use? 
 
-Setup Owin as you would normally do and run UseTus on the IAppBuilder.
+Setup Owin as you would normally do. Add a using statement for `tusdotnet` and run UseTus on the IAppBuilder.
 
 ```csharp
 app.UseTus(new DefaultTusConfiguration
@@ -40,8 +40,9 @@ tusdotnet currently ships with a single store, the `TusDiskStore`, which saves f
   * Checksum
   * Termination
   * Concatenation 
- * Add support for http overrides (to support older browsers)
- * Write tests
+* Add support for http overrides (to support older browsers)
+* Add support for file tracking so that we can return 410 instead of 404 for abandoned files.
+* Write tests
 
 ## License
-This project is licensed under the MIT license, see LICENSE.
+This project is licensed under the MIT license, see [LICENSE](LICENSE).

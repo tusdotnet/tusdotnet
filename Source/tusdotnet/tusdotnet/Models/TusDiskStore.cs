@@ -24,5 +24,21 @@ namespace tusdotnet.Models
 
 			return Task.FromResult(0);
 		}
+
+		public Task<bool> FileExistAsync(string fileName)
+		{
+			return Task.FromResult(File.Exists(Path.Combine(_directoryPath, fileName)));
+		}
+
+		public Task<long?> GetUploadLengthAsync(string fileName)
+		{
+			// TODO: Implement, currently not supported.
+			return Task.FromResult<long?>(null);
+		}
+
+		public Task<long> GetUploadOffsetAsync(string fileName)
+		{
+			return Task.FromResult(new FileInfo(Path.Combine(_directoryPath, fileName)).Length);
+		}
 	}
 }

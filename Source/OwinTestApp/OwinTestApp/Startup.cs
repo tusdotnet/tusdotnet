@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Microsoft.Owin;
 using Owin;
 using OwinTestApp;
@@ -13,9 +14,21 @@ namespace OwinTestApp
 	{
 		public void Configuration(IAppBuilder app)
 		{
+			app.Use(async (context, next) =>
+			{
+				try
+				{
+					await next.Invoke();
+				}
+				catch (Exception exc)
+				{
+					Console.Error.WriteLine(exc.ToString());
+				}
+			});
+
 			app.UseTus(new DefaultTusConfiguration
 			{
-				Store = new TusDiskStore(),
+				Store = new TusDiskStore(@"C:\tusfiles\"),
 				UrlPath = "/files"
 			});
 

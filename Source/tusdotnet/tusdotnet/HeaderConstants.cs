@@ -13,7 +13,11 @@
 		// TODO: Implement at some point, only usable in requests from old browsers.
 		//public const string XHttpMethodOveride = "X-HTTP-Method-Override";
 
+		public const string UploadLength = "Upload-Length";
 		public const string UploadOffset = "Upload-Offset";
+
+		public const string CacheControl = "Cache-Control";
+		public const string NoStore = "no-store";
 
 	}
 }
