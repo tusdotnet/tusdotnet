@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Owin;
 using Owin;
 using OwinTestApp;
@@ -34,8 +35,21 @@ namespace OwinTestApp
 
 			app.Use((context, next) =>
 			{
-				context.Response.ContentType = "text/html";
-				return context.Response.WriteAsync(File.ReadAllText("../../upload.html"));
+				switch (context.Request.Uri.LocalPath)
+				{
+					case "/":
+						context.Response.ContentType = "text/html";
+						return context.Response.WriteAsync(File.ReadAllText("../../upload.html"));
+					case "/tus.js":
+						context.Response.ContentType = "application/js";
+						return context.Response.WriteAsync(File.ReadAllText("../../tus.js"));
+					default:
+						context.Response.StatusCode = 404;
+						return Task.FromResult(false);
+
+				}
+
+
 			});
 		}
 	}

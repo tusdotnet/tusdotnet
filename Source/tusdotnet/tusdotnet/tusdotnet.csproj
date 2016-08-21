@@ -48,7 +48,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="HeaderConstants.cs" />
+    <Compile Include="Constants\ExtensionConstants.cs" />
+    <Compile Include="Constants\HeaderConstants.cs" />
+    <Compile Include="Interfaces\ITusCreationStore.cs" />
     <Compile Include="Interfaces\ITusConfiguration.cs" />
     <Compile Include="Interfaces\ITusStore.cs" />
     <Compile Include="Models\DefaultTusConfiguration.cs" />

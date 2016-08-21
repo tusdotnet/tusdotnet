@@ -1,10 +1,12 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 
 namespace tusdotnet.Models
 {
-	public class TusDiskStore : ITusStore
+	// TODO: Error handling
+	public class TusDiskStore : ITusStore, ITusCreationStore
 	{
 		private readonly string _directoryPath;
 
@@ -13,11 +15,10 @@ namespace tusdotnet.Models
 			_directoryPath = directoryPath;
 		}
 
-		// TODO: Error handling
 		public Task AppendDataAsync(string fileName, byte[] data)
 		{
 			var path = Path.Combine(_directoryPath, fileName);
-			using (var stream = File.Open(fileName, FileMode.Append, FileAccess.Write))
+			using (var stream = File.Open(path, FileMode.Append, FileAccess.Write))
 			{
 				stream.Write(data, 0, data.Length);
 			}
@@ -32,13 +33,36 @@ namespace tusdotnet.Models
 
 		public Task<long?> GetUploadLengthAsync(string fileName)
 		{
-			// TODO: Implement, currently not supported.
-			return Task.FromResult<long?>(null);
+
+			var path = Path.Combine(_directoryPath, fileName) + ".uploadlength";
+
+			if (!File.Exists(path))
+			{
+				return Task.FromResult<long?>(null);
+			}
+
+			var res = long.Parse(File.ReadAllLines(path)[0]);
+			return Task.FromResult(new long?(res));
 		}
 
 		public Task<long> GetUploadOffsetAsync(string fileName)
 		{
 			return Task.FromResult(new FileInfo(Path.Combine(_directoryPath, fileName)).Length);
+		}
+
+		public Task<string> CreateFileAsync(long? uploadLength)
+		{
+			var fileName = Guid.NewGuid().ToString("n");
+			var path = Path.Combine(_directoryPath, fileName);
+			File.Create(path).Dispose();
+
+			if (uploadLength != null)
+			{
+				var uploadLengthFile = path + ".uploadlength";
+				File.WriteAllText(uploadLengthFile, uploadLength.ToString());
+			}
+
+			return Task.FromResult(fileName);
 		}
 	}
 }

@@ -1,36 +1,40 @@
 ﻿<html>
 <head>
-	<script>
-		function upload() {
-
-
-			var xhr = new XMLHttpRequest();
-
-			xhr.open('POST', 'http://localhost:9000/files', true);
-
-			//xhr.onload = function() {
-			//	if (xhr.status === 200) {
-			//		alert('The file was successfully sent to the queue.');
-			//	} else {
-			//		alert('An error occurred!');
-			//	}
-			//};
-
-			//xhr.onerror = function(e) {
-			//	alert('An error occurred!');
-			//};
-
-			var droppedFile = document.getElementById(("droppedFile")).files[0];
-			xhr.send(droppedFile);
-		}
-	</script>
 </head>
 
 <body>
 <form>
+	Select a file (preferably with network throttling enabled) and check the console for status.<br/>
 	<input type="file" name="droppedFile" id="droppedFile"/>
-	<input type="button" value="Upload" onclick="upload()"/>
+	<input type="button" value="Upload" onclick="uploadFile()"/>
 </form>
+
+	<script src="tus.js"></script>
+<script>
+
+	function uploadFile() {
+		var file = document.getElementById("droppedFile").files[0];
+		var upload = new tus.Upload(file,
+		{
+			endpoint: "http://localhost:9000/files/",
+			onError: function (error) {
+				console.log("Failed because: " + error);
+			},
+			onProgress: function (bytesUploaded, bytesTotal) {
+				var percentage = (bytesUploaded / bytesTotal * 100).toFixed(2);
+				console.log(bytesUploaded, bytesTotal, percentage + "%");
+			},
+			onSuccess: function () {
+				console.log("Download %s from %s", upload.file.name, upload.url);
+			}
+		});
+
+		// Start the upload
+		upload.start();
+	}
+
+</script>
+
 </body>
 
 </html>

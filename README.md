@@ -35,13 +35,15 @@ tusdotnet currently ships with a single store, the `TusDiskStore`, which saves f
 ## TODO
 * Complete the implementation of the core protocol :) 
 * Implement extensions:
-  * Creation
+  * ~~Creation~~
   * Expiration
   * Checksum
   * Termination
   * Concatenation 
 * Add support for http overrides (to support older browsers)
-* Add support for file tracking so that we can return 410 instead of 404 for abandoned files.
+* Add support for file tracking so that we can return 410 instead of 404 for abandoned files
+* Add support for file metadata 
+* Add support for Upload-Defer-Length
 * Write tests
 
 ## License
