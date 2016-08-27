@@ -16,7 +16,6 @@ namespace tusdotnet
 	{
 		private readonly Func<ITusConfiguration> _configFactory;
 		private ITusConfiguration _config;
-		private static readonly string[] SupportedMethods = { "post", "head", "patch", "options" };
 		private static readonly Dictionary<string, SemaphoreSlim> FileLocks = new Dictionary<string, SemaphoreSlim>();
 
 		public TusMiddleware(OwinMiddleware next, Func<ITusConfiguration> configFactory) : base(next)
@@ -34,9 +33,11 @@ namespace tusdotnet
 				return Next.Invoke(context);
 			}
 
+			var method = context.Request.Method.ToLower();
+
 			var tusResumable = context.Request.Headers[HeaderConstants.TusResumable];
 
-			if (tusResumable != HeaderConstants.TusResumableValue)
+			if (method != "options" && tusResumable != HeaderConstants.TusResumableValue)
 			{
 				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
 				context.Response.Headers[HeaderConstants.TusVersion] = HeaderConstants.TusResumableValue;
@@ -45,7 +46,7 @@ namespace tusdotnet
 					$"Tus version {tusResumable} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
 			}
 
-			switch (context.Request.Method.ToLower())
+			switch (method)
 			{
 				case "post":
 					return HandlePostRequest(context);
@@ -190,16 +191,9 @@ namespace tusdotnet
 
 			try
 			{
-				var exists = await _config.Store.FileExistAsync(fileName, cancellationToken);
-				if (!exists)
-				{
-					context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-					context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-					context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
-					return;
-				}
-
-				if (!context.Request.ContentType.Equals("application/offset+octet-stream", StringComparison.InvariantCultureIgnoreCase))
+				if (context.Request.ContentType == null ||
+					!context.Request.ContentType.Equals("application/offset+octet-stream",
+						StringComparison.InvariantCultureIgnoreCase))
 				{
 					await RespondAsync(context,
 						HttpStatusCode.BadRequest,
@@ -218,6 +212,22 @@ namespace tusdotnet
 				if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadOffset], out requestOffset))
 				{
 					await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadOffset} header");
+					return;
+				}
+
+				if (requestOffset < 0)
+				{
+					await RespondAsync(context, HttpStatusCode.BadRequest,
+						$"Header {HeaderConstants.UploadOffset} must be a positive number");
+					return;
+				}
+
+				var exists = await _config.Store.FileExistAsync(fileName, cancellationToken);
+				if (!exists)
+				{
+					context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+					context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
+					context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
 					return;
 				}
 
@@ -312,26 +322,24 @@ namespace tusdotnet
 
 		private bool ShouldHandleRequest(IOwinRequest request)
 		{
-			if (!request.Headers.ContainsKey(HeaderConstants.TusResumable))
+			var method = request.Method.ToLower();
+
+			if (!request.Headers.ContainsKey(HeaderConstants.TusResumable) && method != "options")
 			{
 				return false;
 			}
 
-			if (!SupportedMethods.Contains(request.Method.ToLower()))
-			{
-				return false;
-			}
-
-			switch (request.Method.ToLower())
+			switch (method)
 			{
 				case "post":
 				case "options":
 					return IsExactUrlMatch(request);
 				case "head":
 				case "patch":
-					return request.Uri.LocalPath.StartsWith(_config.UrlPath, StringComparison.InvariantCultureIgnoreCase);
+					return !IsExactUrlMatch(request) &&
+						   request.Uri.LocalPath.StartsWith(_config.UrlPath, StringComparison.InvariantCultureIgnoreCase);
 				default:
-					throw new NotImplementedException();
+					return false;
 			}
 		}
 
@@ -368,6 +376,7 @@ namespace tusdotnet
 		{
 			context.Response.StatusCode = (int)statusCode;
 			context.Response.ContentType = "text/plain";
+			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
 			return context.Response.WriteAsync(message);
 		}
 

@@ -5,6 +5,10 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tusdotnet", "tusdotnet\tusdotnet.csproj", "{B4E9D703-08DB-4C5C-AA99-01517E066393}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OwinTestApp", "OwinTestApp\OwinTestApp.csproj", "{5649B061-2966-4286-932C-EF03BEFB9E7E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tusdotnet.test", "tusdotnet.test\tusdotnet.test.csproj", "{F48BE5EB-03A0-4584-8F92-9BA0B599C00A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{B4E9D703-08DB-4C5C-AA99-01517E066393}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4E9D703-08DB-4C5C-AA99-01517E066393}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B4E9D703-08DB-4C5C-AA99-01517E066393}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5649B061-2966-4286-932C-EF03BEFB9E7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5649B061-2966-4286-932C-EF03BEFB9E7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5649B061-2966-4286-932C-EF03BEFB9E7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5649B061-2966-4286-932C-EF03BEFB9E7E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F48BE5EB-03A0-4584-8F92-9BA0B599C00A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F48BE5EB-03A0-4584-8F92-9BA0B599C00A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F48BE5EB-03A0-4584-8F92-9BA0B599C00A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F48BE5EB-03A0-4584-8F92-9BA0B599C00A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

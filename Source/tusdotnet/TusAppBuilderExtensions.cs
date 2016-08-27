@@ -2,7 +2,6 @@
 using Owin;
 using tusdotnet.Interfaces;
 
-
 namespace tusdotnet
 {
 	public static class TusAppBuilderExtensions

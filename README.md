@@ -1,4 +1,3 @@
-
 # tusdotnet
 .NET server implementation of the Tus protocol for resumable file uploads. Read more at http://tus.io
 
@@ -8,25 +7,21 @@ From tus.io:
 
 tusdotnet is a .NET server implementation of the Tus protocol. It is written as a OWIN middleware for easy usage.
 
-Currently in beta phase. The basic work flow of creating a file, uploading it and resuming the upload if the connection fails has been tested using the official JS client lib and is working.
 Comments, ideas, questions and PRs are welcome :)
 
 ## Features
 * Supports Tus 1.0.0 core protocol and the Creation extension
 * Easy to use OWIN middleware
 * Fast and reliable
+* 99% test coverage
 * MIT licensed
 
-## Installation
-
+## How to use
 Clone this repository and compile using Visual Studio 2015. Include `tusdotnet.dll` in your project (or just include the source code).
-
-## How to use? 
 
 Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and run UseTus on the IAppBuilder.
 
 ```csharp
-// Each request will have its own instance of the configuration
 app.UseTus(() => new DefaultTusConfiguration
 			{
             	// c:\temp is where to store files
@@ -35,6 +30,11 @@ app.UseTus(() => new DefaultTusConfiguration
 				UrlPath = "/files"
 			});
   ```
+ 
+If you just want to play around with the protocol, clone the repo and run the OwinTestApp. It launches a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
+
+## Clients
+[Tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
 
 ## Custom store
 tusdotnet currently ships with a single store, the `TusDiskStore`, which saves files in a directory on disk. 
@@ -42,24 +42,15 @@ You can implement your own store by implementing the following interfaces:
 * `ITusStore` - Support for the core protocol
 * `ITusCreationStore` - Support for the Creation extension
 
-## Project structure
-
-* Source\tusdotnet contains the actual implementation 
-* Source\OwinTestApp contains a small test app to test the implementation (solution also includes tusdotnet)
-
-## TODO
-* ~~Complete the implementation of the core protocol :)~~ 
-* Implement extensions:
-  * ~~Creation~~
-  * Expiration
-  * Checksum
-  * Termination
-  * Concatenation 
-* Add support for http overrides (to support older browsers)
-* Add support for file tracking so that we can return 410 instead of 404 for abandoned files
-* Add support for file metadata 
-* Add support for Upload-Defer-Length
-* Write tests
+## Roadmap
+* Next release:
+  * Add support for file metadata
+  * Add support for x-http-override (to support old clients)
+* Future releases:
+  *	Add support for Upload-Defer-Length
+  * Add support for more extensions: Expiration, Checksum, Termination and Concatenation 
+  * Add support for file tracking so that we can return 410 instead of 404 for abandoned files
+  * Figure out a nice way of normalizing downloads with third party stores.
 
 ## License
 This project is licensed under the MIT license, see [LICENSE](LICENSE).

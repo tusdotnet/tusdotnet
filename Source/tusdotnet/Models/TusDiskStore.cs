@@ -41,7 +41,7 @@ namespace tusdotnet.Models
 					}
 
 					var buffer = new byte[ByteChunkSize];
-					bytesRead = stream.Read(buffer, 0, ByteChunkSize);
+					bytesRead = await stream.ReadAsync(buffer, 0, ByteChunkSize, cancellationToken);
 
 					fileLength += bytesRead;
 
