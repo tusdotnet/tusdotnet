@@ -54,7 +54,9 @@
     <Compile Include="Interfaces\ITusConfiguration.cs" />
     <Compile Include="Interfaces\ITusStore.cs" />
     <Compile Include="Models\DefaultTusConfiguration.cs" />
+    <Compile Include="Models\TusConfigurationException.cs" />
     <Compile Include="Models\TusDiskStore.cs" />
+    <Compile Include="Models\TusStoreException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TusAppBuilderExtensions.cs" />
     <Compile Include="TusMiddleware.cs" />
