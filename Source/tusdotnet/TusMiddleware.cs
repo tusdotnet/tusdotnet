@@ -274,6 +274,14 @@ namespace tusdotnet
 				context.Response.StatusCode = (int)HttpStatusCode.NoContent;
 				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
 				context.Response.Headers[HeaderConstants.UploadOffset] = (fileOffset + bytesWritten).ToString();
+
+				// Run OnUploadComplete if it has been provided.
+				if (fileUploadLength != null
+					&& (fileOffset + bytesWritten) == fileUploadLength.Value
+					&& _config.OnUploadCompleteAsync != null)
+				{
+					await _config.OnUploadCompleteAsync(fileName, _config.Store, context.Request.CallCancelled);
+				}
 			}
 			finally
 			{

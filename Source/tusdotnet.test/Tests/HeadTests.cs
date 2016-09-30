@@ -8,6 +8,7 @@ using Owin;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Stores;
 using tusdotnet.test.Extensions;
 using Xunit;
 

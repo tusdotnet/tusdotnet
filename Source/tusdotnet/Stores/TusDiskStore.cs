@@ -3,10 +3,11 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
-namespace tusdotnet.Models
+namespace tusdotnet.Stores
 {
-	public class TusDiskStore : ITusStore, ITusCreationStore
+	public class TusDiskStore : ITusStore, ITusCreationStore, ITusReadableStore
 	{
 		private readonly string _directoryPath;
 		// Number of bytes to read at the time from the input stream.
@@ -19,11 +20,11 @@ namespace tusdotnet.Models
 			_directoryPath = directoryPath;
 		}
 
-		public async Task<long> AppendDataAsync(string fileName, Stream stream, CancellationToken cancellationToken)
+		public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
 		{
-			var path = Path.Combine(_directoryPath, fileName);
+			var path = Path.Combine(_directoryPath, fileId);
 			long bytesWritten = 0;
-			var uploadLength = await GetUploadLengthAsync(fileName, cancellationToken);
+			var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
 			using (var file = File.Open(path, FileMode.Append, FileAccess.Write))
 			{
 				var fileLength = file.Length;
@@ -60,14 +61,14 @@ namespace tusdotnet.Models
 			}
 		}
 
-		public Task<bool> FileExistAsync(string fileName, CancellationToken cancellationToken)
+		public Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken)
 		{
-			return Task.FromResult(File.Exists(Path.Combine(_directoryPath, fileName)));
+			return Task.FromResult(File.Exists(Path.Combine(_directoryPath, fileId)));
 		}
 
-		public Task<long?> GetUploadLengthAsync(string fileName, CancellationToken cancellationToken)
+		public Task<long?> GetUploadLengthAsync(string fileId, CancellationToken cancellationToken)
 		{
-			var path = Path.Combine(_directoryPath, fileName) + ".uploadlength";
+			var path = Path.Combine(_directoryPath, fileId) + ".uploadlength";
 
 			if (!File.Exists(path))
 			{
@@ -91,9 +92,9 @@ namespace tusdotnet.Models
 			}
 		}
 
-		public Task<long> GetUploadOffsetAsync(string fileName, CancellationToken cancellationToken)
+		public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
 		{
-			return Task.FromResult(new FileInfo(Path.Combine(_directoryPath, fileName)).Length);
+			return Task.FromResult(new FileInfo(Path.Combine(_directoryPath, fileId)).Length);
 		}
 
 		public Task<string> CreateFileAsync(long uploadLength, CancellationToken cancellationToken)
@@ -103,6 +104,12 @@ namespace tusdotnet.Models
 			File.Create(path).Dispose();
 			File.WriteAllText($"{path}.uploadlength", uploadLength.ToString());
 			return Task.FromResult(fileName);
+		}
+
+		public Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
+		{
+			var file = new TusDiskFile(_directoryPath, fileId);
+			return Task.FromResult<ITusFile>(file.Exist() ? file : null);
 		}
 	}
 }

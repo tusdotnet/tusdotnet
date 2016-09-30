@@ -24,10 +24,19 @@ Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and r
 ```csharp
 app.UseTus(() => new DefaultTusConfiguration
 			{
-            	// c:\temp is where to store files
-				Store = new TusDiskStore(@"C:\temp\"),
-                // On what url should we listen for uploads?
-				UrlPath = "/files"
+				Store = new TusDiskStore(@"C:\tusfiles\"),
+				UrlPath = "/files",
+				OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
+				{
+					// Called when a file upload is completed.
+					// If the store implements ITusReadableStore one could access 
+                    // the completed file here. 
+                    // The default TusDiskStore implements this interface:
+					// var file = await 
+                    //		(store as ITusReadableStore)
+                    //			.GetFileAsync(fileId, cancellationToken);
+					return Task.FromResult(true);
+				}
 			});
   ```
  
@@ -41,6 +50,9 @@ tusdotnet currently ships with a single store, the `TusDiskStore`, which saves f
 You can implement your own store by implementing the following interfaces:
 * `ITusStore` - Support for the core protocol
 * `ITusCreationStore` - Support for the Creation extension
+
+Optionally the store can also implement the following interfaces:
+* `ITusReadableStore` - Support for reading files from the store (e.g. for downloads or processing).
 
 ## Roadmap
 * Next release:

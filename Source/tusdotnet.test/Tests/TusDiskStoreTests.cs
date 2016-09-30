@@ -1,10 +1,12 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
 using tusdotnet.Models;
+using tusdotnet.Stores;
 using Xunit;
 
 namespace tusdotnet.test.Tests
@@ -149,6 +151,40 @@ namespace tusdotnet.test.Tests
 
 			length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(new byte[1]), CancellationToken.None);
 			length.ShouldBe(0);
+		}
+
+		[Fact]
+		public async Task GetFileAsync_Returns_File_If_The_File_Exist()
+		{
+			var fileId = await _fixture.Store.CreateFileAsync(100, CancellationToken.None);
+
+			var content = Enumerable.Range(0, 100).Select(f => (byte)f).ToArray();
+
+			await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(content), CancellationToken.None);
+
+			var file = await _fixture.Store.GetFileAsync(fileId, CancellationToken.None);
+
+			file.Id.ShouldBe(fileId);
+
+			using (var fileContent = await file.GetContent(CancellationToken.None))
+			{
+				fileContent.Length.ShouldBe(content.Length);
+
+				var fileContentBuffer = new byte[fileContent.Length];
+				fileContent.Read(fileContentBuffer, 0, fileContentBuffer.Length);
+
+				for (var i = 0; i < content.Length; i++)
+				{
+					fileContentBuffer[i].ShouldBe(content[i]);
+				}
+			}
+		}
+
+		[Fact]
+		public async Task GetFileAsync_Returns_Null_If_The_File_Does_Not_Exist()
+		{
+			var file = await _fixture.Store.GetFileAsync(Guid.NewGuid().ToString(), CancellationToken.None);
+			file.ShouldBeNull();
 		}
 
 		public void Dispose()
