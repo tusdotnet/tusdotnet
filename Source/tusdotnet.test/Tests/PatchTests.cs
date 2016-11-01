@@ -27,7 +27,7 @@ namespace tusdotnet.test.Tests
 			var callForwarded = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = new TusDiskStore(@"C:\temp"),
 					UrlPath = "/files"
@@ -72,7 +72,7 @@ namespace tusdotnet.test.Tests
 
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"
@@ -101,7 +101,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"
@@ -131,7 +131,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"
@@ -159,7 +159,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"
@@ -193,7 +193,7 @@ namespace tusdotnet.test.Tests
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
 				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -223,7 +223,7 @@ namespace tusdotnet.test.Tests
 				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -253,7 +253,7 @@ namespace tusdotnet.test.Tests
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 				store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -283,7 +283,7 @@ namespace tusdotnet.test.Tests
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 				store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -316,7 +316,7 @@ namespace tusdotnet.test.Tests
 				store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
 					.Throws(new TusStoreException("Test exception"));
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -358,7 +358,7 @@ namespace tusdotnet.test.Tests
 				store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
 					.Throws(new IOException("Test exception", new HttpListenerException()));
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -387,7 +387,7 @@ namespace tusdotnet.test.Tests
 				store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
 					.Throws(new IOException("Test exception"));
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -427,7 +427,7 @@ namespace tusdotnet.test.Tests
 						return 3;
 					});
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -497,7 +497,7 @@ namespace tusdotnet.test.Tests
 					.Returns(3)
 					.AndDoes(info => secondOffset += 3);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files",

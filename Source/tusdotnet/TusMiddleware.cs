@@ -14,18 +14,18 @@ namespace tusdotnet
 {
 	internal class TusMiddleware : OwinMiddleware
 	{
-		private readonly Func<ITusConfiguration> _configFactory;
+		private readonly Func<IOwinRequest, ITusConfiguration> _configFactory;
 		private ITusConfiguration _config;
 		private static readonly Dictionary<string, SemaphoreSlim> FileLocks = new Dictionary<string, SemaphoreSlim>();
 
-		public TusMiddleware(OwinMiddleware next, Func<ITusConfiguration> configFactory) : base(next)
+		public TusMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
 		{
 			_configFactory = configFactory;
 		}
 
 		public override Task Invoke(IOwinContext context)
 		{
-			_config = _configFactory();
+			_config = _configFactory(context.Request);
 			ValidateConfig();
 
 			if (!ShouldHandleRequest(context.Request))

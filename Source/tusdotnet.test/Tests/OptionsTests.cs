@@ -31,7 +31,7 @@ namespace tusdotnet.test.Tests
 			var callForwarded = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => _mockTusConfiguration);
+				app.UseTus(request => _mockTusConfiguration);
 
 				app.Use((ctx, next) =>
 				{
@@ -71,7 +71,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => _mockTusConfiguration);
+				app.UseTus(request => _mockTusConfiguration);
 			}))
 			{
 				var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
@@ -85,7 +85,7 @@ namespace tusdotnet.test.Tests
 
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => _mockTusConfiguration);
+				app.UseTus(request => _mockTusConfiguration);
 			}))
 			{
 				var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
@@ -110,7 +110,7 @@ namespace tusdotnet.test.Tests
 			// Test again but with a store that does not implement ITusCreationStore.
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"

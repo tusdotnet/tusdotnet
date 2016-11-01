@@ -18,7 +18,7 @@ namespace tusdotnet.test.Tests
 			var callForwarded = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() =>
+				app.UseTus(request =>
 				{
 					var tusConfiguration = Substitute.For<ITusConfiguration>();
 					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
@@ -56,7 +56,7 @@ namespace tusdotnet.test.Tests
 			var callForwarded = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() =>
+				app.UseTus(request =>
 				{
 					var tusConfiguration = Substitute.For<ITusConfiguration>();
 					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
@@ -97,7 +97,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() =>
+				app.UseTus(request =>
 				{
 					var tusConfiguration = Substitute.For<ITusConfiguration>();
 					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());

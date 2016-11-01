@@ -22,7 +22,7 @@ namespace tusdotnet.test.Tests
 			var callForwarded = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = new TusDiskStore(@"C:\temp"),
 					UrlPath = "/files"
@@ -66,7 +66,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"
@@ -93,7 +93,7 @@ namespace tusdotnet.test.Tests
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(100);
 				store.GetUploadLengthAsync("otherfile", Arg.Any<CancellationToken>()).Returns(null as long?);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"
@@ -128,7 +128,7 @@ namespace tusdotnet.test.Tests
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(100);
 				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(50);
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = store,
 					UrlPath = "/files"

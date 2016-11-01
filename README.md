@@ -19,26 +19,28 @@ Comments, ideas, questions and PRs are welcome :)
 ## How to use
 Clone this repository and compile using Visual Studio 2015. Include `tusdotnet.dll` in your project (or just include the source code).
 
-Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and run UseTus on the IAppBuilder.
+Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the IAppBuilder.
 
 ```csharp
-app.UseTus(() => new DefaultTusConfiguration
+app.UseTus(request => new DefaultTusConfiguration
 			{
+				// c:\tusfiles is where to store files
 				Store = new TusDiskStore(@"C:\tusfiles\"),
+				// On what url should we listen for uploads?
 				UrlPath = "/files",
 				OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
 				{
 					// Called when a file upload is completed.
 					// If the store implements ITusReadableStore one could access 
                     // the completed file here. 
-                    // The default TusDiskStore implements this interface:
+                    // The default TusDiskStore implements ITusReadableStore:
 					// var file = await 
                     //		(store as ITusReadableStore)
                     //			.GetFileAsync(fileId, cancellationToken);
 					return Task.FromResult(true);
 				}
 			});
-  ```
+```
  
 If you just want to play around with the protocol, clone the repo and run the OwinTestApp. It launches a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
 
@@ -62,7 +64,7 @@ Optionally the store can also implement the following interfaces:
   *	Add support for Upload-Defer-Length
   * Add support for more extensions: Expiration, Checksum, Termination and Concatenation 
   * Add support for file tracking so that we can return 410 instead of 404 for abandoned files
-  * Figure out a nice way of normalizing downloads with third party stores.
+  * ~~Figure out a nice way of normalizing downloads with third party stores.~~ - ITusReadableStore
 
 ## License
 This project is licensed under the MIT license, see [LICENSE](LICENSE).

@@ -21,7 +21,7 @@ namespace tusdotnet.test.Tests
 			var callForwarded = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = new TusDiskStore(@"C:\temp"),
 					UrlPath = "/files"
@@ -66,7 +66,7 @@ namespace tusdotnet.test.Tests
 			var callForwared = false;
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore>(),
 					UrlPath = "/files"
@@ -89,7 +89,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore, ITusCreationStore>(),
 					UrlPath = "/files"
@@ -113,7 +113,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = Substitute.For<ITusStore, ITusCreationStore>(),
 					UrlPath = "/files"
@@ -140,7 +140,7 @@ namespace tusdotnet.test.Tests
 				var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
 				tusStore.CreateFileAsync(1, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = tusStore as ITusStore,
 					UrlPath = "/files"
@@ -166,7 +166,7 @@ namespace tusdotnet.test.Tests
 				var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
 				tusStore.CreateFileAsync(1, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-				app.UseTus(() => new DefaultTusConfiguration
+				app.UseTus(request => new DefaultTusConfiguration
 				{
 					Store = tusStore as ITusStore,
 					UrlPath = "/files"

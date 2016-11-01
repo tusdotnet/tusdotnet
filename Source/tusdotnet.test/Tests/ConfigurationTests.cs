@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Owin;
 using Microsoft.Owin.Testing;
 using NSubstitute;
 using Shouldly;
@@ -21,8 +22,8 @@ namespace tusdotnet.test.Tests
 			tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
 			tusConfiguration.UrlPath.Returns("/files");
 
-			var configFunc = Substitute.For<Func<ITusConfiguration>>();
-			configFunc.Invoke().Returns(tusConfiguration);
+			var configFunc = Substitute.For<Func<IOwinRequest, ITusConfiguration>>();
+			configFunc.Invoke(Arg.Any<IOwinRequest>()).Returns(tusConfiguration);
 
 			using (var server = TestServer.Create(app =>
 			{
@@ -67,7 +68,7 @@ namespace tusdotnet.test.Tests
 			using (var server = TestServer.Create(app =>
 			{
 				// ReSharper disable once AccessToModifiedClosure
-				app.UseTus(() => tusConfiguration);
+				app.UseTus(request => tusConfiguration);
 			}))
 			{
 				// ReSharper disable once AccessToDisposedClosure
@@ -80,7 +81,7 @@ namespace tusdotnet.test.Tests
 			using (var server = TestServer.Create(app =>
 			{
 				// ReSharper disable once AccessToModifiedClosure
-				app.UseTus(() => tusConfiguration);
+				app.UseTus(request => tusConfiguration);
 			}))
 			{
 				// ReSharper disable once AccessToDisposedClosure
@@ -92,7 +93,7 @@ namespace tusdotnet.test.Tests
 			tusConfiguration.Store.Returns(null as ITusStore);
 			using (var server = TestServer.Create(app =>
 			{
-				app.UseTus(() => tusConfiguration);
+				app.UseTus(request => tusConfiguration);
 			}))
 			{
 				// ReSharper disable once AccessToDisposedClosure

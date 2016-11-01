@@ -28,7 +28,7 @@ namespace OwinTestApp
 				}
 			});
 
-			app.UseTus(() => new DefaultTusConfiguration
+			app.UseTus(request => new DefaultTusConfiguration
 			{
 				Store = new TusDiskStore(@"C:\tusfiles\"),
 				UrlPath = "/files",

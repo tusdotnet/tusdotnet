@@ -2,16 +2,21 @@ How to use?
 
 Setup OWIN as you would normally do. Add a using statement for tusdotnet and run UseTus on the IAppBuilder.
 
-app.UseTus(() => new DefaultTusConfiguration
+app.UseTus(request => new DefaultTusConfiguration
 			{
+				// c:\tusfiles is where to store files
 				Store = new TusDiskStore(@"C:\tusfiles\"),
+				// On what url should we listen for uploads?
 				UrlPath = "/files",
 				OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
 				{
-					Console.WriteLine($"Upload of {fileId} is complete. Callback also got a store of type {store.GetType().FullName}");
-					// If the store implements ITusReadableStore one could access the completed file here.
-					// The default TusDiskStore implements this interface:
-					// var file = await (store as ITusReadableStore).GetFileAsync(fileId, cancellationToken);
+					// Called when a file upload is completed.
+					// If the store implements ITusReadableStore one could access 
+                    // the completed file here. 
+                    // The default TusDiskStore implements ITusReadableStore:
+					// var file = await 
+                    //		(store as ITusReadableStore)
+                    //			.GetFileAsync(fileId, cancellationToken);
 					return Task.FromResult(true);
 				}
 			});
