@@ -92,24 +92,50 @@ namespace tusdotnet.Stores
 			}
 		}
 
+        public Task<string> GetMetadataAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var path = Path.Combine(_directoryPath, fileId) + ".metadata";
+
+            if(!File.Exists(path))
+            {
+                return Task.FromResult<string>(null);
+            }
+
+            using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                using (var sr = new StreamReader(stream))
+                {
+                    var firstLine = sr.ReadLine();
+                    if(string.IsNullOrEmpty(firstLine))
+                    {
+                        return Task.FromResult<string>(null);
+                    }
+
+                    return Task.FromResult(firstLine);
+                }
+            }
+        }
+
 		public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
 		{
 			return Task.FromResult(new FileInfo(Path.Combine(_directoryPath, fileId)).Length);
 		}
 
-		public Task<string> CreateFileAsync(long uploadLength, CancellationToken cancellationToken)
+		public Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
 		{
 			var fileName = Guid.NewGuid().ToString("n");
 			var path = Path.Combine(_directoryPath, fileName);
 			File.Create(path).Dispose();
 			File.WriteAllText($"{path}.uploadlength", uploadLength.ToString());
+            File.WriteAllText($"{path}.metadata", metadata);
 			return Task.FromResult(fileName);
 		}
 
-		public Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
+		public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
 		{
-			var file = new TusDiskFile(_directoryPath, fileId);
-			return Task.FromResult<ITusFile>(file.Exist() ? file : null);
+            var metadata = await GetMetadataAsync(fileId, cancellationToken);
+			var file = new TusDiskFile(_directoryPath, fileId, metadata);
+			return (file.Exist() ? file : null);
 		}
 	}
 }
