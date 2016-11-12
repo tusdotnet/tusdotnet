@@ -30,7 +30,7 @@ namespace tusdotnet.Stores
                     var key = keyAndValue[0];
                     var base64Value = keyAndValue[1];
                     var valueBytes = Convert.FromBase64String(base64Value);
-                    var value = System.Text.Encoding.Default.GetString(valueBytes);
+                    var value = System.Text.Encoding.UTF8.GetString(valueBytes);
 
                     dictionary[key] = value;
                 }
