@@ -12,35 +12,35 @@ namespace tusdotnet.Stores
 		private readonly string _filePath;
 
 		internal TusDiskFile(string directoryPath, string fileId, string metadata)
-        {
-            Id = fileId;
-            _filePath = Path.Combine(directoryPath, Id);
-            Metadata = ParseMetadata(metadata);
-        }
+		{
+			Id = fileId;
+			_filePath = Path.Combine(directoryPath, Id);
+			Metadata = ParseMetadata(metadata);
+		}
 
-        private Dictionary<string, string> ParseMetadata(string metadata)
-        {
-            Dictionary<string, string> dictionary = new Dictionary<string, string>();
-            if (!string.IsNullOrEmpty(metadata))
-            {
-                var metadataPairs = metadata.Split(',');
-                foreach (var pair in metadataPairs)
-                {
-                    var keyAndValue = pair.Split(' ');
-                    var key = keyAndValue[0];
-                    var base64Value = keyAndValue[1];
-                    var valueBytes = Convert.FromBase64String(base64Value);
-                    var value = System.Text.Encoding.Default.GetString(valueBytes);
+		private Dictionary<string, string> ParseMetadata(string metadata)
+		{
+			Dictionary<string, string> dictionary = new Dictionary<string, string>();
+			if (!string.IsNullOrEmpty(metadata))
+			{
+				var metadataPairs = metadata.Split(',');
+				foreach (var pair in metadataPairs)
+				{
+					var keyAndValue = pair.Split(' ');
+					var key = keyAndValue[0];
+					var base64Value = keyAndValue[1];
+					var valueBytes = Convert.FromBase64String(base64Value);
+					var value = System.Text.Encoding.Default.GetString(valueBytes);
 
-                    dictionary[key] = value;
-                }
-            }
+					dictionary[key] = value;
+				}
+			}
 
-            return dictionary;
-        }
+			return dictionary;
+		}
 
 
-        internal bool Exist()
+		internal bool Exist()
 		{
 			return File.Exists(_filePath);
 		}
@@ -52,6 +52,6 @@ namespace tusdotnet.Stores
 			return Task.FromResult<Stream>(stream);
 		}
 
-        public Dictionary<string, string> Metadata { get; }
+		public Dictionary<string, string> Metadata { get; }
 	}
 }

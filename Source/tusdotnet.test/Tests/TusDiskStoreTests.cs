@@ -25,7 +25,7 @@ namespace tusdotnet.test.Tests
 		{
 			for (var i = 0; i < 10; i++)
 			{
-				var fileId = await _fixture.Store.CreateFileAsync(i, CancellationToken.None);
+				var fileId = await _fixture.Store.CreateFileAsync(i, null, CancellationToken.None);
 				var filePath = Path.Combine(_fixture.Path, fileId);
 				File.Exists(filePath).ShouldBeTrue();
 			}
@@ -36,7 +36,7 @@ namespace tusdotnet.test.Tests
 		{
 			for (var i = 0; i < 10; i++)
 			{
-				var fileId = await _fixture.Store.CreateFileAsync(i, CancellationToken.None);
+				var fileId = await _fixture.Store.CreateFileAsync(i, null, CancellationToken.None);
 				var exist = await _fixture.Store.FileExistAsync(fileId, CancellationToken.None);
 				exist.ShouldBeTrue();
 			}
@@ -52,7 +52,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task GetUploadLengthAsync()
 		{
-			var fileId = await _fixture.Store.CreateFileAsync(3000, CancellationToken.None);
+			var fileId = await _fixture.Store.CreateFileAsync(3000, null, CancellationToken.None);
 			var length = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
 			length.ShouldBe(3000);
 
@@ -74,7 +74,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task GetUploadOffsetAsync()
 		{
-			var fileId = await _fixture.Store.CreateFileAsync(100, CancellationToken.None);
+			var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
 			var stream = new MemoryStream(new UTF8Encoding(false).GetBytes("Test content"));
 			var bytesWritten = await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
@@ -93,7 +93,7 @@ namespace tusdotnet.test.Tests
 
 			// 30 MB
 			const int fileSize = 30 * 1024 * 1024;
-			var fileId = await _fixture.Store.CreateFileAsync(fileSize, cancellationToken.Token);
+			var fileId = await _fixture.Store.CreateFileAsync(fileSize, null, cancellationToken.Token);
 
 			var buffer = new MemoryStream(new byte[fileSize]);
 
@@ -134,7 +134,7 @@ namespace tusdotnet.test.Tests
 		{
 			// Test that it does not allow more than upload length to be written.
 
-			var fileId = await _fixture.Store.CreateFileAsync(100, CancellationToken.None);
+			var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
 			var storeException = await Should.ThrowAsync<TusStoreException>(
 				async () => await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(new byte[101]), CancellationToken.None));
@@ -145,7 +145,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task AppendDataAsync_Returns_Zero_If_File_Is_Already_Complete()
 		{
-			var fileId = await _fixture.Store.CreateFileAsync(100, CancellationToken.None);
+			var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 			var length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(new byte[100]), CancellationToken.None);
 			length.ShouldBe(100);
 
@@ -156,7 +156,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task GetFileAsync_Returns_File_If_The_File_Exist()
 		{
-			var fileId = await _fixture.Store.CreateFileAsync(100, CancellationToken.None);
+			var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
 			var content = Enumerable.Range(0, 100).Select(f => (byte)f).ToArray();
 

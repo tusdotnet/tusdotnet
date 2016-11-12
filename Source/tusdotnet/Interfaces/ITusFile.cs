@@ -9,6 +9,6 @@ namespace tusdotnet.Interfaces
 	{
 		string Id { get; }
 		Task<Stream> GetContent(CancellationToken cancellationToken);
-        Dictionary<string, string> Metadata { get; }
+		Dictionary<string, string> Metadata { get; }
 	}
 }

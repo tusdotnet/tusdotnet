@@ -146,5 +146,14 @@ namespace tusdotnet.test.Tests
 				response.ShouldContainHeader("Cache-Control", "no-store");
 			}
 		}
+
+		//[Fact]
+		//public async Task Response_Contains_Metadata_If_It_Exists_For_File()
+		//{
+		//	// If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+		//	// and its value as specified by the Client during the creation.
+
+		//	throw new NotImplementedException();
+		//}
 	}
 }
