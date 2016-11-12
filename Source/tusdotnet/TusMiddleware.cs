@@ -114,12 +114,71 @@ namespace tusdotnet
 				return;
 			}
 
-			var fileName = await tusCreationStore.CreateFileAsync(uploadLength, context.Request.CallCancelled);
+            if(!(await ValidateMetadataHeader(context)))
+            {
+                return;
+            }
+
+			var fileName = await tusCreationStore.CreateFileAsync(uploadLength, context.Request.Headers.Get(HeaderConstants.UploadMetadata), context.Request.CallCancelled);
 
 			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
 			context.Response.Headers[HeaderConstants.Location] = _config.UrlPath.TrimEnd('/') + "/" + fileName;
 			context.Response.StatusCode = (int)HttpStatusCode.Created;
 		}
+
+        private async Task<bool> ValidateMetadataHeader(IOwinContext context)
+        {
+            /* 
+             * The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs.
+             * The key and value MUST be separated by a space. The key MUST NOT contain spaces and commas and MUST NOT be empty.
+             * The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.
+             * */
+
+            if (context.Request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
+            {
+                string metadata = context.Request.Headers.Get(HeaderConstants.UploadMetadata);
+                if (string.IsNullOrEmpty(metadata))
+                {
+                    await RespondAsync(context,
+                        HttpStatusCode.BadRequest,
+                        $"Header {HeaderConstants.UploadMetadata} must consist of one or more comma-separated key-value pairs");
+                    return false;
+                }
+
+                HashSet<string> keys = new HashSet<string>();
+                var pairs = metadata.Split(',');
+                foreach (var pair in pairs)
+                {
+                    var pairParts = pair.Split(' ');
+                    if (pairParts.Count() != 2)
+                    {
+                        await RespondAsync(context,
+                            HttpStatusCode.BadRequest,
+                            $"Header {HeaderConstants.UploadMetadata}: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.");
+                        return false;
+                    }
+
+                    var key = pairParts.First();
+                    if (string.IsNullOrEmpty(key))
+                    {
+                        await RespondAsync(context,
+                            HttpStatusCode.BadRequest,
+                            $"Header {HeaderConstants.UploadMetadata}: Key must not be empty");
+                        return false;
+                    }
+
+                    if (keys.Contains(key))
+                    {
+                        await RespondAsync(context,
+                            HttpStatusCode.BadRequest,
+                            $"Header {HeaderConstants.UploadMetadata}: Duplicate keys are not allowed");
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
 
 		private Task HandleOptionsRequest(IOwinContext context)
 		{

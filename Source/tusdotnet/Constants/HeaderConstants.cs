@@ -13,6 +13,7 @@
 		public const string UploadLength = "Upload-Length";
 		public const string UploadDeferLength = "Upload-Defer-Length";
 		public const string UploadOffset = "Upload-Offset";
+        public const string UploadMetadata = "Upload-Metadata";
 
 		public const string CacheControl = "Cache-Control";
 		public const string NoStore = "no-store";
