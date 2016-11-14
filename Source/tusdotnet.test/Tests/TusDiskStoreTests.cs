@@ -166,7 +166,7 @@ namespace tusdotnet.test.Tests
 
 			file.Id.ShouldBe(fileId);
 
-			using (var fileContent = await file.GetContent(CancellationToken.None))
+			using (var fileContent = await file.GetContentAsync(CancellationToken.None))
 			{
 				fileContent.Length.ShouldBe(content.Length);
 
@@ -185,6 +185,22 @@ namespace tusdotnet.test.Tests
 		{
 			var file = await _fixture.Store.GetFileAsync(Guid.NewGuid().ToString(), CancellationToken.None);
 			file.ShouldBeNull();
+		}
+
+		[Fact]
+		public async Task CreateFileAsync_Creates_Metadata_Properly()
+		{
+			var fileId = await _fixture.Store.CreateFileAsync(1, "key wrbDgMSaxafMsw==", CancellationToken.None);
+			fileId.ShouldNotBeNull();
+
+			var file = await _fixture.Store.GetFileAsync(fileId, CancellationToken.None);
+			var metadata = await file.GetMetadataAsync(CancellationToken.None);
+			metadata.ContainsKey("key").ShouldBeTrue();
+			// Correct encoding
+			metadata["key"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
+			// Wrong encoding just to test that the result is different.
+			metadata["key"].GetString(new UTF7Encoding()).ShouldBe("Â¶ÃÄÅ§Ì³");
+			metadata["key"].GetBytes().ShouldBe(new byte[] { 194, 182, 195, 128, 196, 154, 197, 167, 204, 179 });
 		}
 
 		public void Dispose()

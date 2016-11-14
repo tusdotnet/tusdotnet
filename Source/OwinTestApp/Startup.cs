@@ -62,7 +62,7 @@ namespace OwinTestApp
 							return;
 						}
 
-						var fileStream = await file.GetContent(context.Request.CallCancelled);
+						var fileStream = await file.GetContentAsync(context.Request.CallCancelled);
 
 						context.Response.ContentType = "application/octet-stream";
 						await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);
