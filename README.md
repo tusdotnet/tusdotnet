@@ -58,7 +58,7 @@ Optionally the store can also implement the following interfaces:
 
 ## Roadmap
 * Next release:
-  * Add support for file metadata
+  * ~~Add support for file metadata~~ - Thanks to [tkburbidge](https://github.com/tkburbidge)
   * Add support for x-http-override (to support old clients)
 * Future releases:
   *	Add support for Upload-Defer-Length
