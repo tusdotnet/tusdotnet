@@ -188,7 +188,6 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task UploadMetadata_Is_Saved_If_Provided()
 		{
-
 			const string metadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
 
 			ITusCreationStore tusStore = null;

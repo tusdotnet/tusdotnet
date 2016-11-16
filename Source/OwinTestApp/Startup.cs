@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Owin;
 using Owin;
@@ -63,8 +64,18 @@ namespace OwinTestApp
 						}
 
 						var fileStream = await file.GetContentAsync(context.Request.CallCancelled);
+						var metadata = await file.GetMetadataAsync(context.Request.CallCancelled);
 
-						context.Response.ContentType = "application/octet-stream";
+						context.Response.ContentType = metadata.ContainsKey("contentType")
+							? metadata["contentType"].GetString(Encoding.UTF8)
+							: "application/octet-stream";
+
+						if (metadata.ContainsKey("name"))
+						{
+							var name = metadata["name"].GetString(Encoding.UTF8);
+							context.Response.Headers.Add("Content-Disposition", new[] { $"attachment; filename=\"{name}\"" });
+						}
+
 						await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);
 						return;
 					}

@@ -147,13 +147,68 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
-		//[Fact]
-		//public async Task Response_Contains_Metadata_If_It_Exists_For_File()
-		//{
-		//	// If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
-		//	// and its value as specified by the Client during the creation.
+		[Fact]
+		public async Task Response_Contains_UploadMetadata_If_Metadata_Exists_For_File()
+		{
+			// If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+			// and its value as specified by the Client during the creation.
 
-		//	throw new NotImplementedException();
-		//}
+			const string metadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
+
+			using (var server = TestServer.Create(app =>
+			{
+				var store = Substitute.For<ITusStore, ITusCreationStore>();
+				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(100);
+				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(50);
+
+				((ITusCreationStore)store).GetUploadMetadataAsync("testfile", Arg.Any<CancellationToken>()).Returns(metadata);
+
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = store,
+					UrlPath = "/files"
+				});
+			}))
+			{
+				var response = await server
+					.CreateRequest("/files/testfile")
+					.AddTusResumableHeader()
+					.SendAsync("HEAD");
+
+				response.ShouldContainHeader("Upload-Metadata", metadata);
+			}
+		}
+
+		[Fact]
+		public async Task Response_Does_Not_Contain_UploadMetadata_If_Metadata_Does_Not_Exist_For_File()
+		{
+			// If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+			// and its value as specified by the Client during the creation.
+
+			using (var server = TestServer.Create(app =>
+			{
+				var store = Substitute.For<ITusStore, ITusCreationStore>();
+				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(100);
+				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(50);
+
+				((ITusCreationStore)store).GetUploadMetadataAsync("testfile", Arg.Any<CancellationToken>()).Returns(null as string);
+
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = store,
+					UrlPath = "/files"
+				});
+			}))
+			{
+				var response = await server
+					.CreateRequest("/files/testfile")
+					.AddTusResumableHeader()
+					.SendAsync("HEAD");
+
+				response.Headers.Contains("Upload-Metadata").ShouldBeFalse();
+			}
+		}
 	}
 }

@@ -203,6 +203,24 @@ namespace tusdotnet.test.Tests
 			metadata["key"].GetBytes().ShouldBe(new byte[] { 194, 182, 195, 128, 196, 154, 197, 167, 204, 179 });
 		}
 
+		[Fact]
+		public async Task GetUploadMetadataAsync()
+		{
+			const string metadataConst = "key wrbDgMSaxafMsw==";
+			var fileId = await _fixture.Store.CreateFileAsync(1, metadataConst, CancellationToken.None);
+
+			var metadata = await _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None);
+			metadata.ShouldBe(metadataConst);
+
+			fileId = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
+			metadata = await _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None);
+			metadata.ShouldBeNull();
+
+			fileId = await _fixture.Store.CreateFileAsync(1, "", CancellationToken.None);
+			metadata = await _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None);
+			metadata.ShouldBeNull();
+		}
+
 		public void Dispose()
 		{
 			_fixture.ClearPath();

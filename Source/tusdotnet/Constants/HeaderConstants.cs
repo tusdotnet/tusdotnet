@@ -11,7 +11,9 @@
 		//public const string XHttpMethodOveride = "X-HTTP-Method-Override";
 
 		public const string UploadLength = "Upload-Length";
-		public const string UploadDeferLength = "Upload-Defer-Length";
+
+		// TODO: Implement at some point. The disk store does not yet support this.
+		//public const string UploadDeferLength = "Upload-Defer-Length";
 		public const string UploadOffset = "Upload-Offset";
 		public const string UploadMetadata = "Upload-Metadata";
 

@@ -92,30 +92,6 @@ namespace tusdotnet.Stores
 			}
 		}
 
-		public Task<string> GetMetadataAsync(string fileId, CancellationToken cancellationToken)
-		{
-			var path = Path.Combine(_directoryPath, fileId) + ".metadata";
-
-			if (!File.Exists(path))
-			{
-				return Task.FromResult<string>(null);
-			}
-
-			using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-			{
-				using (var sr = new StreamReader(stream))
-				{
-					var firstLine = sr.ReadLine();
-					if (string.IsNullOrEmpty(firstLine))
-					{
-						return Task.FromResult<string>(null);
-					}
-
-					return Task.FromResult(firstLine);
-				}
-			}
-		}
-
 		public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
 		{
 			return Task.FromResult(new FileInfo(Path.Combine(_directoryPath, fileId)).Length);
@@ -131,9 +107,28 @@ namespace tusdotnet.Stores
 			return Task.FromResult(fileName);
 		}
 
+		public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
+		{
+			var path = Path.Combine(_directoryPath, fileId) + ".metadata";
+
+			if (!File.Exists(path))
+			{
+				return Task.FromResult<string>(null);
+			}
+
+			using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+			{
+				using (var sr = new StreamReader(stream))
+				{
+					var firstLine = sr.ReadLine();
+					return string.IsNullOrEmpty(firstLine) ? Task.FromResult<string>(null) : Task.FromResult(firstLine);
+				}
+			}
+		}
+
 		public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
 		{
-			var metadata = await GetMetadataAsync(fileId, cancellationToken);
+			var metadata = await GetUploadMetadataAsync(fileId, cancellationToken);
 			var file = new TusDiskFile(_directoryPath, fileId, metadata);
 			return (file.Exist() ? file : null);
 		}

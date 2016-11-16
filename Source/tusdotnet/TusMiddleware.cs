@@ -378,6 +378,9 @@ namespace tusdotnet
 			 * status without the Upload-Offset header.
 			 * The Server MUST prevent the client and/or proxies from caching the response by adding the 
 			 * Cache-Control: no-store header to the response.
+			 * 
+			 * If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+			 * and its value as specified by the Client during the creation.
 			 * */
 
 			var fileName = GetFileName(context.Request);
@@ -395,6 +398,16 @@ namespace tusdotnet
 			if (uploadLength != null)
 			{
 				context.Response.Headers[HeaderConstants.UploadLength] = uploadLength.Value.ToString();
+			}
+
+			var tusCreationStore = _config.Store as ITusCreationStore;
+			if (tusCreationStore != null)
+			{
+				var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileName, cancellationToken);
+				if (!string.IsNullOrEmpty(uploadMetadata))
+				{
+					context.Response.Headers[HeaderConstants.UploadMetadata] = uploadMetadata;
+				}
 			}
 
 			var uploadOffset = await _config.Store.GetUploadOffsetAsync(fileName, cancellationToken);
