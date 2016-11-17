@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/smatsson/tusdotnet</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes></releaseNotes>
+    <releaseNotes>Release notes at https://github.com/smatsson/tusdotnet/releases</releaseNotes>
     <copyright>Copyright 2016 Stefan Matsson</copyright>
     <tags>Tus Tus-Resumable ResumableFileUploads FileUpload</tags>
   </metadata>

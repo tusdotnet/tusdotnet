@@ -10,7 +10,7 @@ namespace tusdotnet.Models
 
 		private Metadata(string encodedValue)
 		{
-			if (string.IsNullOrEmpty(encodedValue))
+			if (string.IsNullOrWhiteSpace(encodedValue))
 			{
 				throw new ArgumentNullException(nameof(encodedValue));
 			}
@@ -49,7 +49,7 @@ namespace tusdotnet.Models
 			 * */
 
 			var dictionary = new Dictionary<string, Metadata>();
-			if (string.IsNullOrEmpty(uploadMetadata))
+			if (string.IsNullOrWhiteSpace(uploadMetadata))
 			{
 				return dictionary;
 			}

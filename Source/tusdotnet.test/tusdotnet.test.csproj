@@ -89,6 +89,7 @@
     <Compile Include="Tests\GenericRequestTests.cs" />
     <Compile Include="Tests\ConfigurationTests.cs" />
     <Compile Include="Tests\HeadTests.cs" />
+    <Compile Include="Tests\MetadataTests.cs" />
     <Compile Include="Tests\OptionsTests.cs" />
     <Compile Include="Tests\PatchTests.cs" />
     <Compile Include="Tests\PostTests.cs" />
