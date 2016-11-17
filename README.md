@@ -17,7 +17,14 @@ Comments, ideas, questions and PRs are welcome :)
 * MIT licensed
 
 ## How to use
-Clone this repository and compile using Visual Studio 2015. Include `tusdotnet.dll` in your project (or just include the source code).
+
+### Install
+
+[![NuGet](https://img.shields.io/nuget/v/tusdotnet.svg)](https://www.nuget.org/packages/tusdotnet)
+
+``PM> Install-Package tusdotnet``
+
+### Setup
 
 Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the IAppBuilder.
 
