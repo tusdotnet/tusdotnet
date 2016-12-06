@@ -3,7 +3,7 @@
 
 ## What?
 From tus.io:
->tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network.
+>Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network.
 
 tusdotnet is a .NET server implementation of the Tus protocol. It is written as a OWIN middleware for easy usage.
 
@@ -30,23 +30,19 @@ Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and r
 
 ```csharp
 app.UseTus(request => new DefaultTusConfiguration
-			{
-				// c:\tusfiles is where to store files
-				Store = new TusDiskStore(@"C:\tusfiles\"),
-				// On what url should we listen for uploads?
-				UrlPath = "/files",
-				OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
-				{
-					// Called when a file upload is completed.
-					// If the store implements ITusReadableStore one could access 
-                    // the completed file here. 
-                    // The default TusDiskStore implements ITusReadableStore:
-					// var file = await 
-                    //		(store as ITusReadableStore)
-                    //			.GetFileAsync(fileId, cancellationToken);
-					return Task.FromResult(true);
-				}
-			});
+{
+	// c:\tusfiles is where to store files
+	Store = new TusDiskStore(@"C:\tusfiles\"),
+	// On what url should we listen for uploads?
+	UrlPath = "/files",
+	OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
+	{
+		var file = await (store as ITusReadableStore)
+        				.GetFileAsync(fileId, cancellationToken);
+		await DoSomeProcessing(file);
+		return Task.FromResult(true);
+	}
+});
 ```
  
 If you just want to play around with the protocol, clone the repo and run the OwinTestApp. It launches a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
@@ -54,24 +50,18 @@ If you just want to play around with the protocol, clone the repo and run the Ow
 ## Clients
 [Tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
 
-## Custom store
-tusdotnet currently ships with a single store, the `TusDiskStore`, which saves files in a directory on disk. 
-You can implement your own store by implementing the following interfaces:
-* `ITusStore` - Support for the core protocol
-* `ITusCreationStore` - Support for the Creation extension
-
-Optionally the store can also implement the following interfaces:
-* `ITusReadableStore` - Support for reading files from the store (e.g. for downloads or processing).
-
 ## Roadmap
 * Next release:
   * ~~Add support for file metadata~~ - Thanks to [tkburbidge](https://github.com/tkburbidge)
   * Add support for x-http-override (to support old clients)
+  * Add support for Termination
 * Future releases:
   *	Add support for Upload-Defer-Length
-  * Add support for more extensions: Expiration, Checksum, Termination and Concatenation 
+  * Add support for more extensions: Expiration, Checksum and Concatenation 
   * Add support for file tracking so that we can return 410 instead of 404 for abandoned files
-  * ~~Figure out a nice way of normalizing downloads with third party stores.~~ - ITusReadableStore
 
 ## License
 This project is licensed under the MIT license, see [LICENSE](LICENSE).
+
+## Want to know more?
+Check out the wiki or create an issue. :) 
