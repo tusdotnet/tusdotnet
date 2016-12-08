@@ -14,6 +14,7 @@ using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Stores;
+using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 
@@ -242,8 +243,8 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
-		[Fact]
-		public async Task Returns_204_No_Content_On_Success()
+		[Theory, XHttpMethodOverrideData]
+		public async Task Returns_204_No_Content_On_Success(string methodToUse)
 		{
 			using (var server = TestServer.Create(app =>
 			{
@@ -266,14 +267,15 @@ namespace tusdotnet.test.Tests
 					.And(AddBody)
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5")
-					.SendAsync("PATCH");
+					.OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+					.SendAsync(methodToUse);
 
 				response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 			}
 		}
 
-		[Fact]
-		public async Task Response_Contains_The_Correct_Headers_On_Success()
+		[Theory, XHttpMethodOverrideData]
+		public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
 		{
 			using (var server = TestServer.Create(app =>
 			{
@@ -295,7 +297,8 @@ namespace tusdotnet.test.Tests
 					.And(AddBody)
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5")
-					.SendAsync("PATCH");
+					.OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+					.SendAsync(methodToUse);
 
 				response.ShouldContainTusResumableHeader();
 				response.ShouldContainHeader("Upload-Offset", "10");

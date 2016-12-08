@@ -83,6 +83,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data\XHttpMethodOverrideDataAttribute.cs" />
     <Compile Include="Extensions\RequestBuilderExtensions.cs" />
     <Compile Include="Extensions\ResponseAssertExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -93,7 +94,9 @@
     <Compile Include="Tests\OptionsTests.cs" />
     <Compile Include="Tests\PatchTests.cs" />
     <Compile Include="Tests\PostTests.cs" />
+    <Compile Include="Tests\RequestBuilderExtensionsTests.cs" />
     <Compile Include="Tests\TusDiskStoreTests.cs" />
+    <Compile Include="Tests\XHttpMethodOverrideDataAttributeTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -9,6 +9,7 @@ using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Stores;
+using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 
@@ -132,8 +133,8 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
-		[Fact]
-		public async Task Returns_201_Created_On_Success()
+		[Theory, XHttpMethodOverrideData]
+		public async Task Returns_201_Created_On_Success(string methodToUse)
 		{
 			using (var server = TestServer.Create(app =>
 			{
@@ -152,18 +153,18 @@ namespace tusdotnet.test.Tests
 					.CreateRequest("/files")
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Length", "1")
-					.PostAsync();
+					.OverrideHttpMethodIfNeeded("POST", methodToUse)
+					.SendAsync(methodToUse);
 
 				response.StatusCode.ShouldBe(HttpStatusCode.Created);
 			}
 		}
 
-		[Fact]
-		public async Task Response_Contains_The_Correct_Headers_On_Success()
+		[Theory, XHttpMethodOverrideData]
+		public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
 		{
 			using (var server = TestServer.Create(app =>
 			{
-
 				var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
 				tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
@@ -178,7 +179,8 @@ namespace tusdotnet.test.Tests
 					.CreateRequest("/files")
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Length", "1")
-					.PostAsync();
+					.OverrideHttpMethodIfNeeded("POST", methodToUse)
+					.SendAsync(methodToUse);
 
 				response.ShouldContainTusResumableHeader();
 				response.Headers.Location.ToString().ShouldBe("/files/fileId");

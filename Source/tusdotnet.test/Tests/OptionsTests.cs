@@ -7,6 +7,7 @@ using Owin;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 
@@ -66,29 +67,34 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
-		[Fact]
-		public async Task Returns_204_NoContent_On_Success()
+		[Theory, XHttpMethodOverrideData]
+		public async Task Returns_204_NoContent_On_Success(string methodToUse)
 		{
 			using (var server = TestServer.Create(app =>
 			{
 				app.UseTus(request => _mockTusConfiguration);
 			}))
 			{
-				var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+				var response = await server
+					.CreateRequest("/files")
+					.OverrideHttpMethodIfNeeded("OPTIONS", methodToUse)
+					.SendAsync(methodToUse);
 				response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 			}
 		}
 
-		[Fact]
-		public async Task Response_Contains_The_Correct_Headers_On_Success()
+		[Theory, XHttpMethodOverrideData]
+		public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
 		{
-
 			using (var server = TestServer.Create(app =>
 			{
 				app.UseTus(request => _mockTusConfiguration);
 			}))
 			{
-				var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+				var response = await server
+					.CreateRequest("/files")
+					.OverrideHttpMethodIfNeeded("OPTIONS", methodToUse)
+					.SendAsync(methodToUse);
 
 				response.Headers.Contains("Tus-Resumable").ShouldBeTrue();
 				var tusResumable = response.Headers.GetValues("Tus-Resumable").ToList();

@@ -12,11 +12,6 @@ namespace tusdotnet.test.Extensions
 			string expectedMessage = null)
 		{
 			response.StatusCode.ShouldBe(expectedStatusCode);
-			if (string.IsNullOrEmpty(expectedMessage))
-			{
-				return;
-			}
-
 			response.Content.Headers.ContentType.MediaType.ShouldBe("text/plain");
 			var body = await response.Content.ReadAsStringAsync();
 			body.ShouldBe(expectedMessage);

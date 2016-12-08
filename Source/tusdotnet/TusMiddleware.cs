@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Owin;
 using tusdotnet.Constants;
+using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
@@ -33,7 +34,7 @@ namespace tusdotnet
 				return Next.Invoke(context);
 			}
 
-			var method = context.Request.Method.ToLower();
+			var method = context.Request.GetMethod();
 
 			var tusResumable = context.Request.Headers[HeaderConstants.TusResumable];
 
@@ -57,7 +58,7 @@ namespace tusdotnet
 				case "options":
 					return HandleOptionsRequest(context);
 				default:
-					throw new NotImplementedException($"HTTP method {context.Request.Method.ToLower()} is not implemented.");
+					throw new NotImplementedException($"HTTP method {method} is not implemented.");
 			}
 		}
 
@@ -418,7 +419,7 @@ namespace tusdotnet
 
 		private bool ShouldHandleRequest(IOwinRequest request)
 		{
-			var method = request.Method.ToLower();
+			var method = request.GetMethod();
 
 			if (!request.Headers.ContainsKey(HeaderConstants.TusResumable) && method != "options")
 			{

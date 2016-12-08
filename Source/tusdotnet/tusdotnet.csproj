@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Constants\ExtensionConstants.cs" />
     <Compile Include="Constants\HeaderConstants.cs" />
+    <Compile Include="Extensions\IOwinRequestExtensions.cs" />
     <Compile Include="Interfaces\ITusFile.cs" />
     <Compile Include="Interfaces\ITusReadableStore.cs" />
     <Compile Include="Interfaces\ITusCreationStore.cs" />

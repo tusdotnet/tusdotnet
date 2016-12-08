@@ -7,8 +7,7 @@
 		public const string TusVersion = "Tus-Version";
 		public const string TusExtension = "Tus-Extension";
 
-		// TODO: Implement at some point, only usable in requests from old browsers.
-		//public const string XHttpMethodOveride = "X-HTTP-Method-Override";
+		public const string XHttpMethodOveride = "X-HTTP-Method-Override";
 
 		public const string UploadLength = "Upload-Length";
 
