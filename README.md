@@ -50,16 +50,6 @@ If you just want to play around with the protocol, clone the repo and run the Ow
 ## Clients
 [Tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
 
-## Roadmap
-* Next release:
-  * ~~Add support for file metadata~~ - Thanks to [tkburbidge](https://github.com/tkburbidge)
-  * Add support for x-http-override (to support old clients)
-  * Add support for Termination
-* Future releases:
-  *	Add support for Upload-Defer-Length
-  * Add support for more extensions: Expiration, Checksum and Concatenation 
-  * Add support for file tracking so that we can return 410 instead of 404 for abandoned files
-
 ## License
 This project is licensed under the MIT license, see [LICENSE](LICENSE).
 
