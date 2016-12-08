@@ -54,4 +54,4 @@ If you just want to play around with the protocol, clone the repo and run the Ow
 This project is licensed under the MIT license, see [LICENSE](LICENSE).
 
 ## Want to know more?
-Check out the wiki or create an issue. :) 
+Check out the [wiki](https://github.com/smatsson/tusdotnet/wiki) or create an [issue](https://github.com/smatsson/tusdotnet/issues). :) 
