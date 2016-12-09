@@ -402,5 +402,51 @@ namespace tusdotnet.test.Tests
 				message.ShouldBe("Header Upload-Metadata: Duplicate keys are not allowed");
 			}
 		}
+
+		[Fact]
+		public async Task Returns_413_Request_Entity_Too_Large_If_Upload_Length_Exceeds_Tus_Max_Size()
+		{
+			using (var server = TestServer.Create(app =>
+			{
+				var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+				tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = tusStore as ITusStore,
+					UrlPath = "/files",
+					MaxAllowedUploadSizeInBytes = 100
+				});
+			}))
+			{
+
+				var response = await server
+					.CreateRequest("/files")
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Length", "101")
+					.PostAsync();
+
+				response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+				var message = await response.Content.ReadAsStringAsync();
+				message.ShouldBe("Header Upload-Length exceeds the server's max file size.");
+
+				response = await server
+					.CreateRequest("/files")
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Length", "100")
+					.PostAsync();
+
+				response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+				response = await server
+					.CreateRequest("/files")
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Length", "10")
+					.PostAsync();
+
+				response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+			}
+		}
 	}
 }

@@ -114,6 +114,14 @@ namespace tusdotnet
 				return;
 			}
 
+			if (_config.MaxAllowedUploadSizeInBytes.HasValue && uploadLength > _config.MaxAllowedUploadSizeInBytes.Value)
+			{
+				await RespondAsync(context,
+					HttpStatusCode.RequestEntityTooLarge,
+					$"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");
+				return;
+			}
+
 			if (!(await ValidateMetadataHeader(context)))
 			{
 				return;
@@ -208,6 +216,11 @@ namespace tusdotnet
 
 			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
 			context.Response.Headers[HeaderConstants.TusVersion] = HeaderConstants.TusResumableValue;
+
+			if (_config.MaxAllowedUploadSizeInBytes.HasValue)
+			{
+				context.Response.Headers[HeaderConstants.TusMaxSize] = _config.MaxAllowedUploadSizeInBytes.Value.ToString();
+			}
 
 			var extensions = DetectExtensions();
 			if (extensions.Any())

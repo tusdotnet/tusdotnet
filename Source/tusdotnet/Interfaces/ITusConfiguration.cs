@@ -9,5 +9,6 @@ namespace tusdotnet.Interfaces
 		string UrlPath { get; }
 		ITusStore Store { get; }
 		Func<string, ITusStore, CancellationToken, Task> OnUploadCompleteAsync { get; }
+		int? MaxAllowedUploadSizeInBytes { get; }
 	}
 }

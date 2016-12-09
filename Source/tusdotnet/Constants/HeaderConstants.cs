@@ -6,6 +6,7 @@
 		public const string TusResumableValue = "1.0.0";
 		public const string TusVersion = "Tus-Version";
 		public const string TusExtension = "Tus-Extension";
+		public const string TusMaxSize = "Tus-Max-Size";
 
 		public const string XHttpMethodOveride = "X-HTTP-Method-Override";
 

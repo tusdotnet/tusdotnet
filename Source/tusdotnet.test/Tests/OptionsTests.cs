@@ -140,5 +140,40 @@ namespace tusdotnet.test.Tests
 
 			}
 		}
+
+		[Fact]
+		public async Task Tus_Max_Size_Is_Included_If_Configured()
+		{
+			// Not specified, should not be in OPTIONS response
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = Substitute.For<ITusStore>(),
+					UrlPath = "/files",
+				});
+			}))
+			{
+				var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+				response.Headers.Contains("Tus-Max-Size").ShouldBeFalse();
+			}
+
+			// Specified, should be in OPTIONS response
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = Substitute.For<ITusStore>(),
+					UrlPath = "/files",
+					MaxAllowedUploadSizeInBytes = 100
+				});
+			}))
+			{
+				var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+				response.Headers.Contains("Tus-Max-Size").ShouldBeTrue();
+				response.Headers.GetValues("Tus-Max-Size").Count().ShouldBe(1);
+				response.Headers.GetValues("Tus-Max-Size").First().ShouldBe("100");
+			}
+		}
 	}
 }

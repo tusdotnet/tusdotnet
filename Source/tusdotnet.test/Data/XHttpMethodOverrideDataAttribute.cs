@@ -13,7 +13,7 @@ namespace tusdotnet.test.Data
 	internal sealed class XHttpMethodOverrideDataAttribute : DataAttribute
 	{
 		private static readonly string[] AllSupportedMethods = {"options", "head", "patch", "post"};
-
+		
 		public override IEnumerable<object[]> GetData(MethodInfo testMethod)
 		{
 			return AllSupportedMethods.Select(f => new[] {f}).ToArray();
