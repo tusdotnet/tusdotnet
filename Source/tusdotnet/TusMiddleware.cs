@@ -441,6 +441,7 @@ namespace tusdotnet
 			{
 				context.Response.StatusCode = (int)HttpStatusCode.NotFound;
 				context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
+				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
 				return;
 			}
 

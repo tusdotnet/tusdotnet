@@ -80,6 +80,7 @@ namespace tusdotnet.test.Tests
 					.SendAsync("HEAD");
 
 				response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+				response.ShouldContainTusResumableHeader();
 			}
 		}
 
