@@ -221,6 +221,33 @@ namespace tusdotnet.test.Tests
 			metadata.ShouldBeNull();
 		}
 
+		[Fact]
+		public async Task DeleteFileAsync()
+		{
+			const string metadataConst = "key wrbDgMSaxafMsw==";
+			for (var i = 0; i < 10; i++)
+			{
+				var fileId = await _fixture.Store.CreateFileAsync(i + 1, i % 2 == 0 ? null : metadataConst, CancellationToken.None);
+				var exist = await _fixture.Store.FileExistAsync(fileId, CancellationToken.None);
+				exist.ShouldBeTrue();
+
+				// Verify that all files exist.
+				var filePath = Path.Combine(_fixture.Path, fileId);
+				var uploadLengthPath = $"{filePath}.uploadlength";
+				var metaPath = $"{filePath}.metadata";
+				File.Exists(filePath).ShouldBeTrue();
+				File.Exists(uploadLengthPath).ShouldBeTrue();
+				File.Exists(metaPath).ShouldBeTrue();
+
+				await _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None);
+
+				// Verify that all files were deleted.
+				File.Exists(filePath).ShouldBeFalse();
+				File.Exists(uploadLengthPath).ShouldBeFalse();
+				File.Exists(metaPath).ShouldBeFalse();
+			}
+		}
+
 		public void Dispose()
 		{
 			_fixture.ClearPath();

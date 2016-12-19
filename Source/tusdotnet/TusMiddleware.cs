@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Owin;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
@@ -17,7 +17,7 @@ namespace tusdotnet
 	{
 		private readonly Func<IOwinRequest, ITusConfiguration> _configFactory;
 		private ITusConfiguration _config;
-		private static readonly Dictionary<string, SemaphoreSlim> FileLocks = new Dictionary<string, SemaphoreSlim>();
+		
 
 		public TusMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
 		{
@@ -57,8 +57,57 @@ namespace tusdotnet
 					return HandlePatchRequest(context);
 				case "options":
 					return HandleOptionsRequest(context);
+				case "delete":
+					return HandleDeleteRequest(context);
 				default:
 					throw new NotImplementedException($"HTTP method {method} is not implemented.");
+			}
+		}
+
+		private async Task HandleDeleteRequest(IOwinContext context)
+		{
+			/* When receiving a DELETE request for an existing upload the Server SHOULD free associated resources and MUST 
+			 * respond with the 204 No Content status confirming that the upload was terminated. 
+			 * For all future requests to this URL the Server SHOULD respond with the 404 Not Found or 410 Gone status.
+			 * */
+
+			var store = _config.Store as ITusTerminationStore;
+			if (store == null)
+			{
+				await Next.Invoke(context);
+				return;
+			}
+
+			var fileId = GetFileName(context.Request);
+			var fileLock = new FileLock(fileId);
+
+			var hasLock = fileLock.Lock(context.Request.CallCancelled);
+			if (!hasLock)
+			{
+				await
+					RespondAsync(context, HttpStatusCode.Conflict,
+						$"File {fileId} is currently being updated. Please try again later");
+				return;
+			}
+
+			try
+			{
+				var exists = await _config.Store.FileExistAsync(fileId, context.Request.CallCancelled);
+				if (!exists)
+				{
+					context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+					context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
+					context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
+					return;
+				}
+
+				await store.DeleteFileAsync(fileId, context.Request.CallCancelled);
+				context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
+			}
+			finally
+			{
+				fileLock.ReleaseIfHeld();
 			}
 		}
 
@@ -256,26 +305,17 @@ namespace tusdotnet
 
 			var fileName = GetFileName(context.Request);
 			var cancellationToken = context.Request.CallCancelled;
+			var fileLock = new FileLock(fileName);
 
-			SemaphoreSlim semaphore;
 
-			lock (FileLocks)
-			{
-				if (!FileLocks.ContainsKey(fileName))
-				{
-					FileLocks[fileName] = new SemaphoreSlim(1);
-				}
-
-				semaphore = FileLocks[fileName];
-			}
-
-			var hasLock = await semaphore.WaitAsync(TimeSpan.Zero, cancellationToken);
+			var hasLock = fileLock.Lock(cancellationToken);
 
 			if (!hasLock)
 			{
 				await
 					RespondAsync(context, HttpStatusCode.Conflict,
 						$"File {fileName} is currently being updated. Please try again later");
+				return;
 			}
 
 			try
@@ -374,11 +414,7 @@ namespace tusdotnet
 			}
 			finally
 			{
-				semaphore.Release();
-				lock (FileLocks)
-				{
-					FileLocks.Remove(fileName);
-				}
+				fileLock.ReleaseIfHeld();
 			}
 		}
 
@@ -446,6 +482,7 @@ namespace tusdotnet
 					return IsExactUrlMatch(request);
 				case "head":
 				case "patch":
+				case "delete":
 					return !IsExactUrlMatch(request) &&
 						   request.Uri.LocalPath.StartsWith(_config.UrlPath, StringComparison.InvariantCultureIgnoreCase);
 				default:
@@ -477,6 +514,11 @@ namespace tusdotnet
 			if (_config.Store is ITusCreationStore)
 			{
 				extensions.Add(ExtensionConstants.Creation);
+			}
+
+			if (_config.Store is ITusTerminationStore)
+			{
+				extensions.Add(ExtensionConstants.Termination);
 			}
 
 			return extensions;

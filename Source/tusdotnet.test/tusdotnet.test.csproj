@@ -87,6 +87,9 @@
     <Compile Include="Extensions\RequestBuilderExtensions.cs" />
     <Compile Include="Extensions\ResponseAssertExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Tests\CrossRequestLockTests.cs" />
+    <Compile Include="Tests\DeleteTests.cs" />
+    <Compile Include="Tests\FileLockTests.cs" />
     <Compile Include="Tests\GenericRequestTests.cs" />
     <Compile Include="Tests\ConfigurationTests.cs" />
     <Compile Include="Tests\HeadTests.cs" />

@@ -45,6 +45,12 @@ namespace OwinTestApp
 
 			app.Use(async (context, next) =>
 			{
+				if (!context.Request.Method.Equals("get", StringComparison.InvariantCultureIgnoreCase))
+				{
+					await next.Invoke();
+					return;
+				}
+
 				// All GET requests to tusdotnet are forwared so that you can handle file downloads.
 				// This is done because the file's metadata is domain specific and thus cannot be handled 
 				// in a generic way by tusdotnet.

@@ -21,7 +21,7 @@ namespace tusdotnet.test.Tests
 		{
 			_mockTusConfiguration = new DefaultTusConfiguration
 			{
-				Store = Substitute.For<ITusStore, ITusCreationStore>(),
+				Store = Substitute.For<ITusStore, ITusCreationStore, ITusTerminationStore>(),
 				UrlPath = "/files"
 			};
 		}
@@ -109,7 +109,7 @@ namespace tusdotnet.test.Tests
 				response.Headers.Contains("Tus-Extension").ShouldBeTrue();
 				var tusExtension = response.Headers.GetValues("Tus-Extension").ToList();
 				tusExtension.Count.ShouldBe(1);
-				tusExtension.First().ShouldBe("creation");
+				tusExtension.First().ShouldBe("creation,termination");
 
 			}
 

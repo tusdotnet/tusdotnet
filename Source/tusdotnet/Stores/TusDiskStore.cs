@@ -7,7 +7,7 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Stores
 {
-	public class TusDiskStore : ITusStore, ITusCreationStore, ITusReadableStore
+	public class TusDiskStore : ITusStore, ITusCreationStore, ITusReadableStore, ITusTerminationStore
 	{
 		private readonly string _directoryPath;
 		// Number of bytes to read at the time from the input stream.
@@ -131,6 +131,17 @@ namespace tusdotnet.Stores
 			var metadata = await GetUploadMetadataAsync(fileId, cancellationToken);
 			var file = new TusDiskFile(_directoryPath, fileId, metadata);
 			return (file.Exist() ? file : null);
+		}
+
+		public Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
+		{
+			return Task.Run(() =>
+			{
+				var path = Path.Combine(_directoryPath, fileId);
+				File.Delete(path);
+				File.Delete($"{path}.uploadlength");
+				File.Delete($"{path}.metadata");
+			}, cancellationToken);
 		}
 	}
 }
