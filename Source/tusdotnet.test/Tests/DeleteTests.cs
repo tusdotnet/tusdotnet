@@ -100,7 +100,7 @@ namespace tusdotnet.test.Tests
 			{
 				var random = new Random();
 				var store = Substitute.For<ITusStore, ITusTerminationStore>();
-				var terminationStore = (ITusTerminationStore) store;
+				var terminationStore = (ITusTerminationStore)store;
 				store.FileExistAsync("testfiledelete", Arg.Any<CancellationToken>()).Returns(true);
 				terminationStore
 					.DeleteFileAsync("testfiledelete", Arg.Any<CancellationToken>())
@@ -119,8 +119,6 @@ namespace tusdotnet.test.Tests
 
 			}))
 			{
-				// Duplicated code due to: 
-				// "System.InvalidOperationException: The request message was already sent. Cannot send the same request message multiple times."
 				var task1 = server
 					.CreateRequest("/files/testfiledelete")
 					.AddTusResumableHeader()

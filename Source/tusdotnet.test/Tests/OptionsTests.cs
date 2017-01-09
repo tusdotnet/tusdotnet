@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Owin.Testing;
 using NSubstitute;
@@ -19,9 +20,22 @@ namespace tusdotnet.test.Tests
 
 		public OptionsTests()
 		{
+
+			var store = Substitute.For(new[]
+				{
+					typeof(ITusStore),
+					typeof(ITusCreationStore),
+					typeof(ITusTerminationStore),
+					typeof(ITusChecksumStore)
+				}, new object[0]) as
+				ITusStore;
+
+			// ReSharper disable once PossibleNullReferenceException
+			((ITusChecksumStore)store).GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
+
 			_mockTusConfiguration = new DefaultTusConfiguration
 			{
-				Store = Substitute.For<ITusStore, ITusCreationStore, ITusTerminationStore>(),
+				Store = store,
 				UrlPath = "/files"
 			};
 		}
@@ -96,21 +110,10 @@ namespace tusdotnet.test.Tests
 					.OverrideHttpMethodIfNeeded("OPTIONS", methodToUse)
 					.SendAsync(methodToUse);
 
-				response.Headers.Contains("Tus-Resumable").ShouldBeTrue();
-				var tusResumable = response.Headers.GetValues("Tus-Resumable").ToList();
-				tusResumable.Count.ShouldBe(1);
-				tusResumable.First().ShouldBe("1.0.0");
-
-				response.Headers.Contains("Tus-Version").ShouldBeTrue();
-				var tusVersion = response.Headers.GetValues("Tus-Version").ToList();
-				tusVersion.Count.ShouldBe(1);
-				tusVersion.First().ShouldBe("1.0.0");
-
-				response.Headers.Contains("Tus-Extension").ShouldBeTrue();
-				var tusExtension = response.Headers.GetValues("Tus-Extension").ToList();
-				tusExtension.Count.ShouldBe(1);
-				tusExtension.First().ShouldBe("creation,termination");
-
+				response.ShouldContainHeader("Tus-Resumable", "1.0.0");
+				response.ShouldContainHeader("Tus-Version", "1.0.0");
+				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum");
+				response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
 			}
 
 			// Test again but with a store that does not implement ITusCreationStore.

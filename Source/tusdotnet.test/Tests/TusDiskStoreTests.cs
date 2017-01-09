@@ -248,6 +248,83 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
+		[Fact]
+		public async Task GetSupportedAlgorithmsAsync()
+		{
+			var algorithms = await _fixture.Store.GetSupportedAlgorithmsAsync(CancellationToken.None);
+			// ReSharper disable PossibleMultipleEnumeration
+			algorithms.ShouldNotBeNull();
+			algorithms.Count().ShouldBe(1);
+			algorithms.First().ShouldBe("sha1");
+			// ReSharper restore PossibleMultipleEnumeration
+		}
+
+		[Fact]
+		public async Task VerifyChecksumAsync()
+		{
+			const string checksum = "9jSJuBxGMnq4UffwNYM8ct1tYQQ=";
+			const string message = "Hello World 12345!!@@åäö";
+			var buffer = new UTF8Encoding(false).GetBytes(message);
+
+			var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
+			using (var stream = new MemoryStream(buffer))
+			{
+				await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+			}
+
+			var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum),
+				CancellationToken.None);
+
+			checksumOk.ShouldBeTrue();
+		}
+
+		[Fact]
+		public async Task VerifyChecksumAsync_Data_Is_Truncated_If_Verification_Fails()
+		{
+			// Checksum is for "hello world"
+			const string incorrectChecksum = "Kq5sNclPz7QV2+lfQIuc6R7oRu0=";
+			const string message = "Hello World 12345!!@@åäö";
+
+			var buffer = new UTF8Encoding(false).GetBytes(message);
+
+			// Test complete upload
+			var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
+			using (var stream = new MemoryStream(buffer))
+			{
+				await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+			}
+
+			var checksumOk = await _fixture.Store
+				.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum), CancellationToken.None);
+
+			// File should not have been saved.
+			checksumOk.ShouldBeFalse();
+			var filePath = Path.Combine(_fixture.Path, fileId);
+			new FileInfo(filePath).Length.ShouldBe(0);
+
+			// Test chunked upload
+			fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
+			using (var stream = new MemoryStream(buffer.Take(10).ToArray()))
+			{
+				// Write first 10 bytes
+				await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+			}
+
+			using (var stream = new MemoryStream(buffer.Skip(10).ToArray()))
+			{
+				// Skip first 10 bytes and write the rest
+				await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+			}
+
+			checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum),
+				CancellationToken.None);
+
+			// Only first chunk should have been saved.
+			checksumOk.ShouldBeFalse();
+			filePath = Path.Combine(_fixture.Path, fileId);
+			new FileInfo(filePath).Length.ShouldBe(10);
+		}
+
 		public void Dispose()
 		{
 			_fixture.ClearPath();

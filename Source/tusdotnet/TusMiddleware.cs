@@ -17,7 +17,7 @@ namespace tusdotnet
 	{
 		private readonly Func<IOwinRequest, ITusConfiguration> _configFactory;
 		private ITusConfiguration _config;
-		
+
 
 		public TusMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
 		{
@@ -254,7 +254,7 @@ namespace tusdotnet
 			return true;
 		}
 
-		private Task HandleOptionsRequest(IOwinContext context)
+		private async Task HandleOptionsRequest(IOwinContext context)
 		{
 			/*
 			 * An OPTIONS request MAY be used to gather information about the Server’s current configuration. 
@@ -277,8 +277,14 @@ namespace tusdotnet
 				context.Response.Headers[HeaderConstants.TusExtension] = string.Join(",", extensions);
 			}
 
+			var checksumStore = _config.Store as ITusChecksumStore;
+			if (checksumStore != null)
+			{
+				var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(context.Request.CallCancelled);
+				context.Response.Headers[HeaderConstants.TusChecksumAlgorithm] = string.Join(",", checksumAlgorithms);
+			}
+
 			context.Response.StatusCode = (int)HttpStatusCode.NoContent;
-			return Task.FromResult(true);
 		}
 
 		private async Task HandlePatchRequest(IOwinContext context)
@@ -306,7 +312,10 @@ namespace tusdotnet
 			var fileName = GetFileName(context.Request);
 			var cancellationToken = context.Request.CallCancelled;
 			var fileLock = new FileLock(fileName);
-
+			var checksumStore = _config.Store as ITusChecksumStore;
+			var providedChecksum = context.Request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
+				? new Checksum(context.Request.Headers[HeaderConstants.UploadChecksum])
+				: null;
 
 			var hasLock = fileLock.Lock(cancellationToken);
 
@@ -349,6 +358,23 @@ namespace tusdotnet
 					await RespondAsync(context, HttpStatusCode.BadRequest,
 						$"Header {HeaderConstants.UploadOffset} must be a positive number");
 					return;
+				}
+
+				if (checksumStore != null && providedChecksum != null)
+				{
+					if (!providedChecksum.IsValid)
+					{
+						await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadChecksum} header");
+						return;
+					}
+
+					var checksumAlgorithms = (await checksumStore.GetSupportedAlgorithmsAsync(context.Request.CallCancelled)).ToList();
+					if (!checksumAlgorithms.Contains(providedChecksum.Algorithm))
+					{
+						await RespondAsync(context, HttpStatusCode.BadRequest,
+							$"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}");
+						return;
+					}
 				}
 
 				var exists = await _config.Store.FileExistAsync(fileName, cancellationToken);
@@ -398,6 +424,18 @@ namespace tusdotnet
 				{
 					await RespondAsync(context, HttpStatusCode.BadRequest, storeException.Message);
 					throw;
+				}
+
+				if (checksumStore != null && providedChecksum != null)
+				{
+					var validChecksum = await checksumStore
+						.VerifyChecksumAsync(fileName, providedChecksum.Algorithm, providedChecksum.Hash, cancellationToken);
+
+					if (!validChecksum)
+					{
+						await RespondAsync(context, (HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+						return;
+					}
 				}
 
 				context.Response.StatusCode = (int)HttpStatusCode.NoContent;
@@ -520,6 +558,11 @@ namespace tusdotnet
 			if (_config.Store is ITusTerminationStore)
 			{
 				extensions.Add(ExtensionConstants.Termination);
+			}
+
+			if (_config.Store is ITusChecksumStore)
+			{
+				extensions.Add(ExtensionConstants.Checksum);
 			}
 
 			return extensions;

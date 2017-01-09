@@ -10,7 +10,8 @@ tusdotnet is a .NET server implementation of the Tus protocol. It is written as 
 Comments, ideas, questions and PRs are welcome :)
 
 ## Features
-* Supports Tus 1.0.0 core protocol and the Creation extension
+* Supports Tus 1.0.0 core protocol
+* Supported extensions: Checksum, Creation, Termination
 * Easy to use OWIN middleware
 * Fast and reliable
 * 99% test coverage

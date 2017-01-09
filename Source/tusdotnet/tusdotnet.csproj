@@ -50,12 +50,14 @@
     <Compile Include="Constants\HeaderConstants.cs" />
     <Compile Include="Extensions\IOwinRequestExtensions.cs" />
     <Compile Include="Helpers\FileLock.cs" />
+    <Compile Include="Interfaces\ITusChecksumStore.cs" />
     <Compile Include="Interfaces\ITusFile.cs" />
     <Compile Include="Interfaces\ITusReadableStore.cs" />
     <Compile Include="Interfaces\ITusCreationStore.cs" />
     <Compile Include="Interfaces\ITusConfiguration.cs" />
     <Compile Include="Interfaces\ITusStore.cs" />
     <Compile Include="Interfaces\ITusTerminationStore.cs" />
+    <Compile Include="Models\Checksum.cs" />
     <Compile Include="Models\DefaultTusConfiguration.cs" />
     <Compile Include="Models\Metadata.cs" />
     <Compile Include="Models\TusConfigurationException.cs" />
