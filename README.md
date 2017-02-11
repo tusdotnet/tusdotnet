@@ -11,7 +11,7 @@ Comments, ideas, questions and PRs are welcome :)
 
 ## Features
 * Supports Tus 1.0.0 core protocol
-* Supported extensions: Checksum, Creation, Termination
+* Supported extensions: Checksum, Concatenation, Creation, Termination
 * Easy to use OWIN middleware
 * Fast and reliable
 * 99% test coverage

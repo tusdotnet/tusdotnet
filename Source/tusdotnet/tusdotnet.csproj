@@ -51,6 +51,7 @@
     <Compile Include="Extensions\IOwinRequestExtensions.cs" />
     <Compile Include="Helpers\FileLock.cs" />
     <Compile Include="Interfaces\ITusChecksumStore.cs" />
+    <Compile Include="Interfaces\ITusConcatenationStore.cs" />
     <Compile Include="Interfaces\ITusFile.cs" />
     <Compile Include="Interfaces\ITusReadableStore.cs" />
     <Compile Include="Interfaces\ITusCreationStore.cs" />
@@ -59,8 +60,12 @@
     <Compile Include="Interfaces\ITusTerminationStore.cs" />
     <Compile Include="Models\Checksum.cs" />
     <Compile Include="Models\DefaultTusConfiguration.cs" />
+    <Compile Include="Models\Concatenation\FileConcat.cs" />
+    <Compile Include="Models\Concatenation\FileConcatFinal.cs" />
+    <Compile Include="Models\Concatenation\FileConcatPartial.cs" />
     <Compile Include="Models\Metadata.cs" />
     <Compile Include="Models\TusConfigurationException.cs" />
+    <Compile Include="Models\Concatenation\UploadConcat.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Stores\TusDiskFile.cs" />
     <Compile Include="Stores\TusDiskStore.cs" />

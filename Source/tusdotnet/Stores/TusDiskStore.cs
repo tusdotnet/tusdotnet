@@ -7,23 +7,39 @@ using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Stores
 {
-	public class TusDiskStore : ITusStore, ITusCreationStore, ITusReadableStore, ITusTerminationStore, ITusChecksumStore
+	// TODO: Enable async operations: 
+	// https://msdn.microsoft.com/en-us/library/mt674879.aspx
+	public class TusDiskStore :
+		ITusStore,
+		ITusCreationStore,
+		ITusReadableStore,
+		ITusTerminationStore,
+		ITusChecksumStore,
+		ITusConcatenationStore
 	{
 		private readonly string _directoryPath;
 		private readonly Dictionary<string, long> _lengthBeforeWrite;
+		private readonly bool _deletePartialFilesOnConcat;
 
 		// Number of bytes to read at the time from the input stream.
 		// The lower the value, the less data needs to be re-submitted on errors.
 		// However, the lower the value, the slower the operation is. 51200 = 50 KB.
 		private const int ByteChunkSize = 51200;
 
-		public TusDiskStore(string directoryPath)
+		public TusDiskStore(string directoryPath) : this(directoryPath, false)
+		{
+			// Left blank.
+		}
+
+		public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
 		{
 			_directoryPath = directoryPath;
 			_lengthBeforeWrite = new Dictionary<string, long>();
+			_deletePartialFilesOnConcat = deletePartialFilesOnConcat;
 		}
 
 		public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
@@ -83,21 +99,11 @@ namespace tusdotnet.Stores
 				return Task.FromResult<long?>(null);
 			}
 
-			using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-			{
-				using (var sr = new StreamReader(stream))
-				{
-					var firstLine = sr.ReadLine();
-					if (string.IsNullOrWhiteSpace(firstLine))
-					{
-						return Task.FromResult<long?>(null);
-					}
+			var firstLine = ReadFirstLine(path);
 
-					var res = long.Parse(firstLine);
-					return Task.FromResult(new long?(res));
-				}
-
-			}
+			return firstLine == null
+				? Task.FromResult<long?>(null)
+				: Task.FromResult(new long?(long.Parse(firstLine)));
 		}
 
 		public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
@@ -124,14 +130,8 @@ namespace tusdotnet.Stores
 				return Task.FromResult<string>(null);
 			}
 
-			using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-			{
-				using (var sr = new StreamReader(stream))
-				{
-					var firstLine = sr.ReadLine();
-					return string.IsNullOrEmpty(firstLine) ? Task.FromResult<string>(null) : Task.FromResult(firstLine);
-				}
-			}
+			var firstLine = ReadFirstLine(path);
+			return string.IsNullOrEmpty(firstLine) ? Task.FromResult<string>(null) : Task.FromResult(firstLine);
 		}
 
 		public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
@@ -149,6 +149,7 @@ namespace tusdotnet.Stores
 				File.Delete(path);
 				File.Delete($"{path}.uploadlength");
 				File.Delete($"{path}.metadata");
+				File.Delete($"{path}.uploadconcat");
 			}, cancellationToken);
 		}
 
@@ -182,9 +183,87 @@ namespace tusdotnet.Stores
 			return Task.FromResult(valid);
 		}
 
+		public Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken cancellationToken)
+		{
+			var uploadconcat = $"{GetPath(fileId)}.uploadconcat";
+			if (!File.Exists(uploadconcat))
+			{
+				return Task.FromResult<FileConcat>(null);
+			}
+
+			var firstLine = ReadFirstLine(uploadconcat);
+			return string.IsNullOrWhiteSpace(firstLine)
+				? Task.FromResult<FileConcat>(null)
+				: Task.FromResult(new UploadConcat(firstLine).Type);
+		}
+
+
+		public async Task<string> CreatePartialFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+		{
+			var fileId = await CreateFileAsync(uploadLength, metadata, cancellationToken);
+			File.WriteAllText($"{GetPath(fileId)}.uploadconcat", new FileConcatPartial().GetHeader());
+			return fileId;
+		}
+
+		public async Task<string> CreateFinalFileAsync(string[] partialFiles, string metadata, CancellationToken cancellationToken)
+		{
+			var fileInfos = partialFiles.Select(f =>
+			{
+				var fi = new FileInfo(GetPath(f));
+				if (!fi.Exists)
+				{
+					throw new TusStoreException($"File {f} does not exist");
+				}
+				return fi;
+			}).ToArray();
+
+			var length = fileInfos.Sum(f => f.Length);
+
+			var fileId = await CreateFileAsync(length, metadata, cancellationToken);
+
+			var path = GetPath(fileId);
+			File.WriteAllText(
+				$"{path}.uploadconcat",
+				new FileConcatFinal(partialFiles).GetHeader()
+			);
+
+			using (var finalFile = File.Open(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None))
+			{
+				foreach (var partialFile in fileInfos)
+				{
+					using (var partialStream = partialFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+					{
+						partialStream.CopyTo(finalFile);
+					}
+				}
+			}
+
+			// ReSharper disable once InvertIf
+			if (_deletePartialFilesOnConcat)
+			{
+				foreach (var partialFile in partialFiles)
+				{
+					File.Delete(GetPath(partialFile));
+				}
+			}
+
+			return fileId;
+		}
+
 		private string GetPath(string fileId)
 		{
 			return Path.Combine(_directoryPath, fileId);
+		}
+
+		private static string ReadFirstLine(string filePath)
+		{
+			using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+			{
+				using (var sr = new StreamReader(stream))
+				{
+					return sr.ReadLine();
+				}
+			}
 		}
 	}
 }

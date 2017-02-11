@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Interfaces
 {
+	/// <summary>
+	/// Store support for termination: http://tus.io/protocols/resumable-upload.html#termination
+	/// </summary>
 	public interface ITusTerminationStore
 	{
 		/// <summary>

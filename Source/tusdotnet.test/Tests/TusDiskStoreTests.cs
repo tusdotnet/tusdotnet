@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 using tusdotnet.Stores;
 using Xunit;
 
@@ -323,6 +324,146 @@ namespace tusdotnet.test.Tests
 			checksumOk.ShouldBeFalse();
 			filePath = Path.Combine(_fixture.Path, fileId);
 			new FileInfo(filePath).Length.ShouldBe(10);
+		}
+
+		[Fact]
+		public async Task CreatePartialFileAsync()
+		{
+			var fileId = await _fixture.Store.CreatePartialFileAsync(100, "key wrbDgMSaxafMsw==", CancellationToken.None);
+			fileId.ShouldNotBeNullOrEmpty();
+			var file = await _fixture.Store.GetFileAsync(fileId, CancellationToken.None);
+			var metadata = await file.GetMetadataAsync(CancellationToken.None);
+			metadata.ContainsKey("key").ShouldBeTrue();
+			metadata["key"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
+
+			var uploadSize = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
+			uploadSize.ShouldBe(100);
+
+			var uploadConcat = await _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None);
+			uploadConcat.ShouldBeOfType(typeof(FileConcatPartial));
+		}
+
+		[Fact]
+		public async Task CreateFinalFileAsync()
+		{
+			// Create partial files
+			var partial1Id = await _fixture.Store.CreatePartialFileAsync(100, null, CancellationToken.None);
+			var partial2Id = await _fixture.Store.CreatePartialFileAsync(100, null, CancellationToken.None);
+
+			await _fixture.Store.AppendDataAsync(partial1Id,
+				new MemoryStream(Enumerable.Range(1, 100).Select(f => (byte)1).ToArray()), CancellationToken.None);
+			await _fixture.Store.AppendDataAsync(partial2Id,
+			new MemoryStream(Enumerable.Range(1, 100).Select(f => (byte)2).ToArray()), CancellationToken.None);
+
+			// Create final file
+			var finalFileId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id }, null,
+				CancellationToken.None);
+			finalFileId.ShouldNotBeNullOrWhiteSpace();
+
+			// Check file
+			var finalConcat = await _fixture.Store.GetUploadConcatAsync(finalFileId, CancellationToken.None) as FileConcatFinal;
+			finalConcat.ShouldNotBeNull();
+			// ReSharper disable once PossibleNullReferenceException
+			finalConcat.Files.Length.ShouldBe(2);
+			finalConcat.Files[0].ShouldBe(partial1Id);
+			finalConcat.Files[1].ShouldBe(partial2Id);
+
+			var finalFile = await _fixture.Store.GetFileAsync(finalFileId, CancellationToken.None);
+			finalFile.ShouldNotBeNull();
+			var finalFileContentStream = await finalFile.GetContentAsync(CancellationToken.None);
+
+			var buffer = new byte[finalFileContentStream.Length];
+			using (var reader = new BinaryReader(finalFileContentStream))
+			{
+				reader.Read(buffer, 0, (int)finalFileContentStream.Length);
+			}
+
+			buffer.Length.ShouldBe(200);
+			buffer.Take(100).ShouldAllBe(b => b == 1);
+			buffer.Skip(100).ShouldAllBe(b => b == 2);
+		}
+
+		[Fact]
+		public async Task CreateFinalFileAsync_Metadata_From_Partial_Files_Is_Not_Transferred_To_Final_File()
+		{
+
+			var partial1Id = await _fixture.Store.CreatePartialFileAsync(1, "key1 cGFydGlhbDFtZXRhZGF0YQ==",
+				CancellationToken.None);
+			var partial2Id = await _fixture.Store.CreatePartialFileAsync(1, "key2 bWV0YWRhdGFmb3JwYXJ0aWFsMg==",
+				CancellationToken.None);
+
+#pragma warning disable 4014
+			_fixture.Store.AppendDataAsync(partial1Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+			_fixture.Store.AppendDataAsync(partial2Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+#pragma warning restore 4014
+
+			// Create final file with no metadata
+			var finalId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id }, null, CancellationToken.None);
+
+			var metadata = await _fixture.Store.GetUploadMetadataAsync(finalId, CancellationToken.None);
+			metadata.ShouldBeNull();
+
+			finalId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id },
+				"finalkey c29tZWZpbmFsbWV0YWRhdGE=", CancellationToken.None);
+
+			metadata = await _fixture.Store.GetUploadMetadataAsync(finalId, CancellationToken.None);
+			metadata.ShouldNotBeNullOrWhiteSpace();
+			var parsedMetadata = Metadata.Parse(metadata);
+
+			parsedMetadata.ContainsKey("finalkey").ShouldBeTrue();
+			parsedMetadata["finalkey"].GetString(Encoding.UTF8).ShouldBe("somefinalmetadata");
+
+			parsedMetadata.ContainsKey("key1").ShouldBeFalse();
+			parsedMetadata.ContainsKey("key2").ShouldBeFalse();
+
+		}
+
+		[Fact]
+		public async Task CreateFinalFileAsync_Deletes_Partial_Files_If_Configuration_Says_So()
+		{
+			// Use default constructor.
+			var store = new TusDiskStore(_fixture.Path);
+
+			var p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
+			var p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
+
+			await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+			await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
+
+			var f = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
+			f.ShouldNotBeNullOrWhiteSpace();
+			(await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
+			(await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
+
+			// Cleanup = true
+			store = new TusDiskStore(_fixture.Path, true);
+
+			p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
+			p1.ShouldNotBeNullOrWhiteSpace();
+			p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
+			p2.ShouldNotBeNullOrWhiteSpace();
+
+			await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+			await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
+
+			f = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
+			f.ShouldNotBeNullOrWhiteSpace();
+			(await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeFalse();
+			(await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeFalse();
+
+			// Cleanup = false
+			store = new TusDiskStore(_fixture.Path, false);
+
+			p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
+			p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
+
+			await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+			await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
+
+			f = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
+			f.ShouldNotBeNullOrWhiteSpace();
+			(await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
+			(await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
 		}
 
 		public void Dispose()

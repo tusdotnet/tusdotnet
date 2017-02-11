@@ -18,6 +18,7 @@
 		public const string UploadOffset = "Upload-Offset";
 		public const string UploadMetadata = "Upload-Metadata";
 		public const string UploadChecksum = "Upload-Checksum";
+		public const string UploadConcat = "Upload-Concat";
 
 		public const string CacheControl = "Cache-Control";
 		public const string NoStore = "no-store";

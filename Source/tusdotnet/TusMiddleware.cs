@@ -10,6 +10,7 @@ using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet
 {
@@ -113,9 +114,8 @@ namespace tusdotnet
 
 		private async Task HandlePostRequest(IOwinContext context)
 		{
-			// TODO: Add support for Defer-Upload-Length if the store supports it
-
 			/*
+			 * Creation:
 			 * The Client MUST send a POST request against a known upload creation URL to request a new upload resource. 
 			 * The request MUST include one of the following headers:
 			 * a) Upload-Length to indicate the size of an entire upload in bytes.
@@ -133,7 +133,25 @@ namespace tusdotnet
 			 * The Server MUST acknowledge a successful upload creation with the 201 Created status. 
 			 * The Server MUST set the Location header to the URL of the created resource. This URL MAY be absolute or relative.
 			 * The Client MUST perform the actual upload using the core protocol.
-			 * */
+			 * 
+			 * Concatenation:
+			 * This extension can be used to concatenate multiple uploads into a single one enabling Clients to perform parallel uploads and 
+			 * to upload non-contiguous chunks. If the Server supports this extension, it MUST add concatenation to the Tus-Extension header.
+			 * A partial upload represents a chunk of a file. It is constructed by including the Upload-Concat: partial header 
+			 * while creating a new upload using the Creation extension. Multiple partial uploads are concatenated into a 
+			 * final upload in the specified order. The Server SHOULD NOT process these partial uploads until they are 
+			 * concatenated to form a final upload. The length of the final upload MUST be the sum of the length of all partial uploads.
+			 * In order to create a new final upload the Client MUST add the Upload-Concat header to the upload creation request. 
+			 * The value MUST be final followed by a semicolon and a space-separated list of the partial upload URLs that need to be concatenated. 
+			 * The partial uploads MUST be concatenated as per the order specified in the list. 
+			 * This concatenation request SHOULD happen after all of the corresponding partial uploads are completed.
+			 * The Client MUST NOT include the Upload-Length header in the final upload creation.
+			 * The Client MAY send the concatenation request while the partial uploads are still in progress.
+			 * This feature MUST be explicitly announced by the Server by adding concatenation-unfinished to the Tus-Extension header.
+			 * When creating a new final upload the partial uploads’ metadata SHALL NOT be transferred to the new final upload.
+			 * All metadata SHOULD be included in the concatenation request using the Upload-Metadata header.
+			 * The Server MAY delete partial uploads after concatenation. They MAY however be used multiple times to form a final resource.
+			 */
 
 			var tusCreationStore = _config.Store as ITusCreationStore;
 			if (tusCreationStore == null)
@@ -142,116 +160,138 @@ namespace tusdotnet
 				return;
 			}
 
-			if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadLength))
+			var tusConcatenationStore = _config.Store as ITusConcatenationStore;
+			UploadConcat uploadConcat = null;
+			if (tusConcatenationStore != null && context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat))
 			{
-				await RespondAsync(context, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadLength} header");
-				return;
+				uploadConcat = new UploadConcat(context.Request.Headers[HeaderConstants.UploadConcat], _config.UrlPath);
+				if (!uploadConcat.IsValid)
+				{
+					await RespondAsync(context, HttpStatusCode.BadRequest, uploadConcat.ErrorMessage);
+					return;
+				}
 			}
 
-			long uploadLength;
-			if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadLength], out uploadLength))
+			var uploadLength = -1L;
+			if (!(uploadConcat?.Type is FileConcatFinal))
 			{
-				await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadLength}");
-				return;
-			}
+				if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadLength))
+				{
+					await RespondAsync(context, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadLength} header");
+					return;
+				}
 
-			if (uploadLength < 0)
-			{
-				await RespondAsync(context,
-					HttpStatusCode.BadRequest,
-					$"Header {HeaderConstants.UploadLength} must be a positive number");
-				return;
-			}
+				if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadLength], out uploadLength))
+				{
+					await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadLength}");
+					return;
+				}
 
-			if (_config.MaxAllowedUploadSizeInBytes.HasValue && uploadLength > _config.MaxAllowedUploadSizeInBytes.Value)
-			{
-				await RespondAsync(context,
-					HttpStatusCode.RequestEntityTooLarge,
-					$"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");
-				return;
-			}
-
-			if (!(await ValidateMetadataHeader(context)))
-			{
-				return;
-			}
-
-			var fileName = await tusCreationStore.CreateFileAsync(uploadLength, context.Request.Headers.Get(HeaderConstants.UploadMetadata), context.Request.CallCancelled);
-
-			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-			context.Response.Headers[HeaderConstants.Location] = _config.UrlPath.TrimEnd('/') + "/" + fileName;
-			context.Response.StatusCode = (int)HttpStatusCode.Created;
-		}
-
-		private async Task<bool> ValidateMetadataHeader(IOwinContext context)
-		{
-			/* 
-             * The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs.
-             * The key and value MUST be separated by a space. The key MUST NOT contain spaces and commas and MUST NOT be empty.
-             * The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.
-             * */
-
-			if (context.Request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
-			{
-				string metadata = context.Request.Headers.Get(HeaderConstants.UploadMetadata);
-				if (string.IsNullOrEmpty(metadata))
+				if (uploadLength < 0)
 				{
 					await RespondAsync(context,
 						HttpStatusCode.BadRequest,
-						$"Header {HeaderConstants.UploadMetadata} must consist of one or more comma-separated key-value pairs");
-					return false;
+						$"Header {HeaderConstants.UploadLength} must be a positive number");
+					return;
 				}
 
-				HashSet<string> keys = new HashSet<string>();
-				var pairs = metadata.Split(',');
-				foreach (var pair in pairs)
+				if (_config.MaxAllowedUploadSizeInBytes.HasValue && uploadLength > _config.MaxAllowedUploadSizeInBytes.Value)
 				{
-					var pairParts = pair.Split(' ');
-					if (pairParts.Count() != 2)
-					{
-						await RespondAsync(context,
-							HttpStatusCode.BadRequest,
-							$"Header {HeaderConstants.UploadMetadata}: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.");
-						return false;
-					}
-
-					var key = pairParts.First();
-					if (string.IsNullOrEmpty(key))
-					{
-						await RespondAsync(context,
-							HttpStatusCode.BadRequest,
-							$"Header {HeaderConstants.UploadMetadata}: Key must not be empty");
-						return false;
-					}
-
-					if (keys.Contains(key))
-					{
-						await RespondAsync(context,
-							HttpStatusCode.BadRequest,
-							$"Header {HeaderConstants.UploadMetadata}: Duplicate keys are not allowed");
-						return false;
-					}
-
-					var value = pairParts.Skip(1).First();
-
-					try
-					{
-						// ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-						Convert.FromBase64String(value);
-					}
-					catch (FormatException)
-					{
-						await RespondAsync(context,
-							HttpStatusCode.BadRequest,
-							$"Header {HeaderConstants.UploadMetadata}: Value for {key} is not properly encoded using base64");
-						return false;
-					}
-
-					keys.Add(key);
+					await RespondAsync(context,
+						HttpStatusCode.RequestEntityTooLarge,
+						$"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");
+					return;
 				}
 			}
 
-			return true;
+			if (context.Request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
+			{
+				var validateMetadataResult =
+					Metadata.ValidateMetadataHeader(context.Request.Headers.Get(HeaderConstants.UploadMetadata));
+				if (!string.IsNullOrEmpty(validateMetadataResult))
+				{
+					await RespondAsync(context, HttpStatusCode.BadRequest, validateMetadataResult);
+					return;
+				}
+			}
+
+			var metadata = context.Request.Headers.Get(HeaderConstants.UploadMetadata);
+			string fileId = null;
+			try
+			{
+				if (tusConcatenationStore != null && uploadConcat != null)
+				{
+					if (uploadConcat.Type is FileConcatPartial)
+					{
+						fileId = await tusConcatenationStore
+								.CreatePartialFileAsync(uploadLength, metadata, context.Request.CallCancelled);
+
+					}
+					else if (uploadConcat.Type is FileConcatFinal)
+					{
+						var finalConcat = (FileConcatFinal)uploadConcat.Type;
+						var filesExist =
+								await Task.WhenAll(finalConcat.Files.Select(f => _config.Store.FileExistAsync(f, context.Request.CallCancelled)));
+
+						if (filesExist.Any(f => !f))
+						{
+							await RespondAsync(context,
+								HttpStatusCode.BadRequest,
+								$"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}");
+							return;
+						}
+
+						var filesArePartial = await Task.WhenAll(finalConcat.Files.Select(f =>
+							tusConcatenationStore.GetUploadConcatAsync(f, context.Request.CallCancelled)));
+
+						if (filesArePartial.Any(f => !(f is FileConcatPartial)))
+						{
+							await RespondAsync(context,
+								HttpStatusCode.BadRequest,
+								$"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}"
+							);
+							return;
+						}
+
+						var incompleteFiles = new List<string>();
+						foreach (var file in finalConcat.Files)
+						{
+							var length = _config.Store.GetUploadLengthAsync(file, context.Request.CallCancelled);
+							var offset = _config.Store.GetUploadOffsetAsync(file, context.Request.CallCancelled);
+							await Task.WhenAll(length, offset);
+
+							if (length.Result != offset.Result)
+							{
+								incompleteFiles.Add(file);
+							}
+						}
+
+						if (incompleteFiles.Any())
+						{
+							await RespondAsync(context,
+								HttpStatusCode.BadRequest,
+								$"Some of the files supplied for concatenation are not finished and can not be concatenated: {string.Join(", ", incompleteFiles)}");
+							return;
+						}
+
+						fileId = await tusConcatenationStore.CreateFinalFileAsync(finalConcat.Files, metadata,
+							context.Request.CallCancelled);
+					}
+				}
+				else
+				{
+					fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, context.Request.CallCancelled);
+				}
+			}
+			catch (TusStoreException storeException)
+			{
+				await RespondAsync(context, HttpStatusCode.BadRequest, storeException.Message);
+				return;
+			}
+
+			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
+			context.Response.Headers[HeaderConstants.Location] = $"{_config.UrlPath.TrimEnd('/')}/{fileId}";
+			context.Response.StatusCode = (int)HttpStatusCode.Created;
 		}
 
 		private async Task HandleOptionsRequest(IOwinContext context)
@@ -307,6 +347,10 @@ namespace tusdotnet
 			 * They MAY do so by checking for read/write socket errors, as well as setting read/write timeouts. 
 			 * A timeout SHOULD be handled by closing the underlying connection.
 			 * The Server SHOULD always attempt to store as much of the received data as possible.
+			 * 
+			 * Concatenation:
+			 * The Server MUST respond with the 403 Forbidden status to PATCH requests against a final upload URL and 
+			 * MUST NOT modify the final or its partial uploads.
 			 * */
 
 			var fileName = GetFileName(context.Request);
@@ -329,6 +373,18 @@ namespace tusdotnet
 
 			try
 			{
+				var concatStore = _config.Store as ITusConcatenationStore;
+				if (concatStore != null)
+				{
+					var uploadConcat = await concatStore.GetUploadConcatAsync(fileName, cancellationToken);
+
+					if (uploadConcat is FileConcatFinal)
+					{
+						await RespondAsync(context, HttpStatusCode.Forbidden, "File with \"Upload-Concat: final\" cannot be patched");
+						return;
+					}
+				}
+
 				if (context.Request.ContentType == null ||
 					!context.Request.ContentType.Equals("application/offset+octet-stream",
 						StringComparison.InvariantCultureIgnoreCase))
@@ -469,7 +525,16 @@ namespace tusdotnet
 			 * 
 			 * If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
 			 * and its value as specified by the Client during the creation.
-			 * */
+			 * 
+			 * Concatenation:
+			 * The response to a HEAD request for a final upload SHOULD NOT contain the Upload-Offset header unless the 
+			 * concatenation has been successfully finished. After successful concatenation, the Upload-Offset and Upload-Length 
+			 * MUST be set and their values MUST be equal. The value of the Upload-Offset header before concatenation is not 
+			 * defined for a final upload. The response to a HEAD request for a partial upload MUST contain the Upload-Offset header.
+			 * The Upload-Length header MUST be included if the length of the final resource can be calculated at the time of the request. 
+			 * Response to HEAD request against partial or final upload MUST include the Upload-Concat header and its value as received 
+			 * in the upload creation request.
+			 */
 
 			var fileName = GetFileName(context.Request);
 			var cancellationToken = context.Request.CallCancelled;
@@ -500,9 +565,34 @@ namespace tusdotnet
 			}
 
 			var uploadOffset = await _config.Store.GetUploadOffsetAsync(fileName, cancellationToken);
+
+			var tusConcatStore = _config.Store as ITusConcatenationStore;
+			FileConcat uploadConcat = null;
+			var addUploadOffset = true;
+			if (tusConcatStore != null)
+			{
+				uploadConcat = await tusConcatStore.GetUploadConcatAsync(fileName, cancellationToken);
+
+				// Only add Upload-Offset to final files if they are complete.
+				//if (new UploadConcat(uploadConcat, _config.UrlPath).Type == ConcatenationType.Final && uploadLength != uploadOffset)
+				if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
+				{
+					addUploadOffset = false;
+				}
+			}
+
 			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-			context.Response.Headers[HeaderConstants.UploadOffset] = uploadOffset.ToString();
+			if (addUploadOffset)
+			{
+				context.Response.Headers[HeaderConstants.UploadOffset] = uploadOffset.ToString();
+			}
 			context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
+			//if (!string.IsNullOrWhiteSpace(uploadConcat))
+			if (uploadConcat != null)
+			{
+				(uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(_config.UrlPath);
+				context.Response.Headers[HeaderConstants.UploadConcat] = uploadConcat.GetHeader();
+			}
 		}
 
 		private bool ShouldHandleRequest(IOwinRequest request)
@@ -563,6 +653,11 @@ namespace tusdotnet
 			if (_config.Store is ITusChecksumStore)
 			{
 				extensions.Add(ExtensionConstants.Checksum);
+			}
+
+			if (_config.Store is ITusConcatenationStore)
+			{
+				extensions.Add(ExtensionConstants.Concatenation);
 			}
 
 			return extensions;

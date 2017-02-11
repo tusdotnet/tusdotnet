@@ -11,7 +11,7 @@ namespace tusdotnet.Interfaces
 		/// <param name="uploadLength">The length of the upload in bytes</param>
 		/// <param name="metadata">The Upload-Metadata request header or null if no header was provided</param>
 		/// <param name="cancellationToken">Cancellation token to use when cancelling</param>
-		/// <returns></returns>
+		/// <returns>The id of the newly created file</returns>
 		Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken);
 
 		/// <summary>

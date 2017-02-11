@@ -5,6 +5,9 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Interfaces
 {
+	/// <summary>
+	/// Store support for the core tus protocol.
+	/// </summary>
 	public interface ITusStore
 	{
 		/// <summary>

@@ -26,7 +26,8 @@ namespace tusdotnet.test.Tests
 					typeof(ITusStore),
 					typeof(ITusCreationStore),
 					typeof(ITusTerminationStore),
-					typeof(ITusChecksumStore)
+					typeof(ITusChecksumStore),
+					typeof(ITusConcatenationStore)
 				}, new object[0]) as
 				ITusStore;
 
@@ -112,7 +113,7 @@ namespace tusdotnet.test.Tests
 
 				response.ShouldContainHeader("Tus-Resumable", "1.0.0");
 				response.ShouldContainHeader("Tus-Version", "1.0.0");
-				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum");
+				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation");
 				response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
 			}
 

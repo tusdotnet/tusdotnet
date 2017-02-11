@@ -3,6 +3,10 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Interfaces
 {
+	/// <summary>
+	/// Support for reading from the store. This interface does not represent anything from the tus standard
+	/// but is rather a complemenet to make it easier to work with files in tusdotnet.
+	/// </summary>
 	public interface ITusReadableStore
 	{
 		/// <summary>

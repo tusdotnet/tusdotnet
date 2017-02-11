@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using tusdotnet.Constants;
 
 namespace tusdotnet.Models
 {
@@ -66,6 +68,57 @@ namespace tusdotnet.Models
 			}
 
 			return dictionary;
+		}
+
+		public static string ValidateMetadataHeader(string metadata)
+		{
+			/* 
+             * The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs.
+             * The key and value MUST be separated by a space. The key MUST NOT contain spaces and commas and MUST NOT be empty.
+             * The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique.
+             * */
+
+			if (string.IsNullOrEmpty(metadata))
+			{
+				return $"Header {HeaderConstants.UploadMetadata} must consist of one or more comma-separated key-value pairs";
+			}
+
+			var keys = new HashSet<string>();
+			var pairs = metadata.Split(',');
+			foreach (var pairParts in pairs.Select(pair => pair.Split(' ')))
+			{
+				if (pairParts.Length != 2)
+				{
+					return $"Header {HeaderConstants.UploadMetadata}: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.";
+				}
+
+				var key = pairParts.First();
+				if (string.IsNullOrEmpty(key))
+				{
+					return $"Header {HeaderConstants.UploadMetadata}: Key must not be empty";
+				}
+
+				if (keys.Contains(key))
+				{
+					return $"Header {HeaderConstants.UploadMetadata}: Duplicate keys are not allowed";
+				}
+
+				var value = pairParts.Skip(1).First();
+
+				try
+				{
+					// ReSharper disable once ReturnValueOfPureMethodIsNotUsed
+					Convert.FromBase64String(value);
+				}
+				catch (FormatException)
+				{
+					return $"Header {HeaderConstants.UploadMetadata}: Value for {key} is not properly encoded using base64";
+				}
+
+				keys.Add(key);
+			}
+
+			return null;
 		}
 	}
 }
