@@ -5,7 +5,7 @@ using Shouldly;
 using tusdotnet.Models;
 using Xunit;
 
-namespace tusdotnet.test.Tests
+namespace tusdotnet.test.Tests.ModelTests
 {
 	public class MetadataTests
 	{

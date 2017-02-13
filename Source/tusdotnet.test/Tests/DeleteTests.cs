@@ -18,6 +18,35 @@ namespace tusdotnet.test.Tests
 	public class DeleteTests
 	{
 		[Theory, XHttpMethodOverrideData]
+		public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Termination(string methodToUse)
+		{
+			var callForwared = false;
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = Substitute.For<ITusStore>(),
+					UrlPath = "/files"
+				});
+
+				app.Use((context, func) =>
+				{
+					callForwared = true;
+					return Task.FromResult(true);
+				});
+			}))
+			{
+				await server
+					.CreateRequest("/files/testfiledelete")
+					.AddHeader("Tus-Resumable", "1.0.0")
+					.OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+					.SendAsync(methodToUse);
+				callForwared.ShouldBeTrue();
+			}
+		}
+
+
+		[Theory, XHttpMethodOverrideData]
 		public async Task Ignores_Request_If_Url_Does_Not_Match(string methodToUse)
 		{
 			var callForwarded = false;

@@ -448,5 +448,36 @@ namespace tusdotnet.test.Tests
 					"Some of the files supplied for concatenation are not finished and can not be concatenated: partial2");
 			}
 		}
+
+		[Theory, XHttpMethodOverrideData]
+		public async Task Partial_File_Can_Be_Created(string methodToUse)
+		{
+			var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = store,
+					UrlPath = "/files"
+				});
+			}))
+			{
+				var response = await server
+					.CreateRequest("/files")
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Length", "1")
+					.AddHeader("Upload-Concat", "partial")
+					.OverrideHttpMethodIfNeeded("POST", methodToUse)
+					.SendAsync(methodToUse);
+
+				response.StatusCode.ShouldBe(HttpStatusCode.Created);
+				var concatStore = store as ITusConcatenationStore;
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+				// ReSharper disable once PossibleNullReferenceException
+				concatStore.Received().CreatePartialFileAsync(1, null, Arg.Any<CancellationToken>());
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+			}
+		}
 	}
 }

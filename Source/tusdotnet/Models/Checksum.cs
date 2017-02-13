@@ -2,7 +2,7 @@
 
 namespace tusdotnet.Models
 {
-	internal class Checksum
+	public class Checksum
 	{
 		public string Algorithm { get; set; }
 		public byte[] Hash { get; set; }
@@ -23,7 +23,7 @@ namespace tusdotnet.Models
 				return;
 			}
 
-			Algorithm = temp[0].Trim();
+			var algorithm = temp[0].Trim();
 
 			if (string.IsNullOrWhiteSpace(temp[1]))
 			{
@@ -34,6 +34,7 @@ namespace tusdotnet.Models
 			try
 			{
 				Hash = Convert.FromBase64String(temp[1]);
+				Algorithm = algorithm;
 				IsValid = true;
 			}
 			catch

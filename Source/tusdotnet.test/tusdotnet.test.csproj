@@ -95,12 +95,14 @@
     <Compile Include="Tests\GenericRequestTests.cs" />
     <Compile Include="Tests\ConfigurationTests.cs" />
     <Compile Include="Tests\HeadTests.cs" />
-    <Compile Include="Tests\MetadataTests.cs" />
+    <Compile Include="Tests\ModelTests\ChecksumTests.cs" />
+    <Compile Include="Tests\ModelTests\MetadataTests.cs" />
     <Compile Include="Tests\OptionsTests.cs" />
     <Compile Include="Tests\PatchTests.cs" />
     <Compile Include="Tests\PostTests.cs" />
     <Compile Include="Tests\RequestBuilderExtensionsTests.cs" />
     <Compile Include="Tests\TusDiskStoreTests.cs" />
+    <Compile Include="Tests\ModelTests\UploadConcatTests.cs" />
     <Compile Include="Tests\XHttpMethodOverrideDataAttributeTests.cs" />
   </ItemGroup>
   <ItemGroup>

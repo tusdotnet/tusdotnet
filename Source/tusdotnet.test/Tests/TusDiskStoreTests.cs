@@ -466,6 +466,21 @@ namespace tusdotnet.test.Tests
 			(await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
 		}
 
+		[Fact]
+		public async Task CreateFinalFileAsync_Throws_Exception_If_Any_Partial_File_Does_Not_Exist()
+		{
+			var p1 = await _fixture.Store.CreatePartialFileAsync(1, null, CancellationToken.None);
+			await _fixture.Store.AppendDataAsync(p1, new MemoryStream(new byte[] { 0 }), CancellationToken.None);
+
+			var exception =
+				await Should.ThrowAsync<TusStoreException>(
+					async () =>
+						await _fixture.Store.CreateFinalFileAsync(new[] { p1, "nonexistingfileid" }, null, CancellationToken.None));
+
+			exception.Message.ShouldBe("File nonexistingfileid does not exist");
+
+		}
+
 		public void Dispose()
 		{
 			_fixture.ClearPath();

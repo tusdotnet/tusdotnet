@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace tusdotnet.Models.Concatenation
 {
-	internal class UploadConcat
+	public class UploadConcat
 	{
 		public FileConcat Type { get; }
 		public bool IsValid { get; private set; }
@@ -58,7 +58,7 @@ namespace tusdotnet.Models.Concatenation
 			foreach (var fileUri in temp[1].Split(' '))
 			{
 				Uri uri;
-				if (!Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out uri))
+				if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out uri))
 				{
 					IsValid = false;
 					ErrorMessage = "Unable to parse Upload-Concat header";
@@ -81,20 +81,5 @@ namespace tusdotnet.Models.Concatenation
 
 			return new FileConcatFinal(fileIds.ToArray());
 		}
-
-		//public static string CreateHeader(ConcatenationType type, string[] files = null)
-		//{
-		//	switch (type)
-		//	{
-		//		case ConcatenationType.None:
-		//			return null;
-		//		case ConcatenationType.Final:
-		//			return files == null ? null : $"final {string.Join(";", files)}";
-		//		case ConcatenationType.Partial:
-		//			return "partial";
-		//		default:
-		//			return null;
-		//	}
-		//}
 	}
 }
