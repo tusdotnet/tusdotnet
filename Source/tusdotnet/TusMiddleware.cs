@@ -254,11 +254,17 @@ namespace tusdotnet
 						}
 
 						var incompleteFiles = new List<string>();
+						var totalSize = 0L;
 						foreach (var file in finalConcat.Files)
 						{
 							var length = _config.Store.GetUploadLengthAsync(file, context.Request.CallCancelled);
 							var offset = _config.Store.GetUploadOffsetAsync(file, context.Request.CallCancelled);
 							await Task.WhenAll(length, offset);
+
+							if (length.Result != null)
+							{
+								totalSize += length.Result.Value;
+							}
 
 							if (length.Result != offset.Result)
 							{
@@ -274,8 +280,22 @@ namespace tusdotnet
 							return;
 						}
 
+						if (_config.MaxAllowedUploadSizeInBytes.HasValue && totalSize > _config.MaxAllowedUploadSizeInBytes.Value)
+						{
+							await RespondAsync(context,
+								HttpStatusCode.RequestEntityTooLarge,
+								"The concatenated file exceeds the server's max file size.");
+							return;
+						}
+
 						fileId = await tusConcatenationStore.CreateFinalFileAsync(finalConcat.Files, metadata,
 							context.Request.CallCancelled);
+
+						// Run callback that the final file is completed.
+						if (_config.OnUploadCompleteAsync != null)
+						{
+							await _config.OnUploadCompleteAsync(fileId, _config.Store, context.Request.CallCancelled);
+						}
 					}
 				}
 				else
@@ -374,9 +394,10 @@ namespace tusdotnet
 			try
 			{
 				var concatStore = _config.Store as ITusConcatenationStore;
+				FileConcat uploadConcat = null;
 				if (concatStore != null)
 				{
-					var uploadConcat = await concatStore.GetUploadConcatAsync(fileName, cancellationToken);
+					uploadConcat = await concatStore.GetUploadConcatAsync(fileName, cancellationToken);
 
 					if (uploadConcat is FileConcatFinal)
 					{
@@ -499,9 +520,8 @@ namespace tusdotnet
 				context.Response.Headers[HeaderConstants.UploadOffset] = (fileOffset + bytesWritten).ToString();
 
 				// Run OnUploadComplete if it has been provided.
-				if (fileUploadLength != null
-					&& (fileOffset + bytesWritten) == fileUploadLength.Value
-					&& _config.OnUploadCompleteAsync != null)
+				var fileIsComplete = fileUploadLength != null && (fileOffset + bytesWritten) == fileUploadLength.Value;
+				if (fileIsComplete && !(uploadConcat is FileConcatPartial) && _config.OnUploadCompleteAsync != null)
 				{
 					await _config.OnUploadCompleteAsync(fileName, _config.Store, context.Request.CallCancelled);
 				}

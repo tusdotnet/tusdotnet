@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -55,7 +56,7 @@ namespace tusdotnet.test.Tests
 					.SendAsync(methodToUse);
 
 				response.StatusCode.ShouldBe(HttpStatusCode.Created);
-				response.Headers.Location.ToString().ShouldBe("/files/finalId");
+				response.ShouldContainHeader("location", "/files/finalId");
 				var createFinalFileCall = concatStore
 					.ReceivedCalls()
 					.Single(f => f.GetMethodInfo().Name == nameof(concatStore.CreateFinalFileAsync));
@@ -453,6 +454,10 @@ namespace tusdotnet.test.Tests
 		public async Task Partial_File_Can_Be_Created(string methodToUse)
 		{
 			var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+			var concatStore = store as ITusConcatenationStore;
+			// ReSharper disable once PossibleNullReferenceException
+			concatStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("partial1");
+
 			using (var server = TestServer.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
@@ -471,12 +476,152 @@ namespace tusdotnet.test.Tests
 					.SendAsync(methodToUse);
 
 				response.StatusCode.ShouldBe(HttpStatusCode.Created);
-				var concatStore = store as ITusConcatenationStore;
+				response.ShouldContainHeader("location", "/files/partial1");
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 				// ReSharper disable once PossibleNullReferenceException
 				concatStore.Received().CreatePartialFileAsync(1, null, Arg.Any<CancellationToken>());
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
+			}
+		}
+
+		[Theory, XHttpMethodOverrideData]
+		public async Task Returns_413_Request_Entity_Too_Large_If_Final_File_Size_Exceeds_Tus_Max_Size(string methodToUse)
+		{
+			var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+			var concatStore = (ITusConcatenationStore)store;
+			store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
+			store.FileExistAsync("partial2", Arg.Any<CancellationToken>()).Returns(true);
+			store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
+			store.GetUploadLengthAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
+			store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
+			store.GetUploadOffsetAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
+			concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+			concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+			concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
+				.ReturnsForAnyArgs("finalId");
+
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = store,
+					UrlPath = "/files",
+					MaxAllowedUploadSizeInBytes = 25
+				});
+			}))
+			{
+				var response = await server
+					.CreateRequest("/files")
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Concat", "final;/files/partial1 /files/partial2")
+					.OverrideHttpMethodIfNeeded("POST", methodToUse)
+					.SendAsync(methodToUse);
+
+				await response.ShouldBeErrorResponse(HttpStatusCode.RequestEntityTooLarge,
+					"The concatenated file exceeds the server's max file size.");
+			}
+		}
+
+		[Theory, XHttpMethodOverrideData]
+		public async Task OnUploadCompleteAsync_Is_Called_When_A_Final_File_Is_Created(string methodToUse)
+		{
+			var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+			var concatStore = (ITusConcatenationStore)store;
+			store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
+			store.FileExistAsync("partial2", Arg.Any<CancellationToken>()).Returns(true);
+			store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
+			store.GetUploadLengthAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
+			store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
+			store.GetUploadOffsetAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
+			concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+			concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+			concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
+				.ReturnsForAnyArgs("finalId");
+
+			string callbackFileId = null;
+			ITusStore callbackStore = null;
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = store,
+					UrlPath = "/files",
+					OnUploadCompleteAsync = (fileId, tusStore, ct) =>
+					{
+						callbackFileId = fileId;
+						callbackStore = tusStore;
+						return Task.FromResult(0);
+					}
+				});
+			}))
+			{
+				var response = await server
+						.CreateRequest("/files")
+						.AddTusResumableHeader()
+						.AddHeader("Upload-Concat", "final;/files/partial1 /files/partial2")
+						.OverrideHttpMethodIfNeeded("POST", methodToUse)
+						.SendAsync(methodToUse);
+				response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+				callbackFileId.ShouldBe("finalId");
+				callbackStore.ShouldBe(store);
+			}
+		}
+
+		[Theory, XHttpMethodOverrideData]
+		public async Task OnUploadCompleteAsync_Is_Not_Called_When_A_Partial_File_Is_Created(string methodToUse)
+		{
+			var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+			var concatStore = (ITusConcatenationStore)store;
+			concatStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("partial1");
+			concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+			store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
+			store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(1);
+			store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(0);
+			store.AppendDataAsync("partial1", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(1);
+
+			var callbackCalled = false;
+			using (var server = TestServer.Create(app =>
+			{
+				app.UseTus(request => new DefaultTusConfiguration
+				{
+					Store = store,
+					UrlPath = "/files",
+					OnUploadCompleteAsync = (fileId, tusStore, ct) =>
+					{
+						callbackCalled = true;
+						return Task.FromResult(0);
+					}
+				});
+			}))
+			{
+				var response = await server
+					.CreateRequest("/files")
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Length", "1")
+					.AddHeader("Upload-Concat", "partial")
+					.OverrideHttpMethodIfNeeded("POST", methodToUse)
+					.SendAsync(methodToUse);
+
+				response.StatusCode.ShouldBe(HttpStatusCode.Created);
+				callbackCalled.ShouldBeFalse();
+
+				response = await server
+					.CreateRequest(response.Headers.Location.ToString())
+					.AddTusResumableHeader()
+					.AddHeader("Upload-Offset", "0")
+					.OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+					.And(m =>
+					{
+						var content = new ByteArrayContent(new byte[] { 1 });
+						content.Headers.ContentType = new MediaTypeHeaderValue("application/offset+octet-stream");
+						m.Content = content;
+					})
+					.SendAsync(methodToUse);
+
+				response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+				callbackCalled.ShouldBeFalse();
 			}
 		}
 	}
