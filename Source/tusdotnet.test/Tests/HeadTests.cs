@@ -2,9 +2,7 @@
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using NSubstitute;
-using Owin;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
@@ -12,6 +10,12 @@ using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+#if netfull
+using Owin;
+#endif
+#if netstandard
+using Microsoft.AspNetCore.Builder;
+#endif
 
 namespace tusdotnet.test.Tests
 {
@@ -21,7 +25,7 @@ namespace tusdotnet.test.Tests
 		public async Task Ignores_Request_If_Url_Does_Not_Match()
 		{
 			var callForwarded = false;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -65,7 +69,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_404_Not_Found_If_File_Was_Not_Found()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -87,7 +91,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Includes_Upload_Length_Header_If_Available()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -123,7 +127,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -158,7 +162,7 @@ namespace tusdotnet.test.Tests
 
 			const string metadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore, ITusCreationStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -189,7 +193,7 @@ namespace tusdotnet.test.Tests
 			// If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
 			// and its value as specified by the Client during the creation.
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore, ITusCreationStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);

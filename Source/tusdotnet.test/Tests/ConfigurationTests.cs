@@ -2,14 +2,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Owin;
-using Microsoft.Owin.Testing;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
+#if netfull
+using Owin;
+using Microsoft.Owin.Testing;
+using Microsoft.Owin;
+#endif
+#if netstandard
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Http;
+#endif
 
 namespace tusdotnet.test.Tests
 {
@@ -22,10 +29,15 @@ namespace tusdotnet.test.Tests
 			tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
 			tusConfiguration.UrlPath.Returns("/files");
 
+			#if netfull
 			var configFunc = Substitute.For<Func<IOwinRequest, ITusConfiguration>>();
 			configFunc.Invoke(Arg.Any<IOwinRequest>()).Returns(tusConfiguration);
+			#else
+			var configFunc = Substitute.For<Func<HttpContext, ITusConfiguration>>();
+			configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
+			#endif
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(configFunc);
 			}))
@@ -65,7 +77,7 @@ namespace tusdotnet.test.Tests
 			var tusConfiguration = Substitute.For<ITusConfiguration>();
 
 			// Empty configuration
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				// ReSharper disable once AccessToModifiedClosure
 				app.UseTus(request => tusConfiguration);
@@ -78,7 +90,7 @@ namespace tusdotnet.test.Tests
 			// Configuration with only Store specified
 			tusConfiguration = Substitute.For<ITusConfiguration>();
 			tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				// ReSharper disable once AccessToModifiedClosure
 				app.UseTus(request => tusConfiguration);
@@ -91,7 +103,7 @@ namespace tusdotnet.test.Tests
 			tusConfiguration = Substitute.For<ITusConfiguration>();
 			tusConfiguration.UrlPath.Returns("/files");
 			tusConfiguration.Store.Returns(null as ITusStore);
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => tusConfiguration);
 			}))

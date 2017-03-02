@@ -1,8 +1,8 @@
 How to use?
 
-Setup OWIN as you would normally do. Add a using statement for tusdotnet and run UseTus on the IAppBuilder.
+Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. 
 
-app.UseTus(request => new DefaultTusConfiguration
+app.UseTus(context => new DefaultTusConfiguration
 {
 	// c:\tusfiles is where to store files
 	Store = new TusDiskStore(@"C:\tusfiles\"),
@@ -10,11 +10,12 @@ app.UseTus(request => new DefaultTusConfiguration
 	UrlPath = "/files",
 	OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
 	{
-		var file = await (store as ITusReadableStore).GetFileAsync(fileId, cancellationToken);
+		var file = await (store as ITusReadableStore)
+        				.GetFileAsync(fileId, cancellationToken);
 		await DoSomeProcessing(file);
 		return Task.FromResult(true);
 	}
 });
 
-If you just want to play around with the protocol, clone the repo and run the OwinTestApp. 
-It launches a small site running tusdotnet and the official JS client so that you can test the protocol on your own machine.
+You might also want to configure IIS (https://github.com/smatsson/tusdotnet/wiki/Configure-IIS) 
+and/or configure CORS (https://github.com/smatsson/tusdotnet/wiki/Cross-domain-requests-(CORS)

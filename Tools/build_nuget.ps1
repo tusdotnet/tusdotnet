@@ -1,42 +1,46 @@
-# Location of nuget.exe which must be present
-$nugetLocation = ".\nuget.exe"
 
 function setVersionInfo() {
 	$assemblyVersion = git describe --abbrev=0 --tags
-	$assemblyInformationalVersion = git describe --tags --long
-	(Get-Content nugetbuild\Properties\AssemblyInfo.cs) -replace `
-		'(\[assembly: AssemblyInformationalVersion\(")([\w\W]*)("\)])', `
-			"[assembly: AssemblyInformationalVersion(""$assemblyVersion, $assemblyInformationalVersion"")]" `
-		| Out-File nugetbuild\Properties\AssemblyInfo.cs
-	(Get-Content nugetbuild\Properties\AssemblyInfo.cs) -replace `
-		'(\[assembly: AssemblyVersion\(")([\w\W]*)("\)])', "[assembly: AssemblyVersion(""$assemblyVersion"")]" `
-		| Out-File nugetbuild\Properties\AssemblyInfo.cs
-	(Get-Content nugetbuild\Properties\AssemblyInfo.cs) -replace `
-		'(\[assembly: AssemblyFileVersion\(")([\w\W]*)("\)])', "[assembly: AssemblyFileVersion(""$assemblyVersion"")]" `
-		| Out-File nugetbuild\Properties\AssemblyInfo.cs
+	$assemblyInformationalVersion = git describe --tags --long	
+	$json = Get-Content '.\tusdotnet\project.json' | ConvertFrom-Json
+	$json.version = $assemblyVersion + "-*"
+	$json | ConvertTo-Json -Depth 100 | set-content '.\tusdotnet\project.json'
+}
+
+function removeInternalVisibleTo() {
+	$replace = '[assembly: InternalsVisibleTo("tusdotnet.test")]';
+	$file = '.\tusdotnet\Properties\AssemblyInfo.cs'
+	(Get-Content $file).replace($replace, '') | Set-Content $file
 }
 
 function makeBuildFolder() {
-	if(Test-Path -Path ".\nugetbuild\" ){
-		Remove-Item -Recurse -Force .\nugetbuild\
+	if(Test-Path -Path ".\tusdotnet\" ){
+		Remove-Item -Recurse -Force .\tusdotnet\
 	}
 	
-	New-Item -ItemType directory .\nugetbuild\
-	robocopy /E ..\Source\tusdotnet\ .\nugetbuild\ /MIR
+	New-Item -ItemType directory .\tusdotnet\
+	robocopy /E ..\Source\tusdotnet\ .\tusdotnet\ /MIR
+	copy ..\Source\global.json .\tusdotnet\
 }
 
 function verifyNuget() {
-	if(!(Test-Path -Path $nugetLocation)) {
-		Throw "Could not find nuget.exe in the provided location: $nugetLocation"
+	if(![bool](Get-Command dotnet -errorAction SilentlyContinue)) {
+		Throw "Could not find dotnet command"
 	}
 }
 
 function createPackage() {
-	& "$nugetLocation" pack .\nugetbuild\tusdotnet.csproj -IncludeReferencedProjects  -Prop Configuration=Release -Build -MSBuildVersion 14
+	cd tusdotnet\
+	& dotnet pack -c Release
+	cd..
+}
+
+function movePackage() {
+	move tusdotnet\bin\Release\*.nupkg .\
 }
 
 function cleanup() {
-	Remove-Item -Recurse -Force .\nugetbuild\
+	Remove-Item -Recurse -Force .\tusdotnet\
 }
 
 verifyNuget
@@ -45,8 +49,11 @@ makeBuildFolder
 Write-Host Setting version info...
 setVersionInfo
 Write-Host Version info set
+Write-Host Removing InternalsVisibleTo attribute...
+removeInternalVisibleTo
 Write-Host Creating package...
 createPackage
+movePackage
 Write-Host Package created
 Write-Host Cleaning up...
 cleanup

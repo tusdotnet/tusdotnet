@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Owin;
+using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
@@ -14,105 +15,105 @@ using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet
 {
-	internal class TusMiddleware : OwinMiddleware
+	internal static class TusMiddleware
 	{
-		private readonly Func<IOwinRequest, ITusConfiguration> _configFactory;
-		private ITusConfiguration _config;
-
-
-		public TusMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
+		public static async Task<bool> Invoke(ContextAdapter context)
 		{
-			_configFactory = configFactory;
-		}
+			ValidateConfig(context.Configuration);
 
-		public override Task Invoke(IOwinContext context)
-		{
-			_config = _configFactory(context.Request);
-			ValidateConfig();
+			var request = context.Request;
+			var response = context.Response;
 
-			if (!ShouldHandleRequest(context.Request))
+			if (!ShouldHandleRequest(context))
 			{
-				return Next.Invoke(context);
+				return false;
 			}
 
-			var method = context.Request.GetMethod();
+			var method = request.GetMethod();
 
-			var tusResumable = context.Request.Headers[HeaderConstants.TusResumable];
+			var tusResumable = request.Headers.ContainsKey(HeaderConstants.TusResumable)
+				? request.Headers[HeaderConstants.TusResumable].FirstOrDefault()
+				: null;
 
 			if (method != "options" && tusResumable != HeaderConstants.TusResumableValue)
 			{
-				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-				context.Response.Headers[HeaderConstants.TusVersion] = HeaderConstants.TusResumableValue;
-				return RespondAsync(context,
+				response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+				response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
+				await RespondAsync(response,
 					HttpStatusCode.PreconditionFailed,
 					$"Tus version {tusResumable} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
+				return true;
 			}
 
 			switch (method)
 			{
 				case "post":
-					return HandlePostRequest(context);
+					return await HandlePostRequest(context);
 				case "head":
-					return HandleHeadRequest(context);
+					return await HandleHeadRequest(context);
 				case "patch":
-					return HandlePatchRequest(context);
+					return await HandlePatchRequest(context);
 				case "options":
-					return HandleOptionsRequest(context);
+					return await HandleOptionsRequest(context);
 				case "delete":
-					return HandleDeleteRequest(context);
+					return await HandleDeleteRequest(context);
 				default:
 					throw new NotImplementedException($"HTTP method {method} is not implemented.");
 			}
 		}
 
-		private async Task HandleDeleteRequest(IOwinContext context)
+		private static async Task<bool> HandleDeleteRequest(ContextAdapter context)
 		{
 			/* When receiving a DELETE request for an existing upload the Server SHOULD free associated resources and MUST 
 			 * respond with the 204 No Content status confirming that the upload was terminated. 
 			 * For all future requests to this URL the Server SHOULD respond with the 404 Not Found or 410 Gone status.
 			 * */
 
-			var store = _config.Store as ITusTerminationStore;
+			var store = context.Configuration.Store as ITusTerminationStore;
 			if (store == null)
 			{
-				await Next.Invoke(context);
-				return;
+				return false;
 			}
 
-			var fileId = GetFileName(context.Request);
+			var response = context.Response;
+			var cancellationToken = context.CancellationToken;
+
+			var fileId = GetFileName(context);
 			var fileLock = new FileLock(fileId);
 
-			var hasLock = fileLock.Lock(context.Request.CallCancelled);
+			var hasLock = fileLock.Lock(cancellationToken);
 			if (!hasLock)
 			{
 				await
-					RespondAsync(context, HttpStatusCode.Conflict,
+					RespondAsync(response, HttpStatusCode.Conflict,
 						$"File {fileId} is currently being updated. Please try again later");
-				return;
+				return true;
 			}
 
 			try
 			{
-				var exists = await _config.Store.FileExistAsync(fileId, context.Request.CallCancelled);
+				var exists = await context.Configuration.Store.FileExistAsync(fileId, cancellationToken);
 				if (!exists)
 				{
-					context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-					context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-					context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
-					return;
+					response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+					response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
+					response.SetStatus((int)HttpStatusCode.NotFound);
+					return true;
 				}
 
-				await store.DeleteFileAsync(fileId, context.Request.CallCancelled);
-				context.Response.StatusCode = (int)HttpStatusCode.NoContent;
-				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
+				await store.DeleteFileAsync(fileId, cancellationToken);
+				response.SetStatus((int)HttpStatusCode.NoContent);
+				response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 			}
 			finally
 			{
 				fileLock.ReleaseIfHeld();
 			}
+
+			return true;
 		}
 
-		private async Task HandlePostRequest(IOwinContext context)
+		private static async Task<bool> HandlePostRequest(ContextAdapter context)
 		{
 			/*
 			 * Creation:
@@ -153,69 +154,74 @@ namespace tusdotnet
 			 * The Server MAY delete partial uploads after concatenation. They MAY however be used multiple times to form a final resource.
 			 */
 
-			var tusCreationStore = _config.Store as ITusCreationStore;
+			var tusCreationStore = context.Configuration.Store as ITusCreationStore;
 			if (tusCreationStore == null)
 			{
-				await Next.Invoke(context);
-				return;
+				return false;
 			}
 
-			var tusConcatenationStore = _config.Store as ITusConcatenationStore;
+			var request = context.Request;
+			var response = context.Response;
+			var cancellationToken = context.CancellationToken;
+
+			var tusConcatenationStore = context.Configuration.Store as ITusConcatenationStore;
 			UploadConcat uploadConcat = null;
-			if (tusConcatenationStore != null && context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat))
+			if (tusConcatenationStore != null && request.Headers.ContainsKey(HeaderConstants.UploadConcat))
 			{
-				uploadConcat = new UploadConcat(context.Request.Headers[HeaderConstants.UploadConcat], _config.UrlPath);
+				uploadConcat = new UploadConcat(request.Headers[HeaderConstants.UploadConcat].First(), context.Configuration.UrlPath);
 				if (!uploadConcat.IsValid)
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, uploadConcat.ErrorMessage);
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, uploadConcat.ErrorMessage);
+					return true;
 				}
 			}
 
 			var uploadLength = -1L;
 			if (!(uploadConcat?.Type is FileConcatFinal))
 			{
-				if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadLength))
+				if (!request.Headers.ContainsKey(HeaderConstants.UploadLength))
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadLength} header");
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadLength} header");
+					return true;
 				}
 
-				if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadLength], out uploadLength))
+				if (!long.TryParse(request.Headers[HeaderConstants.UploadLength].First(), out uploadLength))
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadLength}");
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadLength}");
+					return true;
 				}
 
 				if (uploadLength < 0)
 				{
-					await RespondAsync(context,
+					await RespondAsync(response,
 						HttpStatusCode.BadRequest,
 						$"Header {HeaderConstants.UploadLength} must be a positive number");
-					return;
+					return true;
 				}
 
-				if (_config.MaxAllowedUploadSizeInBytes.HasValue && uploadLength > _config.MaxAllowedUploadSizeInBytes.Value)
+				if (context.Configuration.MaxAllowedUploadSizeInBytes.HasValue && uploadLength > context.Configuration.MaxAllowedUploadSizeInBytes.Value)
 				{
-					await RespondAsync(context,
+					await RespondAsync(response,
 						HttpStatusCode.RequestEntityTooLarge,
 						$"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");
-					return;
+					return true;
 				}
 			}
 
-			if (context.Request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
+			string metadata = null;
+			if (request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
 			{
 				var validateMetadataResult =
-					Metadata.ValidateMetadataHeader(context.Request.Headers.Get(HeaderConstants.UploadMetadata));
+					Metadata.ValidateMetadataHeader(request.Headers[HeaderConstants.UploadMetadata].First());
 				if (!string.IsNullOrEmpty(validateMetadataResult))
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, validateMetadataResult);
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, validateMetadataResult);
+					return true;
 				}
+
+				metadata = request.Headers[HeaderConstants.UploadMetadata].FirstOrDefault();
 			}
 
-			var metadata = context.Request.Headers.Get(HeaderConstants.UploadMetadata);
 			string fileId = null;
 			try
 			{
@@ -224,41 +230,41 @@ namespace tusdotnet
 					if (uploadConcat.Type is FileConcatPartial)
 					{
 						fileId = await tusConcatenationStore
-								.CreatePartialFileAsync(uploadLength, metadata, context.Request.CallCancelled);
+								.CreatePartialFileAsync(uploadLength, metadata, cancellationToken);
 
 					}
 					else if (uploadConcat.Type is FileConcatFinal)
 					{
 						var finalConcat = (FileConcatFinal)uploadConcat.Type;
 						var filesExist =
-								await Task.WhenAll(finalConcat.Files.Select(f => _config.Store.FileExistAsync(f, context.Request.CallCancelled)));
+								await Task.WhenAll(finalConcat.Files.Select(f => context.Configuration.Store.FileExistAsync(f, cancellationToken)));
 
 						if (filesExist.Any(f => !f))
 						{
-							await RespondAsync(context,
+							await RespondAsync(response,
 								HttpStatusCode.BadRequest,
 								$"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}");
-							return;
+							return true;
 						}
 
 						var filesArePartial = await Task.WhenAll(finalConcat.Files.Select(f =>
-							tusConcatenationStore.GetUploadConcatAsync(f, context.Request.CallCancelled)));
+							tusConcatenationStore.GetUploadConcatAsync(f, cancellationToken)));
 
 						if (filesArePartial.Any(f => !(f is FileConcatPartial)))
 						{
-							await RespondAsync(context,
+							await RespondAsync(response,
 								HttpStatusCode.BadRequest,
 								$"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}"
 							);
-							return;
+							return true;
 						}
 
 						var incompleteFiles = new List<string>();
 						var totalSize = 0L;
 						foreach (var file in finalConcat.Files)
 						{
-							var length = _config.Store.GetUploadLengthAsync(file, context.Request.CallCancelled);
-							var offset = _config.Store.GetUploadOffsetAsync(file, context.Request.CallCancelled);
+							var length = context.Configuration.Store.GetUploadLengthAsync(file, cancellationToken);
+							var offset = context.Configuration.Store.GetUploadOffsetAsync(file, cancellationToken);
 							await Task.WhenAll(length, offset);
 
 							if (length.Result != null)
@@ -274,47 +280,48 @@ namespace tusdotnet
 
 						if (incompleteFiles.Any())
 						{
-							await RespondAsync(context,
+							await RespondAsync(response,
 								HttpStatusCode.BadRequest,
 								$"Some of the files supplied for concatenation are not finished and can not be concatenated: {string.Join(", ", incompleteFiles)}");
-							return;
+							return true;
 						}
 
-						if (_config.MaxAllowedUploadSizeInBytes.HasValue && totalSize > _config.MaxAllowedUploadSizeInBytes.Value)
+						if (context.Configuration.MaxAllowedUploadSizeInBytes.HasValue && totalSize > context.Configuration.MaxAllowedUploadSizeInBytes.Value)
 						{
-							await RespondAsync(context,
+							await RespondAsync(response,
 								HttpStatusCode.RequestEntityTooLarge,
 								"The concatenated file exceeds the server's max file size.");
-							return;
+							return true;
 						}
 
 						fileId = await tusConcatenationStore.CreateFinalFileAsync(finalConcat.Files, metadata,
-							context.Request.CallCancelled);
+							cancellationToken);
 
 						// Run callback that the final file is completed.
-						if (_config.OnUploadCompleteAsync != null)
+						if (context.Configuration.OnUploadCompleteAsync != null)
 						{
-							await _config.OnUploadCompleteAsync(fileId, _config.Store, context.Request.CallCancelled);
+							await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, cancellationToken);
 						}
 					}
 				}
 				else
 				{
-					fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, context.Request.CallCancelled);
+					fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
 				}
 			}
 			catch (TusStoreException storeException)
 			{
-				await RespondAsync(context, HttpStatusCode.BadRequest, storeException.Message);
-				return;
+				await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
+				return true;
 			}
 
-			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-			context.Response.Headers[HeaderConstants.Location] = $"{_config.UrlPath.TrimEnd('/')}/{fileId}";
-			context.Response.StatusCode = (int)HttpStatusCode.Created;
+			response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+			response.SetHeader(HeaderConstants.Location, $"{context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+			response.SetStatus((int)HttpStatusCode.Created);
+			return true;
 		}
 
-		private async Task HandleOptionsRequest(IOwinContext context)
+		private static async Task<bool> HandleOptionsRequest(ContextAdapter context)
 		{
 			/*
 			 * An OPTIONS request MAY be used to gather information about the Server’s current configuration. 
@@ -323,31 +330,35 @@ namespace tusdotnet
 			 * The Client SHOULD NOT include the Tus-Resumable header in the request and the Server MUST discard it.
 			 * */
 
-			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-			context.Response.Headers[HeaderConstants.TusVersion] = HeaderConstants.TusResumableValue;
+			var response = context.Response;
+			var cancellationToken = context.CancellationToken;
 
-			if (_config.MaxAllowedUploadSizeInBytes.HasValue)
+			response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+			response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
+
+			if (context.Configuration.MaxAllowedUploadSizeInBytes.HasValue)
 			{
-				context.Response.Headers[HeaderConstants.TusMaxSize] = _config.MaxAllowedUploadSizeInBytes.Value.ToString();
+				response.SetHeader(HeaderConstants.TusMaxSize, context.Configuration.MaxAllowedUploadSizeInBytes.Value.ToString());
 			}
 
-			var extensions = DetectExtensions();
+			var extensions = DetectExtensions(context);
 			if (extensions.Any())
 			{
-				context.Response.Headers[HeaderConstants.TusExtension] = string.Join(",", extensions);
+				response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));
 			}
 
-			var checksumStore = _config.Store as ITusChecksumStore;
+			var checksumStore = context.Configuration.Store as ITusChecksumStore;
 			if (checksumStore != null)
 			{
-				var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(context.Request.CallCancelled);
-				context.Response.Headers[HeaderConstants.TusChecksumAlgorithm] = string.Join(",", checksumAlgorithms);
+				var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(cancellationToken);
+				response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
 			}
 
-			context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+			response.SetStatus((int)HttpStatusCode.NoContent);
+			return true;
 		}
 
-		private async Task HandlePatchRequest(IOwinContext context)
+		private static async Task<bool> HandlePatchRequest(ContextAdapter context)
 		{
 			/*
 			 * The Server SHOULD accept PATCH requests against any upload URL and apply the bytes 
@@ -373,12 +384,15 @@ namespace tusdotnet
 			 * MUST NOT modify the final or its partial uploads.
 			 * */
 
-			var fileName = GetFileName(context.Request);
-			var cancellationToken = context.Request.CallCancelled;
+			var request = context.Request;
+			var response = context.Response;
+			var cancellationToken = context.CancellationToken;
+
+			var fileName = GetFileName(context);
 			var fileLock = new FileLock(fileName);
-			var checksumStore = _config.Store as ITusChecksumStore;
-			var providedChecksum = context.Request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
-				? new Checksum(context.Request.Headers[HeaderConstants.UploadChecksum])
+			var checksumStore = context.Configuration.Store as ITusChecksumStore;
+			var providedChecksum = request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
+				? new Checksum(request.Headers[HeaderConstants.UploadChecksum].First())
 				: null;
 
 			var hasLock = fileLock.Lock(cancellationToken);
@@ -386,14 +400,14 @@ namespace tusdotnet
 			if (!hasLock)
 			{
 				await
-					RespondAsync(context, HttpStatusCode.Conflict,
+					RespondAsync(response, HttpStatusCode.Conflict,
 						$"File {fileName} is currently being updated. Please try again later");
-				return;
+				return true;
 			}
 
 			try
 			{
-				var concatStore = _config.Store as ITusConcatenationStore;
+				var concatStore = context.Configuration.Store as ITusConcatenationStore;
 				FileConcat uploadConcat = null;
 				if (concatStore != null)
 				{
@@ -401,105 +415,105 @@ namespace tusdotnet
 
 					if (uploadConcat is FileConcatFinal)
 					{
-						await RespondAsync(context, HttpStatusCode.Forbidden, "File with \"Upload-Concat: final\" cannot be patched");
-						return;
+						await RespondAsync(response, HttpStatusCode.Forbidden, "File with \"Upload-Concat: final\" cannot be patched");
+						return true;
 					}
 				}
 
-				if (context.Request.ContentType == null ||
-					!context.Request.ContentType.Equals("application/offset+octet-stream",
-						StringComparison.InvariantCultureIgnoreCase))
+				if (request.ContentType == null ||
+					!request.ContentType.Equals("application/offset+octet-stream",
+						StringComparison.OrdinalIgnoreCase))
 				{
-					await RespondAsync(context,
+					await RespondAsync(response,
 						HttpStatusCode.BadRequest,
-						$"Content-Type {context.Request.ContentType} is invalid. Must be application/offset+octet-stream");
-					return;
+						$"Content-Type {request.ContentType} is invalid. Must be application/offset+octet-stream");
+					return true;
 				}
 
-				if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadOffset))
+				if (!request.Headers.ContainsKey(HeaderConstants.UploadOffset))
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadOffset} header");
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadOffset} header");
+					return true;
 				}
 
 				long requestOffset;
 
-				if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadOffset], out requestOffset))
+				if (!long.TryParse(request.Headers[HeaderConstants.UploadOffset].FirstOrDefault(), out requestOffset))
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadOffset} header");
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadOffset} header");
+					return true;
 				}
 
 				if (requestOffset < 0)
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest,
+					await RespondAsync(response, HttpStatusCode.BadRequest,
 						$"Header {HeaderConstants.UploadOffset} must be a positive number");
-					return;
+					return true;
 				}
 
 				if (checksumStore != null && providedChecksum != null)
 				{
 					if (!providedChecksum.IsValid)
 					{
-						await RespondAsync(context, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadChecksum} header");
-						return;
+						await RespondAsync(response, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadChecksum} header");
+						return true;
 					}
 
-					var checksumAlgorithms = (await checksumStore.GetSupportedAlgorithmsAsync(context.Request.CallCancelled)).ToList();
+					var checksumAlgorithms = (await checksumStore.GetSupportedAlgorithmsAsync(cancellationToken)).ToList();
 					if (!checksumAlgorithms.Contains(providedChecksum.Algorithm))
 					{
-						await RespondAsync(context, HttpStatusCode.BadRequest,
+						await RespondAsync(response, HttpStatusCode.BadRequest,
 							$"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}");
-						return;
+						return true;
 					}
 				}
 
-				var exists = await _config.Store.FileExistAsync(fileName, cancellationToken);
+				var exists = await context.Configuration.Store.FileExistAsync(fileName, cancellationToken);
 				if (!exists)
 				{
-					context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-					context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-					context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
-					return;
+					response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+					response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
+					response.SetStatus((int)HttpStatusCode.NotFound);
+					return true;
 				}
 
-				var fileOffset = await _config.Store.GetUploadOffsetAsync(fileName, cancellationToken);
+				var fileOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileName, cancellationToken);
 
 				if (requestOffset != fileOffset)
 				{
-					await RespondAsync(context,
+					await RespondAsync(response,
 						HttpStatusCode.Conflict,
 						$"Offset does not match file. File offset: {fileOffset}. Request offset: {requestOffset}");
-					return;
+					return true;
 				}
 
-				var fileUploadLength = await _config.Store.GetUploadLengthAsync(fileName, cancellationToken);
+				var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileName, cancellationToken);
 
 				if (fileUploadLength != null && fileOffset == fileUploadLength.Value)
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, "Upload is already complete.");
-					return;
+					await RespondAsync(response, HttpStatusCode.BadRequest, "Upload is already complete.");
+					return true;
 				}
 
 				long bytesWritten;
 				try
 				{
-					bytesWritten = await _config.Store.AppendDataAsync(fileName, context.Request.Body, cancellationToken);
+					bytesWritten = await context.Configuration.Store.AppendDataAsync(fileName, request.Body, cancellationToken);
 				}
 				catch (IOException ioException)
 				{
 					// Indicates that the client disconnected.
-					if (!(ioException.InnerException is HttpListenerException))
+					if (!ioException.ClientDisconnected())
 					{
 						throw;
 					}
 
 					// Client disconnected so no need to return a response.
-					return;
+					return true;
 				}
 				catch (TusStoreException storeException)
 				{
-					await RespondAsync(context, HttpStatusCode.BadRequest, storeException.Message);
+					await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
 					throw;
 				}
 
@@ -510,29 +524,31 @@ namespace tusdotnet
 
 					if (!validChecksum)
 					{
-						await RespondAsync(context, (HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
-						return;
+						await RespondAsync(response, (HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+						return true;
 					}
 				}
 
-				context.Response.StatusCode = (int)HttpStatusCode.NoContent;
-				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-				context.Response.Headers[HeaderConstants.UploadOffset] = (fileOffset + bytesWritten).ToString();
+				response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+				response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
+				response.SetStatus((int)HttpStatusCode.NoContent);
 
 				// Run OnUploadComplete if it has been provided.
 				var fileIsComplete = fileUploadLength != null && (fileOffset + bytesWritten) == fileUploadLength.Value;
-				if (fileIsComplete && !(uploadConcat is FileConcatPartial) && _config.OnUploadCompleteAsync != null)
+				if (fileIsComplete && !(uploadConcat is FileConcatPartial) && context.Configuration.OnUploadCompleteAsync != null)
 				{
-					await _config.OnUploadCompleteAsync(fileName, _config.Store, context.Request.CallCancelled);
+					await context.Configuration.OnUploadCompleteAsync(fileName, context.Configuration.Store, cancellationToken);
 				}
 			}
 			finally
 			{
 				fileLock.ReleaseIfHeld();
 			}
+
+			return true;
 		}
 
-		private async Task HandleHeadRequest(IOwinContext context)
+		private static async Task<bool> HandleHeadRequest(ContextAdapter context)
 		{
 			/*
 			 * The Server MUST always include the Upload-Offset header in the response for a HEAD request, 
@@ -556,37 +572,39 @@ namespace tusdotnet
 			 * in the upload creation request.
 			 */
 
-			var fileName = GetFileName(context.Request);
-			var cancellationToken = context.Request.CallCancelled;
+			var response = context.Response;
+			var cancellationToken = context.CancellationToken;
 
-			var exists = await _config.Store.FileExistAsync(fileName, cancellationToken);
+			var fileName = GetFileName(context);
+
+			var exists = await context.Configuration.Store.FileExistAsync(fileName, cancellationToken);
 			if (!exists)
 			{
-				context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-				context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
-				context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-				return;
+				response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
+				response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+				response.SetStatus((int)HttpStatusCode.NotFound);
+				return true;
 			}
 
-			var uploadLength = await _config.Store.GetUploadLengthAsync(fileName, cancellationToken);
+			var uploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileName, cancellationToken);
 			if (uploadLength != null)
 			{
-				context.Response.Headers[HeaderConstants.UploadLength] = uploadLength.Value.ToString();
+				response.SetHeader(HeaderConstants.UploadLength, uploadLength.Value.ToString());
 			}
 
-			var tusCreationStore = _config.Store as ITusCreationStore;
+			var tusCreationStore = context.Configuration.Store as ITusCreationStore;
 			if (tusCreationStore != null)
 			{
 				var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileName, cancellationToken);
 				if (!string.IsNullOrEmpty(uploadMetadata))
 				{
-					context.Response.Headers[HeaderConstants.UploadMetadata] = uploadMetadata;
+					response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
 				}
 			}
 
-			var uploadOffset = await _config.Store.GetUploadOffsetAsync(fileName, cancellationToken);
+			var uploadOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileName, cancellationToken);
 
-			var tusConcatStore = _config.Store as ITusConcatenationStore;
+			var tusConcatStore = context.Configuration.Store as ITusConcatenationStore;
 			FileConcat uploadConcat = null;
 			var addUploadOffset = true;
 			if (tusConcatStore != null)
@@ -594,29 +612,30 @@ namespace tusdotnet
 				uploadConcat = await tusConcatStore.GetUploadConcatAsync(fileName, cancellationToken);
 
 				// Only add Upload-Offset to final files if they are complete.
-				//if (new UploadConcat(uploadConcat, _config.UrlPath).Type == ConcatenationType.Final && uploadLength != uploadOffset)
 				if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
 				{
 					addUploadOffset = false;
 				}
 			}
 
-			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
+			response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 			if (addUploadOffset)
 			{
-				context.Response.Headers[HeaderConstants.UploadOffset] = uploadOffset.ToString();
+				response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
 			}
-			context.Response.Headers[HeaderConstants.CacheControl] = HeaderConstants.NoStore;
-			//if (!string.IsNullOrWhiteSpace(uploadConcat))
+			response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
 			if (uploadConcat != null)
 			{
-				(uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(_config.UrlPath);
-				context.Response.Headers[HeaderConstants.UploadConcat] = uploadConcat.GetHeader();
+				(uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(context.Configuration.UrlPath);
+				response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
 			}
+
+			return true;
 		}
 
-		private bool ShouldHandleRequest(IOwinRequest request)
+		private static bool ShouldHandleRequest(ContextAdapter context)
 		{
+			var request = context.Request;
 			var method = request.GetMethod();
 
 			if (!request.Headers.ContainsKey(HeaderConstants.TusResumable) && method != "options")
@@ -628,54 +647,55 @@ namespace tusdotnet
 			{
 				case "post":
 				case "options":
-					return IsExactUrlMatch(request);
+					return IsExactUrlMatch(context);
 				case "head":
 				case "patch":
 				case "delete":
-					return !IsExactUrlMatch(request) &&
-						   request.Uri.LocalPath.StartsWith(_config.UrlPath, StringComparison.InvariantCultureIgnoreCase);
+					return !IsExactUrlMatch(context) &&
+						   request.RequestUri.LocalPath.StartsWith(context.Configuration.UrlPath, StringComparison.OrdinalIgnoreCase);
 				default:
 					return false;
 			}
 		}
 
-		private string GetFileName(IOwinRequest request)
+		private static string GetFileName(ContextAdapter context)
 		{
+			var request = context.Request;
 			var startIndex = request
-								 .Uri
+								 .RequestUri
 								 .LocalPath
-								 .IndexOf(_config.UrlPath, StringComparison.InvariantCultureIgnoreCase) + _config.UrlPath.Length;
+								 .IndexOf(context.Configuration.UrlPath, StringComparison.OrdinalIgnoreCase) + context.Configuration.UrlPath.Length;
 			return request
-				.Uri
+				.RequestUri
 				.LocalPath
 				.Substring(startIndex)
 				.Trim('/');
 		}
 
-		private bool IsExactUrlMatch(IOwinRequest request)
+		private static bool IsExactUrlMatch(ContextAdapter context)
 		{
-			return request.Uri.LocalPath.TrimEnd('/') == _config.UrlPath.TrimEnd('/');
+			return context.Request.RequestUri.LocalPath.TrimEnd('/') == context.Configuration.UrlPath.TrimEnd('/');
 		}
 
-		private List<string> DetectExtensions()
+		private static List<string> DetectExtensions(ContextAdapter context)
 		{
 			var extensions = new List<string>();
-			if (_config.Store is ITusCreationStore)
+			if (context.Configuration.Store is ITusCreationStore)
 			{
 				extensions.Add(ExtensionConstants.Creation);
 			}
 
-			if (_config.Store is ITusTerminationStore)
+			if (context.Configuration.Store is ITusTerminationStore)
 			{
 				extensions.Add(ExtensionConstants.Termination);
 			}
 
-			if (_config.Store is ITusChecksumStore)
+			if (context.Configuration.Store is ITusChecksumStore)
 			{
 				extensions.Add(ExtensionConstants.Checksum);
 			}
 
-			if (_config.Store is ITusConcatenationStore)
+			if (context.Configuration.Store is ITusConcatenationStore)
 			{
 				extensions.Add(ExtensionConstants.Concatenation);
 			}
@@ -683,24 +703,25 @@ namespace tusdotnet
 			return extensions;
 		}
 
-		private static Task RespondAsync(IOwinContext context, HttpStatusCode statusCode, string message)
+		private static Task RespondAsync(ResponseAdapter response, HttpStatusCode statusCode, string message)
 		{
-			context.Response.StatusCode = (int)statusCode;
-			context.Response.ContentType = "text/plain";
-			context.Response.Headers[HeaderConstants.TusResumable] = HeaderConstants.TusResumableValue;
-			return context.Response.WriteAsync(message);
+			response.SetHeader(HeaderConstants.ContentType, "text/plain");
+			response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+			response.SetStatus((int)statusCode);
+			var buffer = new UTF8Encoding().GetBytes(message);
+			return response.Body.WriteAsync(buffer, 0, buffer.Length);
 		}
 
-		private void ValidateConfig()
+		private static void ValidateConfig(ITusConfiguration config)
 		{
-			if (_config.Store == null)
+			if (config.Store == null)
 			{
-				throw new TusConfigurationException($"{nameof(_config.Store)} cannot be null.");
+				throw new TusConfigurationException($"{nameof(config.Store)} cannot be null.");
 			}
 
-			if (string.IsNullOrWhiteSpace(_config.UrlPath))
+			if (string.IsNullOrWhiteSpace(config.UrlPath))
 			{
-				throw new TusConfigurationException($"{nameof(_config.UrlPath)} cannot be empty.");
+				throw new TusConfigurationException($"{nameof(config.UrlPath)} cannot be empty.");
 			}
 		}
 	}

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using Shouldly;
@@ -65,12 +66,21 @@ namespace tusdotnet.test.Tests.ModelTests
 			};
 
 			// Ctor is private so use reflection to fetch it and create an instance.
+#if netfull
 			var constructor = typeof(Metadata).GetConstructor(
 				BindingFlags.Instance | BindingFlags.NonPublic,
 				null,
 				new[] { typeof(string) },
-				null
-			);
+				null);
+#else
+			var constructor = typeof(Metadata).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).FirstOrDefault(
+				f =>
+				{
+					var param = f.GetParameters();
+					return param.Length == 1 && param.FirstOrDefault().ParameterType == typeof(string);
+				});
+#endif
+
 
 			constructor.ShouldNotBeNull();
 

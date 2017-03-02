@@ -2,7 +2,7 @@
 
 namespace tusdotnet.Models
 {
-	public class TusConfigurationException : ApplicationException
+	public class TusConfigurationException : Exception
 	{
 		public TusConfigurationException(string message) : base(message)
 		{

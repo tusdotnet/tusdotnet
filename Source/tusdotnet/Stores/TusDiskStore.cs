@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -28,7 +28,7 @@ namespace tusdotnet.Stores
 		// Number of bytes to read at the time from the input stream.
 		// The lower the value, the less data needs to be re-submitted on errors.
 		// However, the lower the value, the slower the operation is. 51200 = 50 KB.
-		private const int ByteChunkSize = 51200;
+		private const int ByteChunkSize = 5120000;
 
 		public TusDiskStore(string directoryPath) : this(directoryPath, false)
 		{
@@ -163,13 +163,7 @@ namespace tusdotnet.Stores
 			bool valid;
 			using (var stream = new FileStream(GetPath(fileId), FileMode.Open, FileAccess.ReadWrite))
 			{
-				byte[] fileHash;
-				using (var sha1 = new SHA1Managed())
-				{
-					fileHash = sha1.ComputeHash(stream);
-				}
-
-				valid = checksum.SequenceEqual(fileHash);
+				valid = checksum.SequenceEqual(stream.CalculateSha1());
 
 				// ReSharper disable once InvertIf
 				if (!valid && _lengthBeforeWrite.ContainsKey(fileId))

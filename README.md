@@ -5,14 +5,14 @@
 From tus.io:
 >Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network.
 
-tusdotnet is a .NET server implementation of the Tus protocol. It is written as a OWIN middleware for easy usage.
+tusdotnet is a .NET server implementation of the Tus protocol that runs on both .NET 4.x and .NET Core!
 
 Comments, ideas, questions and PRs are welcome :)
 
 ## Features
-* Supports Tus 1.0.0 core protocol
+* Runs on both .NET 4.x and .NET Core
+* Supports tus 1.0.0 core protocol
 * Supported extensions: Checksum, Concatenation, Creation, Termination
-* Easy to use OWIN middleware
 * Fast and reliable
 * 99% test coverage
 * MIT licensed
@@ -27,10 +27,10 @@ Comments, ideas, questions and PRs are welcome :)
 
 ### Setup
 
-Setup OWIN as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the IAppBuilder.
+Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. You might also want to [configure IIS](https://github.com/smatsson/tusdotnet/wiki/Configure-IIS) and/or [configure CORS](https://github.com/smatsson/tusdotnet/wiki/Cross-domain-requests-(CORS)).
 
 ```csharp
-app.UseTus(request => new DefaultTusConfiguration
+app.UseTus(context => new DefaultTusConfiguration
 {
 	// c:\tusfiles is where to store files
 	Store = new TusDiskStore(@"C:\tusfiles\"),
@@ -46,7 +46,7 @@ app.UseTus(request => new DefaultTusConfiguration
 });
 ```
  
-If you just want to play around with the protocol, clone the repo and run the OwinTestApp. It launches a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
+If you just want to play around with the protocol, clone the repo and run one of the test apps (one for OWIN and one for .NET Core). They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
 
 ## Clients
 [Tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.

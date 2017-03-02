@@ -24,5 +24,7 @@
 		public const string NoStore = "no-store";
 		public const string Location = "location";
 
+		public const string ContentType = "Content-Type";
+
 	}
 }

@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
@@ -21,7 +20,7 @@ namespace tusdotnet.test.Tests
 		public async Task Returns_400_Bad_Request_If_Checksum_Algorithm_Is_Not_Supported(string methodToUse)
 		{
 			var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				// ReSharper disable once SuspiciousTypeConversion.Global
 				var cstore = (ITusChecksumStore)store;
@@ -65,7 +64,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Returns_460_Checksum_Mismatch_If_The_Checksum_Does_Not_Match(string methodToUse)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
 				store.FileExistAsync("checksum", CancellationToken.None).ReturnsForAnyArgs(true);
@@ -103,7 +102,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Returns_204_No_Content_If_Checksum_Matches(string methodToUse)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
 				store.FileExistAsync("checksum", CancellationToken.None).ReturnsForAnyArgs(true);
@@ -141,7 +140,7 @@ namespace tusdotnet.test.Tests
 		{
 			var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
 			ITusChecksumStore cstore = null;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				// ReSharper disable once SuspiciousTypeConversion.Global
 				cstore = (ITusChecksumStore)store;
@@ -158,8 +157,22 @@ namespace tusdotnet.test.Tests
 				});
 			}))
 			{
+				// ReSharper disable once LoopCanBePartlyConvertedToQuery - Only applies to netstandard
 				foreach (var unparsables in new[] { "Kq5sNclPz7QV2+lfQIuc6R7oRu0=", "sha1 ", "", "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0" })
 				{
+
+				#if netstandard
+
+				// ASP.NET Core ignores empty headers so there is no way of knowing if the header was sent empty
+				// or if the header is simply absent
+
+					if (unparsables == "")
+					{
+						continue;
+					}
+
+				#endif
+
 					var response = await server
 					.CreateRequest("/files/checksum")
 					.And(AddBody)

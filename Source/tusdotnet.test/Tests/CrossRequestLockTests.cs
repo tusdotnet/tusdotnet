@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
@@ -22,14 +21,15 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_409_Conflict_For_A_Patch_Request_If_A_Delete_Is_Ongoing()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore, ITusTerminationStore>();
-				store.FileExistAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(true);
-				((ITusTerminationStore) store).DeleteFileAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(async info =>
-				{
-					await Task.Delay(500);
-				});
+				store.FileExistAsync("testfilecrossreq_pd", Arg.Any<CancellationToken>()).Returns(true);
+				((ITusTerminationStore)store).DeleteFileAsync("testfilecrossreq_pd", Arg.Any<CancellationToken>()).Returns(info =>
+			   {
+				   Thread.Sleep(500);
+				   return Task.FromResult(0);
+			   });
 
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -38,11 +38,11 @@ namespace tusdotnet.test.Tests
 				});
 			}))
 			{
-				var deleteRequest = server.CreateRequest("/files/testfilecrossreq")
+				var deleteRequest = server.CreateRequest("/files/testfilecrossreq_pd")
 					.AddTusResumableHeader()
 					.SendAsync("DELETE");
 
-				var patchRequest = server.CreateRequest("/files/testfilecrossreq")
+				var patchRequest = server.CreateRequest("/files/testfilecrossreq_pd")
 					.And(message =>
 					{
 						message.Content = new StreamContent(new MemoryStream(new byte[3]));
@@ -62,7 +62,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_409_Conflict_For_A_Delete_Request_If_A_Patch_Is_Ongoing()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore, ITusTerminationStore>();
 				store.FileExistAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(true);
@@ -75,10 +75,10 @@ namespace tusdotnet.test.Tests
 					.AppendDataAsync("testfilecrossreq", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
 					.Returns(info =>
 					{
-						Thread.Sleep(500);
+						Thread.Sleep(5000);
 						return 3;
 					});
-				((ITusTerminationStore) store).DeleteFileAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
+				((ITusTerminationStore)store).DeleteFileAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
 
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -102,7 +102,7 @@ namespace tusdotnet.test.Tests
 				var deleteRequest = server.CreateRequest("/files/testfilecrossreq")
 					.AddTusResumableHeader()
 					.SendAsync("DELETE");
-				
+
 				await Task.WhenAll(deleteRequest, patchRequest);
 
 				deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);

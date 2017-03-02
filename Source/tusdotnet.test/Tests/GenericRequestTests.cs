@@ -1,12 +1,16 @@
 ﻿using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using NSubstitute;
-using Owin;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.test.Extensions;
 using Xunit;
+#if netfull
+using Owin;
+#endif
+#if netstandard
+using Microsoft.AspNetCore.Builder;
+#endif
 
 namespace tusdotnet.test.Tests
 {
@@ -16,7 +20,7 @@ namespace tusdotnet.test.Tests
 		public async Task Ignores_Requests_Without_The_Tus_Resumable_Header()
 		{
 			var callForwarded = false;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request =>
 				{
@@ -54,7 +58,7 @@ namespace tusdotnet.test.Tests
 		public async Task Ignores_Requests_Where_Method_Is_Not_Supported()
 		{
 			var callForwarded = false;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request =>
 				{
@@ -95,7 +99,7 @@ namespace tusdotnet.test.Tests
 		[InlineData("1.0.0b")]
 		public async Task Returns_412_Precondition_Failed_If_Tus_Resumable_Does_Not_Match_The_Supported_Version(string version)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request =>
 				{
@@ -104,21 +108,22 @@ namespace tusdotnet.test.Tests
 					tusConfiguration.UrlPath.Returns("/files");
 					return tusConfiguration;
 				});
-
 			}))
 			{
 				var options = server.CreateRequest("/files").AddHeader("Tus-Resumable", version).SendAsync("OPTIONS");
 				var post = server.CreateRequest("/files").AddHeader("Tus-Resumable", version).SendAsync("POST");
 				var head = server.CreateRequest("/files/testfile").AddHeader("Tus-Resumable", version).SendAsync("HEAD");
 				var patch = server.CreateRequest("/files/testfile").AddHeader("Tus-Resumable", version).SendAsync("PATCH");
+				var delete = server.CreateRequest("/files/testfile").AddHeader("Tus-Resumable", version).SendAsync("DELETE");
 
-				await Task.WhenAll(options, post, head, patch);
+				await Task.WhenAll(options, post, head, patch, delete);
 
 				// Options does not care about the Tus-Resumable header according to spec.
 				options.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 				post.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
 				head.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
 				patch.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
+				delete.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
 			}
 		}
 	}

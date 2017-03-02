@@ -88,12 +88,16 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task AppendDataAsync_Supports_Cancellation()
 		{
+
+#warning This test fails from time to time due to timing issues (no pun). TODO Re-write to use a stream that reads slower so that we don't have to guess like below.
+
+
 			var cancellationToken = new CancellationTokenSource();
 
 			// Test cancellation.
 
-			// 30 MB
-			const int fileSize = 30 * 1024 * 1024;
+			// 100 MB
+			const int fileSize = 100 * 1024 * 1024;
 			var fileId = await _fixture.Store.CreateFileAsync(fileSize, null, cancellationToken.Token);
 
 			var buffer = new MemoryStream(new byte[fileSize]);

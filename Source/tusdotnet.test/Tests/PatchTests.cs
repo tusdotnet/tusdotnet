@@ -6,10 +6,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Owin;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
@@ -17,6 +15,13 @@ using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+#if netfull
+using Owin;
+#endif
+#if netstandard
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+#endif
 
 namespace tusdotnet.test.Tests
 {
@@ -26,7 +31,7 @@ namespace tusdotnet.test.Tests
 		public async Task Ignores_Request_If_Url_Does_Not_Match()
 		{
 			var callForwarded = false;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -71,7 +76,7 @@ namespace tusdotnet.test.Tests
 		public async Task Returns_404_Not_Found_If_File_Was_Not_Found()
 		{
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -100,7 +105,7 @@ namespace tusdotnet.test.Tests
 		[InlineData("application/json")]
 		public async Task Returns_400_Bad_Request_If_An_Incorrect_Content_Type_Is_Provided(string contentType)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -130,7 +135,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_400_Bad_Request_For_Missing_Upload_Offset_Header()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -158,7 +163,7 @@ namespace tusdotnet.test.Tests
 		public async Task Returns_400_Bad_Request_For_Invalid_Upload_Offset_Header(string uploadOffset,
 			string expectedServerErrorMessage)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -188,7 +193,7 @@ namespace tusdotnet.test.Tests
 		[InlineData(100)]
 		public async Task Returns_409_Conflict_If_Upload_Offset_Does_Not_Match_File_Offset(int offset)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -217,7 +222,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_400_Bad_Request_If_Upload_Is_Already_Complete()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -246,7 +251,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Returns_204_No_Content_On_Success(string methodToUse)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -277,7 +282,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -308,9 +313,9 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_Store_Exceptions_As_400_Bad_Request()
 		{
-			// TODO: This test does not work properly using the OWIN TestServer.
+			// This test does not work properly using the OWIN TestServer.
 			// It will always throw an exception instead of returning the proper error message to the client.
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -351,15 +356,22 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Handles_Abrupt_Disconnects_Gracefully()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
 				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 				// IOException with an inner HttpListenerException is a client disconnect.
+				// ReSharper disable once JoinDeclarationAndInitializer - Set depending on .NET version
+				Exception innerException;
+#if netfull
+				innerException = new HttpListenerException();
+#else
+				innerException = new UvException("Test", -4077);
+#endif
 				store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-					.Throws(new IOException("Test exception", new HttpListenerException()));
+					.Throws(new IOException("Test exception", innerException));
 
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -381,7 +393,7 @@ namespace tusdotnet.test.Tests
 			}
 
 			// IOException without an inner HttpListenerException is not a disconnect.
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
@@ -410,7 +422,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var random = new Random();
 				var offset = 5;
@@ -483,7 +495,7 @@ namespace tusdotnet.test.Tests
 			var firstOffset = 3;
 			var secondOffset = 2;
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				var store = Substitute.For<ITusStore>();
 				store.FileExistAsync("file1", Arg.Any<CancellationToken>()).Returns(true);

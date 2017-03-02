@@ -7,7 +7,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
@@ -38,7 +37,7 @@ namespace tusdotnet.test.Tests
 			concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
 				.ReturnsForAnyArgs("finalId");
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -71,7 +70,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Returns_400_Bad_Request_If_Upload_Concat_Header_Is_Unparsable_Or_Not_Final_Nor_Partial(string methodToUse)
 		{
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -117,7 +116,7 @@ namespace tusdotnet.test.Tests
 			concatStore.GetUploadConcatAsync("finalconcat", Arg.Any<CancellationToken>())
 				.Returns(ci => new FileConcatFinal("1", "2"));
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -162,7 +161,7 @@ namespace tusdotnet.test.Tests
 			var concatStore = (ITusConcatenationStore)store;
 			concatStore.GetUploadConcatAsync("partialconcat", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -193,7 +192,7 @@ namespace tusdotnet.test.Tests
 			concatStore.GetUploadConcatAsync(null, CancellationToken.None)
 				.ReturnsForAnyArgs(new FileConcatFinal("1", "2"));
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -222,7 +221,7 @@ namespace tusdotnet.test.Tests
 			concatStore.GetUploadConcatAsync(null, CancellationToken.None)
 				.ReturnsForAnyArgs(new FileConcatFinal("a", "b"));
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -250,7 +249,7 @@ namespace tusdotnet.test.Tests
 			store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
 			concatStore.GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(null as FileConcat);
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -279,7 +278,7 @@ namespace tusdotnet.test.Tests
 			concatStore.GetUploadConcatAsync(null, CancellationToken.None)
 				.ReturnsForAnyArgs(new FileConcatFinal("1", "2"));
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -321,7 +320,7 @@ namespace tusdotnet.test.Tests
 			creationStore.GetUploadMetadataAsync("partial1", Arg.Any<CancellationToken>()).Returns("metaforpartial1");
 			creationStore.GetUploadMetadataAsync("partial2", Arg.Any<CancellationToken>()).Returns("metaforpartial2");
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -351,7 +350,7 @@ namespace tusdotnet.test.Tests
 			concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
 				.ThrowsForAnyArgs(info => new TusStoreException("File partial2 does not exist"));
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -393,7 +392,7 @@ namespace tusdotnet.test.Tests
 			concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
 			concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(null as FileConcat);
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -429,7 +428,7 @@ namespace tusdotnet.test.Tests
 			concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
 			concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -458,7 +457,7 @@ namespace tusdotnet.test.Tests
 			// ReSharper disable once PossibleNullReferenceException
 			concatStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("partial1");
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -501,7 +500,7 @@ namespace tusdotnet.test.Tests
 			concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
 				.ReturnsForAnyArgs("finalId");
 
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -541,7 +540,7 @@ namespace tusdotnet.test.Tests
 
 			string callbackFileId = null;
 			ITusStore callbackStore = null;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{
@@ -582,7 +581,7 @@ namespace tusdotnet.test.Tests
 			store.AppendDataAsync("partial1", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(1);
 
 			var callbackCalled = false;
-			using (var server = TestServer.Create(app =>
+			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
 				{

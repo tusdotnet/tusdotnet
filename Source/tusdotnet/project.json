@@ -1,0 +1,39 @@
+{
+	"title": "tusdotnet",
+	"copyright": "Copyright Stefan Matsson 2016",
+	"description": ".NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/smatsson/tusdotnet and http://tus.io",
+	"version": "1.0.0-*",
+	"authors": ["Stefan Matsson"],
+	"frameworks": {
+		"net452": {
+			"dependencies": {
+				"Owin": "1.0.0",
+				"Microsoft.Owin": "3.0.1"
+			},
+			"buildOptions": {
+				"define": [ "netfull"]
+			}
+		},
+		"netstandard1.3": {
+			"dependencies": {
+				"Microsoft.AspNetCore.Http": "1.1.0",
+				"Microsoft.AspNetCore.Http.Abstractions": "1.1.0",
+				"System.Security.Cryptography.Algorithms": "4.3.0"
+			},
+			"buildOptions": {
+				"define": [ "netstandard" ]
+			}
+		}
+	},
+	 "packOptions": {
+        "summary": ".NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/smatsson/tusdotnet and http://tus.io",
+        "tags": ["Tus", "Tus-Resumable", "ResumableFileUploads", "FileUpload"],
+        "owners": ["Stefan Matsson"],
+        "releaseNotes": "Release notes at https://github.com/smatsson/tusdotnet/releases",
+        "projectUrl": "https://github.com/smatsson/tusdotnet",
+        "licenseUrl": "https://github.com/smatsson/tusdotnet/blob/master/LICENSE",
+        "files": {
+            "includeFiles": ["readme.txt"]
+        }
+    }
+}

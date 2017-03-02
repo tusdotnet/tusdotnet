@@ -1,4 +1,5 @@
-﻿using Microsoft.Owin;
+﻿using System.Linq;
+using tusdotnet.Adapters;
 using tusdotnet.Constants;
 
 namespace tusdotnet.Extensions
@@ -11,13 +12,13 @@ namespace tusdotnet.Extensions
 		/// </summary>
 		/// <param name="request">The request to get the method for</param>
 		/// <returns>The request method</returns>
-		internal static string GetMethod(this IOwinRequest request)
+		internal static string GetMethod(this RequestAdapter request)
 		{
 			string method = null;
 
 			if (request.Headers != null && request.Headers.ContainsKey(HeaderConstants.XHttpMethodOveride))
 			{
-				method = request.Headers[HeaderConstants.XHttpMethodOveride]?.ToLower();
+				method = request.Headers[HeaderConstants.XHttpMethodOveride]?.FirstOrDefault()?.ToLower();
 			}
 
 			if (string.IsNullOrWhiteSpace(method))

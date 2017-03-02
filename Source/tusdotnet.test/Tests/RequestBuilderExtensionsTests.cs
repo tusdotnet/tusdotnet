@@ -1,6 +1,5 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Owin.Testing;
 using Shouldly;
 using tusdotnet.test.Extensions;
 using Xunit;
@@ -12,7 +11,7 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task Should_Set_Tus_Resumable_Header_Properly()
 		{
-			using (var server = TestServer.Create(app => { }))
+			using (var server = TestServerFactory.Create(app => { }))
 			{
 				await server.CreateRequest("/")
 					.And(r => r.Headers.Contains("Tus-Resumable").ShouldBeFalse())
@@ -34,7 +33,7 @@ namespace tusdotnet.test.Tests
 		[InlineData("a", "a")]
 		public async Task Should_Set_XHttpMethodOverride_Properly(string @override, string method)
 		{
-			using (var server = TestServer.Create(app => { }))
+			using (var server = TestServerFactory.Create(app => { }))
 			{
 				await server.CreateRequest("/")
 					.And(r => r.Headers.Contains("X-Http-Method-Override").ShouldBeFalse())
