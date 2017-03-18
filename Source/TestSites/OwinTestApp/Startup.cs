@@ -91,7 +91,7 @@ namespace OwinTestApp
 				{
 					case "/":
 						context.Response.ContentType = "text/html";
-						await context.Response.WriteAsync(File.ReadAllText("../../upload.html"), context.Request.CallCancelled);
+						await context.Response.WriteAsync(File.ReadAllText("../../index.html"), context.Request.CallCancelled);
 						break;
 					case "/tus.js":
 						context.Response.ContentType = "application/js";

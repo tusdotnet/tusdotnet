@@ -72,14 +72,14 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\tusdotnet\tusdotnet.csproj">
-      <Project>{b4e9d703-08db-4c5c-aa99-01517e066393}</Project>
-      <Name>tusdotnet</Name>
-    </ProjectReference>
+    <Content Include="tus.js" />
+    <Content Include="index.html" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="tus.js" />
-    <Content Include="upload.html" />
+    <ProjectReference Include="..\..\tusdotnet\tusdotnet.csproj">
+      <Project>{5ba9337d-1c0c-442c-be96-95ebd542ca85}</Project>
+      <Name>tusdotnet</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
