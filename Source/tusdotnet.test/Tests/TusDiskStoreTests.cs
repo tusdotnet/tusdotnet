@@ -8,6 +8,7 @@ using Shouldly;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Stores;
+using tusdotnet.test.Helpers;
 using Xunit;
 
 namespace tusdotnet.test.Tests
@@ -88,31 +89,32 @@ namespace tusdotnet.test.Tests
 		[Fact]
 		public async Task AppendDataAsync_Supports_Cancellation()
 		{
-
-#warning This test fails from time to time due to timing issues (no pun). TODO Re-write to use a stream that reads slower so that we don't have to guess like below.
-
-
 			var cancellationToken = new CancellationTokenSource();
 
 			// Test cancellation.
 
-			// 100 MB
-			const int fileSize = 100 * 1024 * 1024;
+			// 5 MB
+			const int fileSize = 5 * 1024 * 1024;
 			var fileId = await _fixture.Store.CreateFileAsync(fileSize, null, cancellationToken.Token);
 
-			var buffer = new MemoryStream(new byte[fileSize]);
+			var buffer = new SlowMemoryStream(new byte[fileSize]);
 
-			var appendTask = Task.Run(() => _fixture.Store
-				.AppendDataAsync(fileId, buffer, cancellationToken.Token), CancellationToken.None);
-			await Task.Delay(10, CancellationToken.None);
+			//var appendTask = Task.Run(() => , CancellationToken.None);
+
+			var appendTask = _fixture.Store
+				.AppendDataAsync(fileId, buffer, cancellationToken.Token);
+
+			await Task.Delay(150, CancellationToken.None);
+
 			cancellationToken.Cancel();
+
 			long bytesWritten = -1;
 
 			try
 			{
 				bytesWritten = await appendTask;
 				// Should have written something but should not have completed.
-				bytesWritten.ShouldBeInRange(1, fileSize - 1);
+				bytesWritten.ShouldBeInRange(1, 10240000);
 			}
 			catch (TaskCanceledException)
 			{
@@ -127,7 +129,7 @@ namespace tusdotnet.test.Tests
 			}
 			else
 			{
-				fileOffset.ShouldBeInRange(1, fileSize - 1);
+				fileOffset.ShouldBeInRange(1, 10240000);
 			}
 
 			var fileOnDiskSize = new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;

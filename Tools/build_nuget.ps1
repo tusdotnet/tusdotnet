@@ -1,10 +1,17 @@
 
 function setVersionInfo() {
 	$assemblyVersion = git describe --abbrev=0 --tags
-	$assemblyInformationalVersion = git describe --tags --long	
-	$json = Get-Content '.\tusdotnet\project.json' | ConvertFrom-Json
-	$json.version = $assemblyVersion + "-*"
-	$json | ConvertTo-Json -Depth 100 | set-content '.\tusdotnet\project.json'
+	$assemblyInformationalVersion = git describe --tags --long
+	(Get-Content tusdotnet\Properties\AssemblyInfo.cs) -replace `
+		'(\[assembly: AssemblyInformationalVersion\(")([\w\W]*)("\)])', `
+			"[assembly: AssemblyInformationalVersion(""$assemblyVersion, $assemblyInformationalVersion"")]" `
+		| Out-File tusdotnet\Properties\AssemblyInfo.cs
+	(Get-Content tusdotnet\Properties\AssemblyInfo.cs) -replace `
+		'(\[assembly: AssemblyVersion\(")([\w\W]*)("\)])', "[assembly: AssemblyVersion(""$assemblyVersion"")]" `
+		| Out-File tusdotnet\Properties\AssemblyInfo.cs
+	(Get-Content tusdotnet\Properties\AssemblyInfo.cs) -replace `
+		'(\[assembly: AssemblyFileVersion\(")([\w\W]*)("\)])', "[assembly: AssemblyFileVersion(""$assemblyVersion"")]" `
+		| Out-File tusdotnet\Properties\AssemblyInfo.cs
 }
 
 function removeInternalVisibleTo() {
@@ -20,7 +27,6 @@ function makeBuildFolder() {
 	
 	New-Item -ItemType directory .\tusdotnet\
 	robocopy /E ..\Source\tusdotnet\ .\tusdotnet\ /MIR
-	copy ..\Source\global.json .\tusdotnet\
 }
 
 function verifyNuget() {
@@ -31,7 +37,8 @@ function verifyNuget() {
 
 function createPackage() {
 	cd tusdotnet\
-	& dotnet pack -c Release
+	$version = git describe --abbrev=0 --tags
+	& dotnet pack -c Release tusdotnet.csproj /p:Version=$version
 	cd..
 }
 
