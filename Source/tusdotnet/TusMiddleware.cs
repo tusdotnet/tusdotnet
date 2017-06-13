@@ -12,6 +12,7 @@ using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Expiration;
 
 namespace tusdotnet
 {
@@ -100,8 +101,17 @@ namespace tusdotnet
 					response.SetStatus((int)HttpStatusCode.NotFound);
 					return true;
 				}
+                
+			    if (store is ITusExpirationStore expirationStore)
+			    {
+			        var expires = await expirationStore.GetExpirationAsync(fileId, cancellationToken);
+			        if (expires?.HasPassed() == true)
+			        {
+			            return response.NotFound();
+			        }
+			    }
 
-				await store.DeleteFileAsync(fileId, cancellationToken);
+                await store.DeleteFileAsync(fileId, cancellationToken);
 				response.SetStatus((int)HttpStatusCode.NoContent);
 				response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 			}
@@ -115,7 +125,7 @@ namespace tusdotnet
 
 		private static async Task<bool> HandlePostRequest(ContextAdapter context)
 		{
-			/*
+            /*
 			 * Creation:
 			 * The Client MUST send a POST request against a known upload creation URL to request a new upload resource. 
 			 * The request MUST include one of the following headers:
@@ -152,9 +162,12 @@ namespace tusdotnet
 			 * When creating a new final upload the partial uploads’ metadata SHALL NOT be transferred to the new final upload.
 			 * All metadata SHOULD be included in the concatenation request using the Upload-Metadata header.
 			 * The Server MAY delete partial uploads after concatenation. They MAY however be used multiple times to form a final resource.
+             * 
+             * Expiration:
+             * If the expiration is known at the creation, the Upload-Expires header MUST be included in the response to the initial POST request. 
 			 */
 
-			var tusCreationStore = context.Configuration.Store as ITusCreationStore;
+            var tusCreationStore = context.Configuration.Store as ITusCreationStore;
 			if (tusCreationStore == null)
 			{
 				return false;
@@ -223,7 +236,9 @@ namespace tusdotnet
 			}
 
 			string fileId = null;
-			try
+            DateTimeOffset? expires = null;
+
+            try
 			{
 				if (tusConcatenationStore != null && uploadConcat != null)
 				{
@@ -297,7 +312,7 @@ namespace tusdotnet
 						fileId = await tusConcatenationStore.CreateFinalFileAsync(finalConcat.Files, metadata,
 							cancellationToken);
 
-						// Run callback that the final file is completed.
+					    // Run callback that the final file is completed.
 						if (context.Configuration.OnUploadCompleteAsync != null)
 						{
 							await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, cancellationToken);
@@ -308,7 +323,15 @@ namespace tusdotnet
 				{
 					fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
 				}
-			}
+
+			    if (context.Configuration.Store is ITusExpirationStore expirationStore
+			        && context.Configuration.Expiration != null
+                    && !(uploadConcat?.Type is FileConcatFinal))
+			    {
+			        expires = DateTimeOffset.UtcNow.Add(context.Configuration.Expiration.Timeout);
+			        await expirationStore.SetExpirationAsync(fileId, expires.Value, context.CancellationToken);
+			    }
+            }
 			catch (TusStoreException storeException)
 			{
 				await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
@@ -317,6 +340,12 @@ namespace tusdotnet
 
 			response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 			response.SetHeader(HeaderConstants.Location, $"{context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+
+		    if (expires != null)
+		    {
+		        response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
+		    }
+
 			response.SetStatus((int)HttpStatusCode.Created);
 			return true;
 		}
@@ -347,20 +376,19 @@ namespace tusdotnet
 				response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));
 			}
 
-			var checksumStore = context.Configuration.Store as ITusChecksumStore;
-			if (checksumStore != null)
-			{
-				var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(cancellationToken);
-				response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
-			}
+            if (context.Configuration.Store is ITusChecksumStore checksumStore)
+            {
+                var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(cancellationToken);
+                response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
+            }
 
-			response.SetStatus((int)HttpStatusCode.NoContent);
+            response.SetStatus((int)HttpStatusCode.NoContent);
 			return true;
 		}
 
 		private static async Task<bool> HandlePatchRequest(ContextAdapter context)
 		{
-			/*
+            /*
 			 * The Server SHOULD accept PATCH requests against any upload URL and apply the bytes 
 			 * contained in the message at the given offset specified by the Upload-Offset header. 
 			 * All PATCH requests MUST use Content-Type: application/offset+octet-stream.
@@ -382,9 +410,12 @@ namespace tusdotnet
 			 * Concatenation:
 			 * The Server MUST respond with the 403 Forbidden status to PATCH requests against a final upload URL and 
 			 * MUST NOT modify the final or its partial uploads.
+             * 
+             * Expiration:
+             * [Upload-Expires] This header MUST be included in every PATCH response if the upload is going to expire. 
 			 * */
-
-			var request = context.Request;
+            
+            var request = context.Request;
 			var response = context.Response;
 			var cancellationToken = context.CancellationToken;
 
@@ -395,7 +426,9 @@ namespace tusdotnet
 				? new Checksum(request.Headers[HeaderConstants.UploadChecksum].First())
 				: null;
 
-			var hasLock = fileLock.Lock(cancellationToken);
+		    var expirationStore = context.Configuration.Store as ITusExpirationStore;
+
+            var hasLock = fileLock.Lock(cancellationToken);
 
 			if (!hasLock)
 			{
@@ -471,13 +504,21 @@ namespace tusdotnet
 				var exists = await context.Configuration.Store.FileExistAsync(fileName, cancellationToken);
 				if (!exists)
 				{
-					response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-					response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
-					response.SetStatus((int)HttpStatusCode.NotFound);
-					return true;
+                   return response.NotFound();
 				}
 
-				var fileOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileName, cancellationToken);
+			    DateTimeOffset? expires = null;
+
+			    if (expirationStore != null)
+			    {
+			        expires = await expirationStore.GetExpirationAsync(fileName, cancellationToken);
+			        if (expires?.HasPassed() == true)
+			        {
+			            return response.NotFound();
+			        }
+			    }
+
+                var fileOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileName, cancellationToken);
 
 				if (requestOffset != fileOffset)
 				{
@@ -496,26 +537,34 @@ namespace tusdotnet
 				}
 
 				long bytesWritten;
-				try
-				{
-					bytesWritten = await context.Configuration.Store.AppendDataAsync(fileName, request.Body, cancellationToken);
-				}
-				catch (IOException ioException)
-				{
-					// Indicates that the client disconnected.
-					if (!ioException.ClientDisconnected())
-					{
-						throw;
-					}
+			    try
+			    {
+			        bytesWritten = await context.Configuration.Store.AppendDataAsync(fileName, request.Body, cancellationToken);
+			    }
+			    catch (IOException ioException)
+			    {
+			        // Indicates that the client disconnected.
+			        if (!ioException.ClientDisconnected())
+			        {
+			            throw;
+			        }
 
-					// Client disconnected so no need to return a response.
-					return true;
-				}
-				catch (TusStoreException storeException)
-				{
-					await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
-					throw;
-				}
+			        // Client disconnected so no need to return a response.
+			        return true;
+			    }
+			    catch (TusStoreException storeException)
+			    {
+			        await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
+			        throw;
+			    }
+			    finally
+			    {
+			        if (expirationStore != null && context.Configuration.Expiration is SlidingExpiration slidingExpiration)
+			        {
+			            expires = DateTimeOffset.UtcNow.Add(slidingExpiration.Timeout);
+			            await expirationStore.SetExpirationAsync(fileName, expires.Value, cancellationToken);
+			        }
+			    }
 
 				if (checksumStore != null && providedChecksum != null)
 				{
@@ -531,6 +580,12 @@ namespace tusdotnet
 
 				response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 				response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
+
+			    if (expires.HasValue)
+			    {
+			        response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
+			    }
+
 				response.SetStatus((int)HttpStatusCode.NoContent);
 
 				// Run OnUploadComplete if it has been provided.
@@ -548,7 +603,7 @@ namespace tusdotnet
 			return true;
 		}
 
-		private static async Task<bool> HandleHeadRequest(ContextAdapter context)
+	    private static async Task<bool> HandleHeadRequest(ContextAdapter context)
 		{
 			/*
 			 * The Server MUST always include the Upload-Offset header in the response for a HEAD request, 
@@ -586,7 +641,18 @@ namespace tusdotnet
 				return true;
 			}
 
-			var uploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileName, cancellationToken);
+		    DateTimeOffset? expires = null;
+		    if (context.Configuration.Store is ITusExpirationStore expirationStore)
+		    {
+		        expires = await expirationStore.GetExpirationAsync(fileName, cancellationToken);
+		    }
+
+		    if (expires?.HasPassed() == true)
+		    {
+		        return response.NotFound();
+		    }
+
+            var uploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileName, cancellationToken);
 			if (uploadLength != null)
 			{
 				response.SetHeader(HeaderConstants.UploadLength, uploadLength.Value.ToString());
@@ -699,6 +765,11 @@ namespace tusdotnet
 			{
 				extensions.Add(ExtensionConstants.Concatenation);
 			}
+
+		    if (context.Configuration.Store is ITusExpirationStore)
+		    {
+		        extensions.Add(ExtensionConstants.Expiration);
+		    }
 
 			return extensions;
 		}

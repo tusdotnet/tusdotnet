@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Models.Expiration;
 
 namespace tusdotnet.Interfaces
 {
@@ -29,5 +30,14 @@ namespace tusdotnet.Interfaces
         /// Set to null to allow any size. The size might still be restricted by the web server or operating system.
         /// </summary>
         int? MaxAllowedUploadSizeInBytes { get; }
+
+        /// <summary>
+        /// Set an expiration time where incomplete files can no longer be updated.
+        /// This value can either be <code>AbsoluteExpiration</code> or <code>SlidingExpiration</code>.
+        /// Absolute expiration will be saved per file when the file is created.
+        /// Sliding expiration will be saved per file when the file is created and updated on each time the file is updated.
+        /// Setting this property to null will disable file expiration.
+        /// </summary>
+        ExpirationBase Expiration { get; }
     }
 }

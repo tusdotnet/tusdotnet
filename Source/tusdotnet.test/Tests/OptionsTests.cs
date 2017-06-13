@@ -25,15 +25,15 @@ namespace tusdotnet.test.Tests
 		public OptionsTests()
 		{
 
-			var store = Substitute.For(new[]
-				{
-					typeof(ITusStore),
-					typeof(ITusCreationStore),
-					typeof(ITusTerminationStore),
-					typeof(ITusChecksumStore),
-					typeof(ITusConcatenationStore)
-				}, new object[0]) as
-				ITusStore;
+		    var store = (ITusStore)Substitute.For(new[]
+		    {
+		        typeof(ITusStore),
+		        typeof(ITusCreationStore),
+		        typeof(ITusTerminationStore),
+		        typeof(ITusChecksumStore),
+		        typeof(ITusConcatenationStore),
+		        typeof(ITusExpirationStore)
+		    }, new object[0]);
 
 			// ReSharper disable once PossibleNullReferenceException
 			((ITusChecksumStore)store).GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
@@ -117,7 +117,7 @@ namespace tusdotnet.test.Tests
 
 				response.ShouldContainHeader("Tus-Resumable", "1.0.0");
 				response.ShouldContainHeader("Tus-Version", "1.0.0");
-				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation");
+				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation,expiration");
 				response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
 			}
 

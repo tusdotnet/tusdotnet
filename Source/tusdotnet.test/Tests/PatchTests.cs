@@ -307,7 +307,8 @@ namespace tusdotnet.test.Tests
 
 				response.ShouldContainTusResumableHeader();
 				response.ShouldContainHeader("Upload-Offset", "10");
-			}
+			    response.Headers.Contains("Upload-Expires").ShouldBeFalse();
+            }
 		}
 
 		[Fact]

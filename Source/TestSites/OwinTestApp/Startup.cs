@@ -1,12 +1,14 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Owin;
 using Owin;
 using OwinTestApp;
 using tusdotnet;
 using tusdotnet.Models;
+using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
 
 [assembly: OwinStartup(typeof(Startup))]
@@ -15,7 +17,11 @@ namespace OwinTestApp
 {
 	public class Startup
 	{
-		public void Configuration(IAppBuilder app)
+
+	    private readonly AbsoluteExpiration _absoluteExpiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5));
+	    private readonly TusDiskStore _tusDiskStore = new TusDiskStore(@"C:\tusfiles\");
+
+        public void Configuration(IAppBuilder app)
 		{
 			app.Use(async (context, next) =>
 			{
@@ -29,19 +35,28 @@ namespace OwinTestApp
 				}
 			});
 
-			app.UseTus(request => new DefaultTusConfiguration
-			{
-				Store = new TusDiskStore(@"C:\tusfiles\"),
-				UrlPath = "/files",
-				OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
-				{
-					Console.WriteLine($"Upload of {fileId} is complete. Callback also got a store of type {store.GetType().FullName}");
-					// If the store implements ITusReadableStore one could access the completed file here.
-					// The default TusDiskStore implements this interface:
-					// var file = await (store as ITusReadableStore).GetFileAsync(fileId, cancellationToken);
-					return Task.FromResult(true);
-				}
-			});
+		    app.UseTus(request =>
+		    {
+		        return new DefaultTusConfiguration
+		        {
+		            Store = _tusDiskStore,
+		            UrlPath = "/files",
+		            OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
+		            {
+		                Console.WriteLine(
+		                    $"Upload of {fileId} is complete. Callback also got a store of type {store.GetType().FullName}");
+		                // If the store implements ITusReadableStore one could access the completed file here.
+		                // The default TusDiskStore implements this interface:
+		                // var file = await (store as ITusReadableStore).GetFileAsync(fileId, cancellationToken);
+		                return Task.FromResult(true);
+		            },
+                    // Set an expiration time where incomplete files can no longer be updated.
+                    // This value can either be absolute or sliding.
+                    // Absolute expiration will be saved per file on create
+                    // Sliding expiration will be saved per file on create and updated on each patch/update.
+		            Expiration = _absoluteExpiration
+		        };
+		    });
 
 			app.Use(async (context, next) =>
 			{
@@ -59,8 +74,7 @@ namespace OwinTestApp
 					var fileId = context.Request.Uri.LocalPath.Replace("/files/", "").Trim();
 					if (!string.IsNullOrEmpty(fileId))
 					{
-						var store = new TusDiskStore(@"C:\tusfiles\");
-						var file = await store.GetFileAsync(fileId, context.Request.CallCancelled);
+						var file = await _tusDiskStore.GetFileAsync(fileId, context.Request.CallCancelled);
 
 						if (file == null)
 						{
@@ -102,6 +116,22 @@ namespace OwinTestApp
 						break;
 				}
 			});
+
+            // Setup cleanup job to remove incomplete expired files.
+            // This is just a simple example. In production one would use a cronjob/webjob and poll an endpoint that runs RemoveExpiredFilesAsync.
+            var onAppDisposingToken = new OwinContext(app.Properties).Get<CancellationToken>("host.OnAppDisposing");
+		    Task.Run(async () =>
+		    {
+		        while (!onAppDisposingToken.IsCancellationRequested)
+		        {
+                    Console.WriteLine("Running cleanup job...");
+		            var numberOfRemovedFiles = await _tusDiskStore.RemoveExpiredFilesAsync(onAppDisposingToken);
+		            Console.WriteLine(
+		                $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_absoluteExpiration.Timeout.TotalMilliseconds} ms");
+                    await Task.Delay(_absoluteExpiration.Timeout, onAppDisposingToken);
+		        }
+		    }, onAppDisposingToken);
+
 		}
 	}
 }
