@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using tusdotnet;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Stores;
 
@@ -16,6 +17,7 @@ namespace AspNetCoreTestApp
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -27,6 +29,12 @@ namespace AspNetCoreTestApp
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseCors(builder => builder
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowAnyOrigin()
+                .WithExposedHeaders(CorsHelper.GetExposedHeaders()));
 
 			app.UseDefaultFiles();
 			app.UseStaticFiles();

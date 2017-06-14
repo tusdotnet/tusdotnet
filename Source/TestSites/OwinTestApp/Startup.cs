@@ -4,9 +4,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Owin;
+using Microsoft.Owin.Cors;
 using Owin;
 using OwinTestApp;
 using tusdotnet;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
@@ -22,7 +24,27 @@ namespace OwinTestApp
 	    private readonly TusDiskStore _tusDiskStore = new TusDiskStore(@"C:\tusfiles\");
 
         public void Configuration(IAppBuilder app)
-		{
+        {
+            var corsPolicy = new System.Web.Cors.CorsPolicy
+            {
+                AllowAnyHeader = true,
+                AllowAnyMethod = true,
+                AllowAnyOrigin = true
+            };
+
+            // ReSharper disable once PossibleNullReferenceException - nameof will cause compiler error if the property does not exist.
+            corsPolicy.GetType()
+                .GetProperty(nameof(corsPolicy.ExposedHeaders))
+                .SetValue(corsPolicy, CorsHelper.GetExposedHeaders());
+
+            app.UseCors(new CorsOptions
+            {
+                PolicyProvider = new CorsPolicyProvider
+                {
+                    PolicyResolver = context => Task.FromResult(corsPolicy)
+                }
+            });
+
 			app.Use(async (context, next) =>
 			{
 				try
