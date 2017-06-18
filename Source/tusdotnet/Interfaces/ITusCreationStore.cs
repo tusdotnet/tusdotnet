@@ -3,7 +3,10 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Interfaces
 {
-	public interface ITusCreationStore
+    /// <summary>
+    /// Store support for creation: http://tus.io/protocols/resumable-upload.html#creation
+    /// </summary>
+    public interface ITusCreationStore
 	{
 		/// <summary>
 		/// Create a file upload reference that can later be used to upload data.
