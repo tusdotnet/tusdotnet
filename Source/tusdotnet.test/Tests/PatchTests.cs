@@ -87,7 +87,7 @@ namespace tusdotnet.test.Tests
 			{
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddHeader("Upload-Offset", "0")
 					.AddTusResumableHeader()
 					.SendAsync("PATCH");
@@ -121,7 +121,7 @@ namespace tusdotnet.test.Tests
 
 				if (contentType != null)
 				{
-					requestBuilder = requestBuilder.And(message => AddBody(message, contentType));
+					requestBuilder = requestBuilder.And(m => m.AddBody(contentType));
 				}
 
 				var response = await requestBuilder.SendAsync("PATCH");
@@ -147,7 +147,7 @@ namespace tusdotnet.test.Tests
 
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.SendAsync("patch");
 
@@ -175,7 +175,7 @@ namespace tusdotnet.test.Tests
 
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddHeader("Upload-Offset", uploadOffset)
 					.AddTusResumableHeader()
 					.SendAsync("patch");
@@ -209,7 +209,7 @@ namespace tusdotnet.test.Tests
 
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", offset.ToString())
 					.SendAsync("PATCH");
@@ -239,7 +239,7 @@ namespace tusdotnet.test.Tests
 
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "10")
 					.SendAsync("PATCH");
@@ -269,7 +269,7 @@ namespace tusdotnet.test.Tests
 
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5")
 					.OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -284,7 +284,7 @@ namespace tusdotnet.test.Tests
 		{
 			using (var server = TestServerFactory.Create(app =>
 			{
-				var store = Substitute.For<ITusStore>();
+				var store = Substitute.For<ITusStore, ITusCreationDeferLengthStore>();
 				store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
 				store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
 				store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
@@ -299,7 +299,7 @@ namespace tusdotnet.test.Tests
 			{
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5")
 					.OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -334,7 +334,7 @@ namespace tusdotnet.test.Tests
 			{
 				var requestBuilder = server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5");
 
@@ -383,7 +383,7 @@ namespace tusdotnet.test.Tests
 			{
 				var response = await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5")
 					.SendAsync("PATCH");
@@ -413,7 +413,7 @@ namespace tusdotnet.test.Tests
 				// ReSharper disable once AccessToDisposedClosure
 				await Should.ThrowAsync<IOException>(async () => await server
 					.CreateRequest("/files/testfile")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5")
 					.SendAsync("PATCH"));
@@ -538,7 +538,7 @@ namespace tusdotnet.test.Tests
 			{
 				var response1 = await server
 					.CreateRequest("/files/file1")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddHeader("Upload-Offset", "3")
 					.AddTusResumableHeader()
 					.SendAsync("PATCH");
@@ -547,7 +547,7 @@ namespace tusdotnet.test.Tests
 
 				var response2 = await server
 					.CreateRequest("/files/file2")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddHeader("Upload-Offset", "2")
 					.AddTusResumableHeader()
 					.SendAsync("PATCH");
@@ -557,7 +557,7 @@ namespace tusdotnet.test.Tests
 				// File is already complete, make sure it does not run OnUploadComplete twice.
 				response1 = await server
 					.CreateRequest("/files/file1")
-					.And(AddBody)
+					.And(m => m.AddBody())
 					.AddHeader("Upload-Offset", "6")
 					.AddTusResumableHeader()
 					.SendAsync("PATCH");
@@ -568,17 +568,6 @@ namespace tusdotnet.test.Tests
 				onUploadCompleteCallCounts.ContainsKey("file1").ShouldBeTrue();
 				onUploadCompleteCallCounts["file1"].ShouldBe(1);
 			}
-		}
-
-		private static void AddBody(HttpRequestMessage message)
-		{
-			AddBody(message, "application/offset+octet-stream");
-		}
-
-		private static void AddBody(HttpRequestMessage message, string contentType)
-		{
-			message.Content = new ByteArrayContent(new byte[] { 0, 0, 0 });
-			message.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 		}
 	}
 }

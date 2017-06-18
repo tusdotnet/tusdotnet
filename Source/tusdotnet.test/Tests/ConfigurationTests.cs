@@ -9,7 +9,6 @@ using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
 #if netfull
-using Owin;
 using Microsoft.Owin.Testing;
 using Microsoft.Owin;
 #endif

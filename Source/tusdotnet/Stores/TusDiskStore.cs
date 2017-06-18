@@ -20,7 +20,8 @@ namespace tusdotnet.Stores
         ITusTerminationStore,
         ITusChecksumStore,
         ITusConcatenationStore,
-        ITusExpirationStore
+        ITusExpirationStore,
+        ITusCreationDeferLengthStore
     {
         private readonly string _directoryPath;
         private readonly Dictionary<string, long> _lengthBeforeWrite;
@@ -112,14 +113,17 @@ namespace tusdotnet.Stores
             return Task.FromResult(new FileInfo(GetPath(fileId)).Length);
         }
 
-        public Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+        public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
         {
             var fileId = Guid.NewGuid().ToString("n");
             var path = GetPath(fileId);
             File.Create(path).Dispose();
-            File.WriteAllText($"{path}.uploadlength", uploadLength.ToString());
+            if (uploadLength != -1)
+            {
+                await SetUploadLengthAsync(fileId, uploadLength, cancellationToken);
+            }
             File.WriteAllText($"{path}.metadata", metadata);
-            return Task.FromResult(fileId);
+            return fileId;
         }
 
         public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
@@ -299,6 +303,15 @@ namespace tusdotnet.Stores
                 await Task.WhenAll(tasks);
                 return tasks.Count;
             }
+        }
+
+        public Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                var path = GetPath(fileId);
+                File.WriteAllText($"{path}.uploadlength", uploadLength.ToString());
+            }, cancellationToken);
         }
 
         private string GetPath(string fileId)

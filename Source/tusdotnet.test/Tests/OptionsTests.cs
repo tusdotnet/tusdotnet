@@ -32,7 +32,8 @@ namespace tusdotnet.test.Tests
 		        typeof(ITusTerminationStore),
 		        typeof(ITusChecksumStore),
 		        typeof(ITusConcatenationStore),
-		        typeof(ITusExpirationStore)
+		        typeof(ITusExpirationStore),
+                typeof(ITusCreationDeferLengthStore)
 		    }, new object[0]);
 
 			// ReSharper disable once PossibleNullReferenceException
@@ -117,7 +118,7 @@ namespace tusdotnet.test.Tests
 
 				response.ShouldContainHeader("Tus-Resumable", "1.0.0");
 				response.ShouldContainHeader("Tus-Version", "1.0.0");
-				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation,expiration");
+				response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation,expiration,creation-defer-length");
 				response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
 			}
 

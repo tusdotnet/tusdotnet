@@ -13,9 +13,8 @@
 
 		public const string UploadLength = "Upload-Length";
 
-		// TODO: Implement at some point. The disk store does not yet support this.
-		//public const string UploadDeferLength = "Upload-Defer-Length";
-		public const string UploadOffset = "Upload-Offset";
+        public const string UploadDeferLength = "Upload-Defer-Length";
+        public const string UploadOffset = "Upload-Offset";
 		public const string UploadMetadata = "Upload-Metadata";
 		public const string UploadChecksum = "Upload-Checksum";
 		public const string UploadConcat = "Upload-Concat";

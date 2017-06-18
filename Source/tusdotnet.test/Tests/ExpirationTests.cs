@@ -2,8 +2,6 @@
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using NSubstitute;
@@ -55,7 +53,7 @@ namespace tusdotnet.test.Tests
             {
                 var response = await server
                     .CreateRequest("/files/expirationtestfile")
-                    .And(AddBody)
+                    .And(m => m.AddBody())
                     .AddTusResumableHeader()
                     .AddHeader("Upload-Offset", "3")
                     .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -94,7 +92,7 @@ namespace tusdotnet.test.Tests
             {
                 var response = await server
                     .CreateRequest("/files/expirationtestfile")
-                    .And(AddBody)
+                    .And(m => m.AddBody())
                     .AddTusResumableHeader()
                     .AddHeader("Upload-Offset", "3")
                     .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -277,7 +275,7 @@ namespace tusdotnet.test.Tests
                 {
                     var response = await server
                         .CreateRequest("/files/expirationtestfile")
-                        .And(AddBody)
+                        .And(m => m.AddBody())
                         .AddTusResumableHeader()
                         .AddHeader("Upload-Offset", offset.ToString())
                         .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -330,7 +328,7 @@ namespace tusdotnet.test.Tests
             {
                 var response = await server
                     .CreateRequest("/files/testexpiration")
-                    .And(AddBody)
+                    .And(m => m.AddBody())
                     .AddTusResumableHeader()
                     .AddHeader("Upload-Offset", offset.ToString())
                     .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -341,7 +339,7 @@ namespace tusdotnet.test.Tests
 
                 response = await server
                     .CreateRequest("/files/testexpiration")
-                    .And(AddBody)
+                    .And(m => m.AddBody())
                     .AddTusResumableHeader()
                     .AddHeader("Upload-Offset", offset.ToString())
                     .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
@@ -380,7 +378,7 @@ namespace tusdotnet.test.Tests
                 {
                     var response = await server
                         .CreateRequest("/files/expirationtestfile")
-                        .And(AddBody)
+                        .And(m => m.AddBody())
                         .AddTusResumableHeader()
                         .OverrideHttpMethodIfNeeded(method, methodToUse)
                         .SendAsync(methodToUse);
@@ -388,12 +386,6 @@ namespace tusdotnet.test.Tests
                     response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
                 }
             }
-        }
-
-        private static void AddBody(HttpRequestMessage message)
-        {
-            message.Content = new ByteArrayContent(new byte[] { 0, 0, 0 });
-            message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/offset+octet-stream");
         }
     }
 }

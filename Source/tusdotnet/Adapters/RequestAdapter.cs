@@ -12,19 +12,11 @@ namespace tusdotnet.Adapters
 		public Stream Body { get; set; }
 		public Dictionary<string, List<string>> Headers { get; set; }
 
-		public string ContentType
-		{
-			get
-			{
-				if (Headers == null)
-				{
-					return null;
-				}
+	    public string ContentType => GetHeader("Content-Type");
 
-				return Headers.ContainsKey("Content-Type")
-					? Headers["Content-Type"].FirstOrDefault()
-					: null;
-			}
-		} 
+	    public string GetHeader(string name)
+	    {
+	        return Headers?.ContainsKey(name) == true ? Headers[name].First() : null;
+	    }
 	}
 }

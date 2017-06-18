@@ -1,5 +1,7 @@
 ﻿using System;
+#if netstandard
 using System.Linq;
+#endif
 using System.Reflection;
 using System.Text;
 using Shouldly;
@@ -57,15 +59,15 @@ namespace tusdotnet.test.Tests.ModelTests
 		[Fact]
 		public void Ctor_Throws_Exception_If_Encoded_Value_Is_Null_Or_Empty()
 		{
-			Action<ConstructorInfo, object> assertArgumentNullException = (ctor, ctorValue) =>
-			{
-				var exception = Should.Throw<TargetInvocationException>(() => ctor.Invoke(new[] { ctorValue }));
-				exception.InnerException.ShouldNotBeNull();
-				// ReSharper disable once PossibleNullReferenceException
-				exception.InnerException.GetType().ShouldBe(typeof(ArgumentNullException));
-			};
+		    void AssertArgumentNullException(ConstructorInfo ctor, object ctorValue)
+		    {
+		        var exception = Should.Throw<TargetInvocationException>(() => ctor.Invoke(new[] {ctorValue}));
+		        exception.InnerException.ShouldNotBeNull();
+		        // ReSharper disable once PossibleNullReferenceException
+		        exception.InnerException.GetType().ShouldBe(typeof(ArgumentNullException));
+		    }
 
-			// Ctor is private so use reflection to fetch it and create an instance.
+		    // Ctor is private so use reflection to fetch it and create an instance.
 #if netfull
 			var constructor = typeof(Metadata).GetConstructor(
 				BindingFlags.Instance | BindingFlags.NonPublic,
@@ -86,9 +88,9 @@ namespace tusdotnet.test.Tests.ModelTests
 
 			Should.NotThrow(() => constructor.Invoke(new object[] { "d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==" }));
 
-			assertArgumentNullException(constructor, null);
-			assertArgumentNullException(constructor, "");
-			assertArgumentNullException(constructor, " ");
+			AssertArgumentNullException(constructor, null);
+			AssertArgumentNullException(constructor, "");
+			AssertArgumentNullException(constructor, " ");
 		}
 	}
 }

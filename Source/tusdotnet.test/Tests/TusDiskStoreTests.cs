@@ -579,6 +579,20 @@ namespace tusdotnet.test.Tests
             }
         }
 
+        [Fact]
+        public async Task SetUploadLengthAsync()
+        {
+            var fileId = await _fixture.Store.CreateFileAsync(-1, null, CancellationToken.None);
+
+            var uploadLength = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
+            uploadLength.ShouldBeNull();
+
+            await _fixture.Store.SetUploadLengthAsync(fileId, 100, CancellationToken.None);
+
+            uploadLength = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
+            uploadLength.ShouldBe(100);
+        }
+
         [Fact(Skip = "No need to run it each time")]
         public async Task RemoveExpiredFilesAsync_PerformanceTest()
         {

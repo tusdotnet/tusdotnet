@@ -30,7 +30,7 @@ namespace tusdotnet.Interfaces
 		Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken);
 
 		/// <summary>
-		/// Returns the upload length specified when the file was created or null if Defer-Upload-Lenght was used.
+		/// Returns the upload length specified when the file was created or null if Defer-Upload-Length was used.
 		/// </summary>
 		/// <param name="fileId">The id of the file to check</param>
 		/// <param name="cancellationToken">Cancellation token to use when cancelling</param>
