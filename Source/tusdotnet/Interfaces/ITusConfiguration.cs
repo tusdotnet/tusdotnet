@@ -5,10 +5,13 @@ using tusdotnet.Models.Expiration;
 
 namespace tusdotnet.Interfaces
 {
+    /// <summary>
+    /// Represents the configuration used by tusdotnet.
+    /// </summary>
     public interface ITusConfiguration
     {
         /// <summary>
-        /// The url path to listen for uploads on, e.g. "/files"
+        /// The url path to listen for uploads on (e.g. "/files").
         /// If the site is located in a subpath (e.g. https://example.org/mysite) it must also be included (e.g. /mysite/files) 
         /// </summary>
         string UrlPath { get; }
