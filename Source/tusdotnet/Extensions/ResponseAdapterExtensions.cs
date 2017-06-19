@@ -16,7 +16,7 @@ namespace tusdotnet.Extensions
             return true;
         }
 
-        internal static async Task<bool> RespondAsync(this ResponseAdapter response, HttpStatusCode statusCode, string message)
+        internal static async Task<bool> Error(this ResponseAdapter response, HttpStatusCode statusCode, string message)
         {
             response.SetHeader(HeaderConstants.ContentType, "text/plain");
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);

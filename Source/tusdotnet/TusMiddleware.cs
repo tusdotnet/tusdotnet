@@ -19,7 +19,7 @@ namespace tusdotnet
     {
         public static async Task<bool> Invoke(ContextAdapter context)
         {
-            ValidateConfig(context.Configuration);
+            context.Configuration.Validate();
 
             var request = context.Request;
             var response = context.Response;
@@ -39,10 +39,8 @@ namespace tusdotnet
             {
                 response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
                 response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
-                await RespondAsync(response,
-                    HttpStatusCode.PreconditionFailed,
+                return await response.Error(HttpStatusCode.PreconditionFailed,
                     $"Tus version {tusResumable} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
-                return true;
             }
 
             switch (method)
@@ -78,16 +76,14 @@ namespace tusdotnet
             var response = context.Response;
             var cancellationToken = context.CancellationToken;
 
-            var fileId = GetFileName(context);
+            var fileId = context.GetFileId();
             var fileLock = new FileLock(fileId);
 
             var hasLock = fileLock.Lock(cancellationToken);
             if (!hasLock)
             {
-                await
-                    RespondAsync(response, HttpStatusCode.Conflict,
-                        $"File {fileId} is currently being updated. Please try again later");
-                return true;
+                return await response.Error(HttpStatusCode.Conflict,
+                    $"File {fileId} is currently being updated. Please try again later");
             }
 
             try
@@ -183,8 +179,7 @@ namespace tusdotnet
                 uploadConcat = new UploadConcat(request.Headers[HeaderConstants.UploadConcat].First(), context.Configuration.UrlPath);
                 if (!uploadConcat.IsValid)
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest, uploadConcat.ErrorMessage);
-                    return true;
+                    return await response.Error( HttpStatusCode.BadRequest, uploadConcat.ErrorMessage);
                 }
             }
 
@@ -206,8 +201,7 @@ namespace tusdotnet
                     Metadata.ValidateMetadataHeader(request.Headers[HeaderConstants.UploadMetadata].First());
                 if (!string.IsNullOrEmpty(validateMetadataResult))
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest, validateMetadataResult);
-                    return true;
+                    return await response.Error( HttpStatusCode.BadRequest, validateMetadataResult);
                 }
 
                 metadata = request.Headers[HeaderConstants.UploadMetadata].FirstOrDefault();
@@ -233,10 +227,9 @@ namespace tusdotnet
 
                         if (filesExist.Any(f => !f))
                         {
-                            await RespondAsync(response,
+                            return await response.Error(
                                 HttpStatusCode.BadRequest,
                                 $"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}");
-                            return true;
                         }
 
                         var filesArePartial = await Task.WhenAll(finalConcat.Files.Select(f =>
@@ -244,11 +237,10 @@ namespace tusdotnet
 
                         if (filesArePartial.Any(f => !(f is FileConcatPartial)))
                         {
-                            await RespondAsync(response,
+                            return await response.Error(
                                 HttpStatusCode.BadRequest,
                                 $"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}"
                             );
-                            return true;
                         }
 
                         var incompleteFiles = new List<string>();
@@ -272,18 +264,15 @@ namespace tusdotnet
 
                         if (incompleteFiles.Any())
                         {
-                            await RespondAsync(response,
+                            return await response.Error(
                                 HttpStatusCode.BadRequest,
                                 $"Some of the files supplied for concatenation are not finished and can not be concatenated: {string.Join(", ", incompleteFiles)}");
-                            return true;
                         }
 
-                        if (context.Configuration.MaxAllowedUploadSizeInBytes.HasValue && totalSize > context.Configuration.MaxAllowedUploadSizeInBytes.Value)
+                        if (totalSize > context.Configuration.MaxAllowedUploadSizeInBytes)
                         {
-                            await RespondAsync(response,
-                                HttpStatusCode.RequestEntityTooLarge,
+                            return await response.Error(HttpStatusCode.RequestEntityTooLarge,
                                 "The concatenated file exceeds the server's max file size.");
-                            return true;
                         }
 
                         fileId = await tusConcatenationStore.CreateFinalFileAsync(finalConcat.Files, metadata,
@@ -311,8 +300,7 @@ namespace tusdotnet
             }
             catch (TusStoreException storeException)
             {
-                await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
-                return true;
+                return await response.Error( HttpStatusCode.BadRequest, storeException.Message);
             }
 
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
@@ -338,7 +326,7 @@ namespace tusdotnet
 
             if (uploadLengthHeader != null && uploadDeferLengthHeader != null)
             {
-                await response.RespondAsync(HttpStatusCode.BadRequest,
+                await response.Error(HttpStatusCode.BadRequest,
                     $"Headers {HeaderConstants.UploadLength} and {HeaderConstants.UploadDeferLength} are mutually exclusive and cannot be used in the same request");
                 return handledInvalid;
             }
@@ -352,7 +340,7 @@ namespace tusdotnet
                 }
                 else
                 {
-                    await response.RespondAsync(uploadLengthErrorMessage.Item1, uploadLengthErrorMessage.Item2);
+                    await response.Error(uploadLengthErrorMessage.Item1, uploadLengthErrorMessage.Item2);
                     return handledInvalid;
                 }
             }
@@ -361,7 +349,7 @@ namespace tusdotnet
                 if (uploadDeferLengthHeader != "1")
                 {
                     return new Tuple<bool, long>(
-                        await response.RespondAsync(HttpStatusCode.BadRequest,
+                        await response.Error(HttpStatusCode.BadRequest,
                             $"Header {HeaderConstants.UploadDeferLength} must have the value '1' or be omitted"),
                         -1
                     );
@@ -421,7 +409,7 @@ namespace tusdotnet
                 response.SetHeader(HeaderConstants.TusMaxSize, context.Configuration.MaxAllowedUploadSizeInBytes.Value.ToString());
             }
 
-            var extensions = DetectExtensions(context);
+            var extensions = context.DetectExtensions();
             if (extensions.Any())
             {
                 response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));
@@ -470,8 +458,8 @@ namespace tusdotnet
             var response = context.Response;
             var cancellationToken = context.CancellationToken;
 
-            var fileName = GetFileName(context);
-            var fileLock = new FileLock(fileName);
+            var fileId = context.GetFileId();
+            var fileLock = new FileLock(fileId);
             var checksumStore = context.Configuration.Store as ITusChecksumStore;
             var providedChecksum = request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
                 ? new Checksum(request.Headers[HeaderConstants.UploadChecksum].First())
@@ -483,10 +471,8 @@ namespace tusdotnet
 
             if (!hasLock)
             {
-                await
-                    RespondAsync(response, HttpStatusCode.Conflict,
-                        $"File {fileName} is currently being updated. Please try again later");
-                return true;
+                return await response.Error(HttpStatusCode.Conflict,
+                        $"File {fileId} is currently being updated. Please try again later");
             }
 
             try
@@ -497,12 +483,11 @@ namespace tusdotnet
                 FileConcat uploadConcat = null;
                 if (concatStore != null)
                 {
-                    uploadConcat = await concatStore.GetUploadConcatAsync(fileName, cancellationToken);
+                    uploadConcat = await concatStore.GetUploadConcatAsync(fileId, cancellationToken);
 
                     if (uploadConcat is FileConcatFinal)
                     {
-                        await RespondAsync(response, HttpStatusCode.Forbidden, "File with \"Upload-Concat: final\" cannot be patched");
-                        return true;
+                        return await response.Error( HttpStatusCode.Forbidden, "File with \"Upload-Concat: final\" cannot be patched");
                     }
                 }
 
@@ -510,26 +495,25 @@ namespace tusdotnet
                     !request.ContentType.Equals("application/offset+octet-stream",
                         StringComparison.OrdinalIgnoreCase))
                 {
-                    await RespondAsync(response,
+                    return await response.Error(
                         HttpStatusCode.BadRequest,
                         $"Content-Type {request.ContentType} is invalid. Must be application/offset+octet-stream");
-                    return true;
                 }
 
-                var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileName, cancellationToken);
+                var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileId, cancellationToken);
 
                 if (creationDeferLengthStore != null)
                 {
                     if (!request.Headers.ContainsKey(HeaderConstants.UploadLength) && fileUploadLength == null)
                     {
-                        return await response.RespondAsync(HttpStatusCode.BadRequest,
+                        return await response.Error(HttpStatusCode.BadRequest,
                             $"Header {HeaderConstants.UploadLength} must be specified as this file was created using Upload-Defer-Length");
                     }
                     else
                     {
                         if (request.Headers.ContainsKey(HeaderConstants.UploadLength) && fileUploadLength != null)
                         {
-                            return await response.RespondAsync(HttpStatusCode.BadRequest,
+                            return await response.Error(HttpStatusCode.BadRequest,
                                 $"{HeaderConstants.UploadLength} cannot be updated once set");
                         }
                     }
@@ -537,42 +521,37 @@ namespace tusdotnet
 
                 if (!request.Headers.ContainsKey(HeaderConstants.UploadOffset))
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadOffset} header");
-                    return true;
+                    return await response.Error( HttpStatusCode.BadRequest, $"Missing {HeaderConstants.UploadOffset} header");
                 }
 
 
                 if (!long.TryParse(request.Headers[HeaderConstants.UploadOffset].FirstOrDefault(), out long requestOffset))
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadOffset} header");
-                    return true;
+                    return await response.Error( HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadOffset} header");
                 }
 
                 if (requestOffset < 0)
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest,
+                    return await response.Error( HttpStatusCode.BadRequest,
                         $"Header {HeaderConstants.UploadOffset} must be a positive number");
-                    return true;
                 }
 
                 if (checksumStore != null && providedChecksum != null)
                 {
                     if (!providedChecksum.IsValid)
                     {
-                        await RespondAsync(response, HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadChecksum} header");
-                        return true;
+                        return await response.Error( HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadChecksum} header");
                     }
 
                     var checksumAlgorithms = (await checksumStore.GetSupportedAlgorithmsAsync(cancellationToken)).ToList();
                     if (!checksumAlgorithms.Contains(providedChecksum.Algorithm))
                     {
-                        await RespondAsync(response, HttpStatusCode.BadRequest,
+                        return await response.Error( HttpStatusCode.BadRequest,
                             $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}");
-                        return true;
                     }
                 }
 
-                var exists = await context.Configuration.Store.FileExistAsync(fileName, cancellationToken);
+                var exists = await context.Configuration.Store.FileExistAsync(fileId, cancellationToken);
                 if (!exists)
                 {
                     return response.NotFound();
@@ -582,27 +561,25 @@ namespace tusdotnet
 
                 if (expirationStore != null)
                 {
-                    expires = await expirationStore.GetExpirationAsync(fileName, cancellationToken);
+                    expires = await expirationStore.GetExpirationAsync(fileId, cancellationToken);
                     if (expires?.HasPassed() == true)
                     {
                         return response.NotFound();
                     }
                 }
 
-                var fileOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileName, cancellationToken);
+                var fileOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileId, cancellationToken);
 
                 if (requestOffset != fileOffset)
                 {
-                    await RespondAsync(response,
+                    return await response.Error(
                         HttpStatusCode.Conflict,
                         $"Offset does not match file. File offset: {fileOffset}. Request offset: {requestOffset}");
-                    return true;
                 }
 
                 if (fileUploadLength != null && fileOffset == fileUploadLength.Value)
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest, "Upload is already complete.");
-                    return true;
+                    return await response.Error( HttpStatusCode.BadRequest, "Upload is already complete.");
                 }
 
                 if (creationDeferLengthStore != null && request.Headers.ContainsKey(HeaderConstants.UploadLength))
@@ -612,7 +589,7 @@ namespace tusdotnet
 
                     if (uploadLengthResult.Item1 == HttpStatusCode.OK)
                     {
-                        await creationDeferLengthStore.SetUploadLengthAsync(fileName, uploadLengthResult.Item3,
+                        await creationDeferLengthStore.SetUploadLengthAsync(fileId, uploadLengthResult.Item3,
                             cancellationToken);
                     }
                 }
@@ -620,7 +597,7 @@ namespace tusdotnet
                 long bytesWritten;
                 try
                 {
-                    bytesWritten = await context.Configuration.Store.AppendDataAsync(fileName, request.Body, cancellationToken);
+                    bytesWritten = await context.Configuration.Store.AppendDataAsync(fileId, request.Body, cancellationToken);
                 }
                 catch (IOException ioException)
                 {
@@ -635,7 +612,7 @@ namespace tusdotnet
                 }
                 catch (TusStoreException storeException)
                 {
-                    await RespondAsync(response, HttpStatusCode.BadRequest, storeException.Message);
+                    await response.Error( HttpStatusCode.BadRequest, storeException.Message);
                     throw;
                 }
                 finally
@@ -643,19 +620,18 @@ namespace tusdotnet
                     if (expirationStore != null && context.Configuration.Expiration is SlidingExpiration slidingExpiration)
                     {
                         expires = DateTimeOffset.UtcNow.Add(slidingExpiration.Timeout);
-                        await expirationStore.SetExpirationAsync(fileName, expires.Value, cancellationToken);
+                        await expirationStore.SetExpirationAsync(fileId, expires.Value, cancellationToken);
                     }
                 }
 
                 if (checksumStore != null && providedChecksum != null)
                 {
                     var validChecksum = await checksumStore
-                        .VerifyChecksumAsync(fileName, providedChecksum.Algorithm, providedChecksum.Hash, cancellationToken);
+                        .VerifyChecksumAsync(fileId, providedChecksum.Algorithm, providedChecksum.Hash, cancellationToken);
 
                     if (!validChecksum)
                     {
-                        await RespondAsync(response, (HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
-                        return true;
+                        return await response.Error( (HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
                     }
                 }
 
@@ -673,7 +649,7 @@ namespace tusdotnet
                 var fileIsComplete = fileUploadLength != null && (fileOffset + bytesWritten) == fileUploadLength.Value;
                 if (fileIsComplete && !(uploadConcat is FileConcatPartial) && context.Configuration.OnUploadCompleteAsync != null)
                 {
-                    await context.Configuration.OnUploadCompleteAsync(fileName, context.Configuration.Store, cancellationToken);
+                    await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, cancellationToken);
                 }
             }
             finally
@@ -711,9 +687,9 @@ namespace tusdotnet
             var response = context.Response;
             var cancellationToken = context.CancellationToken;
 
-            var fileName = GetFileName(context);
+            var fileId = context.GetFileId();
 
-            var exists = await context.Configuration.Store.FileExistAsync(fileName, cancellationToken);
+            var exists = await context.Configuration.Store.FileExistAsync(fileId, cancellationToken);
             if (!exists)
             {
                 return response.NotFound();
@@ -722,7 +698,7 @@ namespace tusdotnet
             DateTimeOffset? expires = null;
             if (context.Configuration.Store is ITusExpirationStore expirationStore)
             {
-                expires = await expirationStore.GetExpirationAsync(fileName, cancellationToken);
+                expires = await expirationStore.GetExpirationAsync(fileId, cancellationToken);
             }
 
             if (expires?.HasPassed() == true)
@@ -730,7 +706,7 @@ namespace tusdotnet
                 return response.NotFound();
             }
 
-            var uploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileName, cancellationToken);
+            var uploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileId, cancellationToken);
             if (uploadLength != null)
             {
                     response.SetHeader(HeaderConstants.UploadLength, uploadLength.Value.ToString());
@@ -742,21 +718,21 @@ namespace tusdotnet
 
             if (context.Configuration.Store is ITusCreationStore tusCreationStore)
             {
-                var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileName, cancellationToken);
+                var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileId, cancellationToken);
                 if (!string.IsNullOrEmpty(uploadMetadata))
                 {
                     response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
                 }
             }
 
-            var uploadOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileName, cancellationToken);
+            var uploadOffset = await context.Configuration.Store.GetUploadOffsetAsync(fileId, cancellationToken);
 
             var tusConcatStore = context.Configuration.Store as ITusConcatenationStore;
             FileConcat uploadConcat = null;
             var addUploadOffset = true;
             if (tusConcatStore != null)
             {
-                uploadConcat = await tusConcatStore.GetUploadConcatAsync(fileName, cancellationToken);
+                uploadConcat = await tusConcatStore.GetUploadConcatAsync(fileId, cancellationToken);
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -794,87 +770,14 @@ namespace tusdotnet
             {
                 case "post":
                 case "options":
-                    return IsExactUrlMatch(context);
+                    return context.IsExactUrlMatch();
                 case "head":
                 case "patch":
                 case "delete":
-                    return !IsExactUrlMatch(context) &&
+                    return !context.IsExactUrlMatch() &&
                            request.RequestUri.LocalPath.StartsWith(context.Configuration.UrlPath, StringComparison.OrdinalIgnoreCase);
                 default:
                     return false;
-            }
-        }
-
-        private static string GetFileName(ContextAdapter context)
-        {
-            var request = context.Request;
-            var startIndex = request
-                                 .RequestUri
-                                 .LocalPath
-                                 .IndexOf(context.Configuration.UrlPath, StringComparison.OrdinalIgnoreCase) + context.Configuration.UrlPath.Length;
-            return request
-                .RequestUri
-                .LocalPath
-                .Substring(startIndex)
-                .Trim('/');
-        }
-
-        private static bool IsExactUrlMatch(ContextAdapter context)
-        {
-            return context.Request.RequestUri.LocalPath.TrimEnd('/') == context.Configuration.UrlPath.TrimEnd('/');
-        }
-
-        private static List<string> DetectExtensions(ContextAdapter context)
-        {
-            var extensions = new List<string>();
-            if (context.Configuration.Store is ITusCreationStore)
-            {
-                extensions.Add(ExtensionConstants.Creation);
-            }
-
-            if (context.Configuration.Store is ITusTerminationStore)
-            {
-                extensions.Add(ExtensionConstants.Termination);
-            }
-
-            if (context.Configuration.Store is ITusChecksumStore)
-            {
-                extensions.Add(ExtensionConstants.Checksum);
-            }
-
-            if (context.Configuration.Store is ITusConcatenationStore)
-            {
-                extensions.Add(ExtensionConstants.Concatenation);
-            }
-
-            if (context.Configuration.Store is ITusExpirationStore)
-            {
-                extensions.Add(ExtensionConstants.Expiration);
-            }
-
-            if (context.Configuration.Store is ITusCreationDeferLengthStore)
-            {
-                extensions.Add(ExtensionConstants.CreationDeferLength);
-            }
-
-            return extensions;
-        }
-
-        private static Task RespondAsync(ResponseAdapter response, HttpStatusCode statusCode, string message)
-        {
-            return response.RespondAsync(statusCode, message);
-        }
-
-        private static void ValidateConfig(ITusConfiguration config)
-        {
-            if (config.Store == null)
-            {
-                throw new TusConfigurationException($"{nameof(config.Store)} cannot be null.");
-            }
-
-            if (string.IsNullOrWhiteSpace(config.UrlPath))
-            {
-                throw new TusConfigurationException($"{nameof(config.UrlPath)} cannot be empty.");
             }
         }
     }
