@@ -514,6 +514,17 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
+        public async Task GetExpirationAsync_Returns_Null_If_No_Expiration_Has_Been_Set()
+        {
+            var file = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
+
+            File.Exists(Path.Combine(_fixture.Path, $"{file}.expiration")).ShouldBeFalse();
+
+            var readExpires = await _fixture.Store.GetExpirationAsync(file, CancellationToken.None);
+            readExpires.ShouldBeNull();
+        }
+
+        [Fact]
         public async Task GetExpiredFilesAsync()
         {
             var file1 = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);

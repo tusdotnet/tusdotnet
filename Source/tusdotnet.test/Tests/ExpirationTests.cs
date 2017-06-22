@@ -18,18 +18,6 @@ namespace tusdotnet.test.Tests
 {
     public class ExpirationTests
     {
-
-        /*
-             * Varje patch request innehåller Upload-Expires om expiration är satt
-             *  Patch innehåller inte Upload-Expires om expiration inte är satt
-             * POST request innehåller Upload-Expires om expiration är satt
-             *  Post innehåller inte...
-             * Om sliding expiration används så uppdateras file expiration på varje upload request
-             * Om absolute expiration används uppdateras den inte
-             * Returnerar 404 om expires har passerat
-             * Upload-Expires är i format RFC 7231 -> Sun, 06 Nov 1994 08:49:37 GMT
-             * */
-
         [Theory, XHttpMethodOverrideData]
         public async Task Patch_Requests_Contain_Upload_Expires_Header_For_Normal_Uploads_If_Expiration_Is_Configured(string methodToUse)
         {

@@ -261,7 +261,7 @@ namespace tusdotnet.Stores
 
         public Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken cancellationToken)
         {
-            var expiration = ReadFirstLine($"{GetPath(fileId)}.expiration");
+            var expiration = ReadFirstLine($"{GetPath(fileId)}.expiration", true);
             return Task.FromResult(expiration == null
                 ? (DateTimeOffset?) null
                 : DateTimeOffset.ParseExact(expiration, "O", null));
@@ -319,8 +319,19 @@ namespace tusdotnet.Stores
             return Path.Combine(_directoryPath, fileId);
         }
 
-        private static string ReadFirstLine(string filePath)
+        /// <summary>
+        /// Read the first line of the file specified.
+        /// </summary>
+        /// <param name="filePath">The path to read</param>
+        /// <param name="fileIsOptional">If true and the file does not exist, null will be returned. Otherwise an exception will be thrown</param>
+        /// <returns>The first line of the file specified</returns>
+        private static string ReadFirstLine(string filePath, bool fileIsOptional = false)
         {
+            if (fileIsOptional && !File.Exists(filePath))
+            {
+                return null;
+            }
+
             using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 using (var sr = new StreamReader(stream))
