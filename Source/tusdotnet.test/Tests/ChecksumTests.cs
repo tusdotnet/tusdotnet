@@ -133,7 +133,35 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
-		[Theory, XHttpMethodOverrideData]
+	    [Theory, XHttpMethodOverrideData]
+	    public async Task Returns_204_No_Content_If_Store_Supports_Checksum_But_No_Checksum_Is_Provided(string methodToUse)
+	    {
+	        var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
+	        store.FileExistAsync("checksum", CancellationToken.None).ReturnsForAnyArgs(true);
+	        store.GetUploadOffsetAsync("checksum", Arg.Any<CancellationToken>()).Returns(5);
+	        store.GetUploadLengthAsync("checksum", Arg.Any<CancellationToken>()).Returns(10);
+	        store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+	        // ReSharper disable once SuspiciousTypeConversion.Global
+	        var cstore = (ITusChecksumStore)store;
+	        cstore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
+	        cstore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(true);
+
+            using (var server = TestServerFactory.Create(store))
+            {
+                var response = await server
+                    .CreateRequest("/files/checksum")
+                    .And(m => m.AddBody())
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Offset", "5")
+                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                    .SendAsync(methodToUse);
+
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                response.ShouldContainTusResumableHeader();
+            }
+	    }
+
+        [Theory, XHttpMethodOverrideData]
 		public async Task Returns_400_Bad_Request_If_Upload_Checksum_Header_Is_Unparsable(string methodToUse)
 		{
 			var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();

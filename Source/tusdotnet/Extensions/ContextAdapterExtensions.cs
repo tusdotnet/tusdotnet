@@ -10,21 +10,27 @@ namespace tusdotnet.Extensions
     {
         public static string GetFileId(this ContextAdapter context)
         {
-            var request = context.Request;
-            var startIndex = request
-                                 .RequestUri
-                                 .LocalPath
-                                 .IndexOf(context.Configuration.UrlPath, StringComparison.OrdinalIgnoreCase) + context.Configuration.UrlPath.Length;
-            return request
+            var startIndex =
+                context.Request.RequestUri.LocalPath.IndexOf(context.Configuration.UrlPath,
+                    StringComparison.OrdinalIgnoreCase) + context.Configuration.UrlPath.Length;
+
+            return context.Request
                 .RequestUri
                 .LocalPath
                 .Substring(startIndex)
                 .Trim('/');
         }
 
-        public static bool IsExactUrlMatch(this ContextAdapter context)
+        public static bool UrlMatchesUrlPath(this ContextAdapter context)
         {
             return context.Request.RequestUri.LocalPath.TrimEnd('/') == context.Configuration.UrlPath.TrimEnd('/');
+        }
+
+        public static bool UrlMatchesFileIdUrl(this ContextAdapter context)
+        {
+            return !context.UrlMatchesUrlPath() &&
+                   context.Request.RequestUri.LocalPath.StartsWith(context.Configuration.UrlPath,
+                       StringComparison.OrdinalIgnoreCase);
         }
 
         internal static IList<string> DetectExtensions(this ContextAdapter context)
@@ -62,6 +68,5 @@ namespace tusdotnet.Extensions
 
             return extensions;
         }
-
     }
 }

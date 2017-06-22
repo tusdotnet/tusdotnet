@@ -38,7 +38,7 @@ namespace tusdotnet
 			
 			var config = _configFactory(context.Request);
 
-			var handled = await TusMiddleware.Invoke(new ContextAdapter
+			var handled = await TusProtocolHandler.Invoke(new ContextAdapter
 			{
 				Request = request,
 				Response = response,

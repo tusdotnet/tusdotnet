@@ -12,17 +12,17 @@ namespace tusdotnet.Helpers
 		private static readonly HashSet<string> LockedFiles = new HashSet<string>();
 		private bool _hasLock;
 
-		/// <summary>
-		/// Default constructor
-		/// </summary>
-		/// <param name="fileId">The file id to try to lock.</param>
-		public FileLock(string fileId)
-		{
-			_fileId = fileId;
-			_hasLock = false;
-		}
+	    /// <summary>
+	    /// Default constructor
+	    /// </summary>
+	    /// <param name="fileId">The file id to try to lock.</param>
+	    public FileLock(string fileId)
+	    {
+	        _fileId = fileId;
+	        _hasLock = false;
+	    }
 
-		/// <summary>
+	    /// <summary>
 		/// Lock the file. Returns true if the file was locked or false if the file was already locked by another call.
 		/// </summary>
 		/// <param name="cancellationToken">Cancellation token to use when cancelling</param>

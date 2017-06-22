@@ -57,15 +57,14 @@ namespace tusdotnet.Models.Concatenation
 
 			foreach (var fileUri in temp[1].Split(' '))
 			{
-				Uri uri;
-				if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out uri))
-				{
-					IsValid = false;
-					ErrorMessage = "Unable to parse Upload-Concat header";
-					break;
-				}
+                if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out Uri uri))
+                {
+                    IsValid = false;
+                    ErrorMessage = "Unable to parse Upload-Concat header";
+                    break;
+                }
 
-				var localPath = uri.IsAbsoluteUri
+                var localPath = uri.IsAbsoluteUri
 					? uri.LocalPath
 					: uri.ToString();
 
