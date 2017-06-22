@@ -27,13 +27,13 @@ namespace tusdotnet
                 return false;
             }
 
-            var tusResumable = request.Headers.ContainsKey(HeaderConstants.TusResumable)
-                ? request.Headers[HeaderConstants.TusResumable].FirstOrDefault()
-                : null;
-
             if (!(methodHandler is OptionsHandler))
             {
-                if (!request.Headers.ContainsKey(HeaderConstants.TusResumable))
+                var tusResumable = request.Headers.ContainsKey(HeaderConstants.TusResumable)
+                    ? request.Headers[HeaderConstants.TusResumable].FirstOrDefault()
+                    : null;
+
+                if (tusResumable == null)
                 {
                     return false;
                 }
