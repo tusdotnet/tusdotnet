@@ -94,11 +94,6 @@ namespace tusdotnet.ProtocolHandlers
                 // Client disconnected so no need to return a response.
                 return true;
             }
-            catch (TusStoreException storeException)
-            {
-                await response.Error(HttpStatusCode.BadRequest, storeException.Message);
-                throw;
-            }
             finally
             {
                 expires = await GetOrUpdateExpires(context);

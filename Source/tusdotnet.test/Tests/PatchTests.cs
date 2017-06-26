@@ -339,19 +339,9 @@ namespace tusdotnet.test.Tests
 					.AddTusResumableHeader()
 					.AddHeader("Upload-Offset", "5");
 
-				try
-				{
-					await requestBuilder.SendAsync("PATCH");
-					true.ShouldBeFalse("Exception was not thrown.");
-				}
-				catch (HttpRequestException)
-				{
-					// Left blank.
-				}
-				catch (TusStoreException)
-				{
-					// Left blank.
-				}
+				var response = await requestBuilder.SendAsync("PATCH");
+			    response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+                response.Content.ReadAsStringAsync().Result.ShouldBe("Test exception");
 			}
 		}
 

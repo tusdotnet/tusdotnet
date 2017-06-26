@@ -1,13 +1,14 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Interfaces
 {
-	/// <summary>
-	/// Store support for concatenation: http://tus.io/protocols/resumable-upload.html#concatenation
-	/// </summary>
-	public interface ITusConcatenationStore
+    /// <summary>
+    /// Store support for concatenation: http://tus.io/protocols/resumable-upload.html#concatenation
+    /// </summary>
+    public interface ITusConcatenationStore
 	{
 		/// <summary>
 		/// Returns the type of Upload-Concat header that was used when creating the file.
@@ -29,7 +30,8 @@ namespace tusdotnet.Interfaces
 
 		/// <summary>
 		/// Creates a final file by concatenating multiple files together. This method is called when a Upload-Concat header
-		/// is present with a "final" value.
+		/// is present with a "final" value. This method must throw a <exception cref="TusStoreException"></exception> if any of the provided
+		/// partial files does not exist.
 		/// </summary>
 		/// <param name="partialFiles">List of file ids to concatenate</param>
 		/// <param name="metadata">The Upload-Metadata request header or null if no header was provided</param>

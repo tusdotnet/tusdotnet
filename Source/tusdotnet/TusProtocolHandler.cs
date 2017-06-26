@@ -7,6 +7,7 @@ using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
+using tusdotnet.Models;
 using tusdotnet.ProtocolHandlers;
 
 namespace tusdotnet
@@ -69,6 +70,11 @@ namespace tusdotnet
                 }
 
                 return await methodHandler.Handle(context);
+            }
+            catch (TusStoreException storeException)
+            {
+                await context.Response.Error(HttpStatusCode.BadRequest, storeException.Message);
+                return true;
             }
             finally
             {

@@ -93,29 +93,21 @@ namespace tusdotnet.ProtocolHandlers
 
             var uploadLength = GetUploadLength(context.Request);
 
-            try
+            if (tusConcatenationStore != null && uploadConcat != null)
             {
-                if (tusConcatenationStore != null && uploadConcat != null)
-                {
-                    fileId = await HandleCreationOfConcatFiles(context, uploadConcat, tusConcatenationStore, uploadLength, metadata, cancellationToken);
-                }
-                else
-                {
-                    fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
-                }
-
-                if (context.Configuration.Store is ITusExpirationStore expirationStore
-                    && context.Configuration.Expiration != null
-                    && !(uploadConcat?.Type is FileConcatFinal))
-                {
-                    expires = DateTimeOffset.UtcNow.Add(context.Configuration.Expiration.Timeout);
-                    await expirationStore.SetExpirationAsync(fileId, expires.Value, context.CancellationToken);
-                }
+                fileId = await HandleCreationOfConcatFiles(context, uploadConcat, tusConcatenationStore, uploadLength, metadata, cancellationToken);
             }
-            #warning move to common ground
-            catch (TusStoreException storeException)
+            else
             {
-                return await response.Error(HttpStatusCode.BadRequest, storeException.Message);
+                fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
+            }
+
+            if (context.Configuration.Store is ITusExpirationStore expirationStore
+                && context.Configuration.Expiration != null
+                && !(uploadConcat?.Type is FileConcatFinal))
+            {
+                expires = DateTimeOffset.UtcNow.Add(context.Configuration.Expiration.Timeout);
+                await expirationStore.SetExpirationAsync(fileId, expires.Value, context.CancellationToken);
             }
 
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
