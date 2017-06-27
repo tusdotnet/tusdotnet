@@ -1,7 +1,7 @@
 # tusdotnet
+
 .NET server implementation of the Tus protocol for resumable file uploads. Read more at http://tus.io
 
-## What?
 From tus.io:
 >Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network.
 
@@ -10,22 +10,21 @@ tusdotnet is a .NET server implementation of the Tus protocol that runs on both 
 Comments, ideas, questions and PRs are welcome :)
 
 ## Features
-* Runs on both .NET 4.x and .NET Core
-* Supports tus 1.0.0 core protocol
-* Supported extensions: Checksum, Concatenation, Creation, Termination
+
+* Runs on both ASP.NET 4.x (using OWIN) and ASP.NET Core
+* Full support for tus 1.0.0 including all major extensions (checksum, concatenation, creation, upload-defer-length, expiration and termination)
 * Fast and reliable
-* 99% test coverage
+* Easy to configure
+* Customizable data storage
 * MIT licensed
 
-## How to use
-
-### Install
+## Install
 
 [![NuGet](https://img.shields.io/nuget/v/tusdotnet.svg)](https://www.nuget.org/packages/tusdotnet)
 
 ``PM> Install-Package tusdotnet``
 
-### Setup
+## Configure
 
 Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. You might also want to [configure IIS](https://github.com/smatsson/tusdotnet/wiki/Configure-IIS) and/or [configure CORS](https://github.com/smatsson/tusdotnet/wiki/Cross-domain-requests-(CORS)).
 
