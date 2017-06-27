@@ -19,7 +19,6 @@ namespace OwinTestApp
 {
 	public class Startup
 	{
-
 	    private readonly AbsoluteExpiration _absoluteExpiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5));
 	    private readonly TusDiskStore _tusDiskStore = new TusDiskStore(@"C:\tusfiles\");
 
@@ -67,10 +66,10 @@ namespace OwinTestApp
 		            {
 		                Console.WriteLine(
 		                    $"Upload of {fileId} is complete. Callback also got a store of type {store.GetType().FullName}");
-		                // If the store implements ITusReadableStore one could access the completed file here.
-		                // The default TusDiskStore implements this interface:
-		                // var file = await (store as ITusReadableStore).GetFileAsync(fileId, cancellationToken);
-		                return Task.FromResult(true);
+                        // If the store implements ITusReadableStore one could access the completed file here.
+                        // The default TusDiskStore implements this interface:
+                        // var file = await ((ITusReadableStore)store).GetFileAsync(fileId, cancellationToken);
+                        return Task.FromResult(true);
 		            },
                     // Set an expiration time where incomplete files can no longer be updated.
                     // This value can either be absolute or sliding.
@@ -82,15 +81,15 @@ namespace OwinTestApp
 
 			app.Use(async (context, next) =>
 			{
-				if (!context.Request.Method.Equals("get", StringComparison.InvariantCultureIgnoreCase))
+			    // All GET requests to tusdotnet are forwared so that you can handle file downloads.
+			    // This is done because the file's metadata is domain specific and thus cannot be handled 
+			    // in a generic way by tusdotnet.
+                if (!context.Request.Method.Equals("get", StringComparison.InvariantCultureIgnoreCase))
 				{
 					await next.Invoke();
 					return;
 				}
 
-				// All GET requests to tusdotnet are forwared so that you can handle file downloads.
-				// This is done because the file's metadata is domain specific and thus cannot be handled 
-				// in a generic way by tusdotnet.
 				if (context.Request.Uri.LocalPath.StartsWith("/files/", StringComparison.Ordinal))
 				{
 					var fileId = context.Request.Uri.LocalPath.Replace("/files/", "").Trim();

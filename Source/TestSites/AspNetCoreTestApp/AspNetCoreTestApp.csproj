@@ -7,7 +7,6 @@
   <ItemGroup>
     <Content Include="wwwroot\index.html" />
     <Content Include="wwwroot\tus.js" />
-    <Content Include="wwwroot\upload.html" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore" Version="1.1.2" />
