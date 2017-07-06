@@ -26,7 +26,7 @@ Comments, ideas, questions and PRs are welcome :)
 
 ## Configure
 
-Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. You might also want to [configure IIS](https://github.com/smatsson/tusdotnet/wiki/Configure-IIS) and/or [configure CORS](https://github.com/smatsson/tusdotnet/wiki/Cross-domain-requests-(CORS)).
+Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. You might also want to [configure IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) and/or [configure CORS](https://github.com/tusdotnet/tusdotnet/wiki/Cross-domain-requests-(CORS)).
 
 ```csharp
 app.UseTus(context => new DefaultTusConfiguration
@@ -52,4 +52,4 @@ If you just want to play around with the protocol, clone the repo and run one of
 This project is licensed under the MIT license, see [LICENSE](LICENSE).
 
 ## Want to know more?
-Check out the [wiki](https://github.com/smatsson/tusdotnet/wiki) or create an [issue](https://github.com/smatsson/tusdotnet/issues). :) 
+Check out the [wiki](https://github.com/tusdotnet/tusdotnet/wiki) or create an [issue](https://github.com/tusdotnet/tusdotnet/issues). :) 
