@@ -1,8 +1,6 @@
 # tusdotnet
 
-.NET server implementation of the Tus protocol for resumable file uploads. Read more at http://tus.io
-
-From tus.io:
+.NET server implementation of the Tus protocol for resumable file uploads. Read more at https://tus.io
 >Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network.
 
 tusdotnet is a .NET server implementation of the Tus protocol that runs on both .NET 4.x and .NET Core!
