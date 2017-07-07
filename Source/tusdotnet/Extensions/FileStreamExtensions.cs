@@ -6,6 +6,7 @@ namespace tusdotnet.Extensions
 	internal static class FileStreamExtensions
 	{
 #if netfull
+
 		public static byte[] CalculateSha1(this FileStream fileStream)
 		{
 			byte[] fileHash;
@@ -16,9 +17,11 @@ namespace tusdotnet.Extensions
 
 			return fileHash;
 		}
+
 #endif
 
 #if netstandard
+
 		public static byte[] CalculateSha1(this FileStream fileStream)
 		{
 			byte[] fileHash;
@@ -29,6 +32,7 @@ namespace tusdotnet.Extensions
 
 			return fileHash;
 		}
+
 #endif
 	}
 }

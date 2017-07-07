@@ -2,7 +2,10 @@
 
 namespace tusdotnet.Models.Expiration
 {
-    public class SlidingExpiration : ExpirationBase
+	/// <summary>
+	/// Sliding expiration that set during creation and updated on every PATCH request.
+	/// </summary>
+	public class SlidingExpiration : ExpirationBase
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="T:tusdotnet.Models.Expiration.SlidingExpiration" /> class.

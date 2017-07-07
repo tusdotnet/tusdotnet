@@ -10,16 +10,27 @@ using tusdotnet.Interfaces;
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
 {
-	public class TusOwinMiddleware : OwinMiddleware
+    /// <summary>
+    /// Processes tus.io requests for OWIN.
+    /// </summary>
+    public class TusOwinMiddleware : OwinMiddleware
 	{
 		private readonly Func<IOwinRequest, ITusConfiguration> _configFactory;
 
-		public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
+	    /// <summary>Creates a new instance of TusOwinMiddleware.</summary>
+	    /// <param name="next"></param>
+	    /// <param name="configFactory"></param>
+        public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
 		{
 			_configFactory = configFactory;
 		}
 
-		public override async Task Invoke(IOwinContext context)
+	    /// <summary>
+	    /// Handles the tus.io request.
+	    /// </summary>
+	    /// <param name="context">The IOwinContext</param>
+	    /// <returns></returns>
+        public override async Task Invoke(IOwinContext context)
 		{
 			var request = new RequestAdapter
 			{

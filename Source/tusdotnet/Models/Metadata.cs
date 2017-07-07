@@ -6,10 +6,18 @@ using tusdotnet.Constants;
 
 namespace tusdotnet.Models
 {
+	/// <summary>
+	/// Container for uploaded file metadata.
+	/// </summary>
 	public class Metadata
 	{
 		private readonly string _encodedValue;
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="Metadata"/> class.
+		/// </summary>
+		/// <param name="encodedValue">The encoded value of a single Upload-Metadata value</param>
+		/// <exception cref="ArgumentNullException">If the encoded value is null or empty</exception>
 		private Metadata(string encodedValue)
 		{
 			if (string.IsNullOrWhiteSpace(encodedValue))
@@ -20,11 +28,20 @@ namespace tusdotnet.Models
 			_encodedValue = encodedValue;
 		}
 
+		/// <summary>
+		/// Returns the raw byte array of the decoded value.
+		/// </summary>
+		/// <returns>The raw byte array of the encoded value</returns>
 		public byte[] GetBytes()
 		{
 			return Convert.FromBase64String(_encodedValue);
 		}
 
+		/// <summary>
+		/// Returns the text representation of the decoded value.
+		/// </summary>
+		/// <param name="encoding">The encoding to use when creating the text representation</param>
+		/// <returns>The text representation of the decoded value</returns>
 		public string GetString(Encoding encoding)
 		{
 			if (encoding == null)
@@ -70,6 +87,12 @@ namespace tusdotnet.Models
 			return dictionary;
 		}
 
+		/// <summary>
+		/// Validate the provided Upload-Metadata header.
+		/// Returns an error message or null if the validation passes.
+		/// </summary>
+		/// <param name="metadata">The Upload-Metadata header</param>
+		/// <returns>An error message or null if the validation passes</returns>
 		public static string ValidateMetadataHeader(string metadata)
 		{
 			/* 

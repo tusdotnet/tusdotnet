@@ -8,13 +8,22 @@ using tusdotnet.Interfaces;
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
 {
-    public static class TusApplicationBuilderExtensions
-    {
-	    public static IApplicationBuilder UseTus(this IApplicationBuilder appBuilder,
-		    Func<HttpContext, ITusConfiguration> configFactory)
-	    {
-		    return appBuilder.UseMiddleware<TusCoreMiddleware>(configFactory);
-	    }
+	/// <summary>
+	/// Extension methods for adding tusdotnet to an application pipeline.
+	/// </summary>
+	public static class TusApplicationBuilderExtensions
+	{
+		/// <summary>
+		/// Adds the tusdotnet middleware to your web application pipeline.
+		/// </summary>
+		/// <param name="appBuilder">The IApplicationBuilder passed to your configuration method</param>
+		/// <param name="configFactory">Factory for creating the configuration for tusdotnet</param>
+		public static IApplicationBuilder UseTus(
+			this IApplicationBuilder appBuilder,
+			Func<HttpContext, ITusConfiguration> configFactory)
+		{
+			return appBuilder.UseMiddleware<TusCoreMiddleware>(configFactory);
+		}
 	}
 }
 

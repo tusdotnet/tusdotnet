@@ -3,11 +3,17 @@ using tusdotnet.Interfaces;
 
 namespace tusdotnet.Adapters
 {
-    internal class ContextAdapter
-    {
-	    public RequestAdapter Request { get; set; }
-	    public ResponseAdapter Response { get; set; }
-	    public ITusConfiguration Configuration { get; set; }
-	    public CancellationToken CancellationToken { get; set; }
-    }
+	/// <summary>
+	/// Context adapter that handles different pipeline contexts.
+	/// </summary>
+	internal class ContextAdapter
+	{
+		public RequestAdapter Request { get; set; }
+
+		public ResponseAdapter Response { get; set; }
+
+		public ITusConfiguration Configuration { get; set; }
+
+		public CancellationToken CancellationToken { get; set; }
+	}
 }

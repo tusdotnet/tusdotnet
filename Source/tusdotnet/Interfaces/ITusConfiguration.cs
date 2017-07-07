@@ -17,7 +17,7 @@ namespace tusdotnet.Interfaces
         string UrlPath { get; }
 
         /// <summary>
-        /// The store to use when storing files
+        /// The store to use when storing files.
         /// </summary>
         ITusStore Store { get; }
 

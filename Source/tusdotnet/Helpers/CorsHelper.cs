@@ -1,5 +1,8 @@
 ﻿namespace tusdotnet.Helpers
 {
+	/// <summary>
+	/// Helper class for setting upp cross origin resource sharing (CORS).
+	/// </summary>
     public static class CorsHelper
     {
         /// <summary>

@@ -3,17 +3,44 @@ using System.Collections.Generic;
 
 namespace tusdotnet.Models.Concatenation
 {
+	/// <summary>
+	/// Container for uploaded file concatenation information.
+	/// </summary>
 	public class UploadConcat
 	{
+		/// <summary>
+		/// The type of concatenation used. Is null if no concatenation info was provided or if the info is invalid.
+		/// </summary>
 		public FileConcat Type { get; }
+
+		/// <summary>
+		/// True if the header value was parsable and the info therein was valid, otherwise false.
+		/// </summary>
 		public bool IsValid { get; private set; }
+
+		/// <summary>
+		/// Parser error message. Null if <code>IsValid</code> is true.
+		/// </summary>
 		public string ErrorMessage { get; private set; }
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="UploadConcat"/> class.
+		/// This overload does not remove relative urls from the file ids when parsing.
+		/// This overload should only be used inside a data store to save information regarding the concatenation type.
+		/// </summary>
+		/// <param name="uploadConcat">The Upload-Concat header</param>
 		public UploadConcat(string uploadConcat) : this(uploadConcat, string.Empty)
 		{
 			// Left blank.
 		}
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="UploadConcat"/> class.
+		/// This overload removes relative urls from the file ids when parsing and is used by tusdotnet when parsing
+		/// the incoming Upload-Concat header.
+		/// </summary>
+		/// <param name="uploadConcat">The Upload-Concat header</param>
+		/// <param name="urlPath">The UrlPath property in the ITusConfiguration</param>
 		public UploadConcat(string uploadConcat, string urlPath)
 		{
 			IsValid = true;
@@ -43,10 +70,17 @@ namespace tusdotnet.Models.Concatenation
 			}
 		}
 
+		/// <summary>
+		/// Parses the "final" concatenation type based on the parts provided.
+		/// Will validate and strip the url path provided to make sure that all files are in the same store.
+		/// </summary>
+		/// <param name="parts">The separated parts of the Upload-Concat header</param>
+		/// <param name="urlPath">The UrlPath property in the ITusConfiguration</param>
+		/// <returns>THe parse final concatenation</returns>
 		// ReSharper disable once SuggestBaseTypeForParameter
-		private FileConcatFinal ParseFinal(string[] temp, string urlPath)
+		private FileConcatFinal ParseFinal(string[] parts, string urlPath)
 		{
-			if (temp.Length < 2)
+			if (parts.Length < 2)
 			{
 				IsValid = false;
 				ErrorMessage = "Unable to parse Upload-Concat header";
@@ -55,16 +89,16 @@ namespace tusdotnet.Models.Concatenation
 
 			var fileIds = new List<string>();
 
-			foreach (var fileUri in temp[1].Split(' '))
+			foreach (var fileUri in parts[1].Split(' '))
 			{
-                if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out Uri uri))
-                {
-                    IsValid = false;
-                    ErrorMessage = "Unable to parse Upload-Concat header";
-                    break;
-                }
+				if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out Uri uri))
+				{
+					IsValid = false;
+					ErrorMessage = "Unable to parse Upload-Concat header";
+					break;
+				}
 
-                var localPath = uri.IsAbsoluteUri
+				var localPath = uri.IsAbsoluteUri
 					? uri.LocalPath
 					: uri.ToString();
 

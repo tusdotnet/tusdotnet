@@ -10,50 +10,68 @@ using tusdotnet.Interfaces;
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
 {
-    public class TusCoreMiddleware
-    {
+	/// <summary>
+	/// Processes tus.io requests for ASP.NET Core.
+	/// </summary>
+	public class TusCoreMiddleware
+	{
 		private readonly RequestDelegate _next;
-	    private readonly Func<HttpContext, ITusConfiguration> _configFactory;
 
+		private readonly Func<HttpContext, ITusConfiguration> _configFactory;
+
+		/// <summary>Creates a new instance of TusCoreMiddleware.</summary>
+		/// <param name="next"></param>
+		/// <param name="configFactory"></param>
 		public TusCoreMiddleware(RequestDelegate next, Func<HttpContext, ITusConfiguration> configFactory)
 		{
 			_next = next;
 			_configFactory = configFactory;
 		}
 
+		/// <summary>
+		/// Handles the tus.io request.
+		/// </summary>
+		/// <param name="context">The HttpContext</param>
+		/// <returns></returns>
 		public async Task Invoke(HttpContext context)
 		{
 			var request = new RequestAdapter
-			{
-				Headers = context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.ToList(), StringComparer.OrdinalIgnoreCase),
-				Body = context.Request.Body,
-				Method = context.Request.Method,
-				RequestUri = new Uri($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}")
-			};
+				              {
+					              Headers =
+						              context.Request.Headers.ToDictionary(
+							              f => f.Key,
+							              f => f.Value.ToList(),
+							              StringComparer.OrdinalIgnoreCase),
+					              Body = context.Request.Body,
+					              Method = context.Request.Method,
+					              RequestUri = new Uri(
+						              $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}")
+				              };
 
 			var response = new ResponseAdapter
-			{
-				Body = context.Response.Body,
-				SetHeader = (key, value) => context.Response.Headers[key] = value,
-				SetStatus = status => context.Response.StatusCode = status
-			};
+				               {
+					               Body = context.Response.Body,
+					               SetHeader = (key, value) => context.Response.Headers[key] = value,
+					               SetStatus = status => context.Response.StatusCode = status
+				               };
 
 			var config = _configFactory(context);
 
-			var handled = await TusProtocolHandler.Invoke(new ContextAdapter
-			{
-				Request =  request,
-				Response =  response,
-				CancellationToken = context.RequestAborted,
-				Configuration = config,
-			});
+			var handled = await TusProtocolHandler.Invoke(
+				              new ContextAdapter
+					              {
+						              Request = request,
+						              Response = response,
+						              CancellationToken = context.RequestAborted,
+						              Configuration = config,
+					              });
 
 
 			if (!handled)
 			{
 				await _next(context);
 			}
-		}	    
+		}
 	}
 }
 
