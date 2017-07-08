@@ -67,7 +67,7 @@ namespace tusdotnet.Models
 			 * Source: http://tus.io/protocols/resumable-upload.html#comment-2893439572
 			 * */
 
-			var dictionary = new Dictionary<string, Metadata>();
+			var dictionary = new Dictionary<string, Metadata>(StringComparer.OrdinalIgnoreCase);
 			if (string.IsNullOrWhiteSpace(uploadMetadata))
 			{
 				return dictionary;
