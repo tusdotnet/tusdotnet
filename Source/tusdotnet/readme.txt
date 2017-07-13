@@ -15,5 +15,5 @@ app.UseTus(context => new DefaultTusConfiguration
 	}
 });
 
-You might also want to configure IIS (https://github.com/smatsson/tusdotnet/wiki/Configure-IIS) 
-and/or configure CORS (https://github.com/smatsson/tusdotnet/wiki/Cross-domain-requests-(CORS)
+You might also want to configure IIS (https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) 
+and/or configure CORS (https://github.com/tusdotnet/tusdotnet/wiki/Cross-domain-requests-(CORS)
