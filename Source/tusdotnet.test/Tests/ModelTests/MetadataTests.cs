@@ -92,5 +92,20 @@ namespace tusdotnet.test.Tests.ModelTests
 			AssertArgumentNullException(constructor, "");
 			AssertArgumentNullException(constructor, " ");
 		}
-	}
+
+        [Fact]
+	    public void Letter_Casing_Is_Ignored_For_Metadata_Keys()
+        {
+            const string NoLetterCasingMetadata =
+                "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,FILENAME c29tZSBvdGhlciBkYXRh,FiLEName wrbDgMSaxafMsw==";
+
+            var meta = Metadata.Parse(NoLetterCasingMetadata);
+
+            meta.Count.ShouldBe(3);
+
+            meta["filename"].GetString(Encoding.UTF8).ShouldBe("world_domination_plan.pdf");
+            meta["FILENAME"].GetString(Encoding.UTF8).ShouldBe("some other data");
+            meta["FiLEName"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
+        }
+    }
 }
