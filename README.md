@@ -19,7 +19,13 @@ Comments, ideas, questions and PRs are welcome :)
 
 [![NuGet](https://img.shields.io/nuget/v/tusdotnet.svg)](https://www.nuget.org/packages/tusdotnet)
 
+Package manager
+
 ``PM> Install-Package tusdotnet``
+
+.NET CLI
+
+``> dotnet add tusdotnet `` 
 
 ## Configure
 
