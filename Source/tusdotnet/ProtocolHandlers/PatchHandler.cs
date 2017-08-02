@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
@@ -83,15 +82,9 @@ namespace tusdotnet.ProtocolHandlers
             {
                 bytesWritten = await context.Configuration.Store.AppendDataAsync(fileId, context.Request.Body, cancellationToken);
             }
-            catch (IOException ioException)
+            // Client disconnected so no need to return a response.
+            catch (Exception exception) when (ClientDisconnected(exception))
             {
-                // Indicates that the client disconnected.
-                if (!ioException.ClientDisconnected())
-                {
-                    throw;
-                }
-
-                // Client disconnected so no need to return a response.
                 return true;
             }
             finally
@@ -119,6 +112,17 @@ namespace tusdotnet.ProtocolHandlers
             // Run OnUploadComplete if it has been provided.
             await RunOnUploadComplete(context, fileOffset, bytesWritten);
             return true;
+
+            bool ClientDisconnected(Exception exception)
+            {
+                if (context.CancellationToken.IsCancellationRequested)
+                {
+                    return true;
+                }
+                
+                // IsCancellationRequested is false when connecting directly to Kestrel. Instead the exception below is thrown.
+                return exception.GetType().FullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException";
+            }
         }
 
         private static async Task RunOnUploadComplete(ContextAdapter context, long fileOffset, long bytesWritten)
