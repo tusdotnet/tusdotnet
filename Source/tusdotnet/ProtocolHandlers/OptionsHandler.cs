@@ -19,7 +19,7 @@ namespace tusdotnet.ProtocolHandlers
     {
         internal override bool RequiresLock => false;
 
-        internal override Specification[] Specifications => null;
+        internal override Requirement[] Requires => null;
 
         internal override bool CanHandleRequest(ContextAdapter context)
         {

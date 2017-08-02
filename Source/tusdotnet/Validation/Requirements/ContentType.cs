@@ -2,9 +2,9 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class ContentType : Specification
+    internal class ContentType : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {

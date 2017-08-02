@@ -8,11 +8,11 @@ namespace tusdotnet.Validation
         public HttpStatusCode StatusCode { get; private set; }
         public string ErrorMessage { get; private set; }
 
-        private readonly Specification[] _specifications;
+        private readonly Requirement[] _requirements;
 
-        public Validator(params Specification[] specs)
+        public Validator(params Requirement[] requirements)
         {
-            _specifications = specs ?? new Specification[0];
+            _requirements = requirements ?? new Requirement[0];
         }
 
         public void Validate(ContextAdapter context)
@@ -20,7 +20,7 @@ namespace tusdotnet.Validation
             StatusCode = HttpStatusCode.OK;
             ErrorMessage = null;
 
-            foreach (var spec in _specifications)
+            foreach (var spec in _requirements)
             {
                 spec.Reset();
                 spec.Validate(context);

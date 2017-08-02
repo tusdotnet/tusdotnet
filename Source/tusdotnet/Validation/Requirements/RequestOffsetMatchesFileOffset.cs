@@ -3,9 +3,9 @@ using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class RequestOffsetMatchesFileOffset : Specification
+    internal class RequestOffsetMatchesFileOffset : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

@@ -1,6 +1,7 @@
 ﻿namespace tusdotnet.Constants
 {
-	public static class HeaderConstants
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    public static class HeaderConstants
 	{
 		public const string TusResumable = "Tus-Resumable";
 		public const string TusResumableValue = "1.0.0";
@@ -9,9 +10,9 @@
 		public const string TusMaxSize = "Tus-Max-Size";
 		public const string TusChecksumAlgorithm = "Tus-Checksum-Algorithm";
 
-		public const string XHttpMethodOveride = "X-HTTP-Method-Override";
+        public const string XHttpMethodOveride = "X-HTTP-Method-Override";
 
-		public const string UploadLength = "Upload-Length";
+        public const string UploadLength = "Upload-Length";
 
         public const string UploadDeferLength = "Upload-Defer-Length";
         public const string UploadOffset = "Upload-Offset";
@@ -25,6 +26,6 @@
 		public const string Location = "location";
 
 		public const string ContentType = "Content-Type";
-
 	}
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

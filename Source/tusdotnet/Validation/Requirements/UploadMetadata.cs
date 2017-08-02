@@ -4,9 +4,9 @@ using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Models;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadMetadata : Specification
+    internal class UploadMetadata : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {

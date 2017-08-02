@@ -7,9 +7,9 @@ using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadLength : Specification
+    internal class UploadLength : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

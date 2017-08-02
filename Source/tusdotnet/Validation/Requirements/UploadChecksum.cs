@@ -5,9 +5,9 @@ using tusdotnet.Constants;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadChecksum : Specification
+    internal class UploadChecksum : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

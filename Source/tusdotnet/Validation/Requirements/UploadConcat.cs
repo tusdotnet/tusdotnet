@@ -8,9 +8,9 @@ using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadConcat : Specification
+    internal class UploadConcat : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

@@ -3,9 +3,9 @@ using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class FileHasNotExpired  : Specification
+    internal class FileHasNotExpired  : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

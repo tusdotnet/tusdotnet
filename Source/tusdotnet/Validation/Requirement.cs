@@ -4,7 +4,7 @@ using tusdotnet.Adapters;
 
 namespace tusdotnet.Validation
 {
-    internal abstract class Specification
+    internal abstract class Requirement
     {
         public HttpStatusCode StatusCode { get; protected set; }
         public string ErrorMessage { get; protected set; }

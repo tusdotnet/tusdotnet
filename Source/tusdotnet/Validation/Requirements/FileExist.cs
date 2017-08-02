@@ -2,9 +2,9 @@
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class FileExist : Specification
+    internal class FileExist : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

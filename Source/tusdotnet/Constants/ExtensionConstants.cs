@@ -1,6 +1,7 @@
 ﻿namespace tusdotnet.Constants
 {
-	public static class ExtensionConstants
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    public static class ExtensionConstants
 	{
 		public const string Creation = "creation";
 	    public const string CreationDeferLength = "creation-defer-length";
@@ -9,4 +10,5 @@
 		public const string Concatenation = "concatenation";
 	    public const string Expiration = "expiration";
 	}
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

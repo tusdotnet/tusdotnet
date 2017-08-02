@@ -10,7 +10,7 @@ namespace tusdotnet.ProtocolHandlers
     {
         internal abstract bool RequiresLock { get; }
 
-        internal abstract Specification[] Specifications { get; }
+        internal abstract Requirement[] Requires { get; }
 
         internal abstract bool CanHandleRequest(ContextAdapter context);
 
@@ -18,7 +18,7 @@ namespace tusdotnet.ProtocolHandlers
 
         internal async Task<bool> Validate(ContextAdapter context)
         {
-            var validator = new Validator(Specifications);
+            var validator = new Validator(Requires);
 
             validator.Validate(context);
 

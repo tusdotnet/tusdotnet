@@ -7,11 +7,9 @@ using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
-using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
-using tusdotnet.Validation.Specifications;
-using UploadConcat = tusdotnet.Validation.Specifications.UploadConcat;
+using tusdotnet.Validation.Requirements;
 
 namespace tusdotnet.ProtocolHandlers
 {
@@ -60,9 +58,9 @@ namespace tusdotnet.ProtocolHandlers
     {
         internal override bool RequiresLock => false;
 
-        internal override Specification[] Specifications => new Specification[]
+        internal override Requirement[] Requires => new Requirement[]
         {
-            new UploadConcat(),
+            new Validation.Requirements.UploadConcat(),
             new UploadLength(),
             new UploadMetadata()
         };

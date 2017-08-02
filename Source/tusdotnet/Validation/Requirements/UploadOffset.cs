@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 
-namespace tusdotnet.Validation.Specifications
+namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadOffset : Specification
+    internal class UploadOffset : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {
