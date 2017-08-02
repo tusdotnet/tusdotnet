@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("tusdotnet")]
-[assembly: AssemblyDescription(".NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/smatsson/tusdotnet and http://tus.io")]
+[assembly: AssemblyDescription(".NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/tusdotnet/tusdotnet and http://tus.io")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Stefan Matsson")]
 [assembly: AssemblyProduct("tusdotnet")]

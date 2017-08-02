@@ -10,8 +10,8 @@
     <PackageId>tusdotnet</PackageId>
     <PackageTags>Tus;Tus-Resumable;ResumableFileUploads;FileUpload</PackageTags>
     <PackageReleaseNotes>Release notes at https://github.com/smatsson/tusdotnet/releases</PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/smatsson/tusdotnet</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/smatsson/tusdotnet/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/tusdotnet/tusdotnet</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/tusdotnet/tusdotnet/blob/master/LICENSE</PackageLicenseUrl>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
