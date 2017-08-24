@@ -25,10 +25,6 @@ using Microsoft.AspNetCore.Builder;
 
 namespace tusdotnet.test.Tests
 {
-    using System.Reflection;
-
-    using NSubstitute.Core;
-
     public class PatchTests
     {
         [Fact]
@@ -415,59 +411,6 @@ namespace tusdotnet.test.Tests
             responseStatus.ShouldBe(200);
             responseHeaders.Count.ShouldBe(0);
             response.Body.Length.ShouldBe(0);
-
-            //using (var server = TestServerFactory.Create(app =>
-            //{
-
-
-
-
-
-
-            //    app.UseTus(request => new DefaultTusConfiguration
-            //    {
-            //        Store = store,
-            //        UrlPath = "/files"
-            //    });
-            //}))
-            //{
-            //    var response = await server
-            //        .CreateRequest("/files/testfile")
-            //        .And(m => m.AddBody())
-            //        .AddTusResumableHeader()
-            //        .AddHeader("Upload-Offset", "5")
-            //        .SendAsync("PATCH");
-
-            //    response.StatusCode.ShouldBe(HttpStatusCode.OK);
-            //    var body = await response.Content.ReadAsStreamAsync();
-            //    body.Length.ShouldBe(0);
-            //}
-
-            //// IOException without an inner HttpListenerException is not a disconnect.
-            //using (var server = TestServerFactory.Create(app =>
-            //{
-            //    var store = Substitute.For<ITusStore>();
-            //    store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            //    store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            //    store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-            //    store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-            //        .Throws(new Exception("Test exception"));
-
-            //    app.UseTus(request => new DefaultTusConfiguration
-            //    {
-            //        Store = store,
-            //        UrlPath = "/files"
-            //    });
-            //}))
-            //{
-            //    // ReSharper disable once AccessToDisposedClosure
-            //    await Should.ThrowAsync<Exception>(async () => await server
-            //        .CreateRequest("/files/testfile")
-            //        .And(m => m.AddBody())
-            //        .AddTusResumableHeader()
-            //        .AddHeader("Upload-Offset", "5")
-            //        .SendAsync("PATCH"));
-            //}
         }
 
         [Fact]
