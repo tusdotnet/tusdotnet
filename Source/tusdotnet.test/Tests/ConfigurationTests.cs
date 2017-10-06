@@ -24,15 +24,15 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Creates_A_Configuration_Instance_Per_Request()
         {
-            var tusConfiguration = Substitute.For<ITusConfiguration>();
+            var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
             tusConfiguration.UrlPath.Returns("/files");
 
 #if netfull
-            var configFunc = Substitute.For<Func<IOwinRequest, ITusConfiguration>>();
+            var configFunc = Substitute.For<Func<IOwinRequest, DefaultTusConfiguration>>();
             configFunc.Invoke(Arg.Any<IOwinRequest>()).Returns(tusConfiguration);
 #else
-			var configFunc = Substitute.For<Func<HttpContext, ITusConfiguration>>();
+            var configFunc = Substitute.For<Func<HttpContext, DefaultTusConfiguration>>();
 			configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
 #endif
 
@@ -73,8 +73,8 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Configuration_Is_Validated_On_Each_Request()
         {
-            var tusConfiguration = Substitute.For<ITusConfiguration>();
-
+            var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
+            
             // Empty configuration
             using (var server = TestServerFactory.Create(app =>
             {
@@ -87,7 +87,7 @@ namespace tusdotnet.test.Tests
             }
 
             // Configuration with only Store specified
-            tusConfiguration = Substitute.For<ITusConfiguration>();
+            tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
             using (var server = TestServerFactory.Create(app =>
             {
@@ -99,7 +99,7 @@ namespace tusdotnet.test.Tests
                 await AssertRequests(server);
             }
 
-            tusConfiguration = Substitute.For<ITusConfiguration>();
+            tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.UrlPath.Returns("/files");
             tusConfiguration.Store.Returns((ITusStore)null);
             using (var server = TestServerFactory.Create(app =>
@@ -114,7 +114,6 @@ namespace tusdotnet.test.Tests
 
         private static async Task AssertRequests(TestServer server)
         {
-
             var funcs = new List<Func<Task>>()
             {
                 async () => await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),

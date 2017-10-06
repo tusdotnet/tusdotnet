@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Owin;
 using tusdotnet.Adapters;
-using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
@@ -15,12 +15,12 @@ namespace tusdotnet
     /// </summary>
     public class TusOwinMiddleware : OwinMiddleware
 	{
-		private readonly Func<IOwinRequest, ITusConfiguration> _configFactory;
+		private readonly Func<IOwinRequest, DefaultTusConfiguration> _configFactory;
 
 	    /// <summary>Creates a new instance of TusOwinMiddleware.</summary>
 	    /// <param name="next"></param>
 	    /// <param name="configFactory"></param>
-        public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, ITusConfiguration> configFactory) : base(next)
+        public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, DefaultTusConfiguration> configFactory) : base(next)
 		{
 			_configFactory = configFactory;
 		}

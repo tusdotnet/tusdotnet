@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
+using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
 #if netfull
@@ -24,7 +25,7 @@ namespace tusdotnet.test.Tests
 			{
 				app.UseTus(request =>
 				{
-					var tusConfiguration = Substitute.For<ITusConfiguration>();
+					var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
 					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
 					tusConfiguration.UrlPath.Returns("/files");
 					return tusConfiguration;
@@ -62,7 +63,7 @@ namespace tusdotnet.test.Tests
 			{
 				app.UseTus(request =>
 				{
-					var tusConfiguration = Substitute.For<ITusConfiguration>();
+					var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
 					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
 					tusConfiguration.UrlPath.Returns("/files");
 					return tusConfiguration;

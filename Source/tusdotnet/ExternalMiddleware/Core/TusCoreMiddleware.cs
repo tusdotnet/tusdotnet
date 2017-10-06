@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using tusdotnet.Adapters;
-using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
@@ -17,12 +17,12 @@ namespace tusdotnet
 	{
 		private readonly RequestDelegate _next;
 
-		private readonly Func<HttpContext, ITusConfiguration> _configFactory;
+		private readonly Func<HttpContext, DefaultTusConfiguration> _configFactory;
 
 		/// <summary>Creates a new instance of TusCoreMiddleware.</summary>
 		/// <param name="next"></param>
 		/// <param name="configFactory"></param>
-		public TusCoreMiddleware(RequestDelegate next, Func<HttpContext, ITusConfiguration> configFactory)
+		public TusCoreMiddleware(RequestDelegate next, Func<HttpContext, DefaultTusConfiguration> configFactory)
 		{
 			_next = next;
 			_configFactory = configFactory;

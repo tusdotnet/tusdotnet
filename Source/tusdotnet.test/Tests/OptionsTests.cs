@@ -20,7 +20,7 @@ namespace tusdotnet.test.Tests
 {
 	public class OptionsTests
 	{
-		private static ITusConfiguration _mockTusConfiguration;
+		private static DefaultTusConfiguration _mockTusConfiguration;
 
 		public OptionsTests()
 		{

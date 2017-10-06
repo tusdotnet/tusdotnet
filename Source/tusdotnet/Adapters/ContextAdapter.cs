@@ -1,5 +1,5 @@
 ﻿using System.Threading;
-using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
 namespace tusdotnet.Adapters
 {
@@ -12,7 +12,7 @@ namespace tusdotnet.Adapters
 
 		public ResponseAdapter Response { get; set; }
 
-		public ITusConfiguration Configuration { get; set; }
+		public DefaultTusConfiguration Configuration { get; set; }
 
 		public CancellationToken CancellationToken { get; set; }
 	}

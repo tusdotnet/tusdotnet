@@ -3,7 +3,7 @@
 using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
@@ -20,7 +20,7 @@ namespace tusdotnet
 		/// <param name="configFactory">Factory for creating the configuration for tusdotnet</param>
 		public static IApplicationBuilder UseTus(
 			this IApplicationBuilder appBuilder,
-			Func<HttpContext, ITusConfiguration> configFactory)
+			Func<HttpContext, DefaultTusConfiguration> configFactory)
 		{
 			return appBuilder.UseMiddleware<TusCoreMiddleware>(configFactory);
 		}

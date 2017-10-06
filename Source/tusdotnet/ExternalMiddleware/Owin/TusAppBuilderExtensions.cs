@@ -3,7 +3,7 @@
 using System;
 using Microsoft.Owin;
 using Owin;
-using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
 namespace tusdotnet
@@ -18,7 +18,7 @@ namespace tusdotnet
         /// </summary>
         /// <param name="builder">The IAppBuilder passed to your configuration method</param>
         /// <param name="configFactory">Factory for creating the configuration for tusdotnet</param>
-        public static void UseTus(this IAppBuilder builder, Func<IOwinRequest, ITusConfiguration> configFactory)
+        public static void UseTus(this IAppBuilder builder, Func<IOwinRequest, DefaultTusConfiguration> configFactory)
         {
             builder.Use<TusOwinMiddleware>(configFactory);
         }
