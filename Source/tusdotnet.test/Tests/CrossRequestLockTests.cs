@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -13,101 +14,103 @@ using Xunit;
 
 namespace tusdotnet.test.Tests
 {
-	/// <summary>
-	/// Tests that DELETE and PATCH requests for the same file cannot happen at the same time.
-	/// </summary>
-	public class CrossRequestLockTests
-	{
-		[Fact]
-		public async Task Returns_409_Conflict_For_A_Patch_Request_If_A_Delete_Is_Ongoing()
-		{
-			using (var server = TestServerFactory.Create(app =>
-			{
-				var store = Substitute.For<ITusStore, ITusTerminationStore>();
-				store.FileExistAsync("testfilecrossreq_pd", Arg.Any<CancellationToken>()).Returns(true);
-				((ITusTerminationStore)store).DeleteFileAsync("testfilecrossreq_pd", Arg.Any<CancellationToken>()).Returns(info =>
-			   {
-				   Thread.Sleep(500);
-				   return Task.FromResult(0);
-			   });
+    /// <summary>
+    /// Tests that DELETE and PATCH requests for the same file cannot happen at the same time.
+    /// </summary>
+    public class CrossRequestLockTests
+    {
+        [Fact]
+        public async Task Returns_409_Conflict_For_A_Patch_Request_If_A_Delete_Is_Ongoing()
+        {
+            var fileId = Guid.NewGuid().ToString();
 
-				app.UseTus(request => new DefaultTusConfiguration
-				{
-					Store = store,
-					UrlPath = "/files"
-				});
-			}))
-			{
-				var deleteRequest = server.CreateRequest("/files/testfilecrossreq_pd")
-					.AddTusResumableHeader()
-					.SendAsync("DELETE");
+            using (var server = TestServerFactory.Create(app =>
+            {
+                var store = Substitute.For<ITusStore, ITusTerminationStore>();
+                store.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
+                ((ITusTerminationStore)store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>()).Returns(info =>
+               {
+                   Thread.Sleep(500);
+                   return Task.FromResult(0);
+               });
 
-				var patchRequest = server.CreateRequest("/files/testfilecrossreq_pd")
-					.And(message =>
-					{
-						message.Content = new StreamContent(new MemoryStream(new byte[3]));
-						message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/offset+octet-stream");
-					})
-					.AddHeader("Upload-Offset", "0")
-					.AddTusResumableHeader()
-					.SendAsync("PATCH");
+                app.UseTus(request => new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files"
+                });
+            }))
+            {
+                var deleteRequest = server.CreateRequest($"/files/{fileId}")
+                    .AddTusResumableHeader()
+                    .SendAsync("DELETE");
 
-				await Task.WhenAll(deleteRequest, patchRequest);
+                var patchRequest = server.CreateRequest($"/files/{fileId}")
+                    .And(message =>
+                    {
+                        message.Content = new StreamContent(new MemoryStream(new byte[3]));
+                        message.Content.Headers.ContentType =
+                            new MediaTypeHeaderValue("application/offset+octet-stream");
+                    })
+                    .AddHeader("Upload-Offset", "0")
+                    .AddTusResumableHeader()
+                    .SendAsync("PATCH");
 
-				deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-				patchRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-			}
-		}
+                await Task.WhenAll(deleteRequest, patchRequest);
 
-		[Fact]
-		public async Task Returns_409_Conflict_For_A_Delete_Request_If_A_Patch_Is_Ongoing()
-		{
-			using (var server = TestServerFactory.Create(app =>
-			{
-				var store = Substitute.For<ITusStore, ITusTerminationStore>();
-				store.FileExistAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(true);
-				store
-					.GetUploadOffsetAsync("testfilecrossreq", Arg.Any<CancellationToken>())
-					.Returns(0);
-				store.GetUploadLengthAsync("testfilecrossreq", Arg.Any<CancellationToken>())
-					.Returns(10);
-				store
-					.AppendDataAsync("testfilecrossreq", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-					.Returns(info =>
-					{
-						Thread.Sleep(5000);
-						return 3;
-					});
-				((ITusTerminationStore)store).DeleteFileAsync("testfilecrossreq", Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
+                deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                patchRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+            }
+        }
 
-				app.UseTus(request => new DefaultTusConfiguration
-				{
-					Store = store,
-					UrlPath = "/files"
-				});
-			}))
-			{
-				var patchRequest = server.CreateRequest("/files/testfilecrossreq")
-					.And(message =>
-					{
-						message.Content = new StreamContent(new MemoryStream(new byte[3]));
-						message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/offset+octet-stream");
-					})
-					.AddHeader("Upload-Offset", "0")
-					.AddTusResumableHeader()
-					.SendAsync("PATCH");
+        [Fact]
+        public async Task Returns_409_Conflict_For_A_Delete_Request_If_A_Patch_Is_Ongoing()
+        {
+            var fileId = Guid.NewGuid().ToString();
+            using (var server = TestServerFactory.Create(app =>
+            {
+                var store = Substitute.For<ITusStore, ITusTerminationStore>();
+                store.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
+                store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(0);
+                store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(10);
+                store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                    .Returns(info =>
+                    {
+                        Thread.Sleep(5000);
+                        return 3;
+                    });
+                ((ITusTerminationStore) store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult(0));
 
-				await Task.Delay(50);
+                app.UseTus(request => new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files"
+                });
+            }))
+            {
+                var patchRequest = server.CreateRequest($"/files/{fileId}")
+                    .And(message =>
+                    {
+                        message.Content = new StreamContent(new MemoryStream(new byte[3]));
+                        message.Content.Headers.ContentType =
+                            new MediaTypeHeaderValue("application/offset+octet-stream");
+                    })
+                    .AddHeader("Upload-Offset", "0")
+                    .AddTusResumableHeader()
+                    .SendAsync("PATCH");
 
-				var deleteRequest = server.CreateRequest("/files/testfilecrossreq")
-					.AddTusResumableHeader()
-					.SendAsync("DELETE");
+                await Task.Delay(50);
 
-				await Task.WhenAll(deleteRequest, patchRequest);
+                var deleteRequest = server.CreateRequest($"/files/{fileId}")
+                    .AddTusResumableHeader()
+                    .SendAsync("DELETE");
 
-				deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-				patchRequest.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-			}
-		}
-	}
+                await Task.WhenAll(deleteRequest, patchRequest);
+
+                deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                patchRequest.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            }
+        }
+    }
 }
