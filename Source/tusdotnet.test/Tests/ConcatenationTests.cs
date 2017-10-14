@@ -205,7 +205,8 @@ namespace tusdotnet.test.Tests
                 var response = await server
                     .CreateRequest("/files/concatFile")
                     .AddTusResumableHeader()
-                    .SendAsync("HEAD");
+                    .OverrideHttpMethodIfNeeded("HEAD", methodToUse)
+                    .SendAsync(methodToUse);
 
                 response.ShouldContainHeader("Upload-Concat", "final;/files/1 /files/2");
             }
@@ -234,7 +235,8 @@ namespace tusdotnet.test.Tests
                 var response = await server
                     .CreateRequest("/files/concatFile")
                     .AddTusResumableHeader()
-                    .SendAsync("HEAD");
+                    .OverrideHttpMethodIfNeeded("HEAD", methodToUse)
+                    .SendAsync(methodToUse);
 
                 response.ShouldContainHeader("Upload-Concat", "final;/files/a /files/b");
             }
@@ -262,7 +264,8 @@ namespace tusdotnet.test.Tests
                 var response = await server
                     .CreateRequest("/files/concatFile")
                     .AddTusResumableHeader()
-                    .SendAsync("HEAD");
+                    .OverrideHttpMethodIfNeeded("HEAD", methodToUse)
+                    .SendAsync(methodToUse);
 
                 response.Headers.Contains("Upload-Concat").ShouldBeFalse();
             }
