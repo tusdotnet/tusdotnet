@@ -15,12 +15,12 @@ namespace tusdotnet
     /// </summary>
     public class TusOwinMiddleware : OwinMiddleware
 	{
-		private readonly Func<IOwinRequest, DefaultTusConfiguration> _configFactory;
+		private readonly Func<IOwinRequest, Task<DefaultTusConfiguration>> _configFactory;
 
 	    /// <summary>Creates a new instance of TusOwinMiddleware.</summary>
 	    /// <param name="next"></param>
 	    /// <param name="configFactory"></param>
-        public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, DefaultTusConfiguration> configFactory) : base(next)
+        public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, Task<DefaultTusConfiguration>> configFactory) : base(next)
 		{
 			_configFactory = configFactory;
 		}
@@ -47,7 +47,7 @@ namespace tusdotnet
 				SetStatus = status => context.Response.StatusCode = status
 			};
 			
-			var config = _configFactory(context.Request);
+			var config = await _configFactory(context.Request);
 
 			var handled = await TusProtocolHandler.Invoke(new ContextAdapter
 			{

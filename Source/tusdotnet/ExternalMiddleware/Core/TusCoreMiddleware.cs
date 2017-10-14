@@ -17,12 +17,12 @@ namespace tusdotnet
 	{
 		private readonly RequestDelegate _next;
 
-		private readonly Func<HttpContext, DefaultTusConfiguration> _configFactory;
+		private readonly Func<HttpContext, Task<DefaultTusConfiguration>> _configFactory;
 
 		/// <summary>Creates a new instance of TusCoreMiddleware.</summary>
 		/// <param name="next"></param>
 		/// <param name="configFactory"></param>
-		public TusCoreMiddleware(RequestDelegate next, Func<HttpContext, DefaultTusConfiguration> configFactory)
+		public TusCoreMiddleware(RequestDelegate next, Func<HttpContext, Task<DefaultTusConfiguration>> configFactory)
 		{
 			_next = next;
 			_configFactory = configFactory;
@@ -55,17 +55,15 @@ namespace tusdotnet
 					               SetStatus = status => context.Response.StatusCode = status
 				               };
 
-			var config = _configFactory(context);
+			var config = await _configFactory(context);
 
-			var handled = await TusProtocolHandler.Invoke(
-				              new ContextAdapter
-					              {
-						              Request = request,
-						              Response = response,
-						              CancellationToken = context.RequestAborted,
-						              Configuration = config,
-					              });
-
+		    var handled = await TusProtocolHandler.Invoke(new ContextAdapter
+		    {
+		        Request = request,
+		        Response = response,
+		        Configuration = config,
+		        CancellationToken = context.RequestAborted
+            });
 
 			if (!handled)
 			{

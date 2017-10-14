@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
@@ -33,7 +34,7 @@ namespace tusdotnet.test.Tests
             configFunc.Invoke(Arg.Any<IOwinRequest>()).Returns(tusConfiguration);
 #else
             var configFunc = Substitute.For<Func<HttpContext, DefaultTusConfiguration>>();
-			configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
+            configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
 #endif
 
             using (var server = TestServerFactory.Create(app =>
@@ -74,7 +75,7 @@ namespace tusdotnet.test.Tests
         public async Task Configuration_Is_Validated_On_Each_Request()
         {
             var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
-            
+
             // Empty configuration
             using (var server = TestServerFactory.Create(app =>
             {
@@ -99,9 +100,10 @@ namespace tusdotnet.test.Tests
                 await AssertRequests(server);
             }
 
+            // Configuration with only url path specified
             tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.UrlPath.Returns("/files");
-            tusConfiguration.Store.Returns((ITusStore)null);
+            tusConfiguration.Store.Returns((ITusStore) null);
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => tusConfiguration);
@@ -112,22 +114,47 @@ namespace tusdotnet.test.Tests
             }
         }
 
+        [Fact]
+        public async Task Supports_Async_Configuration_Factories()
+        {
+            var urlPath = $"/{Guid.NewGuid().ToString()}";
+            var tusConfiguration = new DefaultTusConfiguration
+            {
+                UrlPath = urlPath,
+                Store = Substitute.For<ITusStore>()
+            };
+
+            // Empty configuration
+            using (var server = TestServerFactory.Create(app =>
+            {
+                // ReSharper disable once AccessToModifiedClosure
+                app.UseTus(async request =>
+                {
+                    await Task.Delay(10);
+                    return tusConfiguration;
+                });
+            }))
+            {
+                var response = await server.CreateRequest(urlPath).SendAsync("OPTIONS");
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                response.ShouldContainHeader("Tus-Resumable", "1.0.0");
+            }
+        }
+
         private static async Task AssertRequests(TestServer server)
         {
-            var funcs = new List<Func<Task>>()
+            var funcs = new List<Func<Task>>
             {
-                async () => await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
-                async () => await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST"),
-                async () => await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD"),
-                async () => await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH")
+                () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
+                () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST"),
+                () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD"),
+                () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH")
             };
 
             foreach (var func in funcs)
             {
                 await Should.ThrowAsync<TusConfigurationException>(async () => await func());
             }
-
         }
-
     }
 }
