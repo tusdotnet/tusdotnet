@@ -53,7 +53,9 @@ namespace OwinTestApp
 				catch (Exception exc)
 				{
 					Console.Error.WriteLine(exc);
-				}
+				    context.Response.StatusCode = 500;
+				    await context.Response.WriteAsync("An internal server error has occurred");
+                }
 			});
 
 		    app.UseTus(request =>

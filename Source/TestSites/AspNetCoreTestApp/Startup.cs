@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -59,6 +58,8 @@ namespace AspNetCoreTestApp
                 catch (Exception exc)
                 {
                     logger.LogError(null, exc, exc.Message);
+                    context.Response.StatusCode = 500;
+                    await context.Response.WriteAsync("An internal server error has occurred");
                 }
             });
 
