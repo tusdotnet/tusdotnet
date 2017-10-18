@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -76,21 +77,17 @@ namespace tusdotnet.ProtocolHandlers
                 await creationDeferLengthStore.SetUploadLengthAsync(fileId, uploadLength, cancellationToken);
             }
 
-            DateTimeOffset? expires;
-            long bytesWritten;
-            try
-            {
-                bytesWritten = await context.Configuration.Store.AppendDataAsync(fileId, context.Request.Body, cancellationToken);
-            }
-            // Client disconnected so no need to return a response.
-            catch (Exception exception) when (ClientDisconnected(exception))
+            var bytesWritten = 0L;
+            var clientDisconnected = await ClientDisconnectGuard.ExecuteAsync(
+                async () => bytesWritten = await context.Configuration.Store.AppendDataAsync(fileId, context.Request.Body, cancellationToken),
+                cancellationToken);
+
+            if (clientDisconnected)
             {
                 return true;
             }
-            finally
-            {
-                expires = await GetOrUpdateExpires(context);
-            }
+
+            var expires = await GetOrUpdateExpires(context);
 
             if (!await MatchChecksum(context))
             {
@@ -112,17 +109,6 @@ namespace tusdotnet.ProtocolHandlers
             // Run OnUploadComplete if it has been provided.
             await RunOnUploadComplete(context, fileOffset, bytesWritten);
             return true;
-
-            bool ClientDisconnected(Exception exception)
-            {
-                if (context.CancellationToken.IsCancellationRequested)
-                {
-                    return true;
-                }
-
-                // IsCancellationRequested is false when connecting directly to Kestrel. Instead the exception below is thrown.
-                return exception.GetType().FullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException";
-            }
         }
 
         private static async Task RunOnUploadComplete(ContextAdapter context, long fileOffset, long bytesWritten)
