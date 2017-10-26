@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
+using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 
 namespace tusdotnet.Models
@@ -27,7 +28,13 @@ namespace tusdotnet.Models
         /// This callback is called only once after the last bytes have been written to the store.
         /// It will not be called for any subsequent upload requests for already completed files.
         /// </summary>
+        [Obsolete("This callback is obsolete. Use DefaultTusConfiguration.Events.OnFileCompleteAsync instead.")]
         public virtual Func<string, ITusStore, CancellationToken, Task> OnUploadCompleteAsync { get; set; }
+
+        /// <summary>
+        /// Callbacks to run during different stages of the tusdotnet pipeline.
+        /// </summary>
+        public virtual Events Events { get; set; }
 
         /// <summary>
         /// The maximum upload size to allow. Exceeding this limit will return a "413 Request Entity Too Large" error to the client.

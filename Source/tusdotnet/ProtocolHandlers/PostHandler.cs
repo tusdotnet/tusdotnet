@@ -8,6 +8,8 @@ using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Configuration;
+using tusdotnet.Models.Configuration.tusdotnet.Models.Configuration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
@@ -139,6 +141,13 @@ namespace tusdotnet.ProtocolHandlers
                 if (context.Configuration.OnUploadCompleteAsync != null)
                 {
                     await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, cancellationToken);
+                }
+
+                if (context.Configuration.Events?.OnFileCompleteAsync != null)
+                {
+                    var fileCompleteContext = EventContext.FromContext<FileCompleteContext>(context);
+                    fileCompleteContext.FileId = fileId;
+                    await context.Configuration.Events.OnFileCompleteAsync(fileCompleteContext);
                 }
             }
 

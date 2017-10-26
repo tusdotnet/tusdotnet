@@ -7,6 +7,8 @@ using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Configuration;
+using tusdotnet.Models.Configuration.tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
@@ -118,7 +120,7 @@ namespace tusdotnet.ProtocolHandlers
                 {
                     return true;
                 }
-                
+
                 // IsCancellationRequested is false when connecting directly to Kestrel. Instead the exception below is thrown.
                 return exception.GetType().FullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException";
             }
@@ -126,7 +128,7 @@ namespace tusdotnet.ProtocolHandlers
 
         private static async Task RunOnUploadComplete(ContextAdapter context, long fileOffset, long bytesWritten)
         {
-            if (context.Configuration.OnUploadCompleteAsync == null)
+            if (context.Configuration.OnUploadCompleteAsync == null && context.Configuration.Events?.OnFileCompleteAsync == null)
             {
                 return;
             }
@@ -142,7 +144,16 @@ namespace tusdotnet.ProtocolHandlers
 
             if (fileIsComplete)
             {
-                await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, context.CancellationToken);
+                if(context.Configuration.OnUploadCompleteAsync != null)
+                {
+                    await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, context.CancellationToken);
+                }
+
+                if (context.Configuration.Events?.OnFileCompleteAsync != null)
+                {
+                    await context.Configuration.Events.OnFileCompleteAsync(
+                        EventContext.FromContext<FileCompleteContext>(context));
+                }
             }
         }
 

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using tusdotnet;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
 
@@ -67,13 +68,16 @@ namespace AspNetCoreTestApp
             {
                 UrlPath = "/files",
                 Store = new TusDiskStore(@"C:\tusfiles\"),
-                OnUploadCompleteAsync = (fileId, store, cancellationToken) =>
+                Events = new Events
                 {
-                    logger.LogInformation($"Upload of {fileId} completed using {store.GetType().FullName}");
-                    // If the store implements ITusReadableStore one could access the completed file here.
-                    // The default TusDiskStore implements this interface:
-                    // var file = await ((ITusReadableStore)store as).GetFileAsync(fileId, cancellationToken);
-                    return Task.FromResult(true);
+                    OnFileCompleteAsync = ctx =>
+                    {
+                        logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");
+                        // If the store implements ITusReadableStore one could access the completed file here.
+                        // The default TusDiskStore implements this interface:
+                        //var file = await ((tusdotnet.Interfaces.ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+                        return Task.FromResult(true);
+                    }
                 },
                 // Set an expiration time where incomplete files can no longer be updated.
                 // This value can either be absolute or sliding.

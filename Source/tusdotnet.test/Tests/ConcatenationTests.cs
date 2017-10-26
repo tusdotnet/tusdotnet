@@ -13,6 +13,7 @@ using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
@@ -526,7 +527,7 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task OnUploadCompleteAsync_Is_Called_When_A_Final_File_Is_Created(string methodToUse)
+        public async Task Runs_OnFileCompleteAsync_When_A_Final_File_Is_Created(string methodToUse)
         {
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
             var concatStore = (ITusConcatenationStore)store;
@@ -541,6 +542,8 @@ namespace tusdotnet.test.Tests
             concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
                 .ReturnsForAnyArgs("finalId");
 
+            string oldCallbackFileId = null;
+            ITusStore oldCallbackStore = null;
             string callbackFileId = null;
             ITusStore callbackStore = null;
             using (var server = TestServerFactory.Create(app =>
@@ -551,9 +554,18 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     OnUploadCompleteAsync = (fileId, tusStore, ct) =>
                     {
-                        callbackFileId = fileId;
-                        callbackStore = tusStore;
+                        oldCallbackFileId = fileId;
+                        oldCallbackStore = tusStore;
                         return Task.FromResult(0);
+                    },
+                    Events = new Events
+                    {
+                        OnFileCompleteAsync = ctx =>
+                        {
+                            callbackFileId = ctx.FileId;
+                            callbackStore = ctx.Store;
+                            return Task.FromResult(0);
+                        }
                     }
                 });
             }))
@@ -566,13 +578,16 @@ namespace tusdotnet.test.Tests
                         .SendAsync(methodToUse);
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
+                oldCallbackFileId.ShouldBe("finalId");
+                oldCallbackStore.ShouldBe(store);
+
                 callbackFileId.ShouldBe("finalId");
                 callbackStore.ShouldBe(store);
             }
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task OnUploadCompleteAsync_Is_Not_Called_When_A_Partial_File_Is_Created(string methodToUse)
+        public async Task Does_Not_Run_OnFileCompleteAsync_When_A_Partial_File_Is_Created(string methodToUse)
         {
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
             var concatStore = (ITusConcatenationStore)store;
@@ -583,6 +598,7 @@ namespace tusdotnet.test.Tests
             store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(0);
             store.AppendDataAsync("partial1", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(1);
 
+            var oldCallbackCalled = false;
             var callbackCalled = false;
             using (var server = TestServerFactory.Create(app =>
             {
@@ -592,12 +608,21 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     OnUploadCompleteAsync = (fileId, tusStore, ct) =>
                     {
-                        callbackCalled = true;
+                        oldCallbackCalled = true;
                         return Task.FromResult(0);
+                    },
+                    Events = new Events
+                    {
+                        OnFileCompleteAsync = ctx =>
+                        {
+                            callbackCalled = true;
+                            return Task.FromResult(0);
+                        }
                     }
                 });
             }))
             {
+                // Test that it does not run when creating the partial file.
                 var response = await server
                     .CreateRequest("/files")
                     .AddTusResumableHeader()
@@ -607,8 +632,10 @@ namespace tusdotnet.test.Tests
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
+                oldCallbackCalled.ShouldBeFalse();
                 callbackCalled.ShouldBeFalse();
 
+                // Test that it does not run when the data transfer to the partial file is complete.
                 response = await server
                     .CreateRequest(response.Headers.Location.ToString())
                     .AddTusResumableHeader()
@@ -623,6 +650,7 @@ namespace tusdotnet.test.Tests
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                oldCallbackCalled.ShouldBeFalse();
                 callbackCalled.ShouldBeFalse();
             }
         }

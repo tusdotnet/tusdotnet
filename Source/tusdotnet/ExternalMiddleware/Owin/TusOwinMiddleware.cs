@@ -46,7 +46,7 @@ namespace tusdotnet
 				SetHeader = (key, value) => context.Response.Headers[key] = value,
 				SetStatus = status => context.Response.StatusCode = status
 			};
-			
+
 			var config = await _configFactory(context.Request);
 
 			var handled = await TusProtocolHandler.Invoke(new ContextAdapter
