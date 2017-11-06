@@ -10,6 +10,7 @@ using OwinTestApp;
 using tusdotnet;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
@@ -67,6 +68,27 @@ namespace OwinTestApp
                     UrlPath = "/files",
                     Events = new Events
                     {
+                        OnBeforeCreateAsync = ctx =>
+                        {
+                            // Partial files are not complete so we do not need to validate
+                            // the metadata in our example.
+                            if (ctx.FileConcatenation is FileConcatPartial)
+                            {
+                                return Task.FromResult(true);
+                            }
+
+                            if (!ctx.Metadata.ContainsKey("name"))
+                            {
+                                ctx.FailRequest("name metadata must be specified");
+                            }
+
+                            if (!ctx.Metadata.ContainsKey("contentType"))
+                            {
+                                ctx.FailRequest("contentType metadata must be specified");
+                            }
+
+                            return Task.FromResult(true);
+                        },
                         OnFileCompleteAsync = ctx =>
                         {
                             Console.WriteLine(

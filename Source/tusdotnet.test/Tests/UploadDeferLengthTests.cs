@@ -6,6 +6,7 @@ using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
@@ -245,6 +246,37 @@ namespace tusdotnet.test.Tests
 
                 await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
                     "Upload-Length cannot be updated once set");
+            }
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task OnBeforeCreateAsync_Receives_UploadLengthIsDeferred_True_If_UploadDeferLength_Has_Been_Set(
+            string methodToUse)
+        {
+            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var creationStore = (ITusCreationStore)store;
+            creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+
+            bool uploadIsDeferred = false;
+            var events = new Events
+            {
+                OnBeforeCreateAsync = ctx =>
+                {
+                    uploadIsDeferred = ctx.UploadLengthIsDeferred;
+                    return Task.FromResult(0);
+                }
+            };
+
+            using (var server = TestServerFactory.Create(store, events))
+            {
+                var response = await server.CreateRequest("/files")
+                    .AddTusResumableHeader()
+                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                    .AddHeader("Upload-Defer-Length", "1")
+                    .SendAsync(methodToUse);
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created);
+                uploadIsDeferred.ShouldBeTrue();
             }
         }
     }

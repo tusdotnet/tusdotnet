@@ -15,5 +15,12 @@ namespace tusdotnet.Models.Configuration
         /// It will not be called for any subsequent requests for already completed files.
         /// </summary>
         public Func<FileCompleteContext, Task> OnFileCompleteAsync { get; set; }
+
+        /// <summary>
+        /// Callback ran right before a file is created. This callback can be used to validate
+        /// files before they are created. Calling the <code>FailRequest</code> method on the context 
+        /// will return a 400 Bad Request to the client.
+        /// </summary>
+        public Func<BeforeCreateContext, Task> OnBeforeCreateAsync { get; set; }
     }
 }

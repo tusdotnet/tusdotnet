@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using tusdotnet;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
@@ -70,13 +71,34 @@ namespace AspNetCoreTestApp
                 Store = new TusDiskStore(@"C:\tusfiles\"),
                 Events = new Events
                 {
+                    OnBeforeCreateAsync = ctx =>
+                    {
+                        // Partial files are not complete so we do not need to validate
+                        // the metadata in our example.
+                        if (ctx.FileConcatenation is FileConcatPartial)
+                        {
+                            return Task.CompletedTask;
+                        }
+
+                        if (!ctx.Metadata.ContainsKey("name"))
+                        {
+                            ctx.FailRequest("name metadata must be specified");
+                        }
+
+                        if (!ctx.Metadata.ContainsKey("contentType"))
+                        {
+                            ctx.FailRequest("contentType metadata must be specified");
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnFileCompleteAsync = ctx =>
                     {
                         logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");
                         // If the store implements ITusReadableStore one could access the completed file here.
                         // The default TusDiskStore implements this interface:
                         //var file = await ((tusdotnet.Interfaces.ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
-                        return Task.FromResult(true);
+                        return Task.CompletedTask;
                     }
                 },
                 // Set an expiration time where incomplete files can no longer be updated.

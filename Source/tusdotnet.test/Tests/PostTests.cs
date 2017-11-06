@@ -10,6 +10,10 @@ using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+using System;
+using System.Collections.Generic;
+using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
@@ -454,7 +458,78 @@ namespace tusdotnet.test.Tests
                     .PostAsync();
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            }
+        }
 
+        [Theory, XHttpMethodOverrideData]
+        public async Task Runs_OnBeforeCreateAsync_Before_Creating_The_File(string method)
+        {
+            var store = Substitute.For<ITusCreationStore, ITusStore>();
+            var fileId = Guid.NewGuid().ToString();
+            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+
+            long? uploadLength = null;
+            bool? uploadLengthIsDeferred = null;
+            FileConcat fileConcat = null;
+            Dictionary<string, Metadata> metadata = null;
+            var events = new Events
+            {
+                OnBeforeCreateAsync = ctx =>
+                {
+                    uploadLength = ctx.UploadLength;
+                    uploadLengthIsDeferred = ctx.UploadLengthIsDeferred;
+                    fileConcat = ctx.FileConcatenation;
+                    metadata = ctx.Metadata;
+                    return Task.FromResult(0);
+                }
+            };
+
+            using (var server = TestServerFactory.Create((ITusStore)store, events))
+            {
+                var response = await server.CreateRequest("/files")
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Length", "1")
+                    .AddHeader("Upload-Metadata", "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh")
+                    .OverrideHttpMethodIfNeeded("POST", method)
+                    .SendAsync(method);
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+                uploadLength.ShouldBe(1);
+                uploadLengthIsDeferred.ShouldBe(false);
+                fileConcat.ShouldBeNull();
+                metadata.ShouldNotBeNull();
+                metadata.ContainsKey("filename").ShouldBeTrue();
+                metadata.ContainsKey("othermeta").ShouldBeTrue();
+            }
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Returns_400_Bad_Request_If_OnBeforeCreateAsync_Fails_The_Request(string method)
+        {
+            var store = Substitute.For<ITusCreationStore, ITusStore>();
+            var fileId = Guid.NewGuid().ToString();
+            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+
+            var events = new Events
+            {
+                OnBeforeCreateAsync = ctx =>
+                {
+                    ctx.FailRequest("The request failed with custom error message");
+                    return Task.FromResult(0);
+                }
+            };
+
+            using (var server = TestServerFactory.Create((ITusStore)store, events))
+            {
+                var response = await server.CreateRequest("/files")
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Length", "1")
+                    .OverrideHttpMethodIfNeeded("POST", method)
+                    .SendAsync(method);
+
+                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
+                    "The request failed with custom error message");
             }
         }
     }

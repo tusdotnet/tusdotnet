@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
 
 #endif
 #if netfull
@@ -13,6 +14,7 @@ using Microsoft.Owin.Testing;
 using Owin;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
 
 #endif
 
@@ -29,14 +31,15 @@ namespace tusdotnet.test
             return new TestServer(host);
         }
 
-        public static TestServer Create(ITusStore store)
+        public static TestServer Create(ITusStore store, Events events = null)
         {
             return Create(app =>
             {
                 app.UseTus(context => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
-                    Store = store
+                    Store = store,
+                    Events = events
                 });
             });
         }
@@ -50,14 +53,15 @@ namespace tusdotnet.test
 		    return TestServer.Create(startup);
 	    }
 
-        public static TestServer Create(ITusStore store)
+        public static TestServer Create(ITusStore store, Events events = null)
         {
             return Create(app =>
             {
                 app.UseTus(context => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
-                    Store = store
+                    Store = store,
+                    Events = events
                 });
             });
         }

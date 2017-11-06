@@ -8,7 +8,6 @@ using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
-using tusdotnet.Models.Configuration.tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
