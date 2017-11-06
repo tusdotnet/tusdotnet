@@ -10,6 +10,7 @@ using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
@@ -178,5 +179,70 @@ namespace tusdotnet.test.Tests
 				}
 			}
 		}
-	}
+
+	    [Theory, XHttpMethodOverrideData]
+	    public async Task Runs_OnBeforeDeleteAsync_Before_Deleting_The_File(string methodToUse)
+	    {
+	        var store = Substitute.For<ITusStore, ITusTerminationStore>();
+	        store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
+
+	        var beforeDeleteCalled = false;
+
+            var terminationStore = (ITusTerminationStore) store;
+	        terminationStore.DeleteFileAsync(null, CancellationToken.None)
+	            .ReturnsForAnyArgs(Task.FromResult(0))
+	            .AndDoes(ci => beforeDeleteCalled.ShouldBeTrue());
+
+	        var events = new Events
+	        {
+                OnBeforeDeleteAsync = context =>
+                {
+                    beforeDeleteCalled = true;
+                    return Task.FromResult(0);
+                }
+	        };
+
+	        using (var server = TestServerFactory.Create(store, events))
+	        {
+	            var response =  await server
+	                .CreateRequest("/files/testfiledelete")
+	                .AddTusResumableHeader()
+	                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+	                .SendAsync(methodToUse);
+
+                    response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                    beforeDeleteCalled.ShouldBeTrue();
+            }
+	    }
+
+	    [Theory, XHttpMethodOverrideData]
+        public async Task Returns_400_BadRequest_If_OnBeforeDelete_Fails_The_Request(string methodToUse)
+	    {
+	        var store = Substitute.For<ITusStore, ITusTerminationStore>();
+	        store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
+
+	        var terminationStore = (ITusTerminationStore)store;
+	        terminationStore.DeleteFileAsync(null, CancellationToken.None).ReturnsForAnyArgs(Task.FromResult(0));
+
+	        var events = new Events
+	        {
+	            OnBeforeDeleteAsync = context =>
+	            {
+	                context.FailRequest("Cannot delete file");
+	                return Task.FromResult(0);
+	            }
+	        };
+
+	        using (var server = TestServerFactory.Create(store, events))
+	        {
+	            var response = await server
+	                .CreateRequest("/files/testfiledelete")
+	                .AddTusResumableHeader()
+	                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+	                .SendAsync(methodToUse);
+
+	            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Cannot delete file");
+	        }
+        }
+    }
 }

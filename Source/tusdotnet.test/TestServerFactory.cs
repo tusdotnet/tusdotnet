@@ -22,7 +22,6 @@ namespace tusdotnet.test
 {
     public static class TestServerFactory
     {
-
 #if netstandard
 
         public static TestServer Create(Action<IApplicationBuilder> startup)

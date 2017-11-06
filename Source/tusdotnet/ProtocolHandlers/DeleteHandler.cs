@@ -1,9 +1,11 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
+using tusdotnet.Models.Configuration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
@@ -37,11 +39,34 @@ namespace tusdotnet.ProtocolHandlers
 
             var fileId = context.GetFileId();
 
-            await ((ITusTerminationStore)store).DeleteFileAsync(fileId, cancellationToken);
-            response.SetStatus((int)HttpStatusCode.NoContent);
+            if (await HandleOnBeforeDeleteAsync(context))
+            {
+                return true;
+            }
+
+            await ((ITusTerminationStore) store).DeleteFileAsync(fileId, cancellationToken);
+
+            response.SetStatus((int) HttpStatusCode.NoContent);
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 
             return true;
+        }
+
+        private async Task<bool> HandleOnBeforeDeleteAsync(ContextAdapter context)
+        {
+            if (context.Configuration.Events?.OnBeforeDeleteAsync == null)
+            {
+                return false;
+            }
+            var beforeDeleteContext = EventContext.FromContext<OnBeforeDeleteContext>(context);
+            await context.Configuration.Events.OnBeforeDeleteAsync(beforeDeleteContext);
+            if (beforeDeleteContext.HasFailed)
+            {
+                await context.Response.Error(HttpStatusCode.BadRequest, beforeDeleteContext.ErrorMessage);
+                return true;
+            }
+
+            return false;
         }
     }
 }

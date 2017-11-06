@@ -22,5 +22,7 @@ namespace tusdotnet.Models.Configuration
         /// will return a 400 Bad Request to the client.
         /// </summary>
         public Func<BeforeCreateContext, Task> OnBeforeCreateAsync { get; set; }
+
+        public Func<OnBeforeDeleteContext, Task> OnBeforeDeleteAsync { get; set; }
     }
 }
