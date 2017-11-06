@@ -8,11 +8,14 @@ app.UseTus(context => new DefaultTusConfiguration
 	Store = new TusDiskStore(@"C:\tusfiles\"),
 	// On what url should we listen for uploads?
 	UrlPath = "/files",
-	OnUploadCompleteAsync = async (fileId, store, cancellationToken) =>
-	{
-		var file = await ((ITusReadableStore)store).GetFileAsync(fileId, cancellationToken);
-		await DoSomeProcessing(file);
-	}
+    Events = new Events
+    {
+        OnFileCompleteAsync = ctx =>
+        {
+            var file = await ((ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+		    await DoSomeProcessing(file);
+        }
+    }
 });
 
 You might also want to configure IIS (https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) 
