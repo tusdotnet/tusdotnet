@@ -82,12 +82,12 @@ namespace AspNetCoreTestApp
 
                         if (!ctx.Metadata.ContainsKey("name"))
                         {
-                            ctx.FailRequest("name metadata must be specified");
+                            ctx.FailRequest("name metadata must be specified. ");
                         }
 
                         if (!ctx.Metadata.ContainsKey("contentType"))
                         {
-                            ctx.FailRequest("contentType metadata must be specified");
+                            ctx.FailRequest("contentType metadata must be specified. ");
                         }
 
                         return Task.CompletedTask;
