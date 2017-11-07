@@ -472,10 +472,12 @@ namespace tusdotnet.test.Tests
             bool? uploadLengthIsDeferred = null;
             FileConcat fileConcat = null;
             Dictionary<string, Metadata> metadata = null;
+            string callbackFileId = null;
             var events = new Events
             {
                 OnBeforeCreateAsync = ctx =>
                 {
+                    callbackFileId = ctx.FileId;
                     uploadLength = ctx.UploadLength;
                     uploadLengthIsDeferred = ctx.UploadLengthIsDeferred;
                     fileConcat = ctx.FileConcatenation;
@@ -495,6 +497,7 @@ namespace tusdotnet.test.Tests
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
+                callbackFileId.ShouldBe(null);
                 uploadLength.ShouldBe(1);
                 uploadLengthIsDeferred.ShouldBe(false);
                 fileConcat.ShouldBeNull();
@@ -530,6 +533,56 @@ namespace tusdotnet.test.Tests
 
                 await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
                     "The request failed with custom error message");
+            }
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Runs_OnCreateCompleteAsync_After_Creating_The_File(string method)
+        {
+            var store = Substitute.For<ITusCreationStore, ITusStore>();
+            var fileId = Guid.NewGuid().ToString();
+
+            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+
+            long? uploadLength = null;
+            bool? uploadLengthIsDeferred = null;
+            FileConcat fileConcat = null;
+            Dictionary<string, Metadata> metadata = null;
+            string callbackFileId = null;
+            var events = new Events
+            {
+                OnCreateCompleteAsync = ctx =>
+                {
+                    store.ReceivedWithAnyArgs().CreateFileAsync(-1, null, CancellationToken.None);
+
+                    callbackFileId = ctx.FileId;
+                    uploadLength = ctx.UploadLength;
+                    uploadLengthIsDeferred = ctx.UploadLengthIsDeferred;
+                    fileConcat = ctx.FileConcatenation;
+                    metadata = ctx.Metadata;
+
+                    return Task.FromResult(0);
+                }
+            };
+
+            using (var server = TestServerFactory.Create((ITusStore)store, events))
+            {
+                var response = await server.CreateRequest("/files")
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Length", "1")
+                    .AddHeader("Upload-Metadata", "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh")
+                    .OverrideHttpMethodIfNeeded("POST", method)
+                    .SendAsync(method);
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+                callbackFileId.ShouldBe(fileId);
+                uploadLength.ShouldBe(1);
+                uploadLengthIsDeferred.ShouldBe(false);
+                fileConcat.ShouldBeNull();
+                metadata.ShouldNotBeNull();
+                metadata.ContainsKey("filename").ShouldBeTrue();
+                metadata.ContainsKey("othermeta").ShouldBeTrue();
             }
         }
     }

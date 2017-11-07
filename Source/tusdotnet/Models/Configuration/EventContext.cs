@@ -27,11 +27,17 @@ namespace tusdotnet.Models.Configuration
 
         internal static T FromContext<T>(ContextAdapter context) where T : EventContext, new()
         {
+            var fileId = context.GetFileId();
+            if (string.IsNullOrEmpty(fileId))
+            {
+                fileId = null;
+            }
+
             return new T
             {
                 Store = context.Configuration.Store,
                 CancellationToken = context.CancellationToken,
-                FileId = context.GetFileId()
+                FileId = fileId
             };
         }
     }

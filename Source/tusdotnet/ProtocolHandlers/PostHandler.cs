@@ -12,6 +12,7 @@ using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
+using UploadConcat = tusdotnet.Models.Concatenation.UploadConcat;
 
 namespace tusdotnet.ProtocolHandlers
 {
@@ -94,19 +95,9 @@ namespace tusdotnet.ProtocolHandlers
 
             var uploadLength = GetUploadLength(context.Request);
 
-            if (context.Configuration.Events?.OnBeforeCreateAsync != null)
+            if (await HandleOnBeforeCreateAsync(context, supportsUploadConcat, uploadConcat, metadata, uploadLength))
             {
-                var beforeCreateContext = EventContext.FromContext<BeforeCreateContext>(context);
-                beforeCreateContext.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
-                beforeCreateContext.Metadata = Metadata.Parse(metadata);
-                beforeCreateContext.UploadLength = uploadLength;
-
-                await context.Configuration.Events.OnBeforeCreateAsync(beforeCreateContext);
-
-                if (beforeCreateContext.HasFailed)
-                {
-                    return await response.Error(HttpStatusCode.BadRequest, beforeCreateContext.ErrorMessage);
-                }
+                return true;
             }
 
             if (supportsUploadConcat)
@@ -116,6 +107,7 @@ namespace tusdotnet.ProtocolHandlers
             else
             {
                 fileId = await tusCreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
+                await HandleOnCreateComplete(context, fileId, supportsUploadConcat, uploadConcat, metadata, uploadLength);
             }
 
             if (context.Configuration.Store is ITusExpirationStore expirationStore
@@ -140,7 +132,7 @@ namespace tusdotnet.ProtocolHandlers
 
         private static async Task<string> HandleCreationOfConcatFiles(
             ContextAdapter context,
-            Models.Concatenation.UploadConcat uploadConcat,
+            UploadConcat uploadConcat,
             ITusConcatenationStore tusConcatenationStore,
             long uploadLength,
             string metadata,
@@ -151,6 +143,8 @@ namespace tusdotnet.ProtocolHandlers
             {
                 fileId = await tusConcatenationStore
                     .CreatePartialFileAsync(uploadLength, metadata, cancellationToken);
+
+                await HandleOnCreateComplete(context, fileId, true, uploadConcat, metadata, uploadLength);
             }
             else
             {
@@ -158,22 +152,67 @@ namespace tusdotnet.ProtocolHandlers
                 fileId = await tusConcatenationStore.CreateFinalFileAsync(finalConcat.Files, metadata,
                     cancellationToken);
 
-                // Run callback that the final file is completed.
-                if (context.Configuration.OnUploadCompleteAsync != null)
-                {
-                    await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store,
-                        cancellationToken);
-                }
+                await HandleOnCreateComplete(context, fileId, true, uploadConcat, metadata, uploadLength);
 
-                if (context.Configuration.Events?.OnFileCompleteAsync != null)
-                {
-                    var fileCompleteContext = EventContext.FromContext<FileCompleteContext>(context);
-                    fileCompleteContext.FileId = fileId;
-                    await context.Configuration.Events.OnFileCompleteAsync(fileCompleteContext);
-                }
+                // Run callback that the final file is completed.
+                await HandleOnFileComplete(context, cancellationToken, fileId);
             }
 
             return fileId;
+        }
+
+        private static async Task<bool> HandleOnBeforeCreateAsync(ContextAdapter context, bool supportsUploadConcat,
+            UploadConcat uploadConcat, string metadata, long uploadLength)
+        {
+            if (context.Configuration.Events?.OnBeforeCreateAsync != null)
+            {
+                var beforeCreateContext = EventContext.FromContext<BeforeCreateContext>(context);
+                beforeCreateContext.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
+                beforeCreateContext.Metadata = Metadata.Parse(metadata);
+                beforeCreateContext.UploadLength = uploadLength;
+
+                await context.Configuration.Events.OnBeforeCreateAsync(beforeCreateContext);
+
+                if (beforeCreateContext.HasFailed)
+                {
+                    return await context.Response.Error(HttpStatusCode.BadRequest, beforeCreateContext.ErrorMessage);
+                }
+            }
+            return false;
+        }
+
+        private static async Task HandleOnCreateComplete(
+            ContextAdapter context, string fileId, bool supportsUploadConcat,
+            UploadConcat uploadConcat, string metadata, long uploadLength)
+        {
+            if (context.Configuration.Events?.OnCreateCompleteAsync == null)
+            {
+                return;
+            }
+
+            var createCompleteContext = EventContext.FromContext<CreateCompleteContext>(context);
+            createCompleteContext.FileId = fileId;
+            createCompleteContext.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
+            createCompleteContext.Metadata = Metadata.Parse(metadata);
+            createCompleteContext.UploadLength = uploadLength;
+
+            await context.Configuration.Events.OnCreateCompleteAsync(createCompleteContext);
+        }
+
+        private static async Task HandleOnFileComplete(ContextAdapter context, CancellationToken cancellationToken, string fileId)
+        {
+            if (context.Configuration.OnUploadCompleteAsync != null)
+            {
+                await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store,
+                    cancellationToken);
+            }
+
+            if (context.Configuration.Events?.OnFileCompleteAsync != null)
+            {
+                var fileCompleteContext = EventContext.FromContext<FileCompleteContext>(context);
+                fileCompleteContext.FileId = fileId;
+                await context.Configuration.Events.OnFileCompleteAsync(fileCompleteContext);
+            }
         }
 
         private static long GetUploadLength(RequestAdapter request)
