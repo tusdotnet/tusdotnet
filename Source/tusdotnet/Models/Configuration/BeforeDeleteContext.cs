@@ -3,7 +3,7 @@
     /// <summary> 
     /// Context for the OnBeforeDelete event 
     /// </summary> 
-    public class OnBeforeDeleteContext : ValidationContext
+    public class BeforeDeleteContext : ValidationContext
     {
     }
 }

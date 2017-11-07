@@ -23,6 +23,6 @@ namespace tusdotnet.Models.Configuration
         /// </summary>
         public Func<BeforeCreateContext, Task> OnBeforeCreateAsync { get; set; }
 
-        public Func<OnBeforeDeleteContext, Task> OnBeforeDeleteAsync { get; set; }
+        public Func<BeforeDeleteContext, Task> OnBeforeDeleteAsync { get; set; }
     }
 }

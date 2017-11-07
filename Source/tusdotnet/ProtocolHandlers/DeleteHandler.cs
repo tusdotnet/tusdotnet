@@ -58,7 +58,7 @@ namespace tusdotnet.ProtocolHandlers
             {
                 return false;
             }
-            var beforeDeleteContext = EventContext.FromContext<OnBeforeDeleteContext>(context);
+            var beforeDeleteContext = EventContext.FromContext<BeforeDeleteContext>(context);
             await context.Configuration.Events.OnBeforeDeleteAsync(beforeDeleteContext);
             if (beforeDeleteContext.HasFailed)
             {
