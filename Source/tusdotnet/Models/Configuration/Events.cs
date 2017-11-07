@@ -23,6 +23,11 @@ namespace tusdotnet.Models.Configuration
         /// </summary>
         public Func<BeforeCreateContext, Task> OnBeforeCreateAsync { get; set; }
 
+        /// <summary>
+        /// Callback ran right before a file is deleted. This callback can be used to validate
+        /// that a file can be deleted. Calling the <code>FailRequest</code> method on the context 
+        /// will return a 400 Bad Request to the client.
+        /// </summary>
         public Func<BeforeDeleteContext, Task> OnBeforeDeleteAsync { get; set; }
     }
 }
