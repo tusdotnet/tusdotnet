@@ -244,5 +244,53 @@ namespace tusdotnet.test.Tests
 	            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Cannot delete file");
 	        }
         }
+
+	    [Theory, XHttpMethodOverrideData]
+	    public async Task Runs_OnDeleteCompleteAsync_After_Deleting_The_File(string methodToUse)
+	    {
+	        var fileId = Guid.NewGuid().ToString();
+	        var store = Substitute.For<ITusStore, ITusTerminationStore>();
+	        store.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
+
+	        var onDeleteCompleteAsyncCalled = false;
+	        var deleteFileAsyncCalled = false;
+	        string callbackFileId = null;
+	        ITusStore callbackStore = null;
+
+	        var terminationStore = (ITusTerminationStore)store;
+	        terminationStore.DeleteFileAsync(null, CancellationToken.None)
+	            .ReturnsForAnyArgs(Task.FromResult(0))
+	            .AndDoes(ci =>
+	            {
+                    onDeleteCompleteAsyncCalled.ShouldBeFalse();
+	                deleteFileAsyncCalled = true;
+	            });
+
+	        var events = new Events
+	        {
+	            OnDeleteCompleteAsync = ctx =>
+	            {
+	                deleteFileAsyncCalled.ShouldBe(true);
+	                onDeleteCompleteAsyncCalled = true;
+	                callbackFileId = ctx.FileId;
+	                callbackStore = ctx.Store;
+	                return Task.FromResult(0);
+	            }
+	        };
+
+	        using (var server = TestServerFactory.Create(store, events))
+	        {
+	            var response = await server
+	                .CreateRequest($"/files/{fileId}")
+	                .AddTusResumableHeader()
+	                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+	                .SendAsync(methodToUse);
+
+	            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+	            deleteFileAsyncCalled.ShouldBeTrue();
+	            callbackFileId.ShouldBe(fileId);
+                callbackStore.ShouldBe(store);
+	        }
+	    }
     }
 }

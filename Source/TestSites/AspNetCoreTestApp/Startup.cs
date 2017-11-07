@@ -92,6 +92,21 @@ namespace AspNetCoreTestApp
 
                         return Task.CompletedTask;
                     },
+                    OnCreateCompleteAsync = ctx =>
+                    {
+                        logger.LogInformation($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        return Task.CompletedTask;
+                    },
+                    OnBeforeDeleteAsync = ctx =>
+                    {
+                        // Can the file be deleted? If not call ctx.FailRequest(<message>);
+                        return Task.CompletedTask;
+                    },
+                    OnDeleteCompleteAsync = ctx =>
+                    {
+                        logger.LogInformation($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        return Task.CompletedTask;
+                    },
                     OnFileCompleteAsync = ctx =>
                     {
                         logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");

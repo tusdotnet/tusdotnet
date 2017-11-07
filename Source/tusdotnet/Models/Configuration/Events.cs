@@ -34,5 +34,10 @@ namespace tusdotnet.Models.Configuration
         /// will return a 400 Bad Request to the client.
         /// </summary>
         public Func<BeforeDeleteContext, Task> OnBeforeDeleteAsync { get; set; }
+
+        /// <summary>
+        /// Callback ran when a file has been deleted.
+        /// </summary>
+        public Func<DeleteCompleteContext, Task> OnDeleteCompleteAsync { get; set; }
     }
 }

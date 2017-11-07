@@ -89,6 +89,21 @@ namespace OwinTestApp
 
                             return Task.FromResult(true);
                         },
+                        OnCreateCompleteAsync = ctx =>
+                        {
+                            Console.WriteLine($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                            return Task.FromResult(true);
+                        },
+                        OnBeforeDeleteAsync = ctx =>
+                        {
+                            // Can the file be deleted? If not call ctx.FailRequest(<message>);
+                            return Task.FromResult(true);
+                        },
+                        OnDeleteCompleteAsync = ctx =>
+                        {
+                            Console.WriteLine($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                            return Task.FromResult(true);
+                        },
                         OnFileCompleteAsync = ctx =>
                         {
                             Console.WriteLine(

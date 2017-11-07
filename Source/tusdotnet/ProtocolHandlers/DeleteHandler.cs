@@ -46,6 +46,8 @@ namespace tusdotnet.ProtocolHandlers
 
             await ((ITusTerminationStore) store).DeleteFileAsync(fileId, cancellationToken);
 
+            await HandleOnDeleteCompleteAsync(context);
+
             response.SetStatus((int) HttpStatusCode.NoContent);
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 
@@ -67,6 +69,17 @@ namespace tusdotnet.ProtocolHandlers
             }
 
             return false;
+        }
+
+        private async Task HandleOnDeleteCompleteAsync(ContextAdapter context)
+        {
+            if (context.Configuration.Events?.OnDeleteCompleteAsync == null)
+            {
+                return;
+            }
+
+            await context.Configuration.Events.OnDeleteCompleteAsync(
+                EventContext.FromContext<DeleteCompleteContext>(context));
         }
     }
 }
