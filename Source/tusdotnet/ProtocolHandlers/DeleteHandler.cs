@@ -60,7 +60,7 @@ namespace tusdotnet.ProtocolHandlers
             {
                 return false;
             }
-            var beforeDeleteContext = EventContext.FromContext<BeforeDeleteContext>(context);
+            var beforeDeleteContext = BeforeDeleteContext.Create(context);
             await context.Configuration.Events.OnBeforeDeleteAsync(beforeDeleteContext);
             if (beforeDeleteContext.HasFailed)
             {
@@ -78,8 +78,7 @@ namespace tusdotnet.ProtocolHandlers
                 return;
             }
 
-            await context.Configuration.Events.OnDeleteCompleteAsync(
-                EventContext.FromContext<DeleteCompleteContext>(context));
+            await context.Configuration.Events.OnDeleteCompleteAsync(DeleteCompleteContext.Create(context));
         }
     }
 }

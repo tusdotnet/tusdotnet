@@ -6,7 +6,7 @@ namespace tusdotnet.Models.Configuration
     /// <summary>
     /// Context for the OnBeforeCreate event
     /// </summary>
-    public class BeforeCreateContext : ValidationContext
+    public class BeforeCreateContext : ValidationContext<BeforeCreateContext>
     {
         /// <summary>
         /// The length (in bytes) of the file to be created. Will be -1 if Upload-Defer-Length is used.

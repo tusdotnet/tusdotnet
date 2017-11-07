@@ -6,7 +6,7 @@ namespace tusdotnet.Models.Configuration
     /// <summary>
     /// Context for the OnCreateComplete event
     /// </summary>
-    public class CreateCompleteContext : EventContext
+    public class CreateCompleteContext : EventContext<CreateCompleteContext>
     {
         /// <summary>
         /// The length (in bytes) of the file to be created. Will be -1 if Upload-Defer-Length is used.

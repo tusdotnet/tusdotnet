@@ -3,7 +3,8 @@
     /// <summary>
     /// Base context for all contexts that can be validated
     /// </summary>
-    public abstract class ValidationContext : EventContext
+    /// <typeparam name="TSelf">The type of the derived class inheriting the EventContext</typeparam>
+    public abstract class ValidationContext<TSelf> : EventContext<TSelf> where TSelf : EventContext<TSelf>, new()
     {
         /// <summary>
         /// Error message set using <code>FailRequest</code>

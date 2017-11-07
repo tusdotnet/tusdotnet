@@ -166,10 +166,12 @@ namespace tusdotnet.ProtocolHandlers
         {
             if (context.Configuration.Events?.OnBeforeCreateAsync != null)
             {
-                var beforeCreateContext = EventContext.FromContext<BeforeCreateContext>(context);
-                beforeCreateContext.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
-                beforeCreateContext.Metadata = Metadata.Parse(metadata);
-                beforeCreateContext.UploadLength = uploadLength;
+                var beforeCreateContext = BeforeCreateContext.Create(context, ctx =>
+                {
+                    ctx.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
+                    ctx.Metadata = Metadata.Parse(metadata);
+                    ctx.UploadLength = uploadLength;
+                });
 
                 await context.Configuration.Events.OnBeforeCreateAsync(beforeCreateContext);
 
@@ -190,11 +192,13 @@ namespace tusdotnet.ProtocolHandlers
                 return;
             }
 
-            var createCompleteContext = EventContext.FromContext<CreateCompleteContext>(context);
-            createCompleteContext.FileId = fileId;
-            createCompleteContext.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
-            createCompleteContext.Metadata = Metadata.Parse(metadata);
-            createCompleteContext.UploadLength = uploadLength;
+            var createCompleteContext = CreateCompleteContext.Create(context, ctx =>
+            {
+                ctx.FileId = fileId;
+                ctx.FileConcatenation = supportsUploadConcat ? uploadConcat.Type : null;
+                ctx.Metadata = Metadata.Parse(metadata);
+                ctx.UploadLength = uploadLength;
+            });
 
             await context.Configuration.Events.OnCreateCompleteAsync(createCompleteContext);
         }
@@ -209,9 +213,7 @@ namespace tusdotnet.ProtocolHandlers
 
             if (context.Configuration.Events?.OnFileCompleteAsync != null)
             {
-                var fileCompleteContext = EventContext.FromContext<FileCompleteContext>(context);
-                fileCompleteContext.FileId = fileId;
-                await context.Configuration.Events.OnFileCompleteAsync(fileCompleteContext);
+                await context.Configuration.Events.OnFileCompleteAsync(FileCompleteContext.Create(context, ctx => ctx.FileId = fileId));
             }
         }
 

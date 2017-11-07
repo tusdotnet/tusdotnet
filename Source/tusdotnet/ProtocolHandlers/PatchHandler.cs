@@ -136,8 +136,7 @@ namespace tusdotnet.ProtocolHandlers
 
                 if (context.Configuration.Events?.OnFileCompleteAsync != null)
                 {
-                    await context.Configuration.Events.OnFileCompleteAsync(
-                        EventContext.FromContext<FileCompleteContext>(context));
+                    await context.Configuration.Events.OnFileCompleteAsync(FileCompleteContext.Create(context));
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
@@ -8,7 +9,8 @@ namespace tusdotnet.Models.Configuration
     /// <summary>
     /// Base context for all events in tusdotnet
     /// </summary>
-    public abstract class EventContext
+    /// <typeparam name="TSelf">The type of the derived class inheriting the EventContext</typeparam>
+    public abstract class EventContext<TSelf> where TSelf : EventContext<TSelf>, new()
     {
         /// <summary>
         /// The id of the file that was completed
@@ -25,7 +27,7 @@ namespace tusdotnet.Models.Configuration
         /// </summary>
         public CancellationToken CancellationToken { get; set; }
 
-        internal static T FromContext<T>(ContextAdapter context) where T : EventContext, new()
+        internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)
         {
             var fileId = context.GetFileId();
             if (string.IsNullOrEmpty(fileId))
@@ -33,12 +35,16 @@ namespace tusdotnet.Models.Configuration
                 fileId = null;
             }
 
-            return new T
+            var eventContext = new TSelf
             {
                 Store = context.Configuration.Store,
                 CancellationToken = context.CancellationToken,
                 FileId = fileId
             };
+
+            configure?.Invoke(eventContext);
+
+            return eventContext;
         }
     }
 }
