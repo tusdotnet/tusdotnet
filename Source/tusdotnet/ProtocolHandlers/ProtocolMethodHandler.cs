@@ -16,7 +16,7 @@ namespace tusdotnet.ProtocolHandlers
 
         internal abstract Task<bool> Handle(ContextAdapter context);
 
-        internal async Task<bool> Validate(ContextAdapter context)
+        internal Task<bool> Validate(ContextAdapter context)
         {
             var validator = new Validator(Requires);
 
@@ -24,19 +24,22 @@ namespace tusdotnet.ProtocolHandlers
 
             if (validator.StatusCode == HttpStatusCode.OK)
             {
-                return true;
+                return Task.FromResult(true);
             }
 
             if (validator.StatusCode == HttpStatusCode.NotFound)
             {
                 context.Response.NotFound();
-            }
-            else
-            {
-                await context.Response.Error(validator.StatusCode, validator.ErrorMessage);
+                return Task.FromResult(false);
             }
 
-            return false;
+            return RespondWithError();
+
+            async Task<bool> RespondWithError()
+            {
+                await context.Response.Error(validator.StatusCode, validator.ErrorMessage);
+                return false;
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadConcat : Requirement
+    internal sealed class UploadConcat : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {
@@ -24,31 +24,42 @@ namespace tusdotnet.Validation.Requirements
             }
         }
 
-        private async Task ValidateForPatch(ContextAdapter context)
+        private Task ValidateForPatch(ContextAdapter context)
         {
-            var concatStore = context.Configuration.Store as ITusConcatenationStore;
-            var fileId = context.GetFileId();
-
-            if (concatStore != null)
+            if (!(context.Configuration.Store is ITusConcatenationStore concatStore))
             {
-                var uploadConcat = await concatStore.GetUploadConcatAsync(fileId, context.CancellationToken);
+                return Done;
+            }
+
+            return ValidateForPatchLocal();
+
+            async Task ValidateForPatchLocal()
+            {
+                var uploadConcat = await concatStore.GetUploadConcatAsync(context.GetFileId(), context.CancellationToken);
 
                 if (uploadConcat is FileConcatFinal)
                 {
-                   await Forbidden("File with \"Upload-Concat: final\" cannot be patched");
+                    await Forbidden("File with \"Upload-Concat: final\" cannot be patched");
                 }
             }
-
         }
 
-        private async Task ValidateForPost(ContextAdapter context)
+        private Task ValidateForPost(ContextAdapter context)
         {
-            var request = context.Request;
-            if (context.Configuration.Store is ITusConcatenationStore concatenationStore &&
-                request.Headers.ContainsKey(HeaderConstants.UploadConcat))
+            if (!(context.Configuration.Store is ITusConcatenationStore concatenationStore)
+                || !context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat))
             {
-                var uploadConcat = new Models.Concatenation.UploadConcat(request.Headers[HeaderConstants.UploadConcat].First(),
+                return Done;
+            }
+
+            return ValidateForPost();
+
+            async Task ValidateForPost()
+            {
+                var uploadConcat = new Models.Concatenation.UploadConcat(
+                    context.Request.GetHeader(HeaderConstants.UploadConcat),
                     context.Configuration.UrlPath);
+
                 if (!uploadConcat.IsValid)
                 {
                     await BadRequest(uploadConcat.ErrorMessage);
@@ -64,9 +75,8 @@ namespace tusdotnet.Validation.Requirements
 
         private async Task ValidateFinalFileCreation(FileConcatFinal finalConcat, ContextAdapter context, ITusConcatenationStore store)
         {
-            var filesExist =
-                await Task.WhenAll(finalConcat.Files.Select(
-                    f => context.Configuration.Store.FileExistAsync(f, context.CancellationToken)));
+            var filesExist = await Task.WhenAll(finalConcat.Files.Select(f =>
+                context.Configuration.Store.FileExistAsync(f, context.CancellationToken)));
 
             if (filesExist.Any(f => !f))
             {
@@ -84,7 +94,7 @@ namespace tusdotnet.Validation.Requirements
                 return;
             }
 
-            var incompleteFiles = new List<string>();
+            var incompleteFiles = new List<string>(finalConcat.Files.Length);
             var totalSize = 0L;
             foreach (var file in finalConcat.Files)
             {
@@ -103,7 +113,7 @@ namespace tusdotnet.Validation.Requirements
                 }
             }
 
-            if (incompleteFiles.Any())
+            if (incompleteFiles.Count > 0)
             {
                 await BadRequest(
                     $"Some of the files supplied for concatenation are not finished and can not be concatenated: {string.Join(", ", incompleteFiles)}");

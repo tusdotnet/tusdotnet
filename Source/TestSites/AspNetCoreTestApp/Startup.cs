@@ -61,7 +61,7 @@ namespace AspNetCoreTestApp
                 {
                     logger.LogError(null, exc, exc.Message);
                     context.Response.StatusCode = 500;
-                    await context.Response.WriteAsync("An internal server error has occurred");
+                    await context.Response.WriteAsync("An internal server error has occurred", context.RequestAborted);
                 }
             });
 
@@ -158,11 +158,10 @@ namespace AspNetCoreTestApp
                             ? metadata["contentType"].GetString(Encoding.UTF8)
                             : "application/octet-stream";
 
-                        if (metadata.ContainsKey("name"))
+                        if (metadata.TryGetValue("name", out var nameMeta))
                         {
-                            var name = metadata["name"].GetString(Encoding.UTF8);
                             context.Response.Headers.Add("Content-Disposition",
-                                new[] { $"attachment; filename=\"{name}\"" });
+                                new[] { $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"" });
                         }
 
                         await fileStream.CopyToAsync(context.Response.Body, 81920, context.RequestAborted);

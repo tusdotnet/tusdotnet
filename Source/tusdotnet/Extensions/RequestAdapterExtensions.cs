@@ -14,19 +14,14 @@ namespace tusdotnet.Extensions
 		/// <returns>The request method</returns>
 		internal static string GetMethod(this RequestAdapter request)
 		{
-			string method = null;
-
-			if (request.Headers != null && request.Headers.ContainsKey(HeaderConstants.XHttpMethodOveride))
-			{
-				method = request.Headers[HeaderConstants.XHttpMethodOveride]?.FirstOrDefault()?.ToLower();
-			}
+			var method = request.GetHeader(HeaderConstants.XHttpMethodOveride);
 
 			if (string.IsNullOrWhiteSpace(method))
 			{
-				method = request.Method.ToLower();
+			    method = request.Method;
 			}
 
-			return method;
+			return method.ToLower();
 		}
 	}
 }

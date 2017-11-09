@@ -42,7 +42,6 @@ namespace tusdotnet.test.Tests
                     callForwarded = true;
                     return Task.FromResult(true);
                 });
-
             }))
             {
                 await server
@@ -146,7 +145,6 @@ namespace tusdotnet.test.Tests
         {
             using (var server = TestServerFactory.Create(app =>
             {
-
                 var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
                 tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
@@ -215,7 +213,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files")
                     .AddTusResumableHeader()
@@ -267,7 +264,6 @@ namespace tusdotnet.test.Tests
                     .ReadAsStringAsync()
                     .Result
                     .ShouldBe("Header Upload-Metadata must consist of one or more comma-separated key-value pairs");
-
             }
         }
 #endif
@@ -289,7 +285,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 const string formatErrorMessage =
                     "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.";
 
@@ -432,7 +427,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files")
                     .AddTusResumableHeader()

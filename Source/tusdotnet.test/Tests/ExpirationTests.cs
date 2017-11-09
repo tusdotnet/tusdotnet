@@ -247,7 +247,6 @@ namespace tusdotnet.test.Tests
                 });
 #pragma warning restore 4014
 
-
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(c => new DefaultTusConfiguration
@@ -258,7 +257,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 for (var i = 0; i < 2; i++)
                 {
                     var response = await server
@@ -302,7 +300,6 @@ namespace tusdotnet.test.Tests
                 .ReturnsForAnyArgs(expires);
             expirationStore.SetExpirationAsync("testexpiration", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
 #pragma warning restore 4014
-
 
             using (var server = TestServerFactory.Create(app =>
             {

@@ -8,7 +8,7 @@ namespace tusdotnet.Adapters
 	/// <summary>
 	/// Request adapter that handles different pipeline requests.
 	/// </summary>
-	internal class RequestAdapter
+	internal sealed class RequestAdapter
 	{
 		public string Method { get; set; }
 
@@ -22,7 +22,7 @@ namespace tusdotnet.Adapters
 
 		public string GetHeader(string name)
 		{
-			return Headers?.ContainsKey(name) == true ? Headers[name].First() : null;
+			return Headers?.ContainsKey(name) == true ? Headers[name][0] : null;
 		}
 	}
 }

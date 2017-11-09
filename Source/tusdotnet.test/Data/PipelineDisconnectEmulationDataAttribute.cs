@@ -15,7 +15,6 @@ using Xunit.Sdk;
 
 namespace tusdotnet.test.Data
 {
-
     /// <summary>
     /// Data attribute to provide the different pipelines and helpers for PatchTests -> Handles_Abrupt_Disconnects_Gracefully
     /// CT indicates if CancellationToken.IsCancellationRequested is set or not
@@ -29,7 +28,6 @@ namespace tusdotnet.test.Data
     internal sealed class PipelineDisconnectEmulationDataAttribute : DataAttribute
     {
         public override IEnumerable<object[]> GetData(MethodInfo testMethod) => GetPipelines();
-
 
 #if netfull
 
@@ -56,7 +54,7 @@ namespace tusdotnet.test.Data
             }
         }
 
-        private static IEnumerable<object[]> GetPipelines()
+        private static object[][] GetPipelines()
         {
             return new object[] { "System.Web", "Microsoft.Owin.SelfHost" }.Select(f => new[] { f }).ToArray();
         }
@@ -92,7 +90,7 @@ namespace tusdotnet.test.Data
             }
         }
 
-        private static IEnumerable<object[]> GetPipelines()
+        private static object[][] GetPipelines()
         {
             return new object[]
                        { "Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel_reverse_proxy" }
@@ -102,7 +100,7 @@ namespace tusdotnet.test.Data
 
 #endif
 
-        internal class DisconnectPipelineEmulationInfo
+        internal sealed class DisconnectPipelineEmulationInfo
         {
             public bool FlagsCancellationTokenAsCancelled { get; set; }
 

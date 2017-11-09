@@ -26,7 +26,7 @@ namespace tusdotnet.test
 
         public static TestServer Create(Action<IApplicationBuilder> startup)
         {
-            var host = new WebHostBuilder().UseStartup<EmptyStartup>().Configure(startup);
+            var host = new WebHostBuilder().Configure(startup);
             return new TestServer(host);
         }
 
@@ -67,10 +67,5 @@ namespace tusdotnet.test
 
 #endif
 
-        // ReSharper disable once UnusedMember.Local
-        private class EmptyStartup
-        {
-            // Left blank
-        }
     }
 }

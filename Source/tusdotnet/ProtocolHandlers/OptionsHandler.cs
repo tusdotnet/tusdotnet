@@ -29,7 +29,6 @@ namespace tusdotnet.ProtocolHandlers
         internal override async Task<bool> Handle(ContextAdapter context)
         {
             var response = context.Response;
-            var cancellationToken = context.CancellationToken;
 
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
@@ -40,14 +39,14 @@ namespace tusdotnet.ProtocolHandlers
             }
 
             var extensions = context.DetectExtensions();
-            if (extensions.Any())
+            if (extensions.Count > 0)
             {
                 response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));
             }
 
             if (context.Configuration.Store is ITusChecksumStore checksumStore)
             {
-                var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(cancellationToken);
+                var checksumAlgorithms = await checksumStore.GetSupportedAlgorithmsAsync(context.CancellationToken);
                 response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
             }
 

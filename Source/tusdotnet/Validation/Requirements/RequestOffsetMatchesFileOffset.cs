@@ -5,7 +5,7 @@ using tusdotnet.Extensions;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class RequestOffsetMatchesFileOffset : Requirement
+    internal sealed class RequestOffsetMatchesFileOffset : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

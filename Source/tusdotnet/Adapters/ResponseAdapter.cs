@@ -6,7 +6,7 @@ namespace tusdotnet.Adapters
 	/// <summary>
 	/// Response wrapper that handles different pipeline responses.
 	/// </summary>
-	internal class ResponseAdapter
+	internal sealed class ResponseAdapter
 	{
 		public Action<int> SetStatus { get; set; }
 

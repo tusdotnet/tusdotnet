@@ -202,7 +202,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/concatFile")
                     .AddTusResumableHeader()
@@ -232,7 +231,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/concatFile")
                     .AddTusResumableHeader()
@@ -261,7 +259,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/concatFile")
                     .AddTusResumableHeader()
@@ -382,7 +379,6 @@ namespace tusdotnet.test.Tests
 
                 await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Unable to parse Upload-Concat header");
             }
-
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -663,7 +659,6 @@ namespace tusdotnet.test.Tests
             concatStore.CreatePartialFileAsync(-1, null, CancellationToken.None)
                 .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
-
             FileConcat fileConcat = null;
             var events = new Events
             {
@@ -704,7 +699,6 @@ namespace tusdotnet.test.Tests
             concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
             concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
                 .ReturnsForAnyArgs("finalId");
-
 
             FileConcat fileConcat = null;
             var events = new Events

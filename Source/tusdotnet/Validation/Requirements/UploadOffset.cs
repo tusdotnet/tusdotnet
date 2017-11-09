@@ -5,7 +5,7 @@ using tusdotnet.Constants;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadOffset : Requirement
+    internal sealed class UploadOffset : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {

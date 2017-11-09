@@ -163,7 +163,7 @@ namespace tusdotnet.Stores
 		{
 			var metadata = await GetUploadMetadataAsync(fileId, cancellationToken);
 			var file = new TusDiskFile(_directoryPath, fileId, metadata);
-			return (file.Exist() ? file : null);
+			return file.Exist() ? file : null;
 		}
 
 		/// <inheritdoc />
@@ -278,10 +278,7 @@ namespace tusdotnet.Stores
 		/// <inheritdoc />
 		public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
 		{
-			return Task.Run(() =>
-				{
-					File.WriteAllText($"{GetPath(fileId)}.expiration", expires.ToString("O"));
-				},
+			return Task.Run(() => File.WriteAllText($"{GetPath(fileId)}.expiration", expires.ToString("O")),
 				cancellationToken);
 		}
 
@@ -297,19 +294,18 @@ namespace tusdotnet.Stores
 		/// <inheritdoc />
 		public Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
 		{
-			var expiredFiles = Directory.EnumerateFiles(_directoryPath, "*.expiration")
-				.Where(FileHasExpired)
-				.Where(FileIsIncomplete)
-				.Select(FileId)
-				.ToList();
+		    var expiredFiles = Directory.EnumerateFiles(_directoryPath, "*.expiration")
+		        .Where(f => FileHasExpired(f) && FileIsIncomplete(f))
+		        .Select(Path.GetFileNameWithoutExtension)
+		        .ToList();
 
 			return Task.FromResult<IEnumerable<string>>(expiredFiles);
 
 			bool FileHasExpired(string filePath)
 			{
 				var firstLine = ReadFirstLine(filePath);
-				return !string.IsNullOrWhiteSpace(firstLine) &&
-					   DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
+				return !string.IsNullOrWhiteSpace(firstLine)
+                       && DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
 			}
 
 			bool FileIsIncomplete(string filePath)
@@ -317,8 +313,6 @@ namespace tusdotnet.Stores
 				var file = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath));
 				return ReadFirstLine($"{file}.uploadlength") != new FileInfo(file).Length.ToString();
 			}
-
-			string FileId(string filePath) => Path.GetFileNameWithoutExtension(filePath);
 		}
 
 		/// <inheritdoc />

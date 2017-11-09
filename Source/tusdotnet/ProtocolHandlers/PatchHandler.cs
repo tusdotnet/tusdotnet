@@ -111,85 +111,100 @@ namespace tusdotnet.ProtocolHandlers
             return true;
         }
 
-        private static async Task RunOnUploadComplete(ContextAdapter context, long fileOffset, long bytesWritten)
+        private static Task RunOnUploadComplete(ContextAdapter context, long fileOffset, long bytesWritten)
         {
             if (context.Configuration.OnUploadCompleteAsync == null && context.Configuration.Events?.OnFileCompleteAsync == null)
             {
-                return;
+                return Task.FromResult(0);
             }
 
-            if (await IsPartialUpload(context))
-            {
-                return;
-            }
+            return RunOnUploadCompleteLocal();
 
-            var fileId = context.GetFileId();
-            var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileId, context.CancellationToken);
-            var fileIsComplete = fileOffset + bytesWritten == fileUploadLength;
-
-            if (fileIsComplete)
+            async Task RunOnUploadCompleteLocal()
             {
-                if(context.Configuration.OnUploadCompleteAsync != null)
+                if (await IsPartialUpload(context))
                 {
-                    await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, context.CancellationToken);
+                    return;
                 }
 
-                if (context.Configuration.Events?.OnFileCompleteAsync != null)
+                var fileId = context.GetFileId();
+                var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(fileId, context.CancellationToken);
+                var fileIsComplete = fileOffset + bytesWritten == fileUploadLength;
+
+                if (fileIsComplete)
                 {
-                    await context.Configuration.Events.OnFileCompleteAsync(FileCompleteContext.Create(context));
+                    if (context.Configuration.OnUploadCompleteAsync != null)
+                    {
+                        await context.Configuration.OnUploadCompleteAsync(fileId, context.Configuration.Store, context.CancellationToken);
+                    }
+
+                    if (context.Configuration.Events?.OnFileCompleteAsync != null)
+                    {
+                        await context.Configuration.Events.OnFileCompleteAsync(FileCompleteContext.Create(context));
+                    }
                 }
             }
         }
 
-        private static async Task<bool> IsPartialUpload(ContextAdapter context)
+        private static Task<bool> IsPartialUpload(ContextAdapter context)
         {
             if (!(context.Configuration.Store is ITusConcatenationStore concatenationStore))
             {
-                return false;
+                return Task.FromResult(false);
             }
 
-            var concat = await concatenationStore.GetUploadConcatAsync(context.GetFileId(), context.CancellationToken);
+            return IsPartialUploadLocal();
 
-            return concat is FileConcatPartial;
+            async Task<bool> IsPartialUploadLocal()
+            {
+                var concat = await concatenationStore.GetUploadConcatAsync(context.GetFileId(), context.CancellationToken);
+
+                return concat is FileConcatPartial;
+            }
         }
 
-        private static async Task<bool> MatchChecksum(ContextAdapter context)
+        private static Task<bool> MatchChecksum(ContextAdapter context)
         {
             if (!(context.Configuration.Store is ITusChecksumStore checksumStore))
             {
-                return true;
+                return Task.FromResult(true);
             }
 
             var checksumHeader = context.Request.GetHeader(HeaderConstants.UploadChecksum);
 
             if (checksumHeader == null)
             {
-                return true;
+                return Task.FromResult(true);
             }
 
             var providedChecksum = new Checksum(checksumHeader);
 
-            return await checksumStore.VerifyChecksumAsync(context.GetFileId(), providedChecksum.Algorithm,
+            return checksumStore.VerifyChecksumAsync(context.GetFileId(), providedChecksum.Algorithm,
                 providedChecksum.Hash, context.CancellationToken);
         }
 
-        private static async Task<DateTimeOffset?> GetOrUpdateExpires(ContextAdapter context)
+        private static Task<DateTimeOffset?> GetOrUpdateExpires(ContextAdapter context)
         {
             if (!(context.Configuration.Store is ITusExpirationStore expirationStore))
             {
-                return null;
+                return Task.FromResult((DateTimeOffset?) null);
             }
 
             var fileId = context.GetFileId();
 
-            if (context.Configuration.Expiration is SlidingExpiration slidingExpiration)
+            if (!(context.Configuration.Expiration is SlidingExpiration slidingExpiration))
+            {
+                return expirationStore.GetExpirationAsync(fileId, context.CancellationToken);
+            }
+
+            return UpdateExpiredLocal();
+
+            async Task<DateTimeOffset?> UpdateExpiredLocal()
             {
                 var expires = DateTimeOffset.UtcNow.Add(slidingExpiration.Timeout);
                 await expirationStore.SetExpirationAsync(fileId, expires, context.CancellationToken);
                 return expires;
             }
-
-            return await expirationStore.GetExpirationAsync(fileId, context.CancellationToken);
         }
     }
 }

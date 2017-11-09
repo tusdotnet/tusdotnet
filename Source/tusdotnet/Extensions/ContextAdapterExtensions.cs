@@ -28,14 +28,14 @@ namespace tusdotnet.Extensions
 
         public static bool UrlMatchesFileIdUrl(this ContextAdapter context)
         {
-            return !context.UrlMatchesUrlPath() &&
-                   context.Request.RequestUri.LocalPath.StartsWith(context.Configuration.UrlPath,
+            return !context.UrlMatchesUrlPath()
+                   && context.Request.RequestUri.LocalPath.StartsWith(context.Configuration.UrlPath,
                        StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static IList<string> DetectExtensions(this ContextAdapter context)
+        internal static List<string> DetectExtensions(this ContextAdapter context)
         {
-            var extensions = new List<string>();
+            var extensions = new List<string>(6);
             if (context.Configuration.Store is ITusCreationStore)
             {
                 extensions.Add(ExtensionConstants.Creation);

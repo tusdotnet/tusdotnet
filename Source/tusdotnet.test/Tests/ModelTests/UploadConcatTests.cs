@@ -37,7 +37,6 @@ namespace tusdotnet.test.Tests.ModelTests
 		[Fact]
 		public void Sets_Error_If_Type_Is_Not_Final_Nor_Partial()
 		{
-
 			var uploadConcat = new UploadConcat("somevalue");
 			uploadConcat.IsValid.ShouldBeFalse();
 			uploadConcat.ErrorMessage.ShouldBe("Upload-Concat header is invalid. Valid values are \"partial\" and \"final\" followed by a list of files to concatenate");

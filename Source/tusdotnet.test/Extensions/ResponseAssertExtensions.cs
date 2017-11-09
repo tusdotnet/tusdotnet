@@ -27,7 +27,7 @@ namespace tusdotnet.test.Extensions
 			response.Headers.Contains(headerName).ShouldBeTrue();
 			var value = response.Headers.GetValues(headerName).ToList();
 			value.Count.ShouldBe(1);
-			value.First().ShouldBe(headerValue);
+			value[0].ShouldBe(headerValue);
 		}
 	}
 }

@@ -3,7 +3,7 @@ using tusdotnet.Adapters;
 
 namespace tusdotnet.Validation
 {
-    internal class Validator
+    internal sealed class Validator
     {
         public HttpStatusCode StatusCode { get; private set; }
         public string ErrorMessage { get; private set; }

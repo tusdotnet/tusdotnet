@@ -53,7 +53,6 @@ namespace tusdotnet.test.Tests
                 var exist = await _fixture.Store.FileExistAsync(Guid.NewGuid().ToString(), CancellationToken.None);
                 exist.ShouldBeFalse();
             }
-
         }
 
         [Fact]
@@ -75,7 +74,6 @@ namespace tusdotnet.test.Tests
 
             length = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
             length.ShouldBeNull();
-
         }
 
         [Fact]
@@ -395,7 +393,6 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task CreateFinalFileAsync_Metadata_From_Partial_Files_Is_Not_Transferred_To_Final_File()
         {
-
             var partial1Id = await _fixture.Store.CreatePartialFileAsync(1, "key1 cGFydGlhbDFtZXRhZGF0YQ==",
                 CancellationToken.None);
             var partial2Id = await _fixture.Store.CreatePartialFileAsync(1, "key2 bWV0YWRhdGFmb3JwYXJ0aWFsMg==",
@@ -424,7 +421,6 @@ namespace tusdotnet.test.Tests
 
             parsedMetadata.ContainsKey("key1").ShouldBeFalse();
             parsedMetadata.ContainsKey("key2").ShouldBeFalse();
-
         }
 
         [Fact]
@@ -487,7 +483,6 @@ namespace tusdotnet.test.Tests
                         await _fixture.Store.CreateFinalFileAsync(new[] { p1, "nonexistingfileid" }, null, CancellationToken.None));
 
             exception.Message.ShouldBe("File nonexistingfileid does not exist");
-
         }
 
         [Fact]
@@ -604,12 +599,14 @@ namespace tusdotnet.test.Tests
             uploadLength.ShouldBe(100);
         }
 
+#pragma warning disable xUnit1004 // Test methods should not be skipped - This test method should ;) 
         [Fact(Skip = "No need to run it each time")]
+#pragma warning restore xUnit1004 // Test methods should not be skipped
         public async Task RemoveExpiredFilesAsync_PerformanceTest()
         {
             const int numberOfFilesToCreate = 100_000;
 
-            var ids = new List<string>();
+            var ids = new List<string>(numberOfFilesToCreate);
             for (var i = 0; i < numberOfFilesToCreate; i++)
             {
                 var file = await _fixture.Store.CreateFileAsync(300, null, CancellationToken.None);
@@ -628,7 +625,7 @@ namespace tusdotnet.test.Tests
             watch.Stop();
 
             var removed = ids.Where(f => !_fixture.Store.FileExistAsync(f, CancellationToken.None).Result).ToList();
-            
+
             _output.WriteLine($"Deleted {removed.Count} of {numberOfFilesToCreate} files in {watch.ElapsedMilliseconds} ms");
         }
 

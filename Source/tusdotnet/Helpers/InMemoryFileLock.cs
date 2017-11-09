@@ -1,12 +1,11 @@
 ﻿using System.Collections.Generic;
-using System.Threading;
 
 namespace tusdotnet.Helpers
 {
 	/// <summary>
 	/// Lock for a specific file so that it can only be updated by one caller.
 	/// </summary>
-	public class FileLock
+	internal sealed class InMemoryFileLock
 	{
 		private readonly string _fileId;
 		private static readonly HashSet<string> LockedFiles = new HashSet<string>();
@@ -16,7 +15,7 @@ namespace tusdotnet.Helpers
 	    /// Default constructor
 	    /// </summary>
 	    /// <param name="fileId">The file id to try to lock.</param>
-	    public FileLock(string fileId)
+	    public InMemoryFileLock(string fileId)
 	    {
 	        _fileId = fileId;
 	        _hasLock = false;
@@ -25,9 +24,8 @@ namespace tusdotnet.Helpers
 	    /// <summary>
 		/// Lock the file. Returns true if the file was locked or false if the file was already locked by another call.
 		/// </summary>
-		/// <param name="cancellationToken">Cancellation token to use when cancelling</param>
 		/// <returns>True if the file was locked or false if the file was already locked by another call.</returns>
-		public bool Lock(CancellationToken cancellationToken)
+		public bool Lock()
 		{
 			if (_hasLock)
 			{

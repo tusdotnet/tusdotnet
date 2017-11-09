@@ -6,7 +6,7 @@ namespace tusdotnet.Adapters
 	/// <summary>
 	/// Context adapter that handles different pipeline contexts.
 	/// </summary>
-	internal class ContextAdapter
+	internal sealed class ContextAdapter
 	{
 		public RequestAdapter Request { get; set; }
 

@@ -24,7 +24,6 @@ namespace tusdotnet.test.Tests.ModelTests
 			meta.ContainsKey("othermeta").ShouldBeTrue();
 			meta.ContainsKey("utf8key").ShouldBeTrue();
 
-
 			meta["filename"].GetBytes().ShouldBe(new byte[] { 119, 111, 114, 108, 100, 95, 100, 111, 109, 105, 110, 97, 116, 105, 111, 110, 95, 112, 108, 97, 110, 46, 112, 100, 102 });
 			meta["filename"].GetString(Encoding.UTF8).ShouldBe("world_domination_plan.pdf");
 
@@ -79,10 +78,9 @@ namespace tusdotnet.test.Tests.ModelTests
 				f =>
 				{
 					var param = f.GetParameters();
-					return param.Length == 1 && param.FirstOrDefault().ParameterType == typeof(string);
+					return param.Length == 1 && param[0].ParameterType == typeof(string);
 				});
 #endif
-
 
 			constructor.ShouldNotBeNull();
 

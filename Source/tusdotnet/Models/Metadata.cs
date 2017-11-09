@@ -73,15 +73,13 @@ namespace tusdotnet.Models
 				return dictionary;
 			}
 
-			var metadataPairs = uploadMetadata.Split(',');
-			foreach (var pair in metadataPairs)
+		    foreach (var pair in uploadMetadata.Split(','))
 			{
 				var keyAndValue = pair.Split(' ');
 				var key = keyAndValue[0];
 				var base64Value = keyAndValue[1];
-				var value = new Metadata(base64Value);
 
-				dictionary[key] = value;
+			    dictionary[key] = new Metadata(base64Value);
 			}
 
 			return dictionary;
@@ -115,7 +113,7 @@ namespace tusdotnet.Models
 					return $"Header {HeaderConstants.UploadMetadata}: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.";
 				}
 
-				var key = pairParts.First();
+				var key = pairParts[0];
 				if (string.IsNullOrEmpty(key))
 				{
 					return $"Header {HeaderConstants.UploadMetadata}: Key must not be empty";

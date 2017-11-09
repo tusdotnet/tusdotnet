@@ -7,17 +7,22 @@ namespace tusdotnet.Validation.Requirements
 {
     internal class FileHasNotExpired  : Requirement
     {
-        public override async Task Validate(ContextAdapter context)
+        public override Task Validate(ContextAdapter context)
         {
             if (!(context.Configuration.Store is ITusExpirationStore expirationStore))
             {
-                return;
+                return Task.FromResult(0);
             }
 
-            var expires = await expirationStore.GetExpirationAsync(context.GetFileId(), context.CancellationToken);
-            if (expires?.HasPassed() == true)
+            return ValidateLocal();
+
+            async Task ValidateLocal()
             {
-                await NotFound();
+                var expires = await expirationStore.GetExpirationAsync(context.GetFileId(), context.CancellationToken);
+                if (expires?.HasPassed() == true)
+                {
+                    await NotFound();
+                }
             }
         }
     }

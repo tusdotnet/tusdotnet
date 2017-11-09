@@ -37,7 +37,6 @@ namespace tusdotnet.test.Tests
 					callForwarded = true;
 					return Task.FromResult(true);
 				});
-
 			}))
 			{
 				await server.CreateRequest("/files").SendAsync("POST");
@@ -75,7 +74,6 @@ namespace tusdotnet.test.Tests
 					callForwarded = true;
 					return Task.FromResult(true);
 				});
-
 			}))
 			{
 				await server

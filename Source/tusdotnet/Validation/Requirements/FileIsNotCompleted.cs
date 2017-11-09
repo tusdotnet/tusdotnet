@@ -4,7 +4,7 @@ using tusdotnet.Extensions;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class FileIsNotCompleted : Requirement
+    internal sealed class FileIsNotCompleted : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {

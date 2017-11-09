@@ -38,7 +38,6 @@ namespace tusdotnet.test.Tests
 					callForwarded = true;
 					return Task.FromResult(true);
 				});
-
 			}))
 			{
 				await server
@@ -114,7 +113,7 @@ namespace tusdotnet.test.Tests
 				response.Headers.Contains("Upload-Length").ShouldBeTrue();
 				var uploadLength = response.Headers.GetValues("Upload-Length").ToList();
 				uploadLength.Count.ShouldBe(1);
-				uploadLength.First().ShouldBe("100");
+				uploadLength[0].ShouldBe("100");
 
 				response = await server
 					.CreateRequest("/files/otherfile")

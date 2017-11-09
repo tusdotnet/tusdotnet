@@ -3,7 +3,7 @@ using Shouldly;
 using tusdotnet.test.Data;
 using Xunit;
 
-namespace tusdotnet.test.Tests
+namespace tusdotnet.test.Tests.AttributeTests
 {
 	public class XHttpMethodOverrideDataAttributeTests
 	{

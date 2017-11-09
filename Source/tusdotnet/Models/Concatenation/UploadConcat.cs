@@ -87,9 +87,10 @@ namespace tusdotnet.Models.Concatenation
 				return null;
 			}
 
-			var fileIds = new List<string>();
+		    var fileUris = parts[1].Split(' ');
+		    var fileIds = new List<string>(fileUris.Length);
 
-			foreach (var fileUri in parts[1].Split(' '))
+            foreach (var fileUri in fileUris)
 			{
 				if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out Uri uri))
 				{

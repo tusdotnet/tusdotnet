@@ -54,31 +54,37 @@ namespace tusdotnet.ProtocolHandlers
             return true;
         }
 
-        private async Task<bool> HandleOnBeforeDeleteAsync(ContextAdapter context)
+        private static Task<bool> HandleOnBeforeDeleteAsync(ContextAdapter context)
         {
             if (context.Configuration.Events?.OnBeforeDeleteAsync == null)
             {
+                return Task.FromResult(false);
+            }
+
+            return HandleOnBeforeDeleteAsyncLocal();
+
+            async Task<bool> HandleOnBeforeDeleteAsyncLocal()
+            {
+                var beforeDeleteContext = BeforeDeleteContext.Create(context);
+                await context.Configuration.Events.OnBeforeDeleteAsync(beforeDeleteContext);
+                if (beforeDeleteContext.HasFailed)
+                {
+                    await context.Response.Error(HttpStatusCode.BadRequest, beforeDeleteContext.ErrorMessage);
+                    return true;
+                }
+
                 return false;
             }
-            var beforeDeleteContext = BeforeDeleteContext.Create(context);
-            await context.Configuration.Events.OnBeforeDeleteAsync(beforeDeleteContext);
-            if (beforeDeleteContext.HasFailed)
-            {
-                await context.Response.Error(HttpStatusCode.BadRequest, beforeDeleteContext.ErrorMessage);
-                return true;
-            }
-
-            return false;
         }
 
-        private async Task HandleOnDeleteCompleteAsync(ContextAdapter context)
+        private static Task HandleOnDeleteCompleteAsync(ContextAdapter context)
         {
             if (context.Configuration.Events?.OnDeleteCompleteAsync == null)
             {
-                return;
+                return Task.FromResult(0);
             }
 
-            await context.Configuration.Events.OnDeleteCompleteAsync(DeleteCompleteContext.Create(context));
+            return context.Configuration.Events.OnDeleteCompleteAsync(DeleteCompleteContext.Create(context));
         }
     }
 }

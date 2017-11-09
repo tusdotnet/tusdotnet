@@ -155,11 +155,10 @@ namespace OwinTestApp
                             ? metadata["contentType"].GetString(Encoding.UTF8)
                             : "application/octet-stream";
 
-                        if (metadata.ContainsKey("name"))
+                        if (metadata.TryGetValue("name", out var nameMetadata))
                         {
-                            var name = metadata["name"].GetString(Encoding.UTF8);
                             context.Response.Headers.Add("Content-Disposition",
-                                new[] {$"attachment; filename=\"{name}\""});
+                                new[] {$"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\""});
                         }
 
                         await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);

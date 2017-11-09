@@ -7,13 +7,11 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadChecksum : Requirement
+    internal sealed class UploadChecksum : Requirement
     {
         public override async Task Validate(ContextAdapter context)
         {
-            var providedChecksum = context.Request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
-                ? new Checksum(context.Request.Headers[HeaderConstants.UploadChecksum].First())
-                : null;
+            var providedChecksum = GetProvidedChecksum(context);
 
             if (context.Configuration.Store is ITusChecksumStore checksumStore && providedChecksum != null)
             {
@@ -30,6 +28,13 @@ namespace tusdotnet.Validation.Requirements
                         $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}");
                 }
             }
+        }
+
+        private static Checksum GetProvidedChecksum(ContextAdapter context)
+        {
+            return context.Request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
+                ? new Checksum(context.Request.Headers[HeaderConstants.UploadChecksum][0])
+                : null;
         }
     }
 }

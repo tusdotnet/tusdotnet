@@ -14,24 +14,28 @@ namespace tusdotnet
 {
     internal static class TusProtocolHandler
     {
-        public static async Task<bool> Invoke(ContextAdapter context)
+        public static Task<bool> Invoke(ContextAdapter context)
         {
             context.Configuration.Validate();
-
-            var request = context.Request;
-            var response = context.Response;
 
             var methodHandler = GetProtocolMethodHandler(context);
 
             if (methodHandler == null)
             {
-                return false;
+                return Task.FromResult(false);
             }
+
+            return InvokeAsync(context, methodHandler);
+        }
+
+        private static async Task<bool> InvokeAsync(ContextAdapter context, ProtocolMethodHandler methodHandler)
+        {
+            var response = context.Response;
 
             if (!(methodHandler is OptionsHandler))
             {
-                var tusResumable = request.Headers.ContainsKey(HeaderConstants.TusResumable)
-                    ? request.Headers[HeaderConstants.TusResumable].FirstOrDefault()
+                var tusResumable = context.Request.Headers.ContainsKey(HeaderConstants.TusResumable)
+                    ? context.Request.Headers[HeaderConstants.TusResumable].FirstOrDefault()
                     : null;
 
                 if (tusResumable == null)
@@ -47,14 +51,14 @@ namespace tusdotnet
                         $"Tus version {tusResumable} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
                 }
             }
-            
-            FileLock fileLock = null;
+
+            InMemoryFileLock fileLock = null;
 
             if (methodHandler.RequiresLock)
             {
-                fileLock = new FileLock(context.GetFileId());
+                fileLock = new InMemoryFileLock(context.GetFileId());
 
-                var hasLock = fileLock.Lock(context.CancellationToken);
+                var hasLock = fileLock.Lock();
                 if (!hasLock)
                 {
                     return await response.Error(HttpStatusCode.Conflict,
@@ -84,7 +88,8 @@ namespace tusdotnet
 
         private static ProtocolMethodHandler GetProtocolMethodHandler(ContextAdapter context)
         {
-            if (!MethodHandlerFactories.TryGetValue(context.Request.GetMethod(), out Func<ProtocolMethodHandler> factory))
+            if (!MethodHandlerFactories.TryGetValue(context.Request.GetMethod(),
+                out Func<ProtocolMethodHandler> factory))
             {
                 return null;
             }

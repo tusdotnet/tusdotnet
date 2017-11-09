@@ -4,7 +4,7 @@ using Shouldly;
 using tusdotnet.test.Extensions;
 using Xunit;
 
-namespace tusdotnet.test.Tests
+namespace tusdotnet.test.Tests.ExtensionTests
 {
 	public class RequestBuilderExtensionsTests
 	{
@@ -21,7 +21,6 @@ namespace tusdotnet.test.Tests
 						r.Headers.Contains("Tus-Resumable").ShouldBeTrue();
 						r.Headers.GetValues("Tus-Resumable").Count().ShouldBe(1);
 						r.Headers.GetValues("Tus-Resumable").First().ShouldBe("1.0.0");
-
 					})
 					.GetAsync();
 			}
@@ -40,7 +39,6 @@ namespace tusdotnet.test.Tests
 					.OverrideHttpMethodIfNeeded(@override, method)
 					.And(r =>
 					{
-
 						if (@override == method)
 						{
 							r.Headers.Contains("X-Http-Method-Override").ShouldBeFalse();
@@ -51,7 +49,6 @@ namespace tusdotnet.test.Tests
 							r.Headers.GetValues("X-Http-Method-Override").Count().ShouldBe(1);
 							r.Headers.GetValues("X-Http-Method-Override").First().ShouldBe(@override);
 						}
-
 					})
 					.GetAsync();
 			}

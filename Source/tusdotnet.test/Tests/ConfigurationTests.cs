@@ -37,10 +37,7 @@ namespace tusdotnet.test.Tests
             configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
 #endif
 
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(configFunc);
-            }))
+            using (var server = TestServerFactory.Create(app => app.UseTus(configFunc)))
             {
                 // Test OPTIONS
                 for (var i = 0; i < 3; i++)
@@ -65,7 +62,6 @@ namespace tusdotnet.test.Tests
                 {
                     await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH");
                 }
-
 
                 configFunc.ReceivedCalls().Count().ShouldBe(12);
             }
@@ -104,10 +100,7 @@ namespace tusdotnet.test.Tests
             tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.UrlPath.Returns("/files");
             tusConfiguration.Store.Returns((ITusStore) null);
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => tusConfiguration);
-            }))
+            using (var server = TestServerFactory.Create(app => app.UseTus(request => tusConfiguration)))
             {
                 // ReSharper disable once AccessToDisposedClosure
                 await AssertRequests(server);
@@ -143,7 +136,7 @@ namespace tusdotnet.test.Tests
 
         private static async Task AssertRequests(TestServer server)
         {
-            var funcs = new List<Func<Task>>
+            var funcs = new List<Func<Task>>(4)
             {
                 () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
                 () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST"),
@@ -153,7 +146,7 @@ namespace tusdotnet.test.Tests
 
             foreach (var func in funcs)
             {
-                await Should.ThrowAsync<TusConfigurationException>(async () => await func());
+                await Should.ThrowAsync<TusConfigurationException>(() => func());
             }
         }
     }

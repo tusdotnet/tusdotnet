@@ -26,7 +26,7 @@ namespace tusdotnet.test.Tests
 		public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Termination(string methodToUse)
 		{
 			var callForwared = false;
-			
+
 			using (var server = TestServerFactory.Create(app =>
 			{
 				app.UseTus(request => new DefaultTusConfiguration
@@ -51,7 +51,6 @@ namespace tusdotnet.test.Tests
 			}
 		}
 
-
 		[Theory, XHttpMethodOverrideData]
 		public async Task Ignores_Request_If_Url_Does_Not_Match(string methodToUse)
 		{
@@ -69,7 +68,6 @@ namespace tusdotnet.test.Tests
 					callForwarded = true;
 					return Task.FromResult(true);
 				});
-
 			}))
 			{
 				await server
@@ -98,7 +96,6 @@ namespace tusdotnet.test.Tests
 
 				callForwarded.ShouldBeTrue();
 			}
-
 		}
 
 		[Theory, XHttpMethodOverrideData]
@@ -116,7 +113,6 @@ namespace tusdotnet.test.Tests
 				});
 			}))
 			{
-
 				var response = await server
 					.CreateRequest("/files/testfiledelete")
 					.AddTusResumableHeader()
@@ -151,7 +147,6 @@ namespace tusdotnet.test.Tests
 					Store = store,
 					UrlPath = "/files"
 				});
-
 			}))
 			{
 				var task1 = server

@@ -24,7 +24,6 @@ namespace tusdotnet.test.Tests
 
 		public OptionsTests()
 		{
-
 		    var store = (ITusStore)Substitute.For(new[]
 		    {
 		        typeof(ITusStore),
@@ -59,7 +58,6 @@ namespace tusdotnet.test.Tests
 					callForwarded = true;
 					return Task.FromResult(true);
 				});
-
 			}))
 			{
 				await server
@@ -90,10 +88,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Returns_204_NoContent_On_Success(string methodToUse)
 		{
-			using (var server = TestServerFactory.Create(app =>
-			{
-				app.UseTus(request => _mockTusConfiguration);
-			}))
+			using (var server = TestServerFactory.Create(app => app.UseTus(request => _mockTusConfiguration)))
 			{
 				var response = await server
 					.CreateRequest("/files")
@@ -106,10 +101,7 @@ namespace tusdotnet.test.Tests
 		[Theory, XHttpMethodOverrideData]
 		public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
 		{
-			using (var server = TestServerFactory.Create(app =>
-			{
-				app.UseTus(request => _mockTusConfiguration);
-			}))
+			using (var server = TestServerFactory.Create(app => app.UseTus(request => _mockTusConfiguration)))
 			{
 				var response = await server
 					.CreateRequest("/files")
@@ -137,16 +129,15 @@ namespace tusdotnet.test.Tests
 				response.Headers.Contains("Tus-Resumable").ShouldBeTrue();
 				var tusResumable = response.Headers.GetValues("Tus-Resumable").ToList();
 				tusResumable.Count.ShouldBe(1);
-				tusResumable.First().ShouldBe("1.0.0");
+				tusResumable[0].ShouldBe("1.0.0");
 
 				response.Headers.Contains("Tus-Version").ShouldBeTrue();
 				var tusVersion = response.Headers.GetValues("Tus-Version").ToList();
 				tusVersion.Count.ShouldBe(1);
-				tusVersion.First().ShouldBe("1.0.0");
+				tusVersion[0].ShouldBe("1.0.0");
 
 				// Store does not implement any extensions.
 				response.Headers.Contains("Tus-Extension").ShouldBeFalse();
-
 			}
 		}
 

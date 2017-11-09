@@ -7,6 +7,7 @@ namespace tusdotnet.Validation
     internal abstract class Requirement
     {
         public HttpStatusCode StatusCode { get; protected set; }
+
         public string ErrorMessage { get; protected set; }
 
         public abstract Task Validate(ContextAdapter context);

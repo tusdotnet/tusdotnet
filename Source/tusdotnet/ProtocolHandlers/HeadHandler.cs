@@ -81,7 +81,7 @@ namespace tusdotnet.ProtocolHandlers
             {
                 response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
             }
-            
+
             if (uploadConcat != null)
             {
                 (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(context.Configuration.UrlPath);
@@ -103,18 +103,23 @@ namespace tusdotnet.ProtocolHandlers
             }
         }
 
-        private static async Task AddUploadMetadata(ContextAdapter context, string fileId,
+        private static Task AddUploadMetadata(ContextAdapter context, string fileId,
             CancellationToken cancellationToken)
         {
             if (!(context.Configuration.Store is ITusCreationStore tusCreationStore))
             {
-                return;
+                return Task.FromResult(0);
             }
 
-            var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileId, cancellationToken);
-            if (!string.IsNullOrEmpty(uploadMetadata))
+            return AddUploadMetadataLocal();
+
+            async Task AddUploadMetadataLocal()
             {
-                context.Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
+                var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileId, cancellationToken);
+                if (!string.IsNullOrEmpty(uploadMetadata))
+                {
+                    context.Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
+                }
             }
         }
     }

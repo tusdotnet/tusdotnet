@@ -6,7 +6,7 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class UploadMetadata : Requirement
+    internal sealed class UploadMetadata : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {
@@ -16,10 +16,10 @@ namespace tusdotnet.Validation.Requirements
                 return Done;
             }
 
-            var validateMetadataResult = Metadata.ValidateMetadataHeader(request.Headers[HeaderConstants.UploadMetadata].First());
+            var validateMetadataResult = Metadata.ValidateMetadataHeader(request.Headers[HeaderConstants.UploadMetadata][0]);
             if (!string.IsNullOrEmpty(validateMetadataResult))
             {
-                BadRequest(validateMetadataResult);
+                return BadRequest(validateMetadataResult);
             }
 
             return Done;

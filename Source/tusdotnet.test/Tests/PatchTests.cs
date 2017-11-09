@@ -45,7 +45,6 @@ namespace tusdotnet.test.Tests
                     callForwarded = true;
                     return Task.FromResult(true);
                 });
-
             }))
             {
                 await server
@@ -76,7 +75,6 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_404_Not_Found_If_File_Was_Not_Found()
         {
-
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => new DefaultTusConfiguration
@@ -145,7 +143,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/testfile")
                     .And(m => m.AddBody())
@@ -173,7 +170,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/testfile")
                     .And(m => m.AddBody())
@@ -207,7 +203,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/testfile")
                     .And(m => m.AddBody())
@@ -237,7 +232,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/testfile")
                     .And(m => m.AddBody())
@@ -267,7 +261,6 @@ namespace tusdotnet.test.Tests
                 });
             }))
             {
-
                 var response = await server
                     .CreateRequest("/files/testfile")
                     .And(m => m.AddBody())
@@ -373,7 +366,6 @@ namespace tusdotnet.test.Tests
                         throw pipelineDetails.ExceptionThatIsThrown;
                     });
 
-
             var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var responseStatus = 200;
             var response = new ResponseAdapter
@@ -395,9 +387,9 @@ namespace tusdotnet.test.Tests
                 {
                     Headers = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
                     {
-                        {"Content-Type", new List<string> {"application/offset+octet-stream"}},
-                        {"Tus-Resumable", new List<string> {"1.0.0"}},
-                        {"Upload-Offset", new List<string> {"5"}}
+                        {"Content-Type", new List<string>(1) {"application/offset+octet-stream"}},
+                        {"Tus-Resumable", new List<string>(1) {"1.0.0"}},
+                        {"Upload-Offset", new List<string>(1) {"5"}}
                     },
                     Method = "PATCH",
                     Body = new MemoryStream(new byte[3]),
@@ -442,7 +434,6 @@ namespace tusdotnet.test.Tests
                     Store = store,
                     UrlPath = "/files"
                 });
-
             }))
             {
                 // Duplicated code due to: 
@@ -486,7 +477,11 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Runs_Old_OnUploadComplete_When_Upload_Is_Complete()
         {
-            var onUploadCompleteCallCounts = new Dictionary<string, int>();
+            var onUploadCompleteCallCounts = new Dictionary<string, int>(2)
+            {
+                {"file1", 0},
+                {"file2", 0}
+            };
             var firstOffset = 3;
             var secondOffset = 2;
 
@@ -517,14 +512,7 @@ namespace tusdotnet.test.Tests
                         cbStore.ShouldBeSameAs(store);
                         cancellationToken.ShouldNotBe(default(CancellationToken));
 
-                        var count = 0;
-                        if (onUploadCompleteCallCounts.ContainsKey(fileId))
-                        {
-                            count = onUploadCompleteCallCounts[fileId];
-                        }
-
-                        count++;
-                        onUploadCompleteCallCounts[fileId] = count;
+                        onUploadCompleteCallCounts[fileId]++;
                         return Task.FromResult(true);
                     }
                 });
@@ -558,16 +546,19 @@ namespace tusdotnet.test.Tests
 
                 response1.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-                onUploadCompleteCallCounts.Keys.Count.ShouldBe(1);
-                onUploadCompleteCallCounts.ContainsKey("file1").ShouldBeTrue();
                 onUploadCompleteCallCounts["file1"].ShouldBe(1);
+                onUploadCompleteCallCounts["file2"].ShouldBe(0);
             }
         }
 
         [Fact]
         public async Task Runs_OnFileCompleteAsync_When_Upload_Is_Complete()
         {
-            var onUploadCompleteCallCounts = new Dictionary<string, int>();
+            var onUploadCompleteCallCounts = new Dictionary<string, int>(2)
+            {
+                {"file1", 0},
+                {"file2", 0}
+            };
             var firstOffset = 3;
             var secondOffset = 2;
 
@@ -600,10 +591,9 @@ namespace tusdotnet.test.Tests
                             ctx.Store.ShouldBeSameAs(store);
                             ctx.CancellationToken.ShouldNotBe(default(CancellationToken));
 
-                            var count = 0;
-                            if (onUploadCompleteCallCounts.ContainsKey(ctx.FileId))
+                            if (onUploadCompleteCallCounts.TryGetValue(ctx.FileId, out int count))
                             {
-                                count = onUploadCompleteCallCounts[ctx.FileId];
+                                onUploadCompleteCallCounts[ctx.FileId] = count;
                             }
 
                             count++;
@@ -642,9 +632,8 @@ namespace tusdotnet.test.Tests
 
                 response1.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-                onUploadCompleteCallCounts.Keys.Count.ShouldBe(1);
-                onUploadCompleteCallCounts.ContainsKey("file1").ShouldBeTrue();
                 onUploadCompleteCallCounts["file1"].ShouldBe(1);
+                onUploadCompleteCallCounts["file2"].ShouldBe(0);
             }
         }
     }
