@@ -10,7 +10,7 @@ app.UseTus(context => new DefaultTusConfiguration
 	UrlPath = "/files",
     Events = new Events
     {
-        OnFileCompleteAsync = ctx =>
+        OnFileCompleteAsync = async ctx =>
         {
             var file = await ((ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
 		    await DoSomeProcessing(file);
@@ -18,5 +18,4 @@ app.UseTus(context => new DefaultTusConfiguration
     }
 });
 
-You might also want to configure IIS (https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) 
-and/or configure CORS (https://github.com/tusdotnet/tusdotnet/wiki/Cross-domain-requests-(CORS)
+More configuration is available on the wiki! https://github.com/tusdotnet/tusdotnet/wiki/Configuration
