@@ -18,4 +18,4 @@ app.UseTus(context => new DefaultTusConfiguration
     }
 });
 
-More configuration is available on the wiki! https://github.com/tusdotnet/tusdotnet/wiki/Configuration
+More options and events are available on the wiki: https://github.com/tusdotnet/tusdotnet/wiki/Configuration

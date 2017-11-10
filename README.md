@@ -29,20 +29,23 @@ Package manager
 
 ## Configure
 
-Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. You might also want to [configure IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) and/or [configure CORS](https://github.com/tusdotnet/tusdotnet/wiki/Cross-domain-requests-(CORS)).
+Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
 ```csharp
 app.UseTus(context => new DefaultTusConfiguration
 {
-	// c:\tusfiles is where to store files
-	Store = new TusDiskStore(@"C:\tusfiles\"),
-	// On what url should we listen for uploads?
-	UrlPath = "/files",
-	OnUploadCompleteAsync = async (fileId, store, cancellationToken) =>
-	{
-		var file = await ((ITusReadableStore)store).GetFileAsync(fileId, cancellationToken);
-		await DoSomeProcessing(file);
-	}
+    // c:\tusfiles is where to store files
+    Store = new TusDiskStore(@"C:\tusfiles\"),
+    // On what url should we listen for uploads?
+    UrlPath = "/files",
+    Events = new Events
+    {
+        OnFileCompleteAsync = async ctx =>
+        {
+            var file = await ((ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+            await DoSomeProcessing(file);
+        }
+    }
 });
 ```
  
