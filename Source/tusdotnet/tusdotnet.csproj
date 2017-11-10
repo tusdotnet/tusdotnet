@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>.NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/smatsson/tusdotnet and http://tus.io</Description>
+    <Description>.NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/tusdotnet/tusdotnet and http://tus.io</Description>
     <Copyright>Copyright Stefan Matsson 2016</Copyright>
     <AssemblyTitle>tusdotnet</AssemblyTitle>
     <Authors>Stefan Matsson</Authors>
@@ -9,7 +9,7 @@
     <AssemblyName>tusdotnet</AssemblyName>
     <PackageId>tusdotnet</PackageId>
     <PackageTags>Tus;Tus-Resumable;ResumableFileUploads;FileUpload</PackageTags>
-    <PackageReleaseNotes>Release notes at https://github.com/smatsson/tusdotnet/releases</PackageReleaseNotes>
+    <PackageReleaseNotes>Release notes at https://github.com/tusdotnet/tusdotnet/releases</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/tusdotnet/tusdotnet</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/tusdotnet/tusdotnet/blob/master/LICENSE</PackageLicenseUrl>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
