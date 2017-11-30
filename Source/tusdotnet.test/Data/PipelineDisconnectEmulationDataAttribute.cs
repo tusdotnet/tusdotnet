@@ -6,7 +6,12 @@ using System.Reflection;
 
 #if netfull
 using System.Net;
-#else
+#elif NETCOREAPP2_0
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
+#endif
+
+#if !NETCOREAPP2_0
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 #endif
@@ -22,95 +27,98 @@ namespace tusdotnet.test.Data
     /// System.Web.Host -> CT = true, Exception = "Client disconnected"
     /// Microsoft.Owin.SelfHost -> CT = true, Exception = IOException, Exception.InnerException is System.Net.HttpListenerException
     /// .NET Core reverse proxy IIS -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
-    /// .NET Core direct Kestrel -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
+    /// .NET Core direct Kestrel on ASP.NET Core 1.1 -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
+    /// .NET Core direct Kestrel on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     internal sealed class PipelineDisconnectEmulationDataAttribute : DataAttribute
     {
         public override IEnumerable<object[]> GetData(MethodInfo testMethod) => GetPipelines();
 
+        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new Lazy<Dictionary<string, MethodInfo>>(
+            () =>
+            {
+                return typeof(PipelineDisconnectEmulationDataAttribute)
+                    .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                    .Where(f => f.ReturnType == typeof(DisconnectPipelineEmulationInfo))
+                    .ToDictionary(f => f.Name, f => f);
+            });
+
+        public static DisconnectPipelineEmulationInfo GetInfo(string pipeline)
+        {
+            if (!Methods.Value.TryGetValue(pipeline, out var method))
+            {
+                throw new ArgumentException($"Unknown pipeline: {pipeline}", nameof(pipeline));
+            }
+
+            return (DisconnectPipelineEmulationInfo) method.Invoke(null, null);
+        }
+
 #if netfull
-
-        public static DisconnectPipelineEmulationInfo GetInfo(string pipeline)
-        {
-            switch (pipeline)
-            {
-                case "System.Web":
-                    return SystemWeb();
-                case "Microsoft.Owin.SelfHost":
-                    return OwinSelfHost();
-                default:
-                    throw new ArgumentException($"Unknown pipeline: {pipeline}", nameof(pipeline));
-            }
-
-            DisconnectPipelineEmulationInfo SystemWeb()
-            {
-                return new DisconnectPipelineEmulationInfo(true, new Exception("Client disconnected"));
-            }
-
-            DisconnectPipelineEmulationInfo OwinSelfHost()
-            {
-                return new DisconnectPipelineEmulationInfo(true, new IOException("Test", new HttpListenerException()));
-            }
-        }
-
-        private static object[][] GetPipelines()
-        {
-            return new object[] { "System.Web", "Microsoft.Owin.SelfHost" }.Select(f => new[] { f }).ToArray();
-        }
-
-#else
-
-        public static DisconnectPipelineEmulationInfo GetInfo(string pipeline)
-        {
-            switch (pipeline)
-            {
-                case "Microsoft.AspNetCore.Server.Kestrel":
-                    return Kestrel();
-                case "Microsoft.AspNetCore.Server.Kestrel_reverse_proxy":
-                    return KestrelReverseProxy();
-                default:
-                    throw new ArgumentException($"Unknown pipeline: {pipeline}", nameof(pipeline));
-            }
-
-            DisconnectPipelineEmulationInfo Kestrel()
-            {
-                var ctor = typeof(BadHttpRequestException)
-                    .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .First();
-                var exception = (BadHttpRequestException)ctor.Invoke(new object[] { "", -1 });
-
-                return new DisconnectPipelineEmulationInfo(false, exception);
-            }
-
-            DisconnectPipelineEmulationInfo KestrelReverseProxy()
-            {
-                return new DisconnectPipelineEmulationInfo(true,
-                    new IOException("Test", new UvException("Test", -4077)));
-            }
-        }
 
         private static object[][] GetPipelines()
         {
             return new object[]
-                       { "Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel_reverse_proxy" }
-                .Select(f => new[] { f })
+                {
+                    nameof(SystemWebWithOwin),
+                    nameof(OwinSelfHost),
+                    nameof(Kestrel),
+                    nameof(KestrelReverseProxy)
+                }
+                .Select(f => new[] {f}).ToArray();
+        }
+
+#else
+
+        private static object[][] GetPipelines()
+        {
+            return new object[]
+                {
+                    nameof(Kestrel),
+                    nameof(KestrelReverseProxy)
+                }
+                .Select(f => new[] {f})
                 .ToArray();
         }
 
 #endif
 
-        internal sealed class DisconnectPipelineEmulationInfo
+        private static DisconnectPipelineEmulationInfo Kestrel()
         {
-            public bool FlagsCancellationTokenAsCancelled { get; set; }
+            // Request cancellation token is not flagged properly in ASP.NET Core 1.1, but it is in ASP.NET Core 2.0.
+            // netfull uses ASP.NET Core 2.0, hence the ifdef.
+#if NETCOREAPP2_0 || netfull
+            const bool properlyCancelsCancellationToken = true;
+#else
+            const bool properlyCancelsCancellationToken = false;
+#endif
 
-            public Exception ExceptionThatIsThrown { get; set; }
+            var ctor = typeof(BadHttpRequestException)
+                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
+                .First();
+            var exception = (BadHttpRequestException)ctor.Invoke(new object[] { "", -1 });
 
-            public DisconnectPipelineEmulationInfo(bool flagsCancellationTokenAsCancelled, Exception exceptionThatIsThrown)
-            {
-                this.FlagsCancellationTokenAsCancelled = flagsCancellationTokenAsCancelled;
-                ExceptionThatIsThrown = exceptionThatIsThrown;
-            }
+            return new DisconnectPipelineEmulationInfo(properlyCancelsCancellationToken, exception);
         }
+
+        private static DisconnectPipelineEmulationInfo KestrelReverseProxy()
+        {
+            return new DisconnectPipelineEmulationInfo(true,
+                new IOException("Test", new UvException("Test", -4077)));
+        }
+
+#if netfull
+
+        private static DisconnectPipelineEmulationInfo SystemWebWithOwin()
+        {
+            return new DisconnectPipelineEmulationInfo(true, new Exception("Client disconnected"));
+        }
+
+        private static DisconnectPipelineEmulationInfo OwinSelfHost()
+        {
+            return new DisconnectPipelineEmulationInfo(true, new IOException("Test", new HttpListenerException()));
+        }
+
+#endif
     }
 }

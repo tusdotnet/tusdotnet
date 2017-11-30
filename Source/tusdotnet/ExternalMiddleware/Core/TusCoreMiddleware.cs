@@ -1,6 +1,4 @@
-﻿#if netstandard
-
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -72,5 +70,3 @@ namespace tusdotnet
 		}
 	}
 }
-
-#endif
