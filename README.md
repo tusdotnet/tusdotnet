@@ -8,7 +8,7 @@ Comments, ideas, questions and PRs are welcome :)
 
 ## Features
 
-* Runs on both ASP.NET 4.x (using OWIN) and ASP.NET Core
+* Runs on OWIN and ASP.NET Core (on both .NET Framework and .NET Core)
 * Full support for tus 1.0.0 including all major extensions (checksum, concatenation, creation, upload-defer-length, expiration and termination)
 * Fast and reliable
 * Easy to configure
@@ -25,7 +25,7 @@ Package manager
 
 .NET CLI
 
-``> dotnet add tusdotnet `` 
+``> dotnet add tusdotnet``
 
 ## Configure
 
@@ -47,15 +47,21 @@ app.UseTus(context => new DefaultTusConfiguration
         }
     }
 });
+
 ```
- 
-If you just want to play around with the protocol, clone the repo and run one of the test apps (one for OWIN and one for .NET Core). They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
+
+## Test sites
+
+If you just want to play around with tusdotnet/the tus protocol, clone the repo and run one of the test sites. They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine. Test sites are available for OWIN (.NET Framework 4.5.2), ASP.NET Core 1.1 (.NET Core 1.1) and ASP.NET Core 2.0 (.NET Framework 4.6.2).
 
 ## Clients
+
 [Tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
 
 ## License
+
 This project is licensed under the MIT license, see [LICENSE](LICENSE).
 
 ## Want to know more?
-Check out the [wiki](https://github.com/tusdotnet/tusdotnet/wiki) or create an [issue](https://github.com/tusdotnet/tusdotnet/issues). :) 
+
+Check out the [wiki](https://github.com/tusdotnet/tusdotnet/wiki), create an [issue](https://github.com/tusdotnet/tusdotnet/issues) or [contact me](https://twitter.com/DevLifeOfStefan) :)
