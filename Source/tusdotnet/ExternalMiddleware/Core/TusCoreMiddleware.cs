@@ -33,18 +33,17 @@ namespace tusdotnet
 		/// <returns></returns>
 		public async Task Invoke(HttpContext context)
 		{
-			var request = new RequestAdapter
-				              {
-					              Headers =
-						              context.Request.Headers.ToDictionary(
-							              f => f.Key,
-							              f => f.Value.ToList(),
-							              StringComparer.OrdinalIgnoreCase),
-					              Body = context.Request.Body,
-					              Method = context.Request.Method,
-					              RequestUri = new Uri(
-						              $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}")
-				              };
+		    var request = new RequestAdapter
+		    {
+		        Headers =
+		            context.Request.Headers.ToDictionary(
+		                f => f.Key,
+		                f => f.Value.ToList(),
+		                StringComparer.OrdinalIgnoreCase),
+		        Body = context.Request.Body,
+		        Method = context.Request.Method,
+		        RequestUri = GetRequestUri(context)
+		    };
 
 			var response = new ResponseAdapter
 				               {
@@ -68,5 +67,10 @@ namespace tusdotnet
 				await _next(context);
 			}
 		}
+
+	    private static Uri GetRequestUri(HttpContext context)
+	    {
+	        return new Uri($"{context.Request.Scheme}://{context.Request.Host}{context.Request.PathBase}{context.Request.Path}");
+	    }
 	}
 }
