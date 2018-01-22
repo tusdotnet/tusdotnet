@@ -27,10 +27,10 @@ namespace tusdotnet.Stores
 		ITusCreationDeferLengthStore
 	{
 		private readonly string _directoryPath;
-		private readonly Dictionary<string, long> _lengthBeforeWrite;
 		private readonly bool _deletePartialFilesOnConcat;
+	    private InternalFileRep.FileRepFactory _fileRepFactory;
 
-		// Number of bytes to read at the time from the input stream.
+	    // Number of bytes to read at the time from the input stream.
 		// The lower the value, the less data needs to be re-submitted on errors.
 		// However, the lower the value, the slower the operation is. 51200 = 50 KB.
 		private const int ByteChunkSize = 5120000;
@@ -53,8 +53,8 @@ namespace tusdotnet.Stores
 		public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
 		{
 			_directoryPath = directoryPath;
-			_lengthBeforeWrite = new Dictionary<string, long>();
 			_deletePartialFilesOnConcat = deletePartialFilesOnConcat;
+		    _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
 		}
 
 		/// <inheritdoc />
@@ -71,7 +71,19 @@ namespace tusdotnet.Stores
 					return 0;
 				}
 
-				_lengthBeforeWrite[fileId] = fileLength;
+			    var chunkStart = _fileRepFactory.ChunkStartPosition(fileId);
+			    var chunkComplete = _fileRepFactory.ChunkComplete(fileId);
+
+			    if (chunkComplete.Exist())
+			    {
+                    chunkStart.Delete();
+                    chunkComplete.Delete();
+			    }
+
+			    if (!chunkStart.Exist())
+			    {
+			        chunkStart.Write(fileLength.ToString());
+			    }
 
 				int bytesRead;
 				do
@@ -96,6 +108,9 @@ namespace tusdotnet.Stores
 					bytesWritten += bytesRead;
 
 				} while (bytesRead != 0);
+
+                // Chunk is complete. Mark it as complete.
+			    chunkComplete.Write("1");
 
 				return bytesWritten;
 			}
@@ -169,15 +184,17 @@ namespace tusdotnet.Stores
 		/// <inheritdoc />
 		public Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
 		{
-			return Task.Run(() =>
-			{
-				var path = GetPath(fileId);
-				File.Delete(path);
-				File.Delete($"{path}.uploadlength");
-				File.Delete($"{path}.metadata");
-				File.Delete($"{path}.uploadconcat");
-				File.Delete($"{path}.expiration");
-			}, cancellationToken);
+		    return Task.Run(() =>
+		    {
+		        var path = GetPath(fileId);
+		        File.Delete(path);
+		        File.Delete($"{path}.uploadlength");
+		        File.Delete($"{path}.metadata");
+		        File.Delete($"{path}.uploadconcat");
+		        File.Delete($"{path}.expiration");
+		        _fileRepFactory.ChunkStartPosition(fileId).Delete();
+		        _fileRepFactory.ChunkComplete(fileId).Delete();
+		    }, cancellationToken);
 		}
 
 		/// <inheritdoc />
@@ -190,16 +207,21 @@ namespace tusdotnet.Stores
 		public Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
 		{
 			bool valid;
-			using (var stream = new FileStream(GetPath(fileId), FileMode.Open, FileAccess.ReadWrite))
+			using (var stream = new FileStream(GetPath(fileId), FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
 			{
-				valid = checksum.SequenceEqual(stream.CalculateSha1());
+			    var chunkPositionFile = _fileRepFactory.ChunkStartPosition(fileId);
+                var chunkStartPosition = chunkPositionFile.ReadFirstLineAsLong(true, 0);
 
-				// ReSharper disable once InvertIf
-				if (!valid && _lengthBeforeWrite.ContainsKey(fileId))
+			    stream.Seek(chunkStartPosition, SeekOrigin.Begin);
+			    var calculateSha1 = stream.CalculateSha1(chunkStartPosition);
+			    valid = checksum.SequenceEqual(calculateSha1);
+
+				if (!valid)
 				{
 					stream.Seek(0, SeekOrigin.Begin);
-					stream.SetLength(_lengthBeforeWrite[fileId]);
-					_lengthBeforeWrite.Remove(fileId);
+					stream.SetLength(chunkStartPosition);
+					chunkPositionFile.Delete();
+                    _fileRepFactory.ChunkComplete(fileId).Delete();
 				}
 			}
 

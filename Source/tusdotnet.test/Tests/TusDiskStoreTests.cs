@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Stores;
@@ -287,7 +288,7 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
-        public async Task VerifyChecksumAsync_Data_Is_Truncated_If_Verification_Fails()
+        public async Task VerifyChecksumAsync_Data_Is_Truncated_If_Verification_Fails_Using_Single_Chunk()
         {
             // Checksum is for "hello world"
             const string incorrectChecksum = "Kq5sNclPz7QV2+lfQIuc6R7oRu0=";
@@ -295,12 +296,43 @@ namespace tusdotnet.test.Tests
 
             var buffer = new UTF8Encoding(false).GetBytes(message);
 
-            // Test complete upload
+            var bytesWritten = 0L;
+
             var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
-            using (var stream = new MemoryStream(buffer))
+
+            // Emulate several requests
+            do
             {
-                await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
-            }
+                // Create a new store and cancellation token source on each request as one would do in a real scenario.
+                _fixture.CreateNewStore();
+                var cts = new CancellationTokenSource();
+
+                var requestStream = new RequestStreamFake(
+                    (stream, bufferToFill, offset, count, ct) =>
+                    {
+                        // Emulate that the request completed
+                        if (bytesWritten == buffer.Length)
+                        {
+                            return Task.FromResult(0);
+                        }
+
+                        // Emulate client disconnect after two bytes read.
+                        if (stream.Position == 2)
+                        {
+                            cts.Cancel();
+                            cts.Token.ThrowIfCancellationRequested();
+                        }
+
+                        bytesWritten += 2;
+                        return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, ct);
+                    },
+                    buffer.Skip((int) bytesWritten).ToArray());
+
+                await ClientDisconnectGuard.ExecuteAsync(
+                    () => _fixture.Store.AppendDataAsync(fileId, requestStream, cts.Token),
+                    cts.Token);
+
+            } while (bytesWritten < buffer.Length);
 
             var checksumOk = await _fixture.Store
                 .VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum), CancellationToken.None);
@@ -309,28 +341,76 @@ namespace tusdotnet.test.Tests
             checksumOk.ShouldBeFalse();
             var filePath = Path.Combine(_fixture.Path, fileId);
             new FileInfo(filePath).Length.ShouldBe(0);
+        }
 
-            // Test chunked upload
-            fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
-            using (var stream = new MemoryStream(buffer.Take(10).ToArray()))
+        [Fact]
+        public async Task VerifyChecksumAsync_Data_Is_Truncated_If_Verification_Fails_Using_Multiple_Chunks()
+        {
+            var chunks = new[]
             {
-                // Write first 10 bytes
-                await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+                new Tuple<string, string, bool>("Hello ", "lka6E6To6r7KT1JZv9faQdNooaY=", true),
+                new Tuple<string, string, bool > ("World ", "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=", true),
+                new Tuple<string, string, bool > ("12345!!@@åäö", "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=", false)
+            };
+
+            var encoding = new UTF8Encoding(false);
+            var totalSize = 0;
+
+            var fileId = await _fixture.Store.CreateFileAsync(chunks.Sum(f => encoding.GetBytes(f.Item1).Length), null, CancellationToken.None);
+
+            foreach (var chunk in chunks)
+            {
+                var data = chunk.Item1;
+                var checksum = chunk.Item2;
+                var isValidChecksum = chunk.Item3;
+                var dataBuffer = encoding.GetBytes(data);
+
+                var bytesWritten = 0L;
+
+                // Emulate several requests
+                do
+                {
+                    // Create a new store and cancellation token source on each request as one would do in a real scenario.
+                    _fixture.CreateNewStore();
+                    var cts = new CancellationTokenSource();
+
+                    var buffer = new RequestStreamFake(
+                        (stream, bufferToFill, offset, count, ct) =>
+                        {
+                            // Emulate that the request completed
+                            if (bytesWritten == dataBuffer.Length)
+                            {
+                                return Task.FromResult(0);
+                            }
+
+                            // Emulate client disconnect after two bytes read.
+                            if (stream.Position == 2)
+                            {
+                                cts.Cancel();
+                                cts.Token.ThrowIfCancellationRequested();
+                            }
+
+                            bytesWritten += 2;
+                            return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, ct);
+                        },
+                        dataBuffer.Skip((int) bytesWritten).ToArray());
+
+                    await ClientDisconnectGuard.ExecuteAsync(
+                        () => _fixture.Store.AppendDataAsync(fileId, buffer, cts.Token),
+                        cts.Token);
+
+                } while (bytesWritten < dataBuffer.Length);
+
+                var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1",
+                    Convert.FromBase64String(checksum), CancellationToken.None);
+
+                checksumOk.ShouldBe(isValidChecksum);
+
+                totalSize += isValidChecksum ? dataBuffer.Length : 0;
             }
 
-            using (var stream = new MemoryStream(buffer.Skip(10).ToArray()))
-            {
-                // Skip first 10 bytes and write the rest
-                await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
-            }
-
-            checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum),
-                CancellationToken.None);
-
-            // Only first chunk should have been saved.
-            checksumOk.ShouldBeFalse();
-            filePath = Path.Combine(_fixture.Path, fileId);
-            new FileInfo(filePath).Length.ShouldBe(10);
+            var filePath = Path.Combine(_fixture.Path, fileId);
+            new FileInfo(filePath).Length.ShouldBe(totalSize);
         }
 
         [Fact]
@@ -563,7 +643,7 @@ namespace tusdotnet.test.Tests
 
             // Completed files should not be removed.
             var file4 = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
-            await _fixture.Store.AppendDataAsync(file4, new MemoryStream(new byte[] {1}), CancellationToken.None);
+            await _fixture.Store.AppendDataAsync(file4, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
             expires = DateTimeOffset.UtcNow.AddSeconds(-10);
             await _fixture.Store.SetExpirationAsync(file4, expires, CancellationToken.None);
 
@@ -639,13 +719,18 @@ namespace tusdotnet.test.Tests
     public class TusDiskStoreFixture : IDisposable
     {
         public string Path { get; }
-        public TusDiskStore Store { get; }
+        public TusDiskStore Store { get; private set; }
 
         public TusDiskStoreFixture()
         {
             Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.IO.Path.GetTempFileName().Replace(".", ""));
             ClearPath();
 
+            CreateNewStore();
+        }
+
+        public void CreateNewStore()
+        {
             Store = new TusDiskStore(Path);
         }
 
