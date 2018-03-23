@@ -253,3 +253,6 @@ paket-files/
 
 # Nuget build folder
 nugetbuild/
+
+# Code coverage
+Tools/coverage.xml
