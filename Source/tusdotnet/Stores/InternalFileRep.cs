@@ -6,8 +6,11 @@ namespace tusdotnet.Stores
     {
         public string Path { get; }
 
-        private InternalFileRep(string path)
+        public string FileId { get; set; }
+
+        private InternalFileRep(string fileId, string path)
         {
+            FileId = fileId;
             Path = path;
         }
 
@@ -88,14 +91,13 @@ namespace tusdotnet.Stores
 
             private InternalFileRep Create(InternalFileId fileId, string extension)
             {
-
                 var fileName = fileId.FileId;
                 if (!string.IsNullOrEmpty(extension))
                 {
                     fileName += "." + extension;
                 }
 
-                return new InternalFileRep(System.IO.Path.Combine(_directoryPath, fileName));
+                return new InternalFileRep(fileId.FileId, System.IO.Path.Combine(_directoryPath, fileName));
             }
         }
     }

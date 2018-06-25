@@ -63,7 +63,7 @@ namespace tusdotnet.Stores
             var internalFileId = new InternalFileId(fileId);
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
-            using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None)) //File.Open(path, FileMode.Append, FileAccess.Write))
+            using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
             {
                 var fileLength = file.Length;
                 if (uploadLength == fileLength)
@@ -266,10 +266,7 @@ namespace tusdotnet.Stores
             // ReSharper disable once InvertIf
             if (_deletePartialFilesOnConcat)
             {
-                foreach (var partialFile in partialInternalFileReps)
-                {
-                    partialFile.Delete();
-                }
+                await Task.WhenAll(partialInternalFileReps.Select(f => DeleteFileAsync(f.FileId, cancellationToken)));
             }
 
             return fileId;

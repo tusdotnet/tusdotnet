@@ -506,7 +506,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task CreateFinalFileAsync_Deletes_Partial_Files_If_Configuration_Says_So()
         {
-            // Use default constructor.
+            // Use default constructor (implying cleanup = false)
             var store = new TusDiskStore(_fixture.Path);
 
             var p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
@@ -516,7 +516,6 @@ namespace tusdotnet.test.Tests
             await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
 
             var f = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
-            f.ShouldNotBeNullOrWhiteSpace();
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
             (await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
 
@@ -524,17 +523,21 @@ namespace tusdotnet.test.Tests
             store = new TusDiskStore(_fixture.Path, true);
 
             p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
-            p1.ShouldNotBeNullOrWhiteSpace();
             p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
-            p2.ShouldNotBeNullOrWhiteSpace();
 
             await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
             await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
 
             f = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
-            f.ShouldNotBeNullOrWhiteSpace();
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeFalse();
             (await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeFalse();
+
+            // Assert that all files are gone (regression on bug)
+            var p1Files = Directory.EnumerateFiles(_fixture.Path, p1 + "*");
+            p1Files.Any().ShouldBeFalse("Meta files for partial file 1 has not been deleted");
+
+            var p2Files = Directory.EnumerateFiles(_fixture.Path, p2 + "*");
+            p2Files.Any().ShouldBeFalse("Meta files for partial file 1 has not been deleted");
 
             // Cleanup = false
             store = new TusDiskStore(_fixture.Path, false);
@@ -546,7 +549,6 @@ namespace tusdotnet.test.Tests
             await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
 
             f = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
-            f.ShouldNotBeNullOrWhiteSpace();
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
             (await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
         }
