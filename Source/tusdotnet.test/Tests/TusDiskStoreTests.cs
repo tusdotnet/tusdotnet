@@ -51,7 +51,7 @@ namespace tusdotnet.test.Tests
 
             for (var i = 0; i < 10; i++)
             {
-                var exist = await _fixture.Store.FileExistAsync(Guid.NewGuid().ToString(), CancellationToken.None);
+                var exist = await _fixture.Store.FileExistAsync(Guid.NewGuid().ToString("n"), CancellationToken.None);
                 exist.ShouldBeFalse();
             }
         }
@@ -63,7 +63,7 @@ namespace tusdotnet.test.Tests
             var length = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
             length.ShouldBe(3000);
 
-            length = await _fixture.Store.GetUploadLengthAsync(Guid.NewGuid().ToString(), CancellationToken.None);
+            length = await _fixture.Store.GetUploadLengthAsync(Guid.NewGuid().ToString("n"), CancellationToken.None);
             length.ShouldBeNull();
 
             File.Delete(Path.Combine(_fixture.Path, fileId + ".uploadlength"));
@@ -192,7 +192,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task GetFileAsync_Returns_Null_If_The_File_Does_Not_Exist()
         {
-            var file = await _fixture.Store.GetFileAsync(Guid.NewGuid().ToString(), CancellationToken.None);
+            var file = await _fixture.Store.GetFileAsync(Guid.NewGuid().ToString("n"), CancellationToken.None);
             file.ShouldBeNull();
         }
 
@@ -326,7 +326,7 @@ namespace tusdotnet.test.Tests
                         bytesWritten += 2;
                         return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, ct);
                     },
-                    buffer.Skip((int) bytesWritten).ToArray());
+                    buffer.Skip((int)bytesWritten).ToArray());
 
                 await ClientDisconnectGuard.ExecuteAsync(
                     () => _fixture.Store.AppendDataAsync(fileId, requestStream, cts.Token),
@@ -393,7 +393,7 @@ namespace tusdotnet.test.Tests
                             bytesWritten += 2;
                             return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, ct);
                         },
-                        dataBuffer.Skip((int) bytesWritten).ToArray());
+                        dataBuffer.Skip((int)bytesWritten).ToArray());
 
                     await ClientDisconnectGuard.ExecuteAsync(
                         () => _fixture.Store.AppendDataAsync(fileId, buffer, cts.Token),
@@ -555,14 +555,15 @@ namespace tusdotnet.test.Tests
         public async Task CreateFinalFileAsync_Throws_Exception_If_Any_Partial_File_Does_Not_Exist()
         {
             var p1 = await _fixture.Store.CreatePartialFileAsync(1, null, CancellationToken.None);
+            var nonexistingfileid = Guid.NewGuid().ToString("n");
             await _fixture.Store.AppendDataAsync(p1, new MemoryStream(new byte[] { 0 }), CancellationToken.None);
 
             var exception =
                 await Should.ThrowAsync<TusStoreException>(
                     async () =>
-                        await _fixture.Store.CreateFinalFileAsync(new[] { p1, "nonexistingfileid" }, null, CancellationToken.None));
+                        await _fixture.Store.CreateFinalFileAsync(new[] { p1, nonexistingfileid }, null, CancellationToken.None));
 
-            exception.Message.ShouldBe("File nonexistingfileid does not exist");
+            exception.Message.ShouldBe($"File {nonexistingfileid} does not exist");
         }
 
         [Fact]
@@ -707,6 +708,60 @@ namespace tusdotnet.test.Tests
             var removed = ids.Where(f => !_fixture.Store.FileExistAsync(f, CancellationToken.None).Result).ToList();
 
             _output.WriteLine($"Deleted {removed.Count} of {numberOfFilesToCreate} files in {watch.ElapsedMilliseconds} ms");
+        }
+
+        [Theory]
+        [InlineData("..\file.txt", false)]
+        [InlineData("..\\file.txt", false)]
+        [InlineData("..\\..\\file.txt", false)]
+        [InlineData("file.txt", false)]
+        [InlineData("6938F0FF-9434-4F4D-8F9C-7A1E38EC9F7A", false)]
+        [InlineData("", false)]
+        [InlineData(" ", false)]
+        [InlineData("\t", false)]
+        [InlineData("\n", false)]
+        [InlineData("6938f0ff94344f4d8f9c7a1e38ec9f7a", true)]
+        public void FileId_Is_Validated_Before_Being_Used(string fileId, bool isValid)
+        {
+            // No need to test CreateFileAsync, CreatePartialFileAsync, GetExpiredFilesAsync, RemovedExpiredFilesAsync 
+            // as these does not take a file id as a parameter
+
+            var allAsserted = new List<Task<Exception>>(13)
+            {
+                AssertFileIdForMethod(() => _fixture.Store.AppendDataAsync(fileId, new MemoryStream(), CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.CreateFinalFileAsync(new[] { fileId }, null, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.FileExistAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.GetExpirationAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.GetFileAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.SetExpirationAsync(fileId, DateTimeOffset.MaxValue, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.SetUploadLengthAsync(fileId, 1, CancellationToken.None)),
+                AssertFileIdForMethod(() => _fixture.Store.VerifyChecksumAsync(fileId, "sha1", new byte[] { 1 }, CancellationToken.None))
+            };
+
+            allAsserted.All(f => isValid ? f.Result == null : f.Result != null).ShouldBeTrue();
+
+            async Task<Exception> AssertFileIdForMethod(Func<Task> callWrapper)
+            {
+                try
+                {
+                    await callWrapper();
+                    return null;
+                }
+                catch (TusStoreException e)
+                {
+                    return e;
+                }
+                catch (Exception)
+                {
+                    // Ignore other exceptions
+                    return null;
+                }
+            }
         }
 
         public void Dispose()

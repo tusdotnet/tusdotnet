@@ -11,380 +11,329 @@ using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Stores
 {
-	// TODO: Enable async operations: 
-	// https://msdn.microsoft.com/en-us/library/mt674879.aspx
-	/// <summary>
-	/// The built in data store that save files on disk.
-	/// </summary>
-	public class TusDiskStore :
-		ITusStore,
-		ITusCreationStore,
-		ITusReadableStore,
-		ITusTerminationStore,
-		ITusChecksumStore,
-		ITusConcatenationStore,
-		ITusExpirationStore,
-		ITusCreationDeferLengthStore
-	{
-		private readonly string _directoryPath;
-		private readonly bool _deletePartialFilesOnConcat;
-	    private InternalFileRep.FileRepFactory _fileRepFactory;
+    // TODO: Enable async operations: 
+    // https://msdn.microsoft.com/en-us/library/mt674879.aspx
+    /// <summary>
+    /// The built in data store that save files on disk.
+    /// </summary>
+    public class TusDiskStore :
+        ITusStore,
+        ITusCreationStore,
+        ITusReadableStore,
+        ITusTerminationStore,
+        ITusChecksumStore,
+        ITusConcatenationStore,
+        ITusExpirationStore,
+        ITusCreationDeferLengthStore
+    {
+        private readonly string _directoryPath;
+        private readonly bool _deletePartialFilesOnConcat;
+        private readonly InternalFileRep.FileRepFactory _fileRepFactory;
 
-	    // Number of bytes to read at the time from the input stream.
-		// The lower the value, the less data needs to be re-submitted on errors.
-		// However, the lower the value, the slower the operation is. 51200 = 50 KB.
-		private const int ByteChunkSize = 5120000;
+        // Number of bytes to read at the time from the input stream.
+        // The lower the value, the less data needs to be re-submitted on errors.
+        // However, the lower the value, the slower the operation is. 51200 = 50 KB.
+        private const int ByteChunkSize = 5120000;
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="TusDiskStore"/> class.
-		/// Using this overload will not delete partial files if a final concatenation is performed.
-		/// </summary>
-		/// <param name="directoryPath">The path on disk where to save files</param>
-		public TusDiskStore(string directoryPath) : this(directoryPath, false)
-		{
-			// Left blank.
-		}
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
+        /// Using this overload will not delete partial files if a final concatenation is performed.
+        /// </summary>
+        /// <param name="directoryPath">The path on disk where to save files</param>
+        public TusDiskStore(string directoryPath) : this(directoryPath, false)
+        {
+            // Left blank.
+        }
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="TusDiskStore"/> class.
-		/// </summary>
-		/// <param name="directoryPath">The path on disk where to save files</param>
-		/// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-		public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
-		{
-			_directoryPath = directoryPath;
-			_deletePartialFilesOnConcat = deletePartialFilesOnConcat;
-		    _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
-		}
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
+        /// </summary>
+        /// <param name="directoryPath">The path on disk where to save files</param>
+        /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
+        {
+            _directoryPath = directoryPath;
+            _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
+            _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
+        }
 
-		/// <inheritdoc />
-		public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
-		{
-			var path = GetPath(fileId);
-			long bytesWritten = 0;
-			var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
-			using (var file = File.Open(path, FileMode.Append, FileAccess.Write))
-			{
-				var fileLength = file.Length;
-				if (uploadLength == fileLength)
-				{
-					return 0;
-				}
+        /// <inheritdoc />
+        public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
+        {
+            var internalFileId = new InternalFileId(fileId);
+            long bytesWritten = 0;
+            var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
+            using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None)) //File.Open(path, FileMode.Append, FileAccess.Write))
+            {
+                var fileLength = file.Length;
+                if (uploadLength == fileLength)
+                {
+                    return 0;
+                }
 
-			    var chunkStart = _fileRepFactory.ChunkStartPosition(fileId);
-			    var chunkComplete = _fileRepFactory.ChunkComplete(fileId);
+                var chunkStart = _fileRepFactory.ChunkStartPosition(internalFileId);
+                var chunkComplete = _fileRepFactory.ChunkComplete(internalFileId);
 
-			    if (chunkComplete.Exist())
-			    {
+                if (chunkComplete.Exist())
+                {
                     chunkStart.Delete();
                     chunkComplete.Delete();
-			    }
+                }
 
-			    if (!chunkStart.Exist())
-			    {
-			        chunkStart.Write(fileLength.ToString());
-			    }
+                if (!chunkStart.Exist())
+                {
+                    chunkStart.Write(fileLength.ToString());
+                }
 
-				int bytesRead;
-				do
-				{
-					if (cancellationToken.IsCancellationRequested)
-					{
-						break;
-					}
+                int bytesRead;
+                do
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
 
-					var buffer = new byte[ByteChunkSize];
-					bytesRead = await stream.ReadAsync(buffer, 0, ByteChunkSize, cancellationToken);
+                    var buffer = new byte[ByteChunkSize];
+                    bytesRead = await stream.ReadAsync(buffer, 0, ByteChunkSize, cancellationToken);
 
-					fileLength += bytesRead;
+                    fileLength += bytesRead;
 
-					if (fileLength > uploadLength)
-					{
-						throw new TusStoreException(
-							$"Stream contains more data than the file's upload length. Stream data: {fileLength}, upload length: {uploadLength}.");
-					}
+                    if (fileLength > uploadLength)
+                    {
+                        throw new TusStoreException(
+                            $"Stream contains more data than the file's upload length. Stream data: {fileLength}, upload length: {uploadLength}.");
+                    }
 
-					file.Write(buffer, 0, bytesRead);
-					bytesWritten += bytesRead;
+                    file.Write(buffer, 0, bytesRead);
+                    bytesWritten += bytesRead;
 
-				} while (bytesRead != 0);
+                } while (bytesRead != 0);
 
                 // Chunk is complete. Mark it as complete.
-			    chunkComplete.Write("1");
+                chunkComplete.Write("1");
 
-				return bytesWritten;
-			}
-		}
+                return bytesWritten;
+            }
+        }
 
-		/// <inheritdoc />
-		public Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken)
-		{
-			return Task.FromResult(File.Exists(GetPath(fileId)));
-		}
+        /// <inheritdoc />
+        public Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_fileRepFactory.Data(new InternalFileId(fileId)).Exist());
+        }
 
-		/// <inheritdoc />
-		public Task<long?> GetUploadLengthAsync(string fileId, CancellationToken cancellationToken)
-		{
-			var path = GetPath(fileId) + ".uploadlength";
+        /// <inheritdoc />
+        public Task<long?> GetUploadLengthAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var firstLine = _fileRepFactory.UploadLength(new InternalFileId(fileId)).ReadFirstLine(true);
+            return firstLine == null
+                ? Task.FromResult<long?>(null)
+                : Task.FromResult(new long?(long.Parse(firstLine)));
+        }
 
-			if (!File.Exists(path))
-			{
-				return Task.FromResult<long?>(null);
-			}
+        /// <inheritdoc />
+        public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_fileRepFactory.Data(new InternalFileId(fileId)).GetLength());
+        }
 
-			var firstLine = ReadFirstLine(path);
+        /// <inheritdoc />
+        public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+        {
+            var fileId = new InternalFileId();
+            File.Create(_fileRepFactory.Data(fileId).Path).Dispose();
+            if (uploadLength != -1)
+            {
+                await SetUploadLengthAsync(fileId.FileId, uploadLength, cancellationToken);
+            }
+            _fileRepFactory.Metadata(fileId).Write(metadata);
+            return fileId.FileId;
+        }
 
-			return firstLine == null
-				? Task.FromResult<long?>(null)
-				: Task.FromResult(new long?(long.Parse(firstLine)));
-		}
+        /// <inheritdoc />
+        public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var firstLine = _fileRepFactory.Metadata(new InternalFileId(fileId)).ReadFirstLine(true);
+            return string.IsNullOrEmpty(firstLine) ? Task.FromResult<string>(null) : Task.FromResult(firstLine);
+        }
 
-		/// <inheritdoc />
-		public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
-		{
-			return Task.FromResult(new FileInfo(GetPath(fileId)).Length);
-		}
+        /// <inheritdoc />
+        public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var metadata = await GetUploadMetadataAsync(fileId, cancellationToken);
+            var file = new TusDiskFile(_directoryPath, fileId, metadata);
+            return file.Exist() ? file : null;
+        }
 
-		/// <inheritdoc />
-		public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
-		{
-			var fileId = Guid.NewGuid().ToString("n");
-			var path = GetPath(fileId);
-			File.Create(path).Dispose();
-			if (uploadLength != -1)
-			{
-				await SetUploadLengthAsync(fileId, uploadLength, cancellationToken);
-			}
-			File.WriteAllText($"{path}.metadata", metadata);
-			return fileId;
-		}
+        /// <inheritdoc />
+        public Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var internalFileId = new InternalFileId(fileId);
+            return Task.Run(() =>
+            {
+                _fileRepFactory.Data(internalFileId).Delete();
+                _fileRepFactory.UploadLength(internalFileId).Delete();
+                _fileRepFactory.Metadata(internalFileId).Delete();
+                _fileRepFactory.UploadConcat(internalFileId).Delete();
+                _fileRepFactory.Expiration(internalFileId).Delete();
+                _fileRepFactory.ChunkStartPosition(internalFileId).Delete();
+                _fileRepFactory.ChunkComplete(internalFileId).Delete();
+            }, cancellationToken);
+        }
 
-		/// <inheritdoc />
-		public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
-		{
-			var path = GetPath(fileId) + ".metadata";
+        /// <inheritdoc />
+        public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new[] { "sha1" } as IEnumerable<string>);
+        }
 
-			if (!File.Exists(path))
-			{
-				return Task.FromResult<string>(null);
-			}
-
-			var firstLine = ReadFirstLine(path);
-			return string.IsNullOrEmpty(firstLine) ? Task.FromResult<string>(null) : Task.FromResult(firstLine);
-		}
-
-		/// <inheritdoc />
-		public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
-		{
-			var metadata = await GetUploadMetadataAsync(fileId, cancellationToken);
-			var file = new TusDiskFile(_directoryPath, fileId, metadata);
-			return file.Exist() ? file : null;
-		}
-
-		/// <inheritdoc />
-		public Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
-		{
-		    return Task.Run(() =>
-		    {
-		        var path = GetPath(fileId);
-		        File.Delete(path);
-		        File.Delete($"{path}.uploadlength");
-		        File.Delete($"{path}.metadata");
-		        File.Delete($"{path}.uploadconcat");
-		        File.Delete($"{path}.expiration");
-		        _fileRepFactory.ChunkStartPosition(fileId).Delete();
-		        _fileRepFactory.ChunkComplete(fileId).Delete();
-		    }, cancellationToken);
-		}
-
-		/// <inheritdoc />
-		public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken cancellationToken)
-		{
-			return Task.FromResult(new[] { "sha1" } as IEnumerable<string>);
-		}
-
-		/// <inheritdoc />
-		public Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
-		{
-			bool valid;
-			using (var stream = new FileStream(GetPath(fileId), FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
-			{
-			    var chunkPositionFile = _fileRepFactory.ChunkStartPosition(fileId);
+        /// <inheritdoc />
+        public Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
+        {
+            bool valid;
+            var internalFileId = new InternalFileId(fileId);
+            using (var dataStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
+            {
+                var chunkPositionFile = _fileRepFactory.ChunkStartPosition(internalFileId);
                 var chunkStartPosition = chunkPositionFile.ReadFirstLineAsLong(true, 0);
 
-			    stream.Seek(chunkStartPosition, SeekOrigin.Begin);
-			    var calculateSha1 = stream.CalculateSha1(chunkStartPosition);
-			    valid = checksum.SequenceEqual(calculateSha1);
+                var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
+                valid = checksum.SequenceEqual(calculateSha1);
 
-				if (!valid)
-				{
-					stream.Seek(0, SeekOrigin.Begin);
-					stream.SetLength(chunkStartPosition);
-					chunkPositionFile.Delete();
-                    _fileRepFactory.ChunkComplete(fileId).Delete();
-				}
-			}
+                if (!valid)
+                {
+                    dataStream.Seek(0, SeekOrigin.Begin);
+                    dataStream.SetLength(chunkStartPosition);
+                    chunkPositionFile.Delete();
+                    _fileRepFactory.ChunkComplete(internalFileId).Delete();
+                }
+            }
 
-			return Task.FromResult(valid);
-		}
+            return Task.FromResult(valid);
+        }
 
-		/// <inheritdoc />
-		public Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken cancellationToken)
-		{
-			var uploadconcat = $"{GetPath(fileId)}.uploadconcat";
-			if (!File.Exists(uploadconcat))
-			{
-				return Task.FromResult<FileConcat>(null);
-			}
+        /// <inheritdoc />
+        public Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var firstLine = _fileRepFactory.UploadConcat(new InternalFileId(fileId)).ReadFirstLine(true);
+            return string.IsNullOrWhiteSpace(firstLine)
+                ? Task.FromResult<FileConcat>(null)
+                : Task.FromResult(new UploadConcat(firstLine).Type);
+        }
 
-			var firstLine = ReadFirstLine(uploadconcat);
-			return string.IsNullOrWhiteSpace(firstLine)
-				? Task.FromResult<FileConcat>(null)
-				: Task.FromResult(new UploadConcat(firstLine).Type);
-		}
+        /// <inheritdoc />
+        public async Task<string> CreatePartialFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+        {
+            var fileId = await CreateFileAsync(uploadLength, metadata, cancellationToken);
+            _fileRepFactory.UploadConcat(new InternalFileId(fileId)).Write(new FileConcatPartial().GetHeader());
+            return fileId;
+        }
 
-		/// <inheritdoc />
-		public async Task<string> CreatePartialFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
-		{
-			var fileId = await CreateFileAsync(uploadLength, metadata, cancellationToken);
-			File.WriteAllText($"{GetPath(fileId)}.uploadconcat", new FileConcatPartial().GetHeader());
-			return fileId;
-		}
+        /// <inheritdoc />
+        public async Task<string> CreateFinalFileAsync(string[] partialFiles, string metadata, CancellationToken cancellationToken)
+        {
+            var partialInternalFileReps = partialFiles.Select(f =>
+            {
+                var partialData = _fileRepFactory.Data(new InternalFileId(f));
 
-		/// <inheritdoc />
-		public async Task<string> CreateFinalFileAsync(string[] partialFiles, string metadata, CancellationToken cancellationToken)
-		{
-			var fileInfos = partialFiles.Select(f =>
-			{
-				var fi = new FileInfo(GetPath(f));
-				if (!fi.Exists)
-				{
-					throw new TusStoreException($"File {f} does not exist");
-				}
-				return fi;
-			}).ToArray();
+                if (!partialData.Exist())
+                {
+                    throw new TusStoreException($"File {f} does not exist");
+                }
 
-			var length = fileInfos.Sum(f => f.Length);
+                return partialData;
+            }).ToArray();
 
-			var fileId = await CreateFileAsync(length, metadata, cancellationToken);
+            var length = partialInternalFileReps.Sum(f => f.GetLength());
 
-			var path = GetPath(fileId);
-			File.WriteAllText(
-				$"{path}.uploadconcat",
-				new FileConcatFinal(partialFiles).GetHeader()
-			);
+            var fileId = await CreateFileAsync(length, metadata, cancellationToken);
 
-			using (var finalFile = File.Open(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None))
-			{
-				foreach (var partialFile in fileInfos)
-				{
-					using (var partialStream = partialFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
-					{
-						partialStream.CopyTo(finalFile);
-					}
-				}
-			}
+            var internalFileId = new InternalFileId(fileId);
 
-			// ReSharper disable once InvertIf
-			if (_deletePartialFilesOnConcat)
-			{
-				foreach (var partialFile in partialFiles)
-				{
-					File.Delete(GetPath(partialFile));
-				}
-			}
+            _fileRepFactory.UploadConcat(internalFileId).Write(new FileConcatFinal(partialFiles).GetHeader());
 
-			return fileId;
-		}
+            using (var finalFile = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Open, FileAccess.Write, FileShare.None))
+            {
+                foreach (var partialFile in partialInternalFileReps)
+                {
+                    using (var partialStream = partialFile.GetStream(FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        partialStream.CopyTo(finalFile);
+                    }
+                }
+            }
 
-		/// <inheritdoc />
-		public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
-		{
-			return Task.Run(() => File.WriteAllText($"{GetPath(fileId)}.expiration", expires.ToString("O")),
-				cancellationToken);
-		}
+            // ReSharper disable once InvertIf
+            if (_deletePartialFilesOnConcat)
+            {
+                foreach (var partialFile in partialInternalFileReps)
+                {
+                    partialFile.Delete();
+                }
+            }
 
-		/// <inheritdoc />
-		public Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken cancellationToken)
-		{
-			var expiration = ReadFirstLine($"{GetPath(fileId)}.expiration", true);
-			return Task.FromResult(expiration == null
-				? (DateTimeOffset?)null
-				: DateTimeOffset.ParseExact(expiration, "O", null));
-		}
+            return fileId;
+        }
 
-		/// <inheritdoc />
-		public Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
-		{
-		    var expiredFiles = Directory.EnumerateFiles(_directoryPath, "*.expiration")
-		        .Where(f => FileHasExpired(f) && FileIsIncomplete(f))
-		        .Select(Path.GetFileNameWithoutExtension)
-		        .ToList();
+        /// <inheritdoc />
+        public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => _fileRepFactory.Expiration(new InternalFileId(fileId)).Write(expires.ToString("O")), cancellationToken);
+        }
 
-			return Task.FromResult<IEnumerable<string>>(expiredFiles);
+        /// <inheritdoc />
+        public Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken cancellationToken)
+        {
+            var expiration = _fileRepFactory.Expiration(new InternalFileId(fileId)).ReadFirstLine(true);
 
-			bool FileHasExpired(string filePath)
-			{
-				var firstLine = ReadFirstLine(filePath);
-				return !string.IsNullOrWhiteSpace(firstLine)
+            return Task.FromResult(expiration == null
+                ? (DateTimeOffset?)null
+                : DateTimeOffset.ParseExact(expiration, "O", null));
+        }
+
+        /// <inheritdoc />
+        public Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
+        {
+            var expiredFiles = Directory.EnumerateFiles(_directoryPath, "*.expiration")
+                .Select(Path.GetFileNameWithoutExtension)
+                .Select(f => new InternalFileId(f))
+                .Where(f => FileHasExpired(f) && FileIsIncomplete(f))
+                .Select(f => f.FileId)
+                .ToList();
+
+            return Task.FromResult<IEnumerable<string>>(expiredFiles);
+
+            bool FileHasExpired(InternalFileId fileId)
+            {
+                var firstLine = _fileRepFactory.Expiration(fileId).ReadFirstLine();
+                return !string.IsNullOrWhiteSpace(firstLine)
                        && DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
-			}
+            }
 
-			bool FileIsIncomplete(string filePath)
-			{
-				var file = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath));
-				return ReadFirstLine($"{file}.uploadlength") != new FileInfo(file).Length.ToString();
-			}
-		}
+            bool FileIsIncomplete(InternalFileId fileId)
+            {
+                return _fileRepFactory.UploadLength(fileId).ReadFirstLineAsLong()
+                        != _fileRepFactory.Data(fileId).GetLength();
+            }
+        }
 
-		/// <inheritdoc />
-		public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
-		{
-			return await Cleanup(await GetExpiredFilesAsync(cancellationToken));
+        /// <inheritdoc />
+        public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
+        {
+            return await Cleanup(await GetExpiredFilesAsync(cancellationToken));
 
-			async Task<int> Cleanup(IEnumerable<string> files)
-			{
-				var tasks = files.Select(file => DeleteFileAsync(file, cancellationToken)).ToList();
-				await Task.WhenAll(tasks);
-				return tasks.Count;
-			}
-		}
+            async Task<int> Cleanup(IEnumerable<string> files)
+            {
+                var tasks = files.Select(file => DeleteFileAsync(file, cancellationToken)).ToList();
+                await Task.WhenAll(tasks);
+                return tasks.Count;
+            }
+        }
 
-		/// <inheritdoc />
-		public Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken cancellationToken)
-		{
-			return Task.Run(() =>
-			{
-				var path = GetPath(fileId);
-				File.WriteAllText($"{path}.uploadlength", uploadLength.ToString());
-			}, cancellationToken);
-		}
-
-		private string GetPath(string fileId)
-		{
-			return Path.Combine(_directoryPath, fileId);
-		}
-
-		/// <summary>
-		/// Read the first line of the file specified.
-		/// </summary>
-		/// <param name="filePath">The path to read</param>
-		/// <param name="fileIsOptional">If true and the file does not exist, null will be returned. Otherwise an exception will be thrown</param>
-		/// <returns>The first line of the file specified</returns>
-		private static string ReadFirstLine(string filePath, bool fileIsOptional = false)
-		{
-			if (fileIsOptional && !File.Exists(filePath))
-			{
-				return null;
-			}
-
-			using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-			{
-				using (var sr = new StreamReader(stream))
-				{
-					return sr.ReadLine();
-				}
-			}
-		}
-	}
+        /// <inheritdoc />
+        public Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => _fileRepFactory.UploadLength(new InternalFileId(fileId)).Write(uploadLength.ToString()), cancellationToken);
+        }
+    }
 }

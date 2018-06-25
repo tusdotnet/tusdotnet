@@ -4,7 +4,7 @@ namespace tusdotnet.Stores
 {
     internal sealed class InternalFileRep
     {
-        private string Path { get; }
+        public string Path { get; }
 
         private InternalFileRep(string path)
         {
@@ -37,20 +37,30 @@ namespace tusdotnet.Stores
             return defaultValue;
         }
 
-        private string ReadFirstLine(bool fileIsOptional = false)
+        public string ReadFirstLine(bool fileIsOptional = false)
         {
             if (fileIsOptional && !File.Exists(Path))
             {
                 return null;
             }
 
-            using (var stream = File.Open(Path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 using (var sr = new StreamReader(stream))
                 {
                     return sr.ReadLine();
                 }
             }
+        }
+
+        public FileStream GetStream(FileMode mode, FileAccess access, FileShare share)
+        {
+            return File.Open(Path, mode, access, share);
+        }
+
+        public long GetLength()
+        {
+            return new FileInfo(Path).Length;
         }
 
         internal sealed class FileRepFactory
@@ -62,12 +72,29 @@ namespace tusdotnet.Stores
                 _directoryPath = directoryPath;
             }
 
-            public InternalFileRep ChunkStartPosition(string fileId) => Create($"{fileId}.chunkstart");
+            public InternalFileRep Data(InternalFileId fileId) => Create(fileId, "");
 
-            public InternalFileRep ChunkComplete(string fileId) => Create($"{fileId}.chunkcomplete");
+            public InternalFileRep UploadLength(InternalFileId fileId) => Create(fileId, "uploadlength");
 
-            private InternalFileRep Create(string fileName)
+            public InternalFileRep UploadConcat(InternalFileId fileId) => Create(fileId, "uploadconcat");
+
+            public InternalFileRep Metadata(InternalFileId fileId) => Create(fileId, "metadata");
+
+            public InternalFileRep Expiration(InternalFileId fileId) => Create(fileId, "expiration");
+
+            public InternalFileRep ChunkStartPosition(InternalFileId fileId) => Create(fileId, "chunkstart");
+
+            public InternalFileRep ChunkComplete(InternalFileId fileId) => Create(fileId, "chunkcomplete");
+
+            private InternalFileRep Create(InternalFileId fileId, string extension)
             {
+
+                var fileName = fileId.FileId;
+                if (!string.IsNullOrEmpty(extension))
+                {
+                    fileName += "." + extension;
+                }
+
                 return new InternalFileRep(System.IO.Path.Combine(_directoryPath, fileName));
             }
         }
