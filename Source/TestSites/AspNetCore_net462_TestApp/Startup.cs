@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using tusdotnet;
 using tusdotnet.Helpers;
+using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
-using tusdotnet;
-using tusdotnet.Models;
-using tusdotnet.Models.Configuration;
-using tusdotnet.Models.Concatenation;
 
 namespace AspNetCore_Net462_TestApp
 {
@@ -67,8 +67,9 @@ namespace AspNetCore_Net462_TestApp
 
             app.UseTus(context => new DefaultTusConfiguration
             {
+                // context parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
                 UrlPath = "/files",
-                Store = new TusDiskStore(@"C:\tusfiles\"),
+                Store = _tusDiskStore,
                 Events = new Events
                 {
                     OnBeforeCreateAsync = ctx =>

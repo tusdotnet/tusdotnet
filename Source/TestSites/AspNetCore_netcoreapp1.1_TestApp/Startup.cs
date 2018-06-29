@@ -67,8 +67,9 @@ namespace AspNetCoreTestApp
 
             app.UseTus(context => new DefaultTusConfiguration
             {
+                // context parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
                 UrlPath = "/files",
-                Store = new TusDiskStore(@"C:\tusfiles\"),
+                Store = _tusDiskStore,
                 Events = new Events
                 {
                     OnBeforeCreateAsync = ctx =>

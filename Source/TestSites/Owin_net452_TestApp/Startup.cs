@@ -62,6 +62,7 @@ namespace OwinTestApp
 
             app.UseTus(request =>
             {
+                // request parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
                 return new DefaultTusConfiguration
                 {
                     Store = _tusDiskStore,
@@ -158,7 +159,7 @@ namespace OwinTestApp
                         if (metadata.TryGetValue("name", out var nameMetadata))
                         {
                             context.Response.Headers.Add("Content-Disposition",
-                                new[] {$"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\""});
+                                new[] { $"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\"" });
                         }
 
                         await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);
