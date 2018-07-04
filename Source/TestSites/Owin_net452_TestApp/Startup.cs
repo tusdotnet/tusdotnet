@@ -9,6 +9,7 @@ using Owin;
 using OwinTestApp;
 using tusdotnet;
 using tusdotnet.Helpers;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -21,10 +22,28 @@ namespace OwinTestApp
 {
     public class Startup
     {
-        private readonly AbsoluteExpiration _absoluteExpiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5));
-        private readonly TusDiskStore _tusDiskStore = new TusDiskStore(@"C:\tusfiles\");
-
         public void Configuration(IAppBuilder app)
+        {
+            var tusConfiguration = CreateTusConfiguration();
+
+            SetupCorsPolicy(app);
+
+            SetupSimpleExceptionHandler(app);
+
+            // owinRequest parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
+            // In this case we just return the same configuration for everyone.
+            app.UseTus(owinRequest => tusConfiguration);
+
+            // All GET requests to tusdotnet are forwared so that you can handle file downloads.
+            // This is done because the file's metadata is domain specific and thus cannot be handled 
+            // in a generic way by tusdotnet.
+            SetupDownloadFeature(app, tusConfiguration);
+
+            // Setup cleanup job to remove incomplete expired files.
+            StartCleanupJob(app, tusConfiguration);
+        }
+
+        private void SetupCorsPolicy(IAppBuilder app)
         {
             var corsPolicy = new System.Web.Cors.CorsPolicy
             {
@@ -33,7 +52,6 @@ namespace OwinTestApp
                 AllowAnyOrigin = true
             };
 
-            // ReSharper disable once PossibleNullReferenceException - nameof will cause compiler error if the property does not exist.
             corsPolicy.GetType()
                 .GetProperty(nameof(corsPolicy.ExposedHeaders))
                 .SetValue(corsPolicy, CorsHelper.GetExposedHeaders());
@@ -45,7 +63,14 @@ namespace OwinTestApp
                     PolicyResolver = context => Task.FromResult(corsPolicy)
                 }
             });
+        }
 
+        /// <summary>
+        /// Use a simple exception handler that will log errors and return 500 internal server error on exceptions.
+        /// </summary>
+        /// <param name="app"></param>
+        private static void SetupSimpleExceptionHandler(IAppBuilder app)
+        {
             app.Use(async (context, next) =>
             {
                 try
@@ -59,87 +84,32 @@ namespace OwinTestApp
                     await context.Response.WriteAsync("An internal server error has occurred");
                 }
             });
+        }
 
-            app.UseTus(request =>
-            {
-                // request parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
-                return new DefaultTusConfiguration
-                {
-                    Store = _tusDiskStore,
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnBeforeCreateAsync = ctx =>
-                        {
-                            // Partial files are not complete so we do not need to validate
-                            // the metadata in our example.
-                            if (ctx.FileConcatenation is FileConcatPartial)
-                            {
-                                return Task.FromResult(true);
-                            }
+        /// <summary>
+        /// Use a simple middleware that allows downloading of files from a tusdotnet store.
+        /// </summary>
+        /// <param name="app"></param>
+        /// <param name="tusConfiguration"></param>
 
-                            if (!ctx.Metadata.ContainsKey("name"))
-                            {
-                                ctx.FailRequest("name metadata must be specified. ");
-                            }
-
-                            if (!ctx.Metadata.ContainsKey("contentType"))
-                            {
-                                ctx.FailRequest("contentType metadata must be specified. ");
-                            }
-
-                            return Task.FromResult(true);
-                        },
-                        OnCreateCompleteAsync = ctx =>
-                        {
-                            Console.WriteLine($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
-                            return Task.FromResult(true);
-                        },
-                        OnBeforeDeleteAsync = ctx =>
-                        {
-                            // Can the file be deleted? If not call ctx.FailRequest(<message>);
-                            return Task.FromResult(true);
-                        },
-                        OnDeleteCompleteAsync = ctx =>
-                        {
-                            Console.WriteLine($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
-                            return Task.FromResult(true);
-                        },
-                        OnFileCompleteAsync = ctx =>
-                        {
-                            Console.WriteLine(
-                                $"Upload of {ctx.FileId} is complete. Callback also got a store of type {ctx.Store.GetType().FullName}");
-                            // If the store implements ITusReadableStore one could access the completed file here.
-                            // The default TusDiskStore implements this interface:
-                            //var file = await((tusdotnet.Interfaces.ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
-                            return Task.FromResult(true);
-                        }
-                    },
-                    // Set an expiration time where incomplete files can no longer be updated.
-                    // This value can either be absolute or sliding.
-                    // Absolute expiration will be saved per file on create
-                    // Sliding expiration will be saved per file on create and updated on each patch/update.
-                    Expiration = _absoluteExpiration
-                };
-            });
+        private static void SetupDownloadFeature(IAppBuilder app, DefaultTusConfiguration tusConfiguration)
+        {
+            var readableStore = (ITusReadableStore)tusConfiguration.Store;
 
             app.Use(async (context, next) =>
             {
-                // All GET requests to tusdotnet are forwared so that you can handle file downloads.
-                // This is done because the file's metadata is domain specific and thus cannot be handled 
-                // in a generic way by tusdotnet.
                 if (!context.Request.Method.Equals("get", StringComparison.InvariantCultureIgnoreCase))
                 {
                     await next.Invoke();
                     return;
                 }
 
-                if (context.Request.Uri.LocalPath.StartsWith("/files/", StringComparison.Ordinal))
+                if (context.Request.Uri.LocalPath.StartsWith(tusConfiguration.UrlPath, StringComparison.Ordinal))
                 {
-                    var fileId = context.Request.Uri.LocalPath.Replace("/files/", "").Trim();
+                    var fileId = context.Request.Uri.LocalPath.Replace(tusConfiguration.UrlPath, "").Trim();
                     if (!string.IsNullOrEmpty(fileId))
                     {
-                        var file = await _tusDiskStore.GetFileAsync(fileId, context.Request.CallCancelled);
+                        var file = await readableStore.GetFileAsync(fileId, context.Request.CallCancelled);
 
                         if (file == null)
                         {
@@ -162,7 +132,10 @@ namespace OwinTestApp
                                 new[] { $"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\"" });
                         }
 
-                        await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);
+                        using (fileStream)
+                        {
+                            await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);
+                        }
                         return;
                     }
                 }
@@ -184,21 +157,89 @@ namespace OwinTestApp
                         break;
                 }
             });
+        }
 
-            // Setup cleanup job to remove incomplete expired files.
-            // This is just a simple example. In production one would use a cronjob/webjob and poll an endpoint that runs RemoveExpiredFilesAsync.
+        private static void StartCleanupJob(IAppBuilder app, DefaultTusConfiguration tusConfiguration)
+        {
+            var expirationStore = (ITusExpirationStore)tusConfiguration.Store;
+            var expiration = tusConfiguration.Expiration;
             var onAppDisposingToken = new OwinContext(app.Properties).Get<CancellationToken>("host.OnAppDisposing");
             Task.Run(async () =>
             {
                 while (!onAppDisposingToken.IsCancellationRequested)
                 {
                     Console.WriteLine("Running cleanup job...");
-                    var numberOfRemovedFiles = await _tusDiskStore.RemoveExpiredFilesAsync(onAppDisposingToken);
+
+                    var numberOfRemovedFiles = await expirationStore.RemoveExpiredFilesAsync(onAppDisposingToken);
+
                     Console.WriteLine(
-                        $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_absoluteExpiration.Timeout.TotalMilliseconds} ms");
-                    await Task.Delay(_absoluteExpiration.Timeout, onAppDisposingToken);
+                        $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {expiration.Timeout.TotalMilliseconds} ms");
+
+                    await Task.Delay(expiration.Timeout, onAppDisposingToken);
                 }
             }, onAppDisposingToken);
+        }
+
+        private static DefaultTusConfiguration CreateTusConfiguration()
+        {
+            return new DefaultTusConfiguration
+            {
+                Store = new TusDiskStore(@"C:\tusfiles\"),
+                UrlPath = "/files",
+                Events = new Events
+                {
+                    OnBeforeCreateAsync = ctx =>
+                    {
+                        // Partial files are not complete so we do not need to validate
+                        // the metadata in our example.
+                        if (ctx.FileConcatenation is FileConcatPartial)
+                        {
+                            return Task.FromResult(true);
+                        }
+
+                        if (!ctx.Metadata.ContainsKey("name"))
+                        {
+                            ctx.FailRequest("name metadata must be specified. ");
+                        }
+
+                        if (!ctx.Metadata.ContainsKey("contentType"))
+                        {
+                            ctx.FailRequest("contentType metadata must be specified. ");
+                        }
+
+                        return Task.FromResult(true);
+                    },
+                    OnCreateCompleteAsync = ctx =>
+                    {
+                        Console.WriteLine($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        return Task.FromResult(true);
+                    },
+                    OnBeforeDeleteAsync = ctx =>
+                    {
+                        // Can the file be deleted? If not call ctx.FailRequest(<message>);
+                        return Task.FromResult(true);
+                    },
+                    OnDeleteCompleteAsync = ctx =>
+                    {
+                        Console.WriteLine($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        return Task.FromResult(true);
+                    },
+                    OnFileCompleteAsync = ctx =>
+                    {
+                        Console.WriteLine(
+                            $"Upload of {ctx.FileId} is complete. Callback also got a store of type {ctx.Store.GetType().FullName}");
+                        // If the store implements ITusReadableStore one could access the completed file here.
+                        // The default TusDiskStore implements this interface:
+                        //var file = await((tusdotnet.Interfaces.ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+                        return Task.FromResult(true);
+                    }
+                },
+                // Set an expiration time where incomplete files can no longer be updated.
+                // This value can either be absolute or sliding.
+                // Absolute expiration will be saved per file on create
+                // Sliding expiration will be saved per file on create and updated on each patch/update.
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+            };
         }
     }
 }

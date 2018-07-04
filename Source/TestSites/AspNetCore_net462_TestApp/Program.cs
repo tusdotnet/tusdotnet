@@ -13,7 +13,11 @@ namespace AspNetCore_Net462_TestApp
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseKestrel(options => options.Limits.MaxRequestBodySize = null)
+                .UseKestrel(options =>
+                {
+                    options.Limits.MaxRequestBodySize = null;
+                    options.Limits.MaxRequestBufferSize = null;
+                })
                 .Build();
     }
 }

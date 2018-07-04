@@ -1,4 +1,4 @@
-﻿using System.IO;
+﻿using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 
 namespace AspNetCore_netcoreapp2_1_TestApp
@@ -12,15 +12,13 @@ namespace AspNetCore_netcoreapp2_1_TestApp
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args)
         {
-            return new WebHostBuilder()
-                   .UseKestrel(options =>
-                   {
-                       options.Limits.MaxRequestBufferSize = null;
-                       options.Limits.MaxRequestBodySize = null;
-                   })
-                   .UseContentRoot(Directory.GetCurrentDirectory())
-                   .UseIISIntegration()
-                   .UseStartup<Startup>();
+            return WebHost.CreateDefaultBuilder(args)
+                .UseStartup<Startup>()
+                .UseKestrel(options =>
+                {
+                    options.Limits.MaxRequestBodySize = null;
+                    options.Limits.MaxRequestBufferSize = null;
+                });
         }
     }
 }

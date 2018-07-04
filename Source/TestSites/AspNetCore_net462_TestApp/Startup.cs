@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Text;
 using System.Threading.Tasks;
+using AspNetCore_net462_TestApp.Middleware;
+using AspNetCore_net462_TestApp.Services;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using tusdotnet;
@@ -19,28 +17,19 @@ namespace AspNetCore_Net462_TestApp
 {
     public class Startup
     {
-        private readonly AbsoluteExpiration _absoluteExpiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5));
-        private readonly TusDiskStore _tusDiskStore = new TusDiskStore(@"C:\tusfiles\");
-
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddCors();
+            services.AddSingleton(CreateTusConfiguration);
+            services.AddSingleton<ExpiredFilesCleanupService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory,
-           IApplicationLifetime applicationLifetime)
+        public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole();
-
-            var logger = loggerFactory.CreateLogger<Startup>();
-
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
 
             app.UseDefaultFiles();
             app.UseStaticFiles();
@@ -51,25 +40,30 @@ namespace AspNetCore_Net462_TestApp
                 .AllowAnyOrigin()
                 .WithExposedHeaders(CorsHelper.GetExposedHeaders()));
 
-            app.Use(async (context, next) =>
-            {
-                try
-                {
-                    await next.Invoke();
-                }
-                catch (Exception exc)
-                {
-                    logger.LogError(null, exc, exc.Message);
-                    context.Response.StatusCode = 500;
-                    await context.Response.WriteAsync("An internal server error has occurred", context.RequestAborted);
-                }
-            });
+            app.UseSimpleExceptionHandler();
 
-            app.UseTus(context => new DefaultTusConfiguration
+            // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
+            // In this case we just return the same configuration for everyone.
+            app.UseTus(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
+
+            // All GET requests to tusdotnet are forwared so that you can handle file downloads.
+            // This is done because the file's metadata is domain specific and thus cannot be handled 
+            // in a generic way by tusdotnet.
+            app.UseSimpleDownloadMiddleware(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
+
+            // Start cleanup job to remove incomplete expired files.
+            var cleanupService = app.ApplicationServices.GetService<ExpiredFilesCleanupService>();
+            cleanupService.Start();
+        }
+
+        private DefaultTusConfiguration CreateTusConfiguration(IServiceProvider serviceProvider)
+        {
+            var logger = serviceProvider.GetService<ILoggerFactory>().CreateLogger<Startup>();
+
+            return new DefaultTusConfiguration
             {
-                // context parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
                 UrlPath = "/files",
-                Store = _tusDiskStore,
+                Store = new TusDiskStore(@"C:\tusfiles\"),
                 Events = new Events
                 {
                     OnBeforeCreateAsync = ctx =>
@@ -121,69 +115,8 @@ namespace AspNetCore_Net462_TestApp
                 // This value can either be absolute or sliding.
                 // Absolute expiration will be saved per file on create
                 // Sliding expiration will be saved per file on create and updated on each patch/update.
-                Expiration = _absoluteExpiration
-            });
-
-            app.Use(async (context, next) =>
-            {
-                // All GET requests to tusdotnet are forwared so that you can handle file downloads.
-                // This is done because the file's metadata is domain specific and thus cannot be handled 
-                // in a generic way by tusdotnet.
-                if (!context.Request.Method.Equals("get", StringComparison.OrdinalIgnoreCase))
-                {
-                    await next.Invoke();
-                    return;
-                }
-
-                var url = new Uri(context.Request.GetDisplayUrl());
-
-                if (url.LocalPath.StartsWith("/files/", StringComparison.Ordinal))
-                {
-                    var fileId = url.LocalPath.Replace("/files/", "").Trim();
-                    if (!string.IsNullOrEmpty(fileId))
-                    {
-                        var file = await _tusDiskStore.GetFileAsync(fileId, context.RequestAborted);
-
-                        if (file == null)
-                        {
-                            context.Response.StatusCode = 404;
-                            await context.Response.WriteAsync($"File with id {fileId} was not found.",
-                                context.RequestAborted);
-                            return;
-                        }
-
-                        var fileStream = await file.GetContentAsync(context.RequestAborted);
-                        var metadata = await file.GetMetadataAsync(context.RequestAborted);
-
-                        context.Response.ContentType = metadata.ContainsKey("contentType")
-                            ? metadata["contentType"].GetString(Encoding.UTF8)
-                            : "application/octet-stream";
-
-                        if (metadata.TryGetValue("name", out var nameMeta))
-                        {
-                            context.Response.Headers.Add("Content-Disposition",
-                                new[] { $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"" });
-                        }
-
-                        await fileStream.CopyToAsync(context.Response.Body, 81920, context.RequestAborted);
-                    }
-                }
-            });
-
-            // Setup cleanup job to remove incomplete expired files.
-            // This is just a simple example. In production one would use a cronjob/webjob and poll an endpoint that runs RemoveExpiredFilesAsync.
-            var onAppDisposingToken = applicationLifetime.ApplicationStopping;
-            Task.Run(async () =>
-            {
-                while (!onAppDisposingToken.IsCancellationRequested)
-                {
-                    logger.LogInformation("Running cleanup job...");
-                    var numberOfRemovedFiles = await _tusDiskStore.RemoveExpiredFilesAsync(onAppDisposingToken);
-                    logger.LogInformation(
-                        $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_absoluteExpiration.Timeout.TotalMilliseconds} ms");
-                    await Task.Delay(_absoluteExpiration.Timeout, onAppDisposingToken);
-                }
-            }, onAppDisposingToken);
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+            };
         }
     }
 }

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore_netcoreapp2_1_TestApp.Middleware
+namespace AspNetCore_net462_TestApp.Middleware
 {
     public class SimpleExceptionHandlerMiddleware
     {
