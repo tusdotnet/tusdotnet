@@ -18,15 +18,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Castle.Core" Version="4.2.1" />
-        <PackageReference Include="coverlet.msbuild" Version="1.0.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.0.0" />
-        <PackageReference Include="xunit.analyzers" Version="0.7.0" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
+        <PackageReference Include="Castle.Core" Version="4.3.1" />
+        <PackageReference Include="coverlet.msbuild" Version="2.0.1" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
+        <PackageReference Include="xunit.analyzers" Version="0.9.0" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
         <PackageReference Include="System.Runtime.Serialization.Primitives" Version="4.3.0" />
-        <PackageReference Include="xunit" Version="2.2.0" />
-        <PackageReference Include="NSubstitute" Version="2.0.2" />
-        <PackageReference Include="Shouldly" Version="2.8.2" />
+        <PackageReference Include="xunit" Version="2.3.1" />
+        <PackageReference Include="NSubstitute" Version="3.1.0" />
+        <PackageReference Include="Shouldly" Version="3.0.0" />
     </ItemGroup>
 
     <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">
@@ -52,9 +52,8 @@
     </PropertyGroup>
 
     <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
-        <PackageReference Include="Microsoft.Owin.Testing" Version="3.0.1" />
+        <PackageReference Include="Microsoft.Owin.Testing" Version="4.0.0" />
         <PackageReference Include="Owin" Version="1.0.0" />
-        <!--<PackageReference Include="Microsoft.AspNetCore.TestHost" Version="1.1.1" />-->
         <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="1.1.1" />
         <Reference Include="System" />
         <Reference Include="Microsoft.CSharp" />
