@@ -15,7 +15,7 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
 
-namespace AspNetCoreTestApp
+namespace AspNetCore_netcoreapp1_1_TestApp
 {
     public class Startup
     {
@@ -65,9 +65,9 @@ namespace AspNetCoreTestApp
                 }
             });
 
-            app.UseTus(context => new DefaultTusConfiguration
+            app.UseTus(httpContext => new DefaultTusConfiguration
             {
-                // context parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
+                // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
                 UrlPath = "/files",
                 Store = _tusDiskStore,
                 Events = new Events
@@ -165,7 +165,10 @@ namespace AspNetCoreTestApp
                                 new[] { $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"" });
                         }
 
-                        await fileStream.CopyToAsync(context.Response.Body, 81920, context.RequestAborted);
+                        using (fileStream)
+                        {
+                            await fileStream.CopyToAsync(context.Response.Body, 81920, context.RequestAborted);
+                        }
                     }
                 }
             });

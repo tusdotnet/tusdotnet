@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp1.1</TargetFramework>
-    <RootNamespace>AspNetCore_netcoreapp1.1_TestApp</RootNamespace>
+    <RootNamespace>AspNetCore_netcoreapp1_1_TestApp</RootNamespace>
     <AssemblyName>AspNetCore_netcoreapp1.1_TestApp</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
