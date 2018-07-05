@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netcoreapp1.1;netcoreapp2.0;net452</TargetFrameworks>
+        <TargetFrameworks>netcoreapp1.1;netcoreapp2.0;netcoreapp2.1;net452</TargetFrameworks>
         <DebugType>portable</DebugType>
         <AssemblyName>tusdotnet.test</AssemblyName>
         <PackageId>tusdotnet.test</PackageId>
@@ -34,22 +34,15 @@
         <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="1.1.1" />
     </ItemGroup>
 
-    <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">
-        <DefineConstants>$(DefineConstants);netstandard</DefineConstants>
-    </PropertyGroup>
-
     <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
         <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.0.1" />
     </ItemGroup>
 
-    <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
-        <DefineConstants>$(DefineConstants);netstandard;</DefineConstants>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
-        <DefineConstants>$(DefineConstants);netfull</DefineConstants>
-    </PropertyGroup>
+    <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.1' ">
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.1.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.1.1" />
+    </ItemGroup>
 
     <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
         <PackageReference Include="Microsoft.Owin.Testing" Version="4.0.0" />
@@ -58,6 +51,22 @@
         <Reference Include="System" />
         <Reference Include="Microsoft.CSharp" />
     </ItemGroup>
+
+    <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">
+        <DefineConstants>$(DefineConstants);netstandard</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
+        <DefineConstants>$(DefineConstants);netstandard;</DefineConstants>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.1' ">
+        <DefineConstants>$(DefineConstants);netstandard;</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
+        <DefineConstants>$(DefineConstants);netfull</DefineConstants>
+    </PropertyGroup>
 
     <ItemGroup>
         <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />

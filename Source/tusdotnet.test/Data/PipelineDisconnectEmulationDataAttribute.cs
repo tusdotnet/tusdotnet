@@ -1,19 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 
 #if netfull
 using System.Net;
-#elif NETCOREAPP2_0
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
-#endif
-
-#if !NETCOREAPP2_0
+using System.IO;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+#elif NETCOREAPP1_1
+using System.IO;
+using Microsoft.AspNetCore.Server.Kestrel;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+#elif NETCOREAPP2_0
+using System.IO;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
+#elif NETCOREAPP2_1
+using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 #endif
 
 using Xunit.Sdk;
@@ -26,9 +32,11 @@ namespace tusdotnet.test.Data
     /// Pipelines: 
     /// System.Web.Host -> CT = true, Exception = "Client disconnected"
     /// Microsoft.Owin.SelfHost -> CT = true, Exception = IOException, Exception.InnerException is System.Net.HttpListenerException
-    /// .NET Core reverse proxy IIS -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
+    /// .NET Core reverse proxy IIS on ASP.NET Core 1.1 and 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
+    /// .NET Core reverse proxy IIS on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Connections.ConnectionResetException
     /// .NET Core direct Kestrel on ASP.NET Core 1.1 -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
     /// .NET Core direct Kestrel on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
+    /// .NET Core direct Kestrel on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     internal sealed class PipelineDisconnectEmulationDataAttribute : DataAttribute
@@ -51,7 +59,7 @@ namespace tusdotnet.test.Data
                 throw new ArgumentException($"Unknown pipeline: {pipeline}", nameof(pipeline));
             }
 
-            return (DisconnectPipelineEmulationInfo) method.Invoke(null, null);
+            return (DisconnectPipelineEmulationInfo)method.Invoke(null, null);
         }
 
 #if netfull
@@ -65,7 +73,7 @@ namespace tusdotnet.test.Data
                     nameof(Kestrel),
                     nameof(KestrelReverseProxy)
                 }
-                .Select(f => new[] {f}).ToArray();
+                .Select(f => new[] { f }).ToArray();
         }
 
 #else
@@ -77,7 +85,7 @@ namespace tusdotnet.test.Data
                     nameof(Kestrel),
                     nameof(KestrelReverseProxy)
                 }
-                .Select(f => new[] {f})
+                .Select(f => new[] { f })
                 .ToArray();
         }
 
@@ -85,26 +93,32 @@ namespace tusdotnet.test.Data
 
         private static DisconnectPipelineEmulationInfo Kestrel()
         {
-            // Request cancellation token is not flagged properly in ASP.NET Core 1.1, but it is in ASP.NET Core 2.0.
-            // netfull uses ASP.NET Core 2.0, hence the ifdef.
-#if NETCOREAPP2_0 || netfull
-            const bool properlyCancelsCancellationToken = true;
-#else
+            // Request cancellation token is not flagged properly in ASP.NET Core 1.1, but it is in ASP.NET Core 2.0 and 2.1.
+#if NETCOREAPP1_1
             const bool properlyCancelsCancellationToken = false;
+            var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
+#elif NETCOREAPP2_1
+            const bool properlyCancelsCancellationToken = true;
+            var badHttpRequestExceptionCtorParams = new object[] { "", -1, RequestRejectionReason.UnexpectedEndOfRequestContent };
+#else
+            const bool properlyCancelsCancellationToken = true;
+            var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
 #endif
 
-            var ctor = typeof(BadHttpRequestException)
-                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
-                .First();
-            var exception = (BadHttpRequestException)ctor.Invoke(new object[] { "", -1 });
+            var ctor = typeof(BadHttpRequestException).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)[0];
+            var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);
 
             return new DisconnectPipelineEmulationInfo(properlyCancelsCancellationToken, exception);
         }
 
         private static DisconnectPipelineEmulationInfo KestrelReverseProxy()
         {
-            return new DisconnectPipelineEmulationInfo(true,
-                new IOException("Test", new UvException("Test", -4077)));
+#if NETCOREAPP2_1
+            var exceptionToThrow = new ConnectionResetException("Test");
+#else
+            var exceptionToThrow = new IOException("Test", new UvException("Test", -4077));
+#endif
+            return new DisconnectPipelineEmulationInfo(true, exceptionToThrow);
         }
 
 #if netfull
