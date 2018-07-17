@@ -27,6 +27,12 @@ namespace AspNetCore_netcoreapp1_1_TestApp.Services
 
         public void Start()
         {
+            if (_expiration == null)
+            {
+                _logger.LogInformation("Not running cleanup job as no expiration has been set.");
+                return;
+            }
+
             var onAppDisposingToken = _applicationLifetime.ApplicationStopping;
             Task.Run(async () =>
             {

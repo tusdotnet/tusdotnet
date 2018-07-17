@@ -40,7 +40,7 @@ namespace AspNetCore_net462_TestApp.Middleware
 
             if (url.LocalPath.StartsWith(config.UrlPath, StringComparison.Ordinal))
             {
-                var fileId = url.LocalPath.Replace(config.UrlPath, "").Trim();
+                var fileId = url.LocalPath.Replace(config.UrlPath, "").Trim('/', ' ');
                 if (!string.IsNullOrEmpty(fileId))
                 {
                     var file = await readableStore.GetFileAsync(fileId, context.RequestAborted);

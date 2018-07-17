@@ -106,7 +106,7 @@ namespace OwinTestApp
 
                 if (context.Request.Uri.LocalPath.StartsWith(tusConfiguration.UrlPath, StringComparison.Ordinal))
                 {
-                    var fileId = context.Request.Uri.LocalPath.Replace(tusConfiguration.UrlPath, "").Trim();
+                    var fileId = context.Request.Uri.LocalPath.Replace(tusConfiguration.UrlPath, "").Trim('/', ' ');
                     if (!string.IsNullOrEmpty(fileId))
                     {
                         var file = await readableStore.GetFileAsync(fileId, context.Request.CallCancelled);
@@ -161,8 +161,15 @@ namespace OwinTestApp
 
         private static void StartCleanupJob(IAppBuilder app, DefaultTusConfiguration tusConfiguration)
         {
-            var expirationStore = (ITusExpirationStore)tusConfiguration.Store;
             var expiration = tusConfiguration.Expiration;
+
+            if (expiration == null)
+            {
+                Console.WriteLine("Not running cleanup job as no expiration has been set.");
+                return;
+            }
+
+            var expirationStore = (ITusExpirationStore)tusConfiguration.Store;
             var onAppDisposingToken = new OwinContext(app.Properties).Get<CancellationToken>("host.OnAppDisposing");
             Task.Run(async () =>
             {

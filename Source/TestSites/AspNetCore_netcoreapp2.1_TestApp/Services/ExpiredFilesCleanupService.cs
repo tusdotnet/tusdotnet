@@ -23,6 +23,12 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Services
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            if (_expiration == null)
+            {
+                _logger.LogInformation("Not running cleanup job as no expiration has been set.");
+                return;
+            }
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 await RunCleanup(cancellationToken);

@@ -25,7 +25,7 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Middleware
             }
             catch (Exception exc)
             {
-                _logger.LogError(null, exc, exc.Message);
+                _logger.LogError(exc, exc.Message);
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsync("An internal server error has occurred", context.RequestAborted);
             }
