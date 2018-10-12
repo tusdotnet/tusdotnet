@@ -46,7 +46,7 @@ namespace AspNetCore_netcoreapp1_1_TestApp
             // In this case we just return the same configuration for everyone.
             app.UseTus(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
 
-            // All GET requests to tusdotnet are forwared so that you can handle file downloads.
+            // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
             // This is done because the file's metadata is domain specific and thus cannot be handled 
             // in a generic way by tusdotnet.
             app.UseSimpleDownloadMiddleware(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
