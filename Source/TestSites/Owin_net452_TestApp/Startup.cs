@@ -34,7 +34,7 @@ namespace OwinTestApp
             // In this case we just return the same configuration for everyone.
             app.UseTus(owinRequest => tusConfiguration);
 
-            // All GET requests to tusdotnet are forwared so that you can handle file downloads.
+            // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
             // This is done because the file's metadata is domain specific and thus cannot be handled 
             // in a generic way by tusdotnet.
             SetupDownloadFeature(app, tusConfiguration);
