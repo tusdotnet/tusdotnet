@@ -81,7 +81,7 @@ namespace tusdotnet.Validation.Requirements
             if (filesExist.Any(f => !f))
             {
                 await BadRequest(
-                    $"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new {exist = b, name = s}).Where(f => !f.exist).Select(f => f.name))}");
+                    $"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}");
                 return;
             }
 
@@ -120,7 +120,7 @@ namespace tusdotnet.Validation.Requirements
                 return;
             }
 
-            if (totalSize > context.Configuration.MaxAllowedUploadSizeInBytes)
+            if (totalSize > context.Configuration.GetMaxAllowedUploadSizeInBytes())
             {
                 await RequestEntityTooLarge("The concatenated file exceeds the server's max file size.");
             }

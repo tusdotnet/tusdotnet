@@ -108,7 +108,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest($"Header {HeaderConstants.UploadLength} must be a positive number");
             }
 
-            if (uploadLength > context.Configuration.MaxAllowedUploadSizeInBytes)
+            if (uploadLength > context.Configuration.GetMaxAllowedUploadSizeInBytes())
             {
                 return RequestEntityTooLarge(
                     $"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");

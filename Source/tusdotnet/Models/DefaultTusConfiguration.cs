@@ -39,8 +39,16 @@ namespace tusdotnet.Models
         /// <summary>
         /// The maximum upload size to allow. Exceeding this limit will return a "413 Request Entity Too Large" error to the client.
         /// Set to null to allow any size. The size might still be restricted by the web server or operating system.
+        /// This property will be preceded by <see cref="MaxAllowedUploadSizeInBytesLong" />.
         /// </summary>
         public virtual int? MaxAllowedUploadSizeInBytes { get; set; }
+
+        /// <summary>
+        /// The maximum upload size to allow. Exceeding this limit will return a "413 Request Entity Too Large" error to the client.
+        /// Set to null to allow any size. The size might still be restricted by the web server or operating system.
+        /// This property will take precedence over <see cref="MaxAllowedUploadSizeInBytes" />.
+        /// </summary>
+        public virtual long? MaxAllowedUploadSizeInBytesLong { get; set; }
 
         /// <summary>
         /// Set an expiration time where incomplete files can no longer be updated.
@@ -54,7 +62,7 @@ namespace tusdotnet.Models
         /// <summary>
         /// Check that the config is valid. Throws a <exception cref="TusConfigurationException">TusConfigurationException</exception> if the config is invalid.
         /// </summary>
-	    internal void Validate()
+        internal void Validate()
         {
             if (Store == null)
             {
@@ -65,6 +73,14 @@ namespace tusdotnet.Models
             {
                 throw new TusConfigurationException($"{nameof(UrlPath)} cannot be empty.");
             }
+        }
+
+        /// <summary>
+        /// Returns the maximum upload size to allow from <see cref="MaxAllowedUploadSizeInBytesLong" /> or <see cref="MaxAllowedUploadSizeInBytes"/> depending on which one is set.
+        /// </summary>
+        internal long? GetMaxAllowedUploadSizeInBytes()
+        {
+            return MaxAllowedUploadSizeInBytesLong ?? MaxAllowedUploadSizeInBytes;
         }
     }
 }

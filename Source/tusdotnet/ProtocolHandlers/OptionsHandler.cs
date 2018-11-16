@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -33,9 +32,11 @@ namespace tusdotnet.ProtocolHandlers
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
 
-            if (context.Configuration.MaxAllowedUploadSizeInBytes.HasValue)
+            var maximumAllowedSize = context.Configuration.GetMaxAllowedUploadSizeInBytes();
+
+            if (maximumAllowedSize.HasValue)
             {
-                response.SetHeader(HeaderConstants.TusMaxSize, context.Configuration.MaxAllowedUploadSizeInBytes.Value.ToString());
+                response.SetHeader(HeaderConstants.TusMaxSize, maximumAllowedSize.Value.ToString());
             }
 
             var extensions = context.DetectExtensions();
