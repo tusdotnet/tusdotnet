@@ -38,7 +38,7 @@ function verifyNuget() {
 function createPackage() {
 	cd tusdotnet\
 	$version = git describe --abbrev=0 --tags
-	& dotnet pack -c Release tusdotnet.csproj /p:Version=$version
+	& dotnet pack -c Release tusdotnet.csproj /p:Version=$version --include-symbols --include-source -p:SymbolPackageFormat=snupkg -o ..\
 	cd..
 }
 
