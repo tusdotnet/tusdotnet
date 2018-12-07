@@ -52,7 +52,15 @@ app.UseTus(context => new DefaultTusConfiguration
 
 ## Test sites
 
-If you just want to play around with tusdotnet/the tus protocol, clone the repo and run one of the test sites. They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine. Test sites are available for OWIN (.NET Framework 4.5.2), ASP.NET Core 1.1 (.NET Core 1.1), ASP.NET Core 2.0 (.NET Framework 4.6.2), ASP.NET Core 2.1 (.NET Core 2.1) and ASP.NET Core 2.2 (.NET Core 2.2).
+If you just want to play around with tusdotnet/the tus protocol, clone the repo and run one of the test sites. They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine. 
+
+Test sites are available for:
+
+* OWIN (.NET Framework 4.5.2)
+* ASP.NET Core 1.1 (.NET Core 1.1)
+* ASP.NET Core 2.0 (.NET Framework 4.6.2)
+* ASP.NET Core 2.1 (.NET Core 2.1)
+* ASP.NET Core 2.2 (.NET Core 2.2)
 
 ## Clients
 
