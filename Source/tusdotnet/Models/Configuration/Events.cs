@@ -39,5 +39,7 @@ namespace tusdotnet.Models.Configuration
         /// Callback ran when a file has been deleted.
         /// </summary>
         public Func<DeleteCompleteContext, Task> OnDeleteCompleteAsync { get; set; }
+
+        public Func<AuthorizeContext, Task> OnAuthorize { get; set; }
     }
 }
