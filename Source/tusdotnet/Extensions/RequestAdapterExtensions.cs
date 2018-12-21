@@ -23,5 +23,12 @@ namespace tusdotnet.Extensions
 
 			return method.ToLower();
 		}
-	}
+
+        internal static long GetUploadLength(this RequestAdapter request)
+        {
+            return request.Headers.ContainsKey(HeaderConstants.UploadDeferLength)
+                ? -1
+                : long.Parse(request.GetHeader(HeaderConstants.UploadLength) ?? "-1");
+        }
+    }
 }

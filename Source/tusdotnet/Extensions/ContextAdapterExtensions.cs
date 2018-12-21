@@ -33,6 +33,7 @@ namespace tusdotnet.Extensions
                        StringComparison.OrdinalIgnoreCase);
         }
 
+#warning TODO: Move to GetOptionsHandler
         internal static List<string> DetectExtensions(this ContextAdapter context)
         {
             var extensions = new List<string>(6);

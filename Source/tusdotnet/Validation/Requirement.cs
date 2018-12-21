@@ -50,6 +50,7 @@ namespace tusdotnet.Validation
             return Done;
         }
 
+        #warning TODO Remove and replace with TaskHelper.Completed
         protected Task Done => Task.FromResult(true);
     }
 }

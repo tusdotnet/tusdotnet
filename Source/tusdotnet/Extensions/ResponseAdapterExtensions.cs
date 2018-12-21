@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Models;
 
 namespace tusdotnet.Extensions
 {
@@ -24,6 +25,11 @@ namespace tusdotnet.Extensions
             var buffer = new UTF8Encoding().GetBytes(message);
             await response.Body.WriteAsync(buffer, 0, buffer.Length);
             return true;
+        }
+
+        internal static Task<ResultType> ErrorResult(this ResponseAdapter response, HttpStatusCode statusCode, string message)
+        {
+            return Error(response, statusCode, message).ContinueWith(f => ResultType.Handled);
         }
     }
 }
