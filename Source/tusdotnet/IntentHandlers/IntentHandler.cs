@@ -7,17 +7,15 @@ using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
 {
-#warning TODO: Move all abstract and virtual properties to constructor?
     internal abstract class IntentHandler
     {
-        public static NotApplicableHandler NotApplicable { get; } = new NotApplicableHandler();
+        internal static IntentHandler NotApplicable { get; } = null;
 
-#warning TODO: Change to LockType.NoLock or LockType.RequireLock
-        internal abstract bool RequiresLock { get; }
+        internal static Requirement[] NoRequirements = new Requirement[0];
 
-        internal abstract IntentType Intent { get; }
+        internal LockType LockType { get; }
 
-        protected bool ShouldValidateTusResumableHeader { get; set; }
+        internal IntentType Intent { get; }
 
         internal abstract Requirement[] Requires { get; }
 
@@ -25,11 +23,11 @@ namespace tusdotnet.IntentHandlers
 
         internal abstract Task<ResultType> Invoke();
 
-        protected string RequestFileId => Context.FileId;
-
-        protected IntentHandler(ContextAdapter context)
+        protected IntentHandler(ContextAdapter context, IntentType intent, LockType requiresLock)
         {
             Context = context;
+            Intent = intent;
+            LockType = requiresLock;
         }
 
         internal async Task<bool> Validate(ContextAdapter context)

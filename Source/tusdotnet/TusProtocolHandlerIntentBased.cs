@@ -26,7 +26,6 @@ namespace tusdotnet
             if (intentHandler == IntentHandler.NotApplicable)
                 return ResultType.NotHandled;
 
-
 #warning TODO: await context.Raise<AuthorizeContext>(evnt => evnt => evnt.Intent = intentHandler.Intent);
 
             if (context.Configuration.Events?.OnAuthorize != null)
@@ -41,7 +40,7 @@ namespace tusdotnet
 
             InMemoryFileLock fileLock = null;
 
-            if (intentHandler.RequiresLock)
+            if (intentHandler.LockType == LockType.RequiresLock)
             {
                 fileLock = new InMemoryFileLock(context.GetFileId());
 

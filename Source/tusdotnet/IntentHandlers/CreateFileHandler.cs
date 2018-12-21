@@ -14,8 +14,6 @@ namespace tusdotnet.IntentHandlers
 {
     internal class CreateFileHandler : IntentHandler
     {
-        internal override bool RequiresLock => false;
-
         internal override Requirement[] Requires => new Requirement[]
         {
             new UploadLengthForCreateFile(),
@@ -24,9 +22,8 @@ namespace tusdotnet.IntentHandlers
 
         private ITusCreationStore CreationStore { get; }
 
-        internal override IntentType Intent => IntentType.CreateFile;
-
-        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore) : base(context)
+        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore) 
+            : base(context, IntentType.CreateFile, LockType.NoLock)
         {
             CreationStore = creationStore;
         }

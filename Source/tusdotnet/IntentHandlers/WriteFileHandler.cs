@@ -17,10 +17,6 @@ namespace tusdotnet.IntentHandlers
 {
     internal class WriteFileHandler : IntentHandler
     {
-        internal override bool RequiresLock => true;
-
-        internal override IntentType Intent => IntentType.WriteFile;
-
         internal override Requirement[] Requires => new Requirement[]
         {
             new Validation.Requirements.UploadConcat(),
@@ -34,7 +30,8 @@ namespace tusdotnet.IntentHandlers
             new FileIsNotCompleted()
         };
 
-        public WriteFileHandler(ContextAdapter context) : base(context)
+        public WriteFileHandler(ContextAdapter context) 
+            : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
         }
 
@@ -47,7 +44,7 @@ namespace tusdotnet.IntentHandlers
 
             var bytesWritten = 0L;
             var clientDisconnected = await ClientDisconnectGuard.ExecuteAsync(
-                async () => bytesWritten = await Context.Configuration.Store.AppendDataAsync(RequestFileId, Context.Request.Body, cancellationToken),
+                async () => bytesWritten = await Context.Configuration.Store.AppendDataAsync(Context.RequestFileId, Context.Request.Body, cancellationToken),
                 cancellationToken);
 
             if (clientDisconnected)
@@ -85,7 +82,7 @@ namespace tusdotnet.IntentHandlers
             if (Context.Configuration.Store is ITusCreationDeferLengthStore creationDeferLengthStore && Context.Request.Headers.ContainsKey(HeaderConstants.UploadLength))
             {
                 var uploadLength = long.Parse(Context.Request.GetHeader(HeaderConstants.UploadLength));
-                return creationDeferLengthStore.SetUploadLengthAsync(RequestFileId, uploadLength, Context.CancellationToken);
+                return creationDeferLengthStore.SetUploadLengthAsync(Context.RequestFileId, uploadLength, Context.CancellationToken);
             }
             #warning TODO Set common base result that can be returned
             return Task.FromResult(0);
@@ -172,7 +169,7 @@ namespace tusdotnet.IntentHandlers
 
             if (!(Context.Configuration.Expiration is SlidingExpiration slidingExpiration))
             {
-                return expirationStore.GetExpirationAsync(RequestFileId, Context.CancellationToken);
+                return expirationStore.GetExpirationAsync(Context.RequestFileId, Context.CancellationToken);
             }
 
             return UpdateExpiredLocal();
@@ -180,7 +177,7 @@ namespace tusdotnet.IntentHandlers
             async Task<DateTimeOffset?> UpdateExpiredLocal()
             {
                 var expires = DateTimeOffset.UtcNow.Add(slidingExpiration.Timeout);
-                await expirationStore.SetExpirationAsync(RequestFileId, expires, Context.CancellationToken);
+                await expirationStore.SetExpirationAsync(Context.RequestFileId, expires, Context.CancellationToken);
                 return expires;
             }
         }

@@ -19,7 +19,7 @@ namespace tusdotnet.Adapters
 
         public object HttpContext { get; set; }
 
-        public string FileId => _fileId.Value;
+        public string RequestFileId => _fileId.Value;
 
         public ContextAdapter()
         {

@@ -17,15 +17,12 @@ namespace tusdotnet.IntentHandlers
 {
     internal class ConcatenateFilesHandler : IntentHandler
     {
-        internal override bool RequiresLock => false;
-
-        internal override IntentType Intent => IntentType.ConcatenateFiles;
-
         private readonly UploadConcat _uploadConcat;
 
         private readonly ITusConcatenationStore _concatenationStore;
 
-        public ConcatenateFilesHandler(ContextAdapter context) : base(context)
+        public ConcatenateFilesHandler(ContextAdapter context) 
+            : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
             _uploadConcat = ParseUploadConcatHeader(context);
             _concatenationStore = (ITusConcatenationStore)context.Configuration.Store;

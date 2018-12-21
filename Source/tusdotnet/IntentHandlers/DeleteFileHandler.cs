@@ -16,14 +16,10 @@ namespace tusdotnet.IntentHandlers
         private readonly ITusTerminationStore _terminationStore;
 
         public DeleteFileHandler(ContextAdapter context, ITusTerminationStore terminationStore) 
-            : base(context)
+            : base(context, IntentType.DeleteFile, LockType.RequiresLock)
         {
             _terminationStore = terminationStore;
         }
-
-        internal override bool RequiresLock => true;
-
-        internal override IntentType Intent => IntentType.DeleteFile;
 
         internal override Requirement[] Requires => new Requirement[] 
         {
@@ -42,7 +38,7 @@ namespace tusdotnet.IntentHandlers
                 return ResultType.Handled;
             }
 
-            await _terminationStore.DeleteFileAsync(RequestFileId, cancellationToken);
+            await _terminationStore.DeleteFileAsync(Context.RequestFileId, cancellationToken);
 
             await HandleOnDeleteCompleteAsync(Context);
 

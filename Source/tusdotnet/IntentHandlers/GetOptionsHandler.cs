@@ -12,15 +12,11 @@ namespace tusdotnet.IntentHandlers
 {
     internal class GetOptionsHandler : IntentHandler
     {
-        internal override bool RequiresLock => false;
+        internal override Requirement[] Requires => NoRequirements;
 
-        internal override IntentType Intent => IntentType.GetOptions;
-
-        internal override Requirement[] Requires => new Requirement[0];
-
-        public GetOptionsHandler(ContextAdapter context) : base(context)
+        public GetOptionsHandler(ContextAdapter context) 
+            : base(context, IntentType.GetOptions, LockType.NoLock)
         {
-            ShouldValidateTusResumableHeader = false;
         }
 
         internal override async Task<ResultType> Invoke()

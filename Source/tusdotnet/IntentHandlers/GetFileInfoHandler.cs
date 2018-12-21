@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -12,17 +11,14 @@ namespace tusdotnet.IntentHandlers
 {
     internal class GetFileInfoHandler : IntentHandler
     {
-        internal override bool RequiresLock => false;
-
-        internal override IntentType Intent => IntentType.GetFileInfo;
-
         internal override Requirement[] Requires => new Requirement[]
         {
             new FileExist(),
             new FileHasNotExpired()
         };
 
-        public GetFileInfoHandler(ContextAdapter context) : base(context)
+        public GetFileInfoHandler(ContextAdapter context) 
+            : base(context, IntentType.GetFileInfo, LockType.NoLock)
         {
         }
 
@@ -46,16 +42,16 @@ namespace tusdotnet.IntentHandlers
                 response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
             }
             
-            var uploadLength = await store.GetUploadLengthAsync(RequestFileId, cancellationToken);
+            var uploadLength = await store.GetUploadLengthAsync(Context.RequestFileId, cancellationToken);
             AddUploadLength(Context, uploadLength);
 
-            var uploadOffset = await store.GetUploadOffsetAsync(RequestFileId, cancellationToken);
+            var uploadOffset = await store.GetUploadOffsetAsync(Context.RequestFileId, cancellationToken);
 
             FileConcat uploadConcat = null;
             var addUploadOffset = true;
             if (Context.Configuration.Store is ITusConcatenationStore tusConcatStore)
             {
-                uploadConcat = await tusConcatStore.GetUploadConcatAsync(RequestFileId, cancellationToken);
+                uploadConcat = await tusConcatStore.GetUploadConcatAsync(Context.RequestFileId, cancellationToken);
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -81,7 +77,7 @@ namespace tusdotnet.IntentHandlers
         private Task<string> GetMetadata(ContextAdapter context)
         {
             if (context.Configuration.Store is ITusCreationStore tusCreationStore)
-                return tusCreationStore.GetUploadMetadataAsync(RequestFileId, context.CancellationToken);
+                return tusCreationStore.GetUploadMetadataAsync(Context.RequestFileId, context.CancellationToken);
 
             return Task.FromResult<string>(null);
         }
