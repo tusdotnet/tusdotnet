@@ -2,8 +2,7 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Extensions;
-using tusdotnet.IntentHandlers;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
@@ -33,52 +32,19 @@ namespace tusdotnet.IntentHandlers
             var cancellationToken = Context.CancellationToken;
             var store = Context.Configuration.Store;
 
-            if (await HandleOnBeforeDeleteAsync(Context))
+            if (await EventHelper.Validate<BeforeDeleteContext>(Context) == ResultType.StopExecution)
             {
-                return ResultType.Handled;
+                return ResultType.StopExecution;
             }
 
             await _terminationStore.DeleteFileAsync(Context.RequestFileId, cancellationToken);
 
-            await HandleOnDeleteCompleteAsync(Context);
+            await EventHelper.Notify<DeleteCompleteContext>(Context);
 
             response.SetStatus((int)HttpStatusCode.NoContent);
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 
-            return ResultType.Handled;
-        }
-
-        private static Task<bool> HandleOnBeforeDeleteAsync(ContextAdapter context)
-        {
-            if (context.Configuration.Events?.OnBeforeDeleteAsync == null)
-            {
-                return Task.FromResult(false);
-            }
-
-            return HandleOnBeforeDeleteAsyncLocal();
-
-            async Task<bool> HandleOnBeforeDeleteAsyncLocal()
-            {
-                var beforeDeleteContext = BeforeDeleteContext.Create(context);
-                await context.Configuration.Events.OnBeforeDeleteAsync(beforeDeleteContext);
-                if (beforeDeleteContext.HasFailed)
-                {
-                    await context.Response.Error(HttpStatusCode.BadRequest, beforeDeleteContext.ErrorMessage);
-                    return true;
-                }
-
-                return false;
-            }
-        }
-
-        private static Task HandleOnDeleteCompleteAsync(ContextAdapter context)
-        {
-            if (context.Configuration.Events?.OnDeleteCompleteAsync == null)
-            {
-                return Task.FromResult(0);
-            }
-
-            return context.Configuration.Events.OnDeleteCompleteAsync(DeleteCompleteContext.Create(context));
+            return ResultType.StopExecution;
         }
     }
 }

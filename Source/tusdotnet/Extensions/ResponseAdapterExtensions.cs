@@ -29,7 +29,7 @@ namespace tusdotnet.Extensions
 
         internal static Task<ResultType> ErrorResult(this ResponseAdapter response, HttpStatusCode statusCode, string message)
         {
-            return Error(response, statusCode, message).ContinueWith(f => ResultType.Handled);
+            return Error(response, statusCode, message).ContinueWith(f => ResultType.StopExecution);
         }
     }
 }

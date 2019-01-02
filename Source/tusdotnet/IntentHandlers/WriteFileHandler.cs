@@ -8,7 +8,6 @@ using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
-using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
@@ -30,7 +29,7 @@ namespace tusdotnet.IntentHandlers
             new FileIsNotCompleted()
         };
 
-        public WriteFileHandler(ContextAdapter context) 
+        public WriteFileHandler(ContextAdapter context)
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
         }
@@ -49,7 +48,7 @@ namespace tusdotnet.IntentHandlers
 
             if (clientDisconnected)
             {
-                return ResultType.Handled;
+                return ResultType.StopExecution;
             }
 
             var expires = await GetOrUpdateExpires(Context);
@@ -71,9 +70,13 @@ namespace tusdotnet.IntentHandlers
 
             response.SetStatus((int)HttpStatusCode.NoContent);
 
-            // Run OnUploadComplete if it has been provided.
-            await RunOnUploadComplete(Context, fileOffset, bytesWritten);
-            return ResultType.Handled;
+            if (await FileIsComplete(Context.RequestFileId, fileOffset, bytesWritten)
+                && !await IsPartialUpload(Context))
+            {
+                await EventHelper.NotifyFileComplete(Context);
+            }
+
+            return ResultType.StopExecution;
         }
 
         private Task WriteUploadLengthIfDefered(ContextAdapter Context)
@@ -84,43 +87,8 @@ namespace tusdotnet.IntentHandlers
                 var uploadLength = long.Parse(Context.Request.GetHeader(HeaderConstants.UploadLength));
                 return creationDeferLengthStore.SetUploadLengthAsync(Context.RequestFileId, uploadLength, Context.CancellationToken);
             }
-            #warning TODO Set common base result that can be returned
-            return Task.FromResult(0);
-        }
 
-        private static Task RunOnUploadComplete(ContextAdapter Context, long fileOffset, long bytesWritten)
-        {
-            if (Context.Configuration.OnUploadCompleteAsync == null && Context.Configuration.Events?.OnFileCompleteAsync == null)
-            {
-                return Task.FromResult(0);
-            }
-
-            return RunOnUploadCompleteLocal();
-
-            async Task RunOnUploadCompleteLocal()
-            {
-                if (await IsPartialUpload(Context))
-                {
-                    return;
-                }
-
-                var fileId = Context.GetFileId();
-                var fileUploadLength = await Context.Configuration.Store.GetUploadLengthAsync(fileId, Context.CancellationToken);
-                var fileIsComplete = fileOffset + bytesWritten == fileUploadLength;
-
-                if (fileIsComplete)
-                {
-                    if (Context.Configuration.OnUploadCompleteAsync != null)
-                    {
-                        await Context.Configuration.OnUploadCompleteAsync(fileId, Context.Configuration.Store, Context.CancellationToken);
-                    }
-
-                    if (Context.Configuration.Events?.OnFileCompleteAsync != null)
-                    {
-                        await Context.Configuration.Events.OnFileCompleteAsync(FileCompleteContext.Create(Context));
-                    }
-                }
-            }
+            return TaskHelper.Completed;
         }
 
         private static Task<bool> IsPartialUpload(ContextAdapter Context)
@@ -140,6 +108,12 @@ namespace tusdotnet.IntentHandlers
             }
         }
 
+        private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
+        {
+            var fileUploadLength = await Context.Configuration.Store.GetUploadLengthAsync(fileId, Context.CancellationToken);
+            return fileOffset + bytesWritten == fileUploadLength;
+        }
+
         private static Task<bool> MatchChecksum(ContextAdapter Context)
         {
             if (!(Context.Configuration.Store is ITusChecksumStore checksumStore))
@@ -154,10 +128,15 @@ namespace tusdotnet.IntentHandlers
                 return Task.FromResult(true);
             }
 
+#warning TODO: Get header in ctor and pass to UploadChecksum requirement so that we do not need to parse the header multiple times
+
             var providedChecksum = new Checksum(checksumHeader);
 
-            return checksumStore.VerifyChecksumAsync(Context.GetFileId(), providedChecksum.Algorithm,
-                providedChecksum.Hash, Context.CancellationToken);
+            return checksumStore.VerifyChecksumAsync(
+                Context.RequestFileId,
+                providedChecksum.Algorithm,
+                providedChecksum.Hash,
+                Context.CancellationToken);
         }
 
         private Task<DateTimeOffset?> GetOrUpdateExpires(ContextAdapter Context)

@@ -2,7 +2,7 @@
 {
     internal enum ResultType
     {
-        Handled,
-        NotHandled
+        ContinueExecution,
+        StopExecution
     }
 }

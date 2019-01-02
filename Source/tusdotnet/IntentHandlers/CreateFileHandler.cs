@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
@@ -38,15 +39,27 @@ namespace tusdotnet.IntentHandlers
 
             var uploadLength = request.GetUploadLength();
 
-#warning Change to something like Context.Raise<BeforeCreateContext>(ctx => /* configure */ );
-            if (await HandleOnBeforeCreateAsync(Context, metadata, uploadLength))
+#warning TODO: Read header in ctor and pass to UploadMetadata so that we do not parse the header multiple times
+            var parsedMetadata = Metadata.Parse(metadata);
+
+            var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
-                return ResultType.Handled;
-            }
+                ctx.Metadata = parsedMetadata;
+                ctx.UploadLength = uploadLength;
+            });
+
+            if (onBeforeCreateResult == ResultType.StopExecution)
+                return ResultType.StopExecution;
 
             var fileId = await CreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
 
-            await HandleOnCreateComplete(Context, fileId, metadata, uploadLength);
+            await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
+            {
+                ctx.FileId = fileId;
+                ctx.FileConcatenation = null;
+                ctx.Metadata = parsedMetadata;
+                ctx.UploadLength = uploadLength;
+            });
 
             var expires = await SetExpirationIfApplicable(Context, fileId, null);
 
@@ -54,7 +67,7 @@ namespace tusdotnet.IntentHandlers
 
             response.SetStatus((int)HttpStatusCode.Created);
 
-            return ResultType.Handled;
+            return ResultType.StopExecution;
         }
 
         private static void SetReponseHeaders(ContextAdapter Context, string fileId, DateTimeOffset? expires)
@@ -78,51 +91,6 @@ namespace tusdotnet.IntentHandlers
             }
 
             return expires;
-        }
-
-        private static Task<bool> HandleOnBeforeCreateAsync(ContextAdapter Context, string metadata, long uploadLength)
-        {
-            if (Context.Configuration.Events?.OnBeforeCreateAsync == null)
-            {
-                return Task.FromResult(false);
-            }
-
-            return HandleOnBeforeCreateAsyncLocal();
-
-            async Task<bool> HandleOnBeforeCreateAsyncLocal()
-            {
-                var beforeCreateContext = BeforeCreateContext.Create(Context, ctx =>
-                {
-                    ctx.FileConcatenation = null;
-                    ctx.Metadata = Metadata.Parse(metadata);
-                    ctx.UploadLength = uploadLength;
-                });
-
-                await Context.Configuration.Events.OnBeforeCreateAsync(beforeCreateContext);
-
-                if (beforeCreateContext.HasFailed)
-                {
-                    return await Context.Response.Error(HttpStatusCode.BadRequest, beforeCreateContext.ErrorMessage);
-                }
-
-                return false;
-            }
-        }
-
-        private static Task HandleOnCreateComplete(ContextAdapter Context, string fileId, string metadata, long uploadLength)
-        {
-            if (Context.Configuration.Events?.OnCreateCompleteAsync == null)
-            {
-                return Task.FromResult(0);
-            }
-
-            return Context.Configuration.Events.OnCreateCompleteAsync(CreateCompleteContext.Create(Context, ctx =>
-            {
-                ctx.FileId = fileId;
-                ctx.FileConcatenation = null;
-                ctx.Metadata = Metadata.Parse(metadata);
-                ctx.UploadLength = uploadLength;
-            }));
         }
     }
 }

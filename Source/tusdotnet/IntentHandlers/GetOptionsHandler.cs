@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -47,7 +46,7 @@ namespace tusdotnet.IntentHandlers
 
             response.SetStatus((int)HttpStatusCode.NoContent);
 
-            return ResultType.Handled;
+            return ResultType.StopExecution;
         }
     }
 }

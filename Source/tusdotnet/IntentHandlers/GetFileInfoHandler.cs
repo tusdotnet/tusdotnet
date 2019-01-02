@@ -70,8 +70,8 @@ namespace tusdotnet.IntentHandlers
                 (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Configuration.UrlPath);
                 response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
-
-            return ResultType.Handled;
+            #warning TODO Do we need to return anthing from the handlers? Seems to always be stop execution
+            return ResultType.StopExecution;
         }
 
         private Task<string> GetMetadata(ContextAdapter context)

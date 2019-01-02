@@ -70,7 +70,7 @@ namespace tusdotnet
                 HttpContext = context
             });
 
-            if (handled == ResultType.NotHandled)
+            if (handled == ResultType.ContinueExecution)
             {
                 await _next(context);
             }

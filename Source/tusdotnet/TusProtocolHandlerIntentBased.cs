@@ -23,20 +23,19 @@ namespace tusdotnet
 
             var intentHandler = await IntentManager.DetermineIntent(context);
 
+#warning TODO: Only place in code where ContinueExecution is returned? No need to return anything from the handlers in that case
             if (intentHandler == IntentHandler.NotApplicable)
-                return ResultType.NotHandled;
+                return ResultType.ContinueExecution;
 
-#warning TODO: await context.Raise<AuthorizeContext>(evnt => evnt => evnt.Intent = intentHandler.Intent);
-
-            if (context.Configuration.Events?.OnAuthorize != null)
+            var onAuhorizeResult = await EventHelper.Validate<AuthorizeContext>(context, ctx =>
             {
-                var authContext = AuthorizeContext.Create(context, evnt => evnt.Intent = intentHandler.Intent);
-                await context.Configuration.Events.OnAuthorize(authContext);
+                ctx.Intent = intentHandler.Intent;
+            });
 
-                if (authContext.HasFailed)
-                    return await context.Response.ErrorResult(HttpStatusCode.Unauthorized, authContext.ErrorMessage);
+            if (onAuhorizeResult == ResultType.StopExecution)
+            {
+                return ResultType.StopExecution;
             }
-
 
             InMemoryFileLock fileLock = null;
 
@@ -56,7 +55,7 @@ namespace tusdotnet
             {
                 if (!await intentHandler.Validate(context))
                 {
-                    return ResultType.Handled;
+                    return ResultType.StopExecution;
                 }
 
                 return await intentHandler.Invoke();
