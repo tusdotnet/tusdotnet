@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation
 {
@@ -47,10 +48,7 @@ namespace tusdotnet.Validation
         {
             StatusCode = status;
             ErrorMessage = errorMessage;
-            return Done;
+            return TaskHelper.Completed;
         }
-
-        #warning TODO Remove and replace with TaskHelper.Completed
-        protected Task Done => Task.FromResult(true);
     }
 }

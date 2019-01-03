@@ -19,33 +19,27 @@ namespace tusdotnet.IntentHandlers
 
         private readonly ITusConcatenationStore _concatenationStore;
 
+        private readonly ExpirationHelper _expirationHelper;
+
         public ConcatenateFilesHandler(ContextAdapter context)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
             _uploadConcat = ParseUploadConcatHeader(context);
             _concatenationStore = (ITusConcatenationStore)context.Configuration.Store;
+            _expirationHelper = new ExpirationHelper(context.Configuration);
         }
 
-        internal override Requirement[] Requires => new Requirement[]
-        {
-            new Validation.Requirements.UploadConcatForConcatenateFiles(_uploadConcat, _concatenationStore),
-            new Validation.Requirements.UploadLength(),
-            new Validation.Requirements.UploadMetadata()
-        };
+        internal override Requirement[] Requires => BuildListOfRequirements();
 
-        internal override async Task<ResultType> Invoke()
+        internal override async Task Invoke()
         {
-            var metadataString = Context.Request.GetHeader(HeaderConstants.UploadMetadata);
+            var metadataString = Request.GetHeader(HeaderConstants.UploadMetadata);
             var metadata = Metadata.Parse(metadataString);
 
             string fileId;
             DateTimeOffset? expires = null;
 
-            var response = Context.Response;
-            var request = Context.Request;
-            var cancellationToken = Context.CancellationToken;
-
-            var uploadLength = GetUploadLength(Context.Request);
+            var uploadLength = GetUploadLength(Request);
 
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
@@ -55,32 +49,26 @@ namespace tusdotnet.IntentHandlers
             });
 
             if (onBeforeCreateResult == ResultType.StopExecution)
-                return ResultType.StopExecution;
-
-            fileId = await HandleCreationOfConcatFiles(Context, uploadLength, metadataString, metadata);
-
-#warning TODO: Implement better handling of store interfaces (expiration service?)
-
-            // context.Supports<ITusExpirationStore>(); context.StoreAs<ITusExpirationStore>()
-            if (Context.Configuration.Store is ITusExpirationStore expirationStore
-                && Context.Configuration.Expiration != null
-                && (IsPartialFile()))
             {
-#warning TODO: Replace with SystemTimeOffset
-                expires = DateTimeOffset.UtcNow.Add(Context.Configuration.Expiration.Timeout);
-                await expirationStore.SetExpirationAsync(fileId, expires.Value, Context.CancellationToken);
+                return;
             }
 
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            fileId = await HandleCreationOfConcatFiles(uploadLength, metadataString, metadata);
+
+            if (IsPartialFile())
+            {
+                expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
+            }
+
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
 
             if (expires != null)
             {
-                response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
+                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
             }
 
-            response.SetStatus((int)HttpStatusCode.Created);
-            return ResultType.StopExecution;
+            Response.SetStatus((int)HttpStatusCode.Created);
         }
 
         private bool IsPartialFile()
@@ -88,9 +76,27 @@ namespace tusdotnet.IntentHandlers
             return _uploadConcat.Type is FileConcatPartial;
         }
 
+        private Requirement[] BuildListOfRequirements()
+        {
+            var requirements = new List<Requirement>(3)
+            {
+                new Validation.Requirements.UploadConcatForConcatenateFiles(_uploadConcat, _concatenationStore)
+            };
+
+            // Only validate upload lenght for partial files as the length of a final file is implicit.
+            if (IsPartialFile())
+            {
+                requirements.Add(new Validation.Requirements.UploadLengthForCreateFileAndConcatenateFiles());
+            }
+
+            requirements.Add(new Validation.Requirements.UploadMetadata());
+
+            return requirements.ToArray();
+        }
+
         private UploadConcat ParseUploadConcatHeader(ContextAdapter context)
         {
-            return new UploadConcat(context.Request.GetHeader(HeaderConstants.UploadConcat), context.Configuration.UrlPath);
+            return new UploadConcat(Request.GetHeader(HeaderConstants.UploadConcat), context.Configuration.UrlPath);
         }
 
         private static long GetUploadLength(RequestAdapter request)
@@ -100,18 +106,14 @@ namespace tusdotnet.IntentHandlers
                 : long.Parse(request.GetHeader(HeaderConstants.UploadLength) ?? "-1");
         }
 
-        private async Task<string> HandleCreationOfConcatFiles(
-          ContextAdapter context,
-          long uploadLength,
-          string metadataString,
-          Dictionary<string, Metadata> metadata)
+        private async Task<string> HandleCreationOfConcatFiles(long uploadLength, string metadataString, Dictionary<string, Metadata> metadata)
         {
             string createdFileId;
             if (_uploadConcat.Type is FileConcatPartial)
             {
-                createdFileId = await _concatenationStore.CreatePartialFileAsync(uploadLength, metadataString, context.CancellationToken);
+                createdFileId = await _concatenationStore.CreatePartialFileAsync(uploadLength, metadataString, CancellationToken);
 
-                await EventHelper.Notify<CreateCompleteContext>(context, ctx =>
+                await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
                 {
                     ctx.FileId = createdFileId;
                     ctx.Metadata = metadata;
@@ -122,9 +124,9 @@ namespace tusdotnet.IntentHandlers
             else
             {
                 var finalConcat = (FileConcatFinal)_uploadConcat.Type;
-                createdFileId = await _concatenationStore.CreateFinalFileAsync(finalConcat.Files, metadataString, context.CancellationToken);
+                createdFileId = await _concatenationStore.CreateFinalFileAsync(finalConcat.Files, metadataString, CancellationToken);
 
-                await EventHelper.Notify<CreateCompleteContext>(context, ctx =>
+                await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
                 {
                     ctx.FileId = createdFileId;
                     ctx.Metadata = metadata;
@@ -132,7 +134,7 @@ namespace tusdotnet.IntentHandlers
                     ctx.FileConcatenation = _uploadConcat.Type;
                 });
 
-                await EventHelper.NotifyFileComplete(context, ctx => ctx.FileId = createdFileId);
+                await EventHelper.NotifyFileComplete(Context, ctx => ctx.FileId = createdFileId);
             }
 
             return createdFileId;

@@ -17,30 +17,27 @@ namespace tusdotnet.IntentHandlers
     {
         internal override Requirement[] Requires => new Requirement[]
         {
-            new UploadLengthForCreateFile(),
+            new UploadLengthForCreateFileAndConcatenateFiles(),
             new UploadMetadata()
         };
 
-        private ITusCreationStore CreationStore { get; }
+        private readonly ITusCreationStore _creationStore;
+
+        private readonly ExpirationHelper _expirationHelper;
 
         public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore) 
             : base(context, IntentType.CreateFile, LockType.NoLock)
         {
-            CreationStore = creationStore;
+            _creationStore = creationStore;
+            _expirationHelper = new ExpirationHelper(context.Configuration);
         }
 
-        internal override async Task<ResultType> Invoke()
+        internal override async Task Invoke()
         {
-            var metadata = Context.Request.GetHeader(HeaderConstants.UploadMetadata);
-
-            var response = Context.Response;
-            var request = Context.Request;
-            var cancellationToken = Context.CancellationToken;
-
-            var uploadLength = request.GetUploadLength();
-
-#warning TODO: Read header in ctor and pass to UploadMetadata so that we do not parse the header multiple times
+            var metadata = Request.GetHeader(HeaderConstants.UploadMetadata);
             var parsedMetadata = Metadata.Parse(metadata);
+
+            var uploadLength = Request.GetUploadLength();
 
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
@@ -49,9 +46,11 @@ namespace tusdotnet.IntentHandlers
             });
 
             if (onBeforeCreateResult == ResultType.StopExecution)
-                return ResultType.StopExecution;
+            {
+                return;
+            }
 
-            var fileId = await CreationStore.CreateFileAsync(uploadLength, metadata, cancellationToken);
+            var fileId = await _creationStore.CreateFileAsync(uploadLength, metadata, CancellationToken);
 
             await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
             {
@@ -61,36 +60,22 @@ namespace tusdotnet.IntentHandlers
                 ctx.UploadLength = uploadLength;
             });
 
-            var expires = await SetExpirationIfApplicable(Context, fileId, null);
+            var expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
 
-            SetReponseHeaders(Context, fileId, expires);
+            SetReponseHeaders(fileId, expires);
 
-            response.SetStatus((int)HttpStatusCode.Created);
-
-            return ResultType.StopExecution;
+            Response.SetStatus((int)HttpStatusCode.Created);
         }
 
-        private static void SetReponseHeaders(ContextAdapter Context, string fileId, DateTimeOffset? expires)
+        private void SetReponseHeaders(string fileId, DateTimeOffset? expires)
         {
             if (expires != null)
             {
-                Context.Response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
+                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
             }
 
-            Context.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Context.Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
-        }
-
-        private static async Task<DateTimeOffset?> SetExpirationIfApplicable(ContextAdapter Context, string fileId, DateTimeOffset? expires)
-        {
-            if (Context.Configuration.Store is ITusExpirationStore expirationStore
-                            && Context.Configuration.Expiration != null)
-            {
-                expires = DateTimeOffset.UtcNow.Add(Context.Configuration.Expiration.Timeout);
-                await expirationStore.SetExpirationAsync(fileId, expires.Value, Context.CancellationToken);
-            }
-
-            return expires;
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
         }
     }
 }

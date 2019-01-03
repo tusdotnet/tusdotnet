@@ -1,7 +1,9 @@
 ﻿using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Validation;
 
@@ -19,13 +21,26 @@ namespace tusdotnet.IntentHandlers
 
         internal abstract Requirement[] Requires { get; }
 
-        protected ContextAdapter Context { get; private set; }
+        protected ContextAdapter Context { get; }
 
-        internal abstract Task<ResultType> Invoke();
+        protected RequestAdapter Request { get; }
+
+        protected ResponseAdapter Response { get; }
+
+        protected CancellationToken CancellationToken { get; }
+
+        protected ITusStore Store { get; }
+
+        internal abstract Task Invoke();
 
         protected IntentHandler(ContextAdapter context, IntentType intent, LockType requiresLock)
         {
             Context = context;
+            Request = context.Request;
+            Response = context.Response;
+            CancellationToken = context.CancellationToken;
+            Store = context.Configuration.Store;
+
             Intent = intent;
             LockType = requiresLock;
         }

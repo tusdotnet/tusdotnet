@@ -42,7 +42,7 @@ namespace tusdotnet
                 return;
             }
 
-            var request = new RequestAdapter
+            var request = new RequestAdapter(config.UrlPath)
             {
                 Headers =
                     context.Request.Headers.ToDictionary(

@@ -21,11 +21,13 @@ namespace tusdotnet.Extensions
                 .Trim('/');
         }
 
+        [Obsolete("Move to IntentAnalyzer")]
         public static bool UrlMatchesUrlPath(this ContextAdapter context)
         {
             return context.Request.RequestUri.LocalPath.TrimEnd('/') == context.Configuration.UrlPath.TrimEnd('/');
         }
 
+        [Obsolete("Move to IntentAnalyzer")]
         public static bool UrlMatchesFileIdUrl(this ContextAdapter context)
         {
             return !context.UrlMatchesUrlPath()
@@ -33,7 +35,7 @@ namespace tusdotnet.Extensions
                        StringComparison.OrdinalIgnoreCase);
         }
 
-#warning TODO: Move to GetOptionsHandler
+        [Obsolete("Move to GetOptionsHandler")]
         internal static List<string> DetectExtensions(this ContextAdapter context)
         {
             var extensions = new List<string>(6);

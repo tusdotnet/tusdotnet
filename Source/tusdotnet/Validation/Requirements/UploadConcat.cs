@@ -5,11 +5,13 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Validation.Requirements
 {
+    [Obsolete("Used by method based code")]
     internal sealed class UploadConcat : Requirement
     {
         public override async Task Validate(ContextAdapter context)
@@ -28,7 +30,7 @@ namespace tusdotnet.Validation.Requirements
         {
             if (!(context.Configuration.Store is ITusConcatenationStore concatStore))
             {
-                return Done;
+                return TaskHelper.Completed;
             }
 
             return ValidateForPatchLocal();
@@ -49,7 +51,7 @@ namespace tusdotnet.Validation.Requirements
             if (!(context.Configuration.Store is ITusConcatenationStore concatenationStore)
                 || !context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat))
             {
-                return Done;
+                return TaskHelper.Completed;
             }
 
             return ValidateForPost();

@@ -382,7 +382,7 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     Store = store
                 },
-                Request = new RequestAdapter
+                Request = new RequestAdapter("/files")
                 {
                     Headers = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
                     {

@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
@@ -24,7 +25,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest($"Header {HeaderConstants.UploadOffset} must be a positive number");
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
     }
 }

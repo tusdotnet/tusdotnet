@@ -8,8 +8,7 @@ using tusdotnet.Interfaces;
 
 namespace tusdotnet
 {
-#warning TODO: Do single check of URL matching based on http method
-    internal static class IntentManager
+    internal static class IntentAnalyzer
     {
         public static async Task<IntentHandler> DetermineIntent(ContextAdapter context)
         {

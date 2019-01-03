@@ -22,36 +22,32 @@ namespace tusdotnet.IntentHandlers
         {
         }
 
-        internal override async Task<ResultType> Invoke()
+        internal override async Task Invoke()
         {
-            var response = Context.Response;
-            var cancellationToken = Context.CancellationToken;
-            var store = Context.Configuration.Store;
-
 #warning TODO: TypedResponseHeaders? TusResumable could be set for all responses
             // headers.TusResumable = HeaderConstants.TusResumableValue
             // headers.CacheControl = HeaderConstants.NoStore;
             // headers.UploadMetadata = metadata
             // etc
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            Response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
 
             var uploadMetadata = await GetMetadata(Context);
             if (!string.IsNullOrEmpty(uploadMetadata))
             {
-                response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
+                Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
             }
             
-            var uploadLength = await store.GetUploadLengthAsync(Context.RequestFileId, cancellationToken);
+            var uploadLength = await Store.GetUploadLengthAsync(Request.FileId, CancellationToken);
             AddUploadLength(Context, uploadLength);
 
-            var uploadOffset = await store.GetUploadOffsetAsync(Context.RequestFileId, cancellationToken);
+            var uploadOffset = await Store.GetUploadOffsetAsync(Request.FileId, CancellationToken);
 
             FileConcat uploadConcat = null;
             var addUploadOffset = true;
             if (Context.Configuration.Store is ITusConcatenationStore tusConcatStore)
             {
-                uploadConcat = await tusConcatStore.GetUploadConcatAsync(Context.RequestFileId, cancellationToken);
+                uploadConcat = await tusConcatStore.GetUploadConcatAsync(Request.FileId, CancellationToken);
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -62,22 +58,20 @@ namespace tusdotnet.IntentHandlers
 
             if (addUploadOffset)
             {
-                response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
+                Response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
             }
 
             if (uploadConcat != null)
             {
                 (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Configuration.UrlPath);
-                response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
+                Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
-            #warning TODO Do we need to return anthing from the handlers? Seems to always be stop execution
-            return ResultType.StopExecution;
         }
 
         private Task<string> GetMetadata(ContextAdapter context)
         {
             if (context.Configuration.Store is ITusCreationStore tusCreationStore)
-                return tusCreationStore.GetUploadMetadataAsync(Context.RequestFileId, context.CancellationToken);
+                return tusCreationStore.GetUploadMetadataAsync(Request.FileId, context.CancellationToken);
 
             return Task.FromResult<string>(null);
         }

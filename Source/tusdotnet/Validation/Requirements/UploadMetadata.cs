@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 
 namespace tusdotnet.Validation.Requirements
@@ -13,7 +14,7 @@ namespace tusdotnet.Validation.Requirements
             var request = context.Request;
             if (!request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
             {
-                return Done;
+                return TaskHelper.Completed;
             }
 
             var validateMetadataResult = Metadata.ValidateMetadataHeader(request.Headers[HeaderConstants.UploadMetadata][0]);
@@ -22,7 +23,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest(validateMetadataResult);
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
     }
 }

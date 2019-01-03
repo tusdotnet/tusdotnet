@@ -26,25 +26,19 @@ namespace tusdotnet.IntentHandlers
             new Validation.Requirements.FileHasNotExpired()
         };
 
-        internal override async Task<ResultType> Invoke()
+        internal override async Task Invoke()
         {
-            var response = Context.Response;
-            var cancellationToken = Context.CancellationToken;
-            var store = Context.Configuration.Store;
-
             if (await EventHelper.Validate<BeforeDeleteContext>(Context) == ResultType.StopExecution)
             {
-                return ResultType.StopExecution;
+                return;
             }
 
-            await _terminationStore.DeleteFileAsync(Context.RequestFileId, cancellationToken);
+            await _terminationStore.DeleteFileAsync(Request.FileId, CancellationToken);
 
             await EventHelper.Notify<DeleteCompleteContext>(Context);
 
-            response.SetStatus((int)HttpStatusCode.NoContent);
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-
-            return ResultType.StopExecution;
+            Response.SetStatus((int)HttpStatusCode.NoContent);
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
         }
     }
 }

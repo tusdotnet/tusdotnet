@@ -3,10 +3,12 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 
 namespace tusdotnet.Validation.Requirements
 {
+    [Obsolete("Used by method based code")]
     internal sealed class UploadLength : Requirement
     {
         public override async Task Validate(ContextAdapter context)
@@ -67,7 +69,7 @@ namespace tusdotnet.Validation.Requirements
 
             if (uploadConcat is Models.Concatenation.FileConcatFinal)
             {
-                return Done;
+                return TaskHelper.Completed;
             }
 
             if (uploadDeferLengthHeader == null)
@@ -79,7 +81,7 @@ namespace tusdotnet.Validation.Requirements
                 VerifyDeferLength(uploadDeferLengthHeader);
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
 
         private void VerifyDeferLength(string uploadDeferLengthHeader)
@@ -114,7 +116,7 @@ namespace tusdotnet.Validation.Requirements
                     $"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
     }
 }

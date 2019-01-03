@@ -9,9 +9,20 @@ namespace tusdotnet.Validation.Requirements
 {
     internal sealed class UploadChecksum : Requirement
     {
+        private Checksum RequestChecksum { get; }
+
+        public UploadChecksum() : this(null)
+        {
+        }
+
+        public UploadChecksum(Checksum requestChecksum)
+        {
+            RequestChecksum = requestChecksum;
+        }
+
         public override async Task Validate(ContextAdapter context)
         {
-            var providedChecksum = GetProvidedChecksum(context);
+            var providedChecksum = RequestChecksum ?? GetProvidedChecksum(context);
 
             if (context.Configuration.Store is ITusChecksumStore checksumStore && providedChecksum != null)
             {

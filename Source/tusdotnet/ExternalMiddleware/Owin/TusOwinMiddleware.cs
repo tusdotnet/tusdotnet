@@ -32,7 +32,15 @@ namespace tusdotnet
         /// <returns></returns>
         public override async Task Invoke(IOwinContext context)
         {
-            var request = new RequestAdapter
+            var config = await _configFactory(context.Request);
+
+            if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(context.Request.Uri, config))
+            {
+                await Next.Invoke(context);
+                return;
+            }
+
+            var request = new RequestAdapter(config.UrlPath)
             {
                 Headers = context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.ToList(), StringComparer.OrdinalIgnoreCase),
                 Body = context.Request.Body,
@@ -46,8 +54,6 @@ namespace tusdotnet
                 SetHeader = (key, value) => context.Response.Headers[key] = value,
                 SetStatus = status => context.Response.StatusCode = status
             };
-
-            var config = await _configFactory(context.Request);
 
             var handled = await TusProtocolHandler.Invoke(new ContextAdapter
             {

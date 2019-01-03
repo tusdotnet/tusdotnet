@@ -9,6 +9,7 @@ namespace tusdotnet.Extensions
 {
     internal static class ResponseAdapterExtensions
     {
+#warning TODO No need to return bool as the return value is no longer used
         internal static bool NotFound(this ResponseAdapter response)
         {
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
@@ -17,6 +18,7 @@ namespace tusdotnet.Extensions
             return true;
         }
 
+#warning TODO No need to return bool as the return value is no longer used
         internal static async Task<bool> Error(this ResponseAdapter response, HttpStatusCode statusCode, string message)
         {
             response.SetHeader(HeaderConstants.ContentType, "text/plain");
@@ -25,11 +27,6 @@ namespace tusdotnet.Extensions
             var buffer = new UTF8Encoding().GetBytes(message);
             await response.Body.WriteAsync(buffer, 0, buffer.Length);
             return true;
-        }
-
-        internal static Task<ResultType> ErrorResult(this ResponseAdapter response, HttpStatusCode statusCode, string message)
-        {
-            return Error(response, statusCode, message).ContinueWith(f => ResultType.StopExecution);
         }
     }
 }

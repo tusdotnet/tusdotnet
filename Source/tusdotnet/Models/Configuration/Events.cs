@@ -40,6 +40,10 @@ namespace tusdotnet.Models.Configuration
         /// </summary>
         public Func<DeleteCompleteContext, Task> OnDeleteCompleteAsync { get; set; }
 
-        public Func<AuthorizeContext, Task> OnAuthorize { get; set; }
+        /// <summary>
+        /// Callback ran before the request is being handled. This callback can be used to authorize the current request.
+        /// Calling the <code>FailRequest</code> method on the context will return a 400 Bad Request to the client.
+        /// </summary>
+        public Func<AuthorizeContext, Task> OnAuthorizeAsync { get; set; }
     }
 }

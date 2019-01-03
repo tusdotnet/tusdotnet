@@ -85,7 +85,7 @@ namespace AspNetCore_netcoreapp2_2_TestApp
                 Store = new TusDiskStore(@"C:\tusfiles\"),
                 Events = new Events
                 {
-                    OnAuthorize = ctx =>
+                    OnAuthorizeAsync = ctx =>
                     {
                         if (!enableAuthorize)
                             return Task.CompletedTask;

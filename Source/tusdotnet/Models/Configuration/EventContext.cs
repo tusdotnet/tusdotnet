@@ -34,10 +34,15 @@ namespace tusdotnet.Models.Configuration
 
 #if netfull
 
+        /// <summary>
+        /// The OWIN context for the current request
+        /// </summary>
         public IOwinContext OwinContext { get; private set; }
 
 #endif
-
+        /// <summary>
+        /// The http context for the current request
+        /// </summary>
         public HttpContext HttpContext { get; private set; }
 
         internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)

@@ -19,13 +19,15 @@ namespace tusdotnet
 
         public static async Task<ResultType> Invoke(ContextAdapter context)
         {
+        #warning TODO Throw better exception if configuration is null
             context.Configuration.Validate();
 
-            var intentHandler = await IntentManager.DetermineIntent(context);
+            var intentHandler = await IntentAnalyzer.DetermineIntent(context);
 
-#warning TODO: Only place in code where ContinueExecution is returned? No need to return anything from the handlers in that case
             if (intentHandler == IntentHandler.NotApplicable)
+            {
                 return ResultType.ContinueExecution;
+            }
 
             var onAuhorizeResult = await EventHelper.Validate<AuthorizeContext>(context, ctx =>
             {
@@ -46,8 +48,8 @@ namespace tusdotnet
                 var hasLock = fileLock.Lock();
                 if (!hasLock)
                 {
-                    return await context.Response.ErrorResult(HttpStatusCode.Conflict,
-                        $"File {context.GetFileId()} is currently being updated. Please try again later");
+                    await context.Response.Error(HttpStatusCode.Conflict, $"File {context.GetFileId()} is currently being updated. Please try again later");
+                    return ResultType.StopExecution;
                 }
             }
 
@@ -58,11 +60,13 @@ namespace tusdotnet
                     return ResultType.StopExecution;
                 }
 
-                return await intentHandler.Invoke();
+                await intentHandler.Invoke();
+                return ResultType.StopExecution;
             }
             catch (TusStoreException storeException)
             {
-                return await context.Response.ErrorResult(HttpStatusCode.BadRequest, storeException.Message);
+                await context.Response.Error(HttpStatusCode.BadRequest, storeException.Message);
+                return ResultType.StopExecution;
             }
             finally
             {

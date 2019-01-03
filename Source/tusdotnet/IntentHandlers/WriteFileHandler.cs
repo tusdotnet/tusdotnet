@@ -18,65 +18,78 @@ namespace tusdotnet.IntentHandlers
     {
         internal override Requirement[] Requires => new Requirement[]
         {
-            new Validation.Requirements.UploadConcat(),
+            new UploadConcatForWriteFile(),
             new ContentType(),
             new UploadLengthForWriteFile(),
             new UploadOffset(),
-            new UploadChecksum(),
+            new UploadChecksum(_checksum),
             new FileExist(),
             new FileHasNotExpired(),
             new RequestOffsetMatchesFileOffset(),
             new FileIsNotCompleted()
         };
 
+        private readonly Checksum _checksum;
+
+        private readonly ExpirationHelper _expirationHelper;
+
         public WriteFileHandler(ContextAdapter context)
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
+            var checksumHeader = Request.GetHeader(HeaderConstants.UploadChecksum);
+
+            if (checksumHeader != null)
+            {
+                _checksum = new Checksum(checksumHeader);
+            }
+
+            _expirationHelper = new ExpirationHelper(Context.Configuration);
         }
 
-        internal override async Task<ResultType> Invoke()
+        internal override async Task Invoke()
         {
-            var cancellationToken = Context.CancellationToken;
-            var response = Context.Response;
-
             await WriteUploadLengthIfDefered(Context);
 
             var bytesWritten = 0L;
             var clientDisconnected = await ClientDisconnectGuard.ExecuteAsync(
-                async () => bytesWritten = await Context.Configuration.Store.AppendDataAsync(Context.RequestFileId, Context.Request.Body, cancellationToken),
-                cancellationToken);
+                async () =>
+                {
+                    bytesWritten = await Store.AppendDataAsync(Request.FileId, Request.Body, CancellationToken);
+                },
+                CancellationToken);
 
             if (clientDisconnected)
             {
-                return ResultType.StopExecution;
+                return;
             }
 
-            var expires = await GetOrUpdateExpires(Context);
+            var expires = _expirationHelper.IsSlidingExpiration
+                ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, CancellationToken)
+                : await _expirationHelper.GetExpirationIfSupported(Request.FileId, CancellationToken);
 
-            if (!await MatchChecksum(Context))
+            if (!await MatchChecksum())
             {
-                return await response.ErrorResult((HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+                await Response.Error((HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+                return;
             }
 
-            var fileOffset = long.Parse(Context.Request.GetHeader(HeaderConstants.UploadOffset));
+            var fileOffset = long.Parse(Request.GetHeader(HeaderConstants.UploadOffset));
 
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            Response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
 
             if (expires.HasValue)
             {
-                response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
+                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
             }
 
-            response.SetStatus((int)HttpStatusCode.NoContent);
+            Response.SetStatus((int)HttpStatusCode.NoContent);
 
-            if (await FileIsComplete(Context.RequestFileId, fileOffset, bytesWritten)
+            if (await FileIsComplete(Request.FileId, fileOffset, bytesWritten)
                 && !await IsPartialUpload(Context))
             {
                 await EventHelper.NotifyFileComplete(Context);
             }
-
-            return ResultType.StopExecution;
         }
 
         private Task WriteUploadLengthIfDefered(ContextAdapter Context)
@@ -85,7 +98,7 @@ namespace tusdotnet.IntentHandlers
             if (Context.Configuration.Store is ITusCreationDeferLengthStore creationDeferLengthStore && Context.Request.Headers.ContainsKey(HeaderConstants.UploadLength))
             {
                 var uploadLength = long.Parse(Context.Request.GetHeader(HeaderConstants.UploadLength));
-                return creationDeferLengthStore.SetUploadLengthAsync(Context.RequestFileId, uploadLength, Context.CancellationToken);
+                return creationDeferLengthStore.SetUploadLengthAsync(Request.FileId, uploadLength, Context.CancellationToken);
             }
 
             return TaskHelper.Completed;
@@ -110,55 +123,27 @@ namespace tusdotnet.IntentHandlers
 
         private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
         {
-            var fileUploadLength = await Context.Configuration.Store.GetUploadLengthAsync(fileId, Context.CancellationToken);
+            var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
             return fileOffset + bytesWritten == fileUploadLength;
         }
 
-        private static Task<bool> MatchChecksum(ContextAdapter Context)
+        private Task<bool> MatchChecksum()
         {
-            if (!(Context.Configuration.Store is ITusChecksumStore checksumStore))
+            if (!(Store is ITusChecksumStore checksumStore))
             {
                 return Task.FromResult(true);
             }
 
-            var checksumHeader = Context.Request.GetHeader(HeaderConstants.UploadChecksum);
-
-            if (checksumHeader == null)
+            if (_checksum == null)
             {
                 return Task.FromResult(true);
             }
-
-#warning TODO: Get header in ctor and pass to UploadChecksum requirement so that we do not need to parse the header multiple times
-
-            var providedChecksum = new Checksum(checksumHeader);
 
             return checksumStore.VerifyChecksumAsync(
-                Context.RequestFileId,
-                providedChecksum.Algorithm,
-                providedChecksum.Hash,
-                Context.CancellationToken);
-        }
-
-        private Task<DateTimeOffset?> GetOrUpdateExpires(ContextAdapter Context)
-        {
-            if (!(Context.Configuration.Store is ITusExpirationStore expirationStore))
-            {
-                return Task.FromResult((DateTimeOffset?)null);
-            }
-
-            if (!(Context.Configuration.Expiration is SlidingExpiration slidingExpiration))
-            {
-                return expirationStore.GetExpirationAsync(Context.RequestFileId, Context.CancellationToken);
-            }
-
-            return UpdateExpiredLocal();
-
-            async Task<DateTimeOffset?> UpdateExpiredLocal()
-            {
-                var expires = DateTimeOffset.UtcNow.Add(slidingExpiration.Timeout);
-                await expirationStore.SetExpirationAsync(Context.RequestFileId, expires, Context.CancellationToken);
-                return expires;
-            }
+                Request.FileId,
+                _checksum.Algorithm,
+                _checksum.Hash,
+                CancellationToken);
         }
     }
 }

@@ -23,6 +23,7 @@
         /// <param name="message">The error message to return to the client</param>
         public void FailRequest(string message)
         {
+#warning TODO Add support for http status responses with and without a message (to support OnAuthorize)
             ErrorMessage += message;
         }
     }

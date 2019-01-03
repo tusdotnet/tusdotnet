@@ -1,10 +1,11 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal sealed class UploadLengthForCreateFile : Requirement
+    internal sealed class UploadLengthForCreateFileAndConcatenateFiles : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {
@@ -20,17 +21,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest(
                     $"Headers {HeaderConstants.UploadLength} and {HeaderConstants.UploadDeferLength} are mutually exclusive and cannot be used in the same request");
             }
-
-            #warning TODO Inject into this class so that we can re-use the model later in the caller?
-            var uploadConcat =
-                new Models.Concatenation.UploadConcat(context.Request.GetHeader(HeaderConstants.UploadConcat),
-                    context.Configuration.UrlPath).Type;
-
-            if (uploadConcat is Models.Concatenation.FileConcatFinal)
-            {
-                return Done;
-            }
-
+            
             if (uploadDeferLengthHeader == null)
             {
                 VerifyRequestUploadLength(context, uploadLengthHeader);
@@ -40,7 +31,7 @@ namespace tusdotnet.Validation.Requirements
                 VerifyDeferLength(uploadDeferLengthHeader);
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
 
         private void VerifyDeferLength(string uploadDeferLengthHeader)
@@ -75,7 +66,7 @@ namespace tusdotnet.Validation.Requirements
                     $"Header {HeaderConstants.UploadLength} exceeds the server's max file size.");
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
     }
 }

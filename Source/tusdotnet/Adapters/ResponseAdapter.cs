@@ -8,6 +8,7 @@ namespace tusdotnet.Adapters
 	/// </summary>
 	internal sealed class ResponseAdapter
 	{
+    #warning TODO Replace with HttpStatusCode?
 		public Action<int> SetStatus { get; set; }
 
 		public Stream Body { get; set; }

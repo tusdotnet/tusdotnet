@@ -20,7 +20,7 @@ namespace tusdotnet.Validation.Requirements
 
         private async Task ValidateAsync(ContextAdapter context)
         {
-            var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(context.RequestFileId, context.CancellationToken);
+            var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
 
             if (!UploadLengthIsProvidedInRequest(context.Request) && !UploadLengthIsAlreadyPresent(fileUploadLength))
             {

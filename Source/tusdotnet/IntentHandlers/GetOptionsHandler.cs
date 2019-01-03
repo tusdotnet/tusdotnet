@@ -18,7 +18,7 @@ namespace tusdotnet.IntentHandlers
         {
         }
 
-        internal override async Task<ResultType> Invoke()
+        internal override async Task Invoke()
         {
             var response = Context.Response;
 
@@ -45,8 +45,6 @@ namespace tusdotnet.IntentHandlers
             }
 
             response.SetStatus((int)HttpStatusCode.NoContent);
-
-            return ResultType.StopExecution;
         }
     }
 }

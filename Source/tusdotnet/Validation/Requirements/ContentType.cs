@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
@@ -13,7 +14,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest($"Content-Type {context.Request.ContentType} is invalid. Must be application/offset+octet-stream");
             }
 
-            return Done;
+            return TaskHelper.Completed;
         }
     }
 }
