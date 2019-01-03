@@ -10,17 +10,9 @@ namespace tusdotnet
 {
     internal static class IntentAnalyzer
     {
-        public static async Task<IntentHandler> DetermineIntent(ContextAdapter context)
+        public static IntentHandler DetermineIntent(ContextAdapter context)
         {
             var httpMethod = context.Request.GetMethod();
-
-            if (httpMethod != "options")
-            {
-                var tusResumableHeaderIsProvidedAndValid = await ValidateTusResumableHeader(context);
-
-                if (!tusResumableHeaderIsProvidedAndValid)
-                    return IntentHandler.NotApplicable;
-            }
 
             switch (httpMethod)
             {
@@ -37,29 +29,6 @@ namespace tusdotnet
                 default:
                     return IntentHandler.NotApplicable;
             }
-        }
-
-        private static async Task<bool> ValidateTusResumableHeader(ContextAdapter context)
-        {
-            var tusResumable = context.Request.Headers.ContainsKey(HeaderConstants.TusResumable)
-                    ? context.Request.GetHeader(HeaderConstants.TusResumable)
-                    : null;
-
-            if (tusResumable == null)
-            {
-                return false;
-            }
-
-            if (tusResumable != HeaderConstants.TusResumableValue)
-            {
-                context.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-                context.Response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
-                await context.Response.Error(HttpStatusCode.PreconditionFailed,
-                    $"Tus version {tusResumable} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
-                return false;
-            }
-
-            return true;
         }
 
         private static IntentHandler DetermineIntentForOptions(ContextAdapter context)

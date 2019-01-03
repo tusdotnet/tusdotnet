@@ -2,6 +2,7 @@
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.IntentHandlers;
@@ -19,10 +20,10 @@ namespace tusdotnet
 
         public static async Task<ResultType> Invoke(ContextAdapter context)
         {
-        #warning TODO Throw better exception if configuration is null
+#warning TODO Throw better exception if configuration is null
             context.Configuration.Validate();
 
-            var intentHandler = await IntentAnalyzer.DetermineIntent(context);
+            var intentHandler = IntentAnalyzer.DetermineIntent(context);
 
             if (intentHandler == IntentHandler.NotApplicable)
             {
@@ -39,6 +40,17 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
+            if (IntentRequiresTusResumableHeader(intentHandler.Intent))
+            {
+                var tusResumableHeader = context.Request.GetHeader(HeaderConstants.TusResumable);
+
+                if (tusResumableHeader == null)
+                    return ResultType.ContinueExecution;
+
+                if (await ValidateTusResumableHeader(context.Response, tusResumableHeader) == ResultType.StopExecution)
+                    return ResultType.StopExecution;
+            }
+
             InMemoryFileLock fileLock = null;
 
             if (intentHandler.LockType == LockType.RequiresLock)
@@ -48,7 +60,7 @@ namespace tusdotnet
                 var hasLock = fileLock.Lock();
                 if (!hasLock)
                 {
-                    await context.Response.Error(HttpStatusCode.Conflict, $"File {context.GetFileId()} is currently being updated. Please try again later");
+                    await context.Response.Error(HttpStatusCode.Conflict, $"File {context.Request.FileId} is currently being updated. Please try again later");
                     return ResultType.StopExecution;
                 }
             }
@@ -72,6 +84,23 @@ namespace tusdotnet
             {
                 fileLock?.ReleaseIfHeld();
             }
+        }
+
+        private static bool IntentRequiresTusResumableHeader(IntentType intent)
+        {
+            return intent != IntentType.GetOptions;
+        }
+
+        private static async Task<ResultType> ValidateTusResumableHeader(ResponseAdapter response, string tusResumableHeader)
+        {
+            if (tusResumableHeader == HeaderConstants.TusResumableValue)
+                return ResultType.ContinueExecution;
+
+            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
+            await response.Error(HttpStatusCode.PreconditionFailed,
+                $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
+            return ResultType.StopExecution;
         }
     }
 }

@@ -1,12 +1,12 @@
-﻿using System.Linq;
-using tusdotnet.Adapters;
+﻿using tusdotnet.Adapters;
 using tusdotnet.Constants;
 
 namespace tusdotnet.Extensions
 {
-	// ReSharper disable once InconsistentNaming
-	internal static class IOwinRequestExtensions
-	{
+#warning TODO Move to IntentAnalyzer or merge with RequestAdapter to reduce times of parsing
+    // ReSharper disable once InconsistentNaming
+    internal static class RequestAdapterExtensions
+    {
 		/// <summary>
 		/// Returns the request method taking X-Http-Method-Override into account.
 		/// </summary>
