@@ -37,7 +37,7 @@ namespace tusdotnet.IntentHandlers
 
             await EventHelper.Notify<DeleteCompleteContext>(Context);
 
-            Response.SetStatus((int)HttpStatusCode.NoContent);
+            Response.SetStatus(HttpStatusCode.NoContent);
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
         }
     }

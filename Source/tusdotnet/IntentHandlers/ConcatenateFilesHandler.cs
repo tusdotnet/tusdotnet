@@ -68,7 +68,7 @@ namespace tusdotnet.IntentHandlers
                 Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
             }
 
-            Response.SetStatus((int)HttpStatusCode.Created);
+            Response.SetStatus(HttpStatusCode.Created);
         }
 
         private bool IsPartialFile()

@@ -126,7 +126,7 @@ namespace tusdotnet.ProtocolHandlers
                 response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
             }
 
-            response.SetStatus((int)HttpStatusCode.Created);
+            response.SetStatus(HttpStatusCode.Created);
             return true;
         }
 

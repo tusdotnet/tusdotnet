@@ -58,7 +58,7 @@ namespace tusdotnet
             {
                 Body = context.Response.Body,
                 SetHeader = (key, value) => context.Response.Headers[key] = value,
-                SetStatus = status => context.Response.StatusCode = status
+                SetStatus = status => context.Response.StatusCode = (int)status
             };
 
             var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter

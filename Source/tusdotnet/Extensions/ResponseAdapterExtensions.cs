@@ -3,18 +3,19 @@ using System.Text;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Models;
 
 namespace tusdotnet.Extensions
 {
     internal static class ResponseAdapterExtensions
     {
+        private static readonly Encoding _utf8Encoding = new UTF8Encoding();
+
 #warning TODO No need to return bool as the return value is no longer used
         internal static bool NotFound(this ResponseAdapter response)
         {
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
-            response.SetStatus((int)HttpStatusCode.NotFound);
+            response.SetStatus(HttpStatusCode.NotFound);
             return true;
         }
 
@@ -23,9 +24,12 @@ namespace tusdotnet.Extensions
         {
             response.SetHeader(HeaderConstants.ContentType, "text/plain");
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetStatus((int)statusCode);
-            var buffer = new UTF8Encoding().GetBytes(message);
-            await response.Body.WriteAsync(buffer, 0, buffer.Length);
+            response.SetStatus(statusCode);
+            if (message != null)
+            {
+                var buffer = _utf8Encoding.GetBytes(message);
+                await response.Body.WriteAsync(buffer, 0, buffer.Length);
+            }
             return true;
         }
     }

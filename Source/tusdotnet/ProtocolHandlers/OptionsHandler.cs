@@ -51,7 +51,7 @@ namespace tusdotnet.ProtocolHandlers
                 response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
             }
 
-            response.SetStatus((int)HttpStatusCode.NoContent);
+            response.SetStatus(HttpStatusCode.NoContent);
             return true;
         }
     }

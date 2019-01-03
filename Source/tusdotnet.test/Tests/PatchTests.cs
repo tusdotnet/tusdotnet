@@ -366,7 +366,7 @@ namespace tusdotnet.test.Tests
                     });
 
             var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var responseStatus = 200;
+            var responseStatus = HttpStatusCode.OK;
             var response = new ResponseAdapter
             {
                 Body = new MemoryStream(),
@@ -400,7 +400,7 @@ namespace tusdotnet.test.Tests
             var handled = await TusProtocolHandler.Invoke(context);
 
             handled.ShouldBeTrue();
-            responseStatus.ShouldBe(200);
+            responseStatus.ShouldBe(HttpStatusCode.OK);
             responseHeaders.Count.ShouldBe(0);
             response.Body.Length.ShouldBe(0);
         }

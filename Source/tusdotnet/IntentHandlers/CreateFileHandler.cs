@@ -64,7 +64,7 @@ namespace tusdotnet.IntentHandlers
 
             SetReponseHeaders(fileId, expires);
 
-            Response.SetStatus((int)HttpStatusCode.Created);
+            Response.SetStatus(HttpStatusCode.Created);
         }
 
         private void SetReponseHeaders(string fileId, DateTimeOffset? expires)

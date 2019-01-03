@@ -48,7 +48,7 @@ namespace tusdotnet.ProtocolHandlers
 
             await HandleOnDeleteCompleteAsync(context);
 
-            response.SetStatus((int) HttpStatusCode.NoContent);
+            response.SetStatus(HttpStatusCode.NoContent);
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 
             return true;

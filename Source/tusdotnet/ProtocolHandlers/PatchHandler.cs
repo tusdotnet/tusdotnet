@@ -104,7 +104,7 @@ namespace tusdotnet.ProtocolHandlers
                 response.SetHeader(HeaderConstants.UploadExpires, expires.Value.ToString("R"));
             }
 
-            response.SetStatus((int)HttpStatusCode.NoContent);
+            response.SetStatus(HttpStatusCode.NoContent);
 
             // Run OnUploadComplete if it has been provided.
             await RunOnUploadComplete(context, fileOffset, bytesWritten);

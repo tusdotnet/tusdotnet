@@ -25,7 +25,7 @@ namespace tusdotnet.Helpers
 
             if (eventContext.HasFailed)
             {
-                await context.Response.Error(HttpStatusCode.BadRequest, eventContext.ErrorMessage);
+                await context.Response.Error(eventContext.StatusCode, eventContext.ErrorMessage);
                 return ResultType.StopExecution;
             }
 

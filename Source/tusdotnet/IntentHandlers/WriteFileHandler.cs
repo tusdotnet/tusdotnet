@@ -83,7 +83,7 @@ namespace tusdotnet.IntentHandlers
                 Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
             }
 
-            Response.SetStatus((int)HttpStatusCode.NoContent);
+            Response.SetStatus(HttpStatusCode.NoContent);
 
             if (await FileIsComplete(Request.FileId, fileOffset, bytesWritten)
                 && !await IsPartialUpload(Context))

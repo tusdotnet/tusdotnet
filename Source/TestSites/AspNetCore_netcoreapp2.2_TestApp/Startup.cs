@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet;
 using tusdotnet.Helpers;
@@ -93,13 +94,13 @@ namespace AspNetCore_netcoreapp2_2_TestApp
                         if (!ctx.HttpContext.User.Identity.IsAuthenticated)
                         {
                             ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp2.2"));
-                            ctx.FailRequest("Unauthorized");
+                            ctx.FailRequest(HttpStatusCode.Unauthorized);
                             return Task.CompletedTask;
                         }
 
                         if (ctx.HttpContext.User.Identity.Name != "test")
                         {
-                            ctx.FailRequest("'test' is the only allowed user");
+                            ctx.FailRequest(HttpStatusCode.Forbidden, "'test' is the only allowed user");
                             return Task.CompletedTask;
                         }
 
