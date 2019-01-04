@@ -83,11 +83,14 @@ namespace tusdotnet.test.Tests
 
 				callForwarded.ShouldBeTrue();
 				callForwarded = false;
+
 				await server
 					.CreateRequest("/files/testfile")
 					.AddTusResumableHeader()
 					.GetAsync();
-			}
+
+                callForwarded.ShouldBeTrue();
+            }
 		}
 
 		[Theory]
