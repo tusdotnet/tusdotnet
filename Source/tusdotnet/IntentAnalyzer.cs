@@ -14,6 +14,12 @@ namespace tusdotnet
         {
             var httpMethod = context.Request.GetMethod();
 
+            if (RequestRequiresTusResumableHeader(httpMethod)
+               && context.Request.GetHeader(HeaderConstants.TusResumable) == null)
+            {
+                return IntentHandler.NotApplicable;
+            }
+
             switch (httpMethod)
             {
                 case "post":
@@ -83,6 +89,11 @@ namespace tusdotnet
                 return IntentHandler.NotApplicable;
 
             return new DeleteFileHandler(context, terminationStore);
+        }
+
+        private static bool RequestRequiresTusResumableHeader(string httpMethod)
+        {
+            return httpMethod != "options";
         }
     }
 }

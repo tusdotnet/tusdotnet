@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -8,7 +7,6 @@ using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
-using tusdotnet.Models.Expiration;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 

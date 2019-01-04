@@ -25,7 +25,7 @@ namespace tusdotnet.IntentHandlers
 
         private readonly ExpirationHelper _expirationHelper;
 
-        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore) 
+        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore)
             : base(context, IntentType.CreateFile, LockType.NoLock)
         {
             _creationStore = creationStore;

@@ -40,15 +40,9 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            if (IntentRequiresTusResumableHeader(intentHandler.Intent))
+            if(await VerifyTusVersionIfApplicable(context, intentHandler) == ResultType.StopExecution) 
             {
-                var tusResumableHeader = context.Request.GetHeader(HeaderConstants.TusResumable);
-
-                if (tusResumableHeader == null)
-                    return ResultType.ContinueExecution;
-
-                if (await ValidateTusResumableHeader(context.Response, tusResumableHeader) == ResultType.StopExecution)
-                    return ResultType.StopExecution;
+                return ResultType.StopExecution;
             }
 
             InMemoryFileLock fileLock = null;
@@ -86,20 +80,21 @@ namespace tusdotnet
             }
         }
 
-        private static bool IntentRequiresTusResumableHeader(IntentType intent)
+        private static async Task<ResultType> VerifyTusVersionIfApplicable(ContextAdapter context, IntentHandler intentHandler)
         {
-            return intent != IntentType.GetOptions;
-        }
+            // Options does not require a correct tus resumable header.
+            if (intentHandler.Intent == IntentType.GetOptions)
+                return ResultType.ContinueExecution;
 
-        private static async Task<ResultType> ValidateTusResumableHeader(ResponseAdapter response, string tusResumableHeader)
-        {
+            var tusResumableHeader = context.Request.GetHeader(HeaderConstants.TusResumable);
+
             if (tusResumableHeader == HeaderConstants.TusResumableValue)
                 return ResultType.ContinueExecution;
 
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
-            await response.Error(HttpStatusCode.PreconditionFailed,
-                $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
+            context.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            context.Response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
+            await context.Response.Error(HttpStatusCode.PreconditionFailed, $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
+
             return ResultType.StopExecution;
         }
     }
