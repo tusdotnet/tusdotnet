@@ -1,17 +1,18 @@
 ﻿using System;
-using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace tusdotnet.Helpers
 {
     internal static class EventHelper
     {
+        private static readonly Lazy<Dictionary<Type, PropertyInfo>> _eventHandlers = new Lazy<Dictionary<Type, PropertyInfo>>(GatherEventHandlers);
+
         internal static async Task<ResultType> Validate<T>(ContextAdapter context, Action<T> configure = null) where T : ValidationContext<T>, new()
         {
             var handler = GetHandler<T>(context);
@@ -35,6 +36,7 @@ namespace tusdotnet.Helpers
         internal static async Task Notify<T>(ContextAdapter context, Action<T> configure = null) where T : EventContext<T>, new()
         {
             var handler = GetHandler<T>(context);
+
             if (handler == null)
             {
                 return;
@@ -72,17 +74,23 @@ namespace tusdotnet.Helpers
                 return null;
             }
 
-            var handlerProperty = typeof(Events).GetProperties().FirstOrDefault(f => f.Name == TypeToEventName<T>());
+            var handlerProperty = _eventHandlers.Value[typeof(T)];
 
             var handler = handlerProperty.GetValue(context.Configuration.Events) as Func<T, Task>;
             return handler;
         }
 
-        private static string TypeToEventName<T>() where T : EventContext<T>, new()
+        private static Dictionary<Type, PropertyInfo> GatherEventHandlers()
         {
-            var eventContextName = typeof(T).Name;
-            var eventNameWithoutContext = eventContextName.Substring(0, eventContextName.LastIndexOf("Context"));
-            return "On" + eventNameWithoutContext + "Async";
+            var result = new Dictionary<Type, PropertyInfo>();
+            var properties = typeof(Events).GetProperties();
+            foreach (var item in properties)
+            {
+                var types = item.PropertyType.GenericTypeArguments;
+                result.Add(types[0], item);
+            }
+
+            return result;
         }
     }
 }
