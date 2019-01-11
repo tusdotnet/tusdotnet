@@ -37,12 +37,11 @@ namespace tusdotnet.IntentHandlers
             var metadata = Request.GetHeader(HeaderConstants.UploadMetadata);
             var parsedMetadata = Metadata.Parse(metadata);
 
-            var uploadLength = Request.GetUploadLength();
 
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
                 ctx.Metadata = parsedMetadata;
-                ctx.UploadLength = uploadLength;
+                ctx.UploadLength = Request.UploadLength;
             });
 
             if (onBeforeCreateResult == ResultType.StopExecution)
@@ -50,14 +49,14 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileId = await _creationStore.CreateFileAsync(uploadLength, metadata, CancellationToken);
+            var fileId = await _creationStore.CreateFileAsync(Request.UploadLength, metadata, CancellationToken);
 
             await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
             {
                 ctx.FileId = fileId;
                 ctx.FileConcatenation = null;
                 ctx.Metadata = parsedMetadata;
-                ctx.UploadLength = uploadLength;
+                ctx.UploadLength = Request.UploadLength;
             });
 
             var expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);

@@ -21,11 +21,11 @@ namespace tusdotnet.IntentHandlers
 
         private readonly ExpirationHelper _expirationHelper;
 
-        public ConcatenateFilesHandler(ContextAdapter context)
+        public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
             _uploadConcat = ParseUploadConcatHeader(context);
-            _concatenationStore = (ITusConcatenationStore)context.Configuration.Store;
+            _concatenationStore = concatenationStore;
             _expirationHelper = new ExpirationHelper(context.Configuration);
         }
 
@@ -39,12 +39,10 @@ namespace tusdotnet.IntentHandlers
             string fileId;
             DateTimeOffset? expires = null;
 
-            var uploadLength = GetUploadLength(Request);
-
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
                 ctx.Metadata = metadata;
-                ctx.UploadLength = uploadLength;
+                ctx.UploadLength = Request.UploadLength;
                 ctx.FileConcatenation = _uploadConcat.Type;
             });
 
@@ -53,7 +51,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            fileId = await HandleCreationOfConcatFiles(uploadLength, metadataString, metadata);
+            fileId = await HandleCreationOfConcatFiles(Request.UploadLength, metadataString, metadata);
 
             if (IsPartialFile())
             {
@@ -83,7 +81,7 @@ namespace tusdotnet.IntentHandlers
                 new Validation.Requirements.UploadConcatForConcatenateFiles(_uploadConcat, _concatenationStore)
             };
 
-            // Only validate upload lenght for partial files as the length of a final file is implicit.
+            // Only validate upload length for partial files as the length of a final file is implicit.
             if (IsPartialFile())
             {
                 requirements.Add(new Validation.Requirements.UploadLengthForCreateFileAndConcatenateFiles());
@@ -97,13 +95,6 @@ namespace tusdotnet.IntentHandlers
         private UploadConcat ParseUploadConcatHeader(ContextAdapter context)
         {
             return new UploadConcat(Request.GetHeader(HeaderConstants.UploadConcat), context.Configuration.UrlPath);
-        }
-
-        private static long GetUploadLength(RequestAdapter request)
-        {
-            return request.Headers.ContainsKey(HeaderConstants.UploadDeferLength)
-                ? -1
-                : long.Parse(request.GetHeader(HeaderConstants.UploadLength) ?? "-1");
         }
 
         private async Task<string> HandleCreationOfConcatFiles(long uploadLength, string metadataString, Dictionary<string, Metadata> metadata)

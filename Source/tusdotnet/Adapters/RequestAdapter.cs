@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using tusdotnet.Constants;
 
 namespace tusdotnet.Adapters
 {
-	/// <summary>
-	/// Request adapter that handles different pipeline requests.
-	/// </summary>
-	internal sealed class RequestAdapter
+    /// <summary>
+    /// Request adapter that handles different pipeline requests.
+    /// </summary>
+    internal sealed class RequestAdapter
 	{
 		public string Method { get; set; }
 
@@ -22,9 +22,16 @@ namespace tusdotnet.Adapters
 
         public string FileId => _fileId.Value;
 
+        public long UploadLength => _uploadLength.Value;
+
+        private readonly Lazy<string> _fileId;
+        private readonly Lazy<long> _uploadLength;
+        private readonly string _configUrlPath;
+
         public RequestAdapter(string configUrlPath)
         {
             _fileId = new Lazy<string>(ParseFileId);
+            _uploadLength = new Lazy<long>(ParseUploadLength);
             _configUrlPath = configUrlPath;
         }
 
@@ -40,7 +47,11 @@ namespace tusdotnet.Adapters
             return RequestUri.LocalPath.Substring(startIndex).Trim('/');
         }
 
-        private readonly Lazy<string> _fileId;
-        private readonly string _configUrlPath;
+        private long ParseUploadLength() 
+        {
+            return Headers.ContainsKey(HeaderConstants.UploadDeferLength)
+                ? -1
+                : long.Parse(GetHeader(HeaderConstants.UploadLength) ?? "-1");
+        }
     }
 }
