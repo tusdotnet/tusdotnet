@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Threading.Tasks;
+﻿using System;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
@@ -16,6 +15,19 @@ namespace tusdotnet
 
             if (RequestRequiresTusResumableHeader(httpMethod)
                && context.Request.GetHeader(HeaderConstants.TusResumable) == null)
+            {
+                return IntentHandler.NotApplicable;
+            }
+
+#warning TODO: Possibly move this to RequestIsForTusEndpoint to minimize allocations
+            if (MethodRequiresFileIdUrl(httpMethod))
+            {
+                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Configuration.UrlPath))
+                {
+                    return IntentHandler.NotApplicable;
+                }
+            }
+            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.Configuration.UrlPath))
             {
                 return IntentHandler.NotApplicable;
             }
@@ -37,36 +49,40 @@ namespace tusdotnet
             }
         }
 
+        private static bool MethodRequiresFileIdUrl(string httpMethod)
+        {
+            switch (httpMethod)
+            {
+                case "head":
+                case "patch":
+                case "delete":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         private static IntentHandler DetermineIntentForOptions(ContextAdapter context)
         {
-            if (!context.UrlMatchesUrlPath())
-                return IntentHandler.NotApplicable;
-
             return new GetOptionsHandler(context);
         }
 
         private static IntentHandler DetermineIntentForHead(ContextAdapter context)
         {
-            if (!context.UrlMatchesFileIdUrl())
-                return IntentHandler.NotApplicable;
-
             return new GetFileInfoHandler(context);
         }
 
         private static IntentHandler DetermineIntentForPost(ContextAdapter context)
         {
-            if (!context.UrlMatchesUrlPath())
-                return IntentHandler.NotApplicable;
-
             if (!(context.Configuration.Store is ITusCreationStore creationStore))
                 return IntentHandler.NotApplicable;
 
             var hasUploadConcatHeader = context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat);
-            var isSupportedConcatRequest = context.Configuration.Store is ITusConcatenationStore tusConcatenationStore && hasUploadConcatHeader;
 
-            if (isSupportedConcatRequest)
+            if (context.Configuration.Store is tusdotnet.Interfaces.ITusConcatenationStore tusConcatenationStore
+                && hasUploadConcatHeader)
             {
-                return new ConcatenateFilesHandler(context);
+                return new ConcatenateFilesHandler(context, tusConcatenationStore);
             }
 
             return new CreateFileHandler(context, creationStore);
@@ -74,17 +90,11 @@ namespace tusdotnet
 
         private static IntentHandler DetermineIntentForPatch(ContextAdapter context)
         {
-            if (!context.UrlMatchesFileIdUrl())
-                return IntentHandler.NotApplicable;
-
             return new WriteFileHandler(context);
         }
 
         private static IntentHandler DetermineIntentForDelete(ContextAdapter context)
         {
-            if (!context.UrlMatchesFileIdUrl())
-                return IntentHandler.NotApplicable;
-
             if (!(context.Configuration.Store is ITusTerminationStore terminationStore))
                 return IntentHandler.NotApplicable;
 
@@ -94,6 +104,17 @@ namespace tusdotnet
         private static bool RequestRequiresTusResumableHeader(string httpMethod)
         {
             return httpMethod != "options";
+        }
+
+        private static bool UrlMatchesUrlPath(Uri requestUri, string configUrlPath)
+        {
+            return requestUri.LocalPath.TrimEnd('/') == configUrlPath.TrimEnd('/');
+        }
+
+        private static bool UrlMatchesFileIdUrl(Uri requestUri, string configUrlPath)
+        {
+            return !UrlMatchesUrlPath(requestUri, configUrlPath)
+                   && requestUri.LocalPath.StartsWith(configUrlPath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
