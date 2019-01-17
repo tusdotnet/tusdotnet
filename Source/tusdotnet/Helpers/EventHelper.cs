@@ -26,7 +26,13 @@ namespace tusdotnet.Helpers
 
             if (eventContext.HasFailed)
             {
-                await context.Response.Error(eventContext.StatusCode, eventContext.ErrorMessage);
+                var includeTusResumableHeaderInResponse = true;
+                // Do not leak information on the tus endpoint during authorization.
+                if (eventContext is EventContext<AuthorizeContext>)
+                {
+                    includeTusResumableHeaderInResponse = false;
+                }
+                await context.Response.Error(eventContext.StatusCode, eventContext.ErrorMessage, includeTusResumableHeaderInResponse);
                 return ResultType.StopExecution;
             }
 
@@ -49,6 +55,7 @@ namespace tusdotnet.Helpers
 
         internal static async Task NotifyFileComplete(ContextAdapter context, Action<FileCompleteContext> configure = null)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (context.Configuration.OnUploadCompleteAsync == null && context.Configuration.Events?.OnFileCompleteAsync == null)
             {
                 return;
@@ -56,10 +63,13 @@ namespace tusdotnet.Helpers
 
             var eventContext = FileCompleteContext.Create(context, configure);
 
+
             if (context.Configuration.OnUploadCompleteAsync != null)
+
             {
                 await context.Configuration.OnUploadCompleteAsync.Invoke(eventContext.FileId, eventContext.Store, eventContext.CancellationToken);
             }
+#pragma warning restore CS0618 // Type or member is obsolete
 
             if (context.Configuration.Events?.OnFileCompleteAsync != null)
             {

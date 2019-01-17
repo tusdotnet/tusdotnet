@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -29,5 +30,15 @@ namespace tusdotnet.test.Extensions
 			value.Count.ShouldBe(1);
 			value[0].ShouldBe(headerValue);
 		}
+
+        internal static void ShouldNotContainHeaders(this HttpResponseMessage response, params string[] headerNames)
+        {
+            var allHeaders = response.Headers.Concat(response.Content?.Headers).ToDictionary(f => f.Key, null);
+
+            foreach (var item in headerNames)
+            {
+                allHeaders.ContainsKey(item).ShouldBeFalse(item + " existed in response but should not have");
+            }
+        }
 	}
 }

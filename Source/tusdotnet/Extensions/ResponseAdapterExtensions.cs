@@ -20,13 +20,17 @@ namespace tusdotnet.Extensions
         }
 
 #warning TODO No need to return bool as the return value is no longer used
-        internal static async Task<bool> Error(this ResponseAdapter response, HttpStatusCode statusCode, string message)
+        internal static async Task<bool> Error(this ResponseAdapter response, HttpStatusCode statusCode, string message, bool includeTusResumableHeader = true)
         {
-            response.SetHeader(HeaderConstants.ContentType, "text/plain");
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            if (includeTusResumableHeader)
+            {
+                response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            }
+
             response.SetStatus(statusCode);
             if (message != null)
             {
+                response.SetHeader(HeaderConstants.ContentType, "text/plain");
                 var buffer = _utf8Encoding.GetBytes(message);
                 await response.Body.WriteAsync(buffer, 0, buffer.Length);
             }

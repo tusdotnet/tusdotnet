@@ -33,6 +33,7 @@ namespace tusdotnet
             var onAuhorizeResult = await EventHelper.Validate<AuthorizeContext>(context, ctx =>
             {
                 ctx.Intent = intentHandler.Intent;
+                ctx.FileConcatenation = GetFileConcatenationFromIntentHandler(intentHandler);
             });
 
             if (onAuhorizeResult == ResultType.StopExecution)
@@ -49,7 +50,7 @@ namespace tusdotnet
 
             if (intentHandler.LockType == LockType.RequiresLock)
             {
-                fileLock = new InMemoryFileLock(context.GetFileId());
+                fileLock = new InMemoryFileLock(context.Request.FileId);
 
                 var hasLock = fileLock.Lock();
                 if (!hasLock)
@@ -78,6 +79,11 @@ namespace tusdotnet
             {
                 fileLock?.ReleaseIfHeld();
             }
+        }
+
+        private static Models.Concatenation.FileConcat GetFileConcatenationFromIntentHandler(IntentHandler intentHandler)
+        {
+            return intentHandler is ConcatenateFilesHandler concatFilesHandler ? concatFilesHandler.UploadConcat.Type : null;
         }
 
         private static async Task<ResultType> VerifyTusVersionIfApplicable(ContextAdapter context, IntentHandler intentHandler)

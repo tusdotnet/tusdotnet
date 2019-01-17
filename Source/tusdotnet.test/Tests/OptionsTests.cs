@@ -8,6 +8,7 @@ using tusdotnet.Models;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
@@ -20,6 +21,9 @@ namespace tusdotnet.test.Tests
     public class OptionsTests
     {
         private readonly DefaultTusConfiguration _mockTusConfiguration;
+        private bool _onAuthorizeWasCalled;
+        private IntentType? _onAuthorizeWasCalledWithIntent;
+        private bool _callForwarded;
 
         public OptionsTests()
         {
@@ -40,47 +44,41 @@ namespace tusdotnet.test.Tests
             _mockTusConfiguration = new DefaultTusConfiguration
             {
                 Store = store,
-                UrlPath = "/files"
+                UrlPath = "/files",
+                Events = new Events
+                {
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        _onAuthorizeWasCalled = true;
+                        _onAuthorizeWasCalledWithIntent = ctx.Intent;
+                        return Task.FromResult(0);
+                    }
+                }
             };
         }
 
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            var callForwarded = false;
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(_ => _mockTusConfiguration);
 
                 app.Use((_, __) =>
                 {
-                    callForwarded = true;
+                    _callForwarded = true;
                     return Task.FromResult(true);
                 });
             }))
             {
-                await server
-                        .CreateRequest("/files")
-                        .AddTusResumableHeader()
-                        .SendAsync("OPTIONS");
+                await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+                AssertForwardCall(false);
 
-                callForwarded.ShouldBeFalse();
+                await server.CreateRequest("/otherfiles").AddTusResumableHeader().SendAsync("OPTIONS");
+                AssertForwardCall(true);
 
-                await server
-                    .CreateRequest("/otherfiles")
-                    .AddTusResumableHeader()
-                    .SendAsync("OPTIONS");
-
-                callForwarded.ShouldBeTrue();
-
-                callForwarded = false;
-
-                await server
-                        .CreateRequest("/files/testfile")
-                        .AddTusResumableHeader()
-                        .SendAsync("OPTIONS");
-
-                callForwarded.ShouldBeTrue();
+                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("OPTIONS");
+                AssertForwardCall(true);
             }
         }
 
@@ -107,10 +105,7 @@ namespace tusdotnet.test.Tests
                     .OverrideHttpMethodIfNeeded("OPTIONS", methodToUse)
                     .SendAsync(methodToUse);
 
-                response.ShouldContainHeader("Tus-Resumable", "1.0.0");
-                response.ShouldContainHeader("Tus-Version", "1.0.0");
-                response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation,expiration,creation-defer-length");
-                response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
+                AssertContainsDefaultSuccessfulHeaders(response);
             }
 
             // Test again but with a store that does not implement any extensions.
@@ -172,6 +167,65 @@ namespace tusdotnet.test.Tests
                 var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
                 response.ShouldContainHeader("Tus-Max-Size", "50");
             }
+        }
+
+        [Fact]
+        public async Task OnAuthorized_Is_Called()
+        {
+            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
+            {
+                var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+
+                AssertContainsDefaultSuccessfulHeaders(response);
+
+                _onAuthorizeWasCalled.ShouldBeTrue();
+                _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.GetOptions);
+            }
+        }
+
+        [Fact]
+        public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
+        {
+            using (var server = TestServerFactory.Create(_mockTusConfiguration.Store, new Events
+            {
+                OnAuthorizeAsync = ctx =>
+                {
+                    ctx.FailRequest(HttpStatusCode.Unauthorized);
+                    return Task.FromResult(0);
+                }
+            }))
+            {
+                var response = await server
+                    .CreateRequest("/files/testfile")
+                    .AddTusResumableHeader()
+                    .SendAsync("HEAD");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+                response.ShouldNotContainHeaders(
+                    "Tus-Resumable",
+                    "Tus-Version",
+                    "Tus-Extension",
+                    "Tus-Checksum-Algorithm",
+                    "Content-Type");
+            }
+        }
+
+        private static void AssertContainsDefaultSuccessfulHeaders(System.Net.Http.HttpResponseMessage response)
+        {
+            response.ShouldContainHeader("Tus-Resumable", "1.0.0");
+            response.ShouldContainHeader("Tus-Version", "1.0.0");
+            response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation,expiration,creation-defer-length");
+            response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
+        }
+
+        private void AssertForwardCall(bool expectedValue)
+        {
+            _callForwarded.ShouldBe(expectedValue);
+            _onAuthorizeWasCalled.ShouldBe(!expectedValue);
+
+            _onAuthorizeWasCalled = false;
+            _onAuthorizeWasCalledWithIntent = null;
+            _callForwarded = false;
         }
     }
 }

@@ -9,7 +9,7 @@
         /// Intent is to create a new file.
         /// </summary>
         CreateFile,
-        
+
         /// <summary>
         /// Intent is to create a partial file or to concatenate multiple partial files into a single final file.
         /// </summary>

@@ -16,7 +16,7 @@ namespace tusdotnet.Models.Configuration
         /// <summary>
         /// Http status code set using <code>FailRequest</code>. Defaults to 400 (Bad request).
         /// </summary>
-        public HttpStatusCode StatusCode { get; private set; }
+        internal HttpStatusCode StatusCode { get; private set; }
 
         /// <summary>
         /// True if <code>FailRequest</code> has been called
