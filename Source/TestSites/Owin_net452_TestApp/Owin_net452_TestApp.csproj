@@ -77,6 +77,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Numerics" />
@@ -100,6 +101,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\BasicAuthenticationIAppBuilderExtensions.cs" />
+    <Compile Include="Extensions\CleanupJobIAppBuilderExtensions.cs" />
+    <Compile Include="Extensions\CorsIAppBuilderExtensions.cs" />
+    <Compile Include="Extensions\DownloadFeatureIAppBuilderExtensions.cs" />
+    <Compile Include="Extensions\ExceptionHandlerIAppBuilderExtensions.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

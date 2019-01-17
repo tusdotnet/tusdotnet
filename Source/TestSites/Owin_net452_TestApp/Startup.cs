@@ -1,15 +1,13 @@
 ﻿using System;
-using System.IO;
-using System.Text;
-using System.Threading;
+using System.Configuration;
+using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Owin;
-using Microsoft.Owin.Cors;
 using Owin;
+using Owin_net452_TestApp.Extensions;
 using OwinTestApp;
 using tusdotnet;
-using tusdotnet.Helpers;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -24,11 +22,21 @@ namespace OwinTestApp
     {
         public void Configuration(IAppBuilder app)
         {
-            var tusConfiguration = CreateTusConfiguration();
 
-            SetupCorsPolicy(app);
+            // Change the value of EnableOnAuthorize in app.config to enable or disable
+            // the new authorization event.
+            var enableAuthorize = Convert.ToBoolean(ConfigurationManager.AppSettings["EnableOnAuthorize"]);
 
-            SetupSimpleExceptionHandler(app);
+            var tusConfiguration = CreateTusConfiguration(enableAuthorize);
+
+            if (enableAuthorize)
+            {
+                app.SetupSimpleBasicAuth();
+            }
+
+            app.SetupCorsPolicy();
+
+            app.SetupSimpleExceptionHandler();
 
             // owinRequest parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
             // In this case we just return the same configuration for everyone.
@@ -37,157 +45,13 @@ namespace OwinTestApp
             // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
             // This is done because the file's metadata is domain specific and thus cannot be handled 
             // in a generic way by tusdotnet.
-            SetupDownloadFeature(app, tusConfiguration);
+            app.SetupDownloadFeature(tusConfiguration);
 
             // Setup cleanup job to remove incomplete expired files.
-            StartCleanupJob(app, tusConfiguration);
+            app.StartCleanupJob(tusConfiguration);
         }
 
-        private void SetupCorsPolicy(IAppBuilder app)
-        {
-            var corsPolicy = new System.Web.Cors.CorsPolicy
-            {
-                AllowAnyHeader = true,
-                AllowAnyMethod = true,
-                AllowAnyOrigin = true
-            };
-
-            corsPolicy.GetType()
-                .GetProperty(nameof(corsPolicy.ExposedHeaders))
-                .SetValue(corsPolicy, CorsHelper.GetExposedHeaders());
-
-            app.UseCors(new CorsOptions
-            {
-                PolicyProvider = new CorsPolicyProvider
-                {
-                    PolicyResolver = context => Task.FromResult(corsPolicy)
-                }
-            });
-        }
-
-        /// <summary>
-        /// Use a simple exception handler that will log errors and return 500 internal server error on exceptions.
-        /// </summary>
-        /// <param name="app"></param>
-        private static void SetupSimpleExceptionHandler(IAppBuilder app)
-        {
-            app.Use(async (context, next) =>
-            {
-                try
-                {
-                    await next.Invoke();
-                }
-                catch (Exception exc)
-                {
-                    Console.Error.WriteLine(exc);
-                    context.Response.StatusCode = 500;
-                    await context.Response.WriteAsync("An internal server error has occurred");
-                }
-            });
-        }
-
-        /// <summary>
-        /// Use a simple middleware that allows downloading of files from a tusdotnet store.
-        /// </summary>
-        /// <param name="app"></param>
-        /// <param name="tusConfiguration"></param>
-
-        private static void SetupDownloadFeature(IAppBuilder app, DefaultTusConfiguration tusConfiguration)
-        {
-            var readableStore = (ITusReadableStore)tusConfiguration.Store;
-
-            app.Use(async (context, next) =>
-            {
-                if (!context.Request.Method.Equals("get", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    await next.Invoke();
-                    return;
-                }
-
-                if (context.Request.Uri.LocalPath.StartsWith(tusConfiguration.UrlPath, StringComparison.Ordinal))
-                {
-                    var fileId = context.Request.Uri.LocalPath.Replace(tusConfiguration.UrlPath, "").Trim('/', ' ');
-                    if (!string.IsNullOrEmpty(fileId))
-                    {
-                        var file = await readableStore.GetFileAsync(fileId, context.Request.CallCancelled);
-
-                        if (file == null)
-                        {
-                            context.Response.StatusCode = 404;
-                            await context.Response.WriteAsync($"File with id {fileId} was not found.",
-                                context.Request.CallCancelled);
-                            return;
-                        }
-
-                        var fileStream = await file.GetContentAsync(context.Request.CallCancelled);
-                        var metadata = await file.GetMetadataAsync(context.Request.CallCancelled);
-
-                        context.Response.ContentType = metadata.ContainsKey("contentType")
-                            ? metadata["contentType"].GetString(Encoding.UTF8)
-                            : "application/octet-stream";
-
-                        if (metadata.TryGetValue("name", out var nameMetadata))
-                        {
-                            context.Response.Headers.Add("Content-Disposition",
-                                new[] { $"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\"" });
-                        }
-
-                        using (fileStream)
-                        {
-                            await fileStream.CopyToAsync(context.Response.Body, 81920, context.Request.CallCancelled);
-                        }
-                        return;
-                    }
-                }
-
-                switch (context.Request.Uri.LocalPath)
-                {
-                    case "/":
-                        context.Response.ContentType = "text/html";
-                        await context.Response.WriteAsync(File.ReadAllText("../../index.html"),
-                            context.Request.CallCancelled);
-                        break;
-                    case "/tus.js":
-                        context.Response.ContentType = "application/js";
-                        await context.Response.WriteAsync(File.ReadAllText("../../tus.js"),
-                            context.Request.CallCancelled);
-                        break;
-                    default:
-                        context.Response.StatusCode = 404;
-                        break;
-                }
-            });
-        }
-
-        private static void StartCleanupJob(IAppBuilder app, DefaultTusConfiguration tusConfiguration)
-        {
-            var expiration = tusConfiguration.Expiration;
-
-            if (expiration == null)
-            {
-                Console.WriteLine("Not running cleanup job as no expiration has been set.");
-                return;
-            }
-
-            var expirationStore = (ITusExpirationStore)tusConfiguration.Store;
-            var onAppDisposingToken = new OwinContext(app.Properties).Get<CancellationToken>("host.OnAppDisposing");
-            Task.Run(async () =>
-            {
-                while (!onAppDisposingToken.IsCancellationRequested)
-                {
-                    Console.WriteLine("Running cleanup job...");
-
-                    var numberOfRemovedFiles = await expirationStore.RemoveExpiredFilesAsync(onAppDisposingToken);
-
-                    Console.WriteLine(
-                        $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {expiration.Timeout.TotalMilliseconds} ms");
-
-                    await Task.Delay(expiration.Timeout, onAppDisposingToken);
-                }
-            }, onAppDisposingToken);
-        }
-
-        private static DefaultTusConfiguration CreateTusConfiguration()
+        private static DefaultTusConfiguration CreateTusConfiguration(bool enableAuthorize)
         {
             return new DefaultTusConfiguration
             {
@@ -195,6 +59,54 @@ namespace OwinTestApp
                 UrlPath = "/files",
                 Events = new Events
                 {
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        var completedTask = Task.FromResult(0);
+
+                        if (!enableAuthorize)
+                            return completedTask;
+
+                        if (ctx.OwinContext.Authentication.User?.Identity?.IsAuthenticated != true)
+                        {
+                            ctx.OwinContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=\"tusdotnet-test-owin\""));
+                            ctx.FailRequest(HttpStatusCode.Unauthorized);
+                            return completedTask;
+                        }
+
+                        if (ctx.OwinContext.Authentication.User.Identity.Name != "test")
+                        {
+                            ctx.FailRequest(HttpStatusCode.Forbidden, "'test' is the only allowed user");
+                            return completedTask;
+                        }
+
+                        // Do other verification on the user; claims, roles, etc.
+
+                        // Verify different things depending on the intent of the request.
+                        // E.g.:
+                        //   Does the file about to be written belong to this user?
+                        //   Is the current user allowed to create new files or have they reached their quota?
+                        //   etc etc
+                        switch (ctx.Intent)
+                        {
+                            case IntentType.CreateFile:
+                                break;
+                            case IntentType.ConcatenateFiles:
+                                break;
+                            case IntentType.WriteFile:
+                                break;
+                            case IntentType.DeleteFile:
+                                break;
+                            case IntentType.GetFileInfo:
+                                break;
+                            case IntentType.GetOptions:
+                                break;
+                            default:
+                                break;
+                        }
+
+                        return completedTask;
+                    },
+
                     OnBeforeCreateAsync = ctx =>
                     {
                         // Partial files are not complete so we do not need to validate
