@@ -15,9 +15,10 @@ function setVersionInfo() {
 }
 
 function removeInternalVisibleTo() {
-	$replace = '[assembly: InternalsVisibleTo("tusdotnet.test")]';
+	$replaceTest = '[assembly: InternalsVisibleTo("tusdotnet.test")]';
+	$replaceBenchmark = '[assembly: InternalsVisibleTo("tusdotnet.benchmark")]';
 	$file = '.\tusdotnet\Properties\AssemblyInfo.cs'
-	(Get-Content $file).replace($replace, '') | Set-Content $file
+	(Get-Content $file).replace($replaceTest, '').replace($replaceBenchmark, '') | Set-Content $file
 }
 
 function makeBuildFolder() {
@@ -36,14 +37,14 @@ function verifyNuget() {
 }
 
 function createPackage() {
-	cd tusdotnet\
+	Push-Location tusdotnet\
 	$version = git describe --abbrev=0 --tags
 	& dotnet pack -c Release tusdotnet.csproj /p:Version=$version --include-symbols --include-source -p:SymbolPackageFormat=snupkg -o ..\
-	cd..
+	Pop-Location
 }
 
 function movePackage() {
-	move tusdotnet\bin\Release\*.nupkg .\
+	Move-Item tusdotnet\bin\Release\*.nupkg .\
 }
 
 function cleanup() {
