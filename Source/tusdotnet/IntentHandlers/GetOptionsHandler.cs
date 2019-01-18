@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -9,11 +11,18 @@ using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
 {
+    /*
+    * An OPTIONS request MAY be used to gather information about the Server’s current configuration. 
+    * A successful response indicated by the 204 No Content status MUST contain the Tus-Version header. 
+    * It MAY include the Tus-Extension and Tus-Max-Size headers.
+    * The Client SHOULD NOT include the Tus-Resumable header in the request and the Server MUST discard it.
+    */
+
     internal class GetOptionsHandler : IntentHandler
     {
         internal override Requirement[] Requires => NoRequirements;
 
-        public GetOptionsHandler(ContextAdapter context) 
+        public GetOptionsHandler(ContextAdapter context)
             : base(context, IntentType.GetOptions, LockType.NoLock)
         {
         }
@@ -32,7 +41,7 @@ namespace tusdotnet.IntentHandlers
                 response.SetHeader(HeaderConstants.TusMaxSize, maximumAllowedSize.Value.ToString());
             }
 
-            var extensions = Context.DetectExtensions();
+            var extensions = DetectExtensions();
             if (extensions.Count > 0)
             {
                 response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));
@@ -45,6 +54,42 @@ namespace tusdotnet.IntentHandlers
             }
 
             response.SetStatus(HttpStatusCode.NoContent);
+        }
+
+        private List<string> DetectExtensions()
+        {
+            var extensions = new List<string>(6);
+            if (Context.Configuration.Store is ITusCreationStore)
+            {
+                extensions.Add(ExtensionConstants.Creation);
+            }
+
+            if (Context.Configuration.Store is ITusTerminationStore)
+            {
+                extensions.Add(ExtensionConstants.Termination);
+            }
+
+            if (Context.Configuration.Store is ITusChecksumStore)
+            {
+                extensions.Add(ExtensionConstants.Checksum);
+            }
+
+            if (Context.Configuration.Store is ITusConcatenationStore)
+            {
+                extensions.Add(ExtensionConstants.Concatenation);
+            }
+
+            if (Context.Configuration.Store is ITusExpirationStore)
+            {
+                extensions.Add(ExtensionConstants.Expiration);
+            }
+
+            if (Context.Configuration.Store is ITusCreationDeferLengthStore)
+            {
+                extensions.Add(ExtensionConstants.CreationDeferLength);
+            }
+
+            return extensions;
         }
     }
 }

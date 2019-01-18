@@ -25,10 +25,10 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Authentication
         {
         }
 
-        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
-                return AuthenticateResult.Fail("Missing Authorization Header");
+                return Task.FromResult(AuthenticateResult.Fail("Missing Authorization Header"));
 
             bool isAuthenticated;
             try
@@ -39,18 +39,18 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Authentication
             }
             catch
             {
-                return AuthenticateResult.Fail("Invalid Authorization Header");
+                return Task.FromResult(AuthenticateResult.Fail("Invalid Authorization Header"));
             }
 
             if (!isAuthenticated)
-                return AuthenticateResult.Fail("Invalid Username or Password");
+                return Task.FromResult(AuthenticateResult.Fail("Invalid Username or Password"));
 
             var claims = new[] {
                 new Claim(ClaimTypes.NameIdentifier, Username),
                 new Claim(ClaimTypes.Name, Username),
             };
 
-            return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name));
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
         }
 
         private bool Authenticate(string username, string password)

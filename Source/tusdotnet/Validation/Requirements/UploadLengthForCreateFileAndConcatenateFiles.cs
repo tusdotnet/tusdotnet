@@ -5,7 +5,6 @@ using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
-#warning TODO: Rename once UploadLength.cs has been removed
     internal sealed class UploadLengthForCreateFileAndConcatenateFiles : Requirement
     {
         public override Task Validate(ContextAdapter context)

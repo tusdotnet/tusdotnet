@@ -47,7 +47,7 @@ namespace tusdotnet.Models.Configuration
 
         internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)
         {
-            var fileId = context.GetFileId();
+            var fileId = context.Request.FileId;
             if (string.IsNullOrEmpty(fileId))
             {
                 fileId = null;
@@ -58,9 +58,9 @@ namespace tusdotnet.Models.Configuration
                 Store = context.Configuration.Store,
                 CancellationToken = context.CancellationToken,
                 FileId = fileId,
-                HttpContext = context.HttpContext as HttpContext,
+                HttpContext = context.HttpContext,
 #if netfull
-                OwinContext = context.HttpContext as IOwinContext
+                OwinContext = context.OwinContext
 #endif
             };
 

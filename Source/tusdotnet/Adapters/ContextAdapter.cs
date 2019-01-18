@@ -1,7 +1,9 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
+using Microsoft.AspNetCore.Http;
 using tusdotnet.Models;
-
+#if netfull
+using Microsoft.Owin;
+#endif
 namespace tusdotnet.Adapters
 {
     /// <summary>
@@ -17,6 +19,12 @@ namespace tusdotnet.Adapters
 
         public CancellationToken CancellationToken { get; set; }
 
-        public object HttpContext { get; set; }
+        public HttpContext HttpContext { get; set; }
+
+#if netfull
+
+        public IOwinContext OwinContext { get; set; }
+
+#endif
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
@@ -21,7 +20,7 @@ namespace tusdotnet.Validation.Requirements
 
         private async Task ValidateForPatch(ContextAdapter context, ITusConcatenationStore concatStore)
         {
-            var uploadConcat = await concatStore.GetUploadConcatAsync(context.GetFileId(), context.CancellationToken);
+            var uploadConcat = await concatStore.GetUploadConcatAsync(context.Request.FileId, context.CancellationToken);
 
             if (uploadConcat is FileConcatFinal)
             {

@@ -32,7 +32,6 @@ namespace tusdotnet.Helpers
                 return null;
             }
 
-#warning TODO: Replace with SystemTimeOffset
             var expires = DateTimeOffset.UtcNow.Add(_expiration.Timeout);
             await _expirationStore.SetExpirationAsync(fileId, expires, cancellationToken);
 

@@ -394,9 +394,9 @@ namespace tusdotnet.test.Tests
                 Response = response
             };
 
-            var handled = await TusProtocolHandler.Invoke(context);
+            var handled = await TusProtocolHandlerIntentBased.Invoke(context);
 
-            handled.ShouldBeTrue();
+            handled.ShouldBe(ResultType.StopExecution);
             responseStatus.ShouldBe(HttpStatusCode.OK);
             responseHeaders.Count.ShouldBe(0);
             response.Body.Length.ShouldBe(0);
@@ -502,7 +502,9 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
+#pragma warning disable CS0618 // Type or member is obsolete
                     OnUploadCompleteAsync = (fileId, cbStore, cancellationToken) =>
+#pragma warning restore CS0618 // Type or member is obsolete
                     {
                         // Check that the store provided is the same as the one in the configuration.
                         cbStore.ShouldBeSameAs(store);

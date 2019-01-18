@@ -19,7 +19,7 @@ namespace tusdotnet.Validation.Requirements
 
         private async Task ValidateInternal(ContextAdapter context, ITusExpirationStore expirationStore)
         {
-            var expires = await expirationStore.GetExpirationAsync(context.GetFileId(), context.CancellationToken);
+            var expires = await expirationStore.GetExpirationAsync(context.Request.FileId, context.CancellationToken);
             if (expires?.HasPassed() == true)
             {
                 await NotFound();

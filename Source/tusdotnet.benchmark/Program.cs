@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
-using tusdotnet.benchmark.Benchmarks;
+//using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark
 {
@@ -16,21 +16,19 @@ namespace tusdotnet.benchmark
             //Test().GetAwaiter().GetResult();
         }
 
-        private static async Task Test()
-        {
-            try
-            {
-                var benchmark = new CreateAndWriteFile();
-                benchmark.GlobalSetup();
-                await benchmark.CreateWriteDeleteFileIntentBased();
-            }
-            catch (Exception exc)
-            {
-                Console.Error.Write(exc.ToString());
-            }
+        //private static async Task Test()
+        //{
+        //    try
+        //    {
+        //        // Call benchmark to debug/test here
+        //    }
+        //    catch (Exception exc)
+        //    {
+        //        Console.Error.Write(exc.ToString());
+        //    }
 
-            Console.WriteLine("Press any key to exit");
-            Console.ReadKey(true);
-        }
+        //    Console.WriteLine("Press any key to exit");
+        //    Console.ReadKey(true);
+        //}
     }
 }

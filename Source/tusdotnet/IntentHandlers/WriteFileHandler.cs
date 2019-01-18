@@ -12,6 +12,31 @@ using tusdotnet.Validation.Requirements;
 
 namespace tusdotnet.IntentHandlers
 {
+    /*
+    * The Server SHOULD accept PATCH requests against any upload URL and apply the bytes 
+    * contained in the message at the given offset specified by the Upload-Offset header. 
+    * All PATCH requests MUST use Content-Type: application/offset+octet-stream.
+    * The Upload-Offset header’s value MUST be equal to the current offset of the resource. 
+    * In order to achieve parallel upload the Concatenation extension MAY be used. 
+    * If the offsets do not match, the Server MUST respond with the 409 Conflict status without modifying the upload resource.
+    * The Client SHOULD send all the remaining bytes of an upload in a single PATCH request, 
+    * but MAY also use multiple small requests successively for scenarios where 
+    * this is desirable, for example, if the Checksum extension is used.
+    * The Server MUST acknowledge successful PATCH requests with the 204 No Content status. 
+    * It MUST include the Upload-Offset header containing the new offset. 
+    * The new offset MUST be the sum of the offset before the PATCH request and the number of bytes received and 
+    * processed or stored during the current PATCH request.
+    * Both, Client and Server, SHOULD attempt to detect and handle network errors predictably. 
+    * They MAY do so by checking for read/write socket errors, as well as setting read/write timeouts. 
+    * A timeout SHOULD be handled by closing the underlying connection.
+    * The Server SHOULD always attempt to store as much of the received data as possible.
+    * 
+    * The Server MUST respond with the 403 Forbidden status to PATCH requests against a final upload URL and 
+    * MUST NOT modify the final or its partial uploads.
+    * 
+    * [Upload-Expires] This header MUST be included in every PATCH response if the upload is going to expire. 
+    */
+
     internal class WriteFileHandler : IntentHandler
     {
         internal override Requirement[] Requires => new Requirement[]
@@ -46,7 +71,7 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            await WriteUploadLengthIfDefered(Context);
+            await WriteUploadLengthIfDefered();
 
             var bytesWritten = 0L;
             var clientDisconnected = await ClientDisconnectGuard.ExecuteAsync(
@@ -83,28 +108,29 @@ namespace tusdotnet.IntentHandlers
 
             Response.SetStatus(HttpStatusCode.NoContent);
 
-            if (await FileIsComplete(Request.FileId, fileOffset, bytesWritten)
-                && !await IsPartialUpload(Context))
+            if (await FileIsComplete(Request.FileId, fileOffset, bytesWritten))
             {
-                await EventHelper.NotifyFileComplete(Context);
+                if (!await IsPartialUpload())
+                {
+                    await EventHelper.NotifyFileComplete(Context);
+                }
             }
         }
 
-        private Task WriteUploadLengthIfDefered(ContextAdapter Context)
+        private Task WriteUploadLengthIfDefered()
         {
-#warning TODO: Should this throw an exception?
-            if (Context.Configuration.Store is ITusCreationDeferLengthStore creationDeferLengthStore && Context.Request.Headers.ContainsKey(HeaderConstants.UploadLength))
+            var uploadLenghtHeader = Request.GetHeader(HeaderConstants.UploadLength);
+            if (uploadLenghtHeader != null && Store is ITusCreationDeferLengthStore creationDeferLengthStore)
             {
-                var uploadLength = long.Parse(Context.Request.GetHeader(HeaderConstants.UploadLength));
-                return creationDeferLengthStore.SetUploadLengthAsync(Request.FileId, uploadLength, Context.CancellationToken);
+                return creationDeferLengthStore.SetUploadLengthAsync(Request.FileId, long.Parse(uploadLenghtHeader), Context.CancellationToken);
             }
 
             return TaskHelper.Completed;
         }
 
-        private static Task<bool> IsPartialUpload(ContextAdapter Context)
+        private Task<bool> IsPartialUpload()
         {
-            if (!(Context.Configuration.Store is ITusConcatenationStore concatenationStore))
+            if (!(Store is ITusConcatenationStore concatenationStore))
             {
                 return Task.FromResult(false);
             }
@@ -113,7 +139,7 @@ namespace tusdotnet.IntentHandlers
 
             async Task<bool> IsPartialUploadLocal()
             {
-                var concat = await concatenationStore.GetUploadConcatAsync(Context.GetFileId(), Context.CancellationToken);
+                var concat = await concatenationStore.GetUploadConcatAsync(Request.FileId, CancellationToken);
 
                 return concat is FileConcatPartial;
             }

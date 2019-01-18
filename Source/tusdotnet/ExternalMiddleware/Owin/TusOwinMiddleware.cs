@@ -61,7 +61,7 @@ namespace tusdotnet
                 Response = response,
                 Configuration = config,
                 CancellationToken = context.Request.CallCancelled,
-                HttpContext = context
+                OwinContext = context
             });
 
             if (handled == ResultType.ContinueExecution)

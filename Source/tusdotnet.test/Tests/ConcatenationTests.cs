@@ -396,7 +396,9 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
+#pragma warning disable CS0618 // Type or member is obsolete
                     OnUploadCompleteAsync = (fileId, tusStore, ct) =>
+#pragma warning restore CS0618 // Type or member is obsolete
                     {
                         oldCallbackFileId = fileId;
                         oldCallbackStore = tusStore;
@@ -450,7 +452,9 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
+#pragma warning disable CS0618 // Type or member is obsolete
                     OnUploadCompleteAsync = (fileId, tusStore, ct) =>
+#pragma warning restore CS0618 // Type or member is obsolete
                     {
                         oldCallbackCalled = true;
                         return Task.FromResult(0);

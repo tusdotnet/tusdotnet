@@ -1,7 +1,6 @@
 ﻿using System;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Extensions;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
 
@@ -11,15 +10,16 @@ namespace tusdotnet
     {
         public static IntentHandler DetermineIntent(ContextAdapter context)
         {
-            var httpMethod = context.Request.GetMethod();
+            var httpMethod = GetHttpMethod(context.Request);
 
-            if (RequestRequiresTusResumableHeader(httpMethod)
-               && context.Request.GetHeader(HeaderConstants.TusResumable) == null)
+            if (RequestRequiresTusResumableHeader(httpMethod))
             {
-                return IntentHandler.NotApplicable;
+                if (context.Request.GetHeader(HeaderConstants.TusResumable) == null)
+                {
+                    return IntentHandler.NotApplicable;
+                }
             }
 
-#warning TODO: Possibly move this to RequestIsForTusEndpoint to minimize allocations
             if (MethodRequiresFileIdUrl(httpMethod))
             {
                 if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Configuration.UrlPath))
@@ -47,6 +47,23 @@ namespace tusdotnet
                 default:
                     return IntentHandler.NotApplicable;
             }
+        }
+
+        /// <summary>
+        /// Returns the request method taking X-Http-Method-Override into account.
+        /// </summary>
+        /// <param name="request">The request to get the method for</param>
+        /// <returns>The request method</returns>
+        private static string GetHttpMethod(RequestAdapter request)
+        {
+            var method = request.GetHeader(HeaderConstants.XHttpMethodOveride);
+
+            if (string.IsNullOrWhiteSpace(method))
+            {
+                method = request.Method;
+            }
+
+            return method.ToLower();
         }
 
         private static bool MethodRequiresFileIdUrl(string httpMethod)

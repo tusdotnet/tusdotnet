@@ -20,7 +20,6 @@ namespace tusdotnet
 
         public static async Task<ResultType> Invoke(ContextAdapter context)
         {
-#warning TODO Throw better exception if configuration is null
             context.Configuration.Validate();
 
             var intentHandler = IntentAnalyzer.DetermineIntent(context);
