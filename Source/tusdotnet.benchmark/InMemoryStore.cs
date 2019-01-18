@@ -8,7 +8,7 @@ using tusdotnet.Interfaces;
 
 namespace tusdotnet.benchmark
 {
-    public class InMemoryStore : ITusStore, ITusCreationStore
+    public class InMemoryStore : ITusStore, ITusCreationStore, ITusTerminationStore
     {
         public Dictionary<string, Stream> Data { get; set; }
 
@@ -58,6 +58,15 @@ namespace tusdotnet.benchmark
         public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
         {
             return Task.FromResult(Data[fileId].Length);
+        }
+
+        public Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
+        {
+            //Data.Remove(fileId);
+            //Metadata.Remove(fileId);
+            //UploadLength.Remove(fileId);
+
+            return Task.CompletedTask;
         }
     }
 }

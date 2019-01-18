@@ -9,17 +9,17 @@ using tusdotnet.Adapters;
 
 namespace tusdotnet.benchmark.Benchmarks
 {
-    [MemoryDiagnoser]
-    public class CreateWriteDeleteFile
+    [MemoryDiagnoser, HtmlExporter, CsvExporter]
+    public class NoTusResumableHeader
     {
-        private readonly ContextAdapter _createRequest;
-
+        private ContextAdapter _createRequest;
         private HttpStatusCode _statusCode;
         private bool _onAuthorizeCalled;
         private bool _onOnBeforeCreateCalled;
         private bool _onCreateCompleteCalled;
 
-        public CreateWriteDeleteFile()
+        [GlobalSetup]
+        public void GlobalSetup()
         {
             var config = CreateConfig();
             _createRequest = new ContextAdapter
@@ -30,7 +30,6 @@ namespace tusdotnet.benchmark.Benchmarks
                 {
                     Headers = new Dictionary<string, List<string>>
                     {
-                        {"Tus-Resumable", new List<string> { "1.0.0" } },
                         {"Content-Type", new List<string> { "application/offset+octet-stream" } },
                         {"Upload-Length", new List<string> { "10" } }
                     },
@@ -46,6 +45,26 @@ namespace tusdotnet.benchmark.Benchmarks
             };
         }
 
+        [Benchmark(Baseline = true)]
+        public async Task NoTusResumableHeaderMethodBased()
+        {
+            await TusProtocolHandler.Invoke(_createRequest);
+            AssertStatusCode(0);
+            AssertAuthorizeCalled();
+            AssertBeforeCreateCalled();
+            AssertCreateCompleteCalled();
+        }
+
+        [Benchmark]
+        public async Task NoTusResumableHeaderIntentBased()
+        {
+            await TusProtocolHandlerIntentBased.Invoke(_createRequest);
+            AssertStatusCode(0);
+            AssertAuthorizeCalled();
+            AssertBeforeCreateCalled();
+            AssertCreateCompleteCalled();
+        }
+
         private void SetStatus(HttpStatusCode status)
         {
             _statusCode = status;
@@ -53,6 +72,30 @@ namespace tusdotnet.benchmark.Benchmarks
 
         private void SetHeader(string key, string value)
         {
+        }
+
+        private void AssertStatusCode(HttpStatusCode status)
+        {
+            if (_statusCode != status)
+                throw new Exception("Request failed");
+        }
+
+        private void AssertAuthorizeCalled()
+        {
+            if (_onAuthorizeCalled != false)
+                throw new Exception("OnAuthorize should have been called " + false + " but the inverse happened");
+        }
+
+        private void AssertBeforeCreateCalled()
+        {
+            if (_onOnBeforeCreateCalled)
+                throw new Exception("BeforeCreate was called but should not have been");
+        }
+
+        private void AssertCreateCompleteCalled()
+        {
+            if (_onCreateCompleteCalled)
+                throw new Exception("CreateComplete was called but should not have been");
         }
 
         private Models.DefaultTusConfiguration CreateConfig()
@@ -68,50 +111,6 @@ namespace tusdotnet.benchmark.Benchmarks
                     OnCreateCompleteAsync = ctx => { _onCreateCompleteCalled = true; return Task.CompletedTask; }
                 }
             };
-        }
-
-        [Benchmark]
-        public async Task CreateMethodBased()
-        {
-            await TusProtocolHandler.Invoke(_createRequest);
-            AssertStatusCode(HttpStatusCode.Created);
-            // Method based invoke does not call OnAuthorize
-            AssertBeforeCreateCalled();
-            AssertCreateCompleteCalled();
-        }
-
-        [Benchmark]
-        public async Task CreateIntentBased()
-        {
-            await TusProtocolHandlerIntentBased.Invoke(_createRequest);
-            AssertStatusCode(HttpStatusCode.Created);
-            AssertAuthorizeCalled();
-            AssertBeforeCreateCalled();
-            AssertCreateCompleteCalled();
-        }
-
-        private void AssertStatusCode(HttpStatusCode status)
-        {
-            if (_statusCode != status)
-                throw new Exception("Request failed");
-        }
-
-        private void AssertAuthorizeCalled()
-        {
-            if (!_onAuthorizeCalled)
-                throw new Exception("OnAuthorize was not called");
-        }
-
-        private void AssertBeforeCreateCalled()
-        {
-            if (!_onOnBeforeCreateCalled)
-                throw new Exception("BeforeCreate was not called");
-        }
-
-        private void AssertCreateCompleteCalled()
-        {
-            if (!_onCreateCompleteCalled)
-                throw new Exception("CreateComplete was not called");
         }
     }
 }
