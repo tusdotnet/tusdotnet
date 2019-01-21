@@ -103,7 +103,6 @@ namespace tusdotnet.test.Tests.ModelTests
 
         private class ValidationContextForTest : ValidationContext<ValidationContextForTest>
         {
-
         }
     }
 }

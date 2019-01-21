@@ -4,6 +4,7 @@ using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
 #if netfull
 using Microsoft.Owin;
 #endif
@@ -44,6 +45,22 @@ namespace tusdotnet.Models.Configuration
         /// The http context for the current request
         /// </summary>
         public HttpContext HttpContext { get; private set; }
+
+        /// <summary>
+        /// Get the file with the id specified in the <see cref="FileId"/> property.
+		/// Returns null if there is no file id, the file was not found or if the current store does not implement <see cref="ITusReadableStore"/>.
+        /// </summary>
+        /// <returns>The file or null</returns>
+        public Task<ITusFile> GetFileAsync()
+        {
+            if (!(Store is ITusReadableStore readableStore))
+                return Task.FromResult<ITusFile>(null);
+
+            if(string.IsNullOrEmpty(FileId))
+                return Task.FromResult<ITusFile>(null);
+
+            return readableStore.GetFileAsync(FileId, CancellationToken);
+        }
 
         internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)
         {

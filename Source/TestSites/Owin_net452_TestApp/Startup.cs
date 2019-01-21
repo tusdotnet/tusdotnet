@@ -149,7 +149,7 @@ namespace OwinTestApp
                             $"Upload of {ctx.FileId} is complete. Callback also got a store of type {ctx.Store.GetType().FullName}");
                         // If the store implements ITusReadableStore one could access the completed file here.
                         // The default TusDiskStore implements this interface:
-                        //var file = await((tusdotnet.Interfaces.ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+                        //var file = await ctx.GetFileAsync();
                         return Task.FromResult(true);
                     }
                 },

@@ -105,7 +105,7 @@ namespace AspNetCore_Net462_TestApp
                         logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");
                         // If the store implements ITusReadableStore one could access the completed file here.
                         // The default TusDiskStore implements this interface:
-                        //var file = await ((tusdotnet.Interfaces.ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+                        //var file = await ctx.GetFileAsync();
                         return Task.CompletedTask;
                     }
                 },
