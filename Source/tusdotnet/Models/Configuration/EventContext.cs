@@ -48,7 +48,7 @@ namespace tusdotnet.Models.Configuration
 
         /// <summary>
         /// Get the file with the id specified in the <see cref="FileId"/> property.
-		/// Returns null if there is no file id, the file was not found or if the current store does not implement <see cref="ITusReadableStore"/>.
+		/// Returns null if there is no file id, the current store does not implement <see cref="ITusReadableStore"/> or if the file was not found.
         /// </summary>
         /// <returns>The file or null</returns>
         public Task<ITusFile> GetFileAsync()

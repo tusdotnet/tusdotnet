@@ -12,7 +12,7 @@ app.UseTus(context => new DefaultTusConfiguration
     {
         OnFileCompleteAsync = async ctx =>
         {
-            var file = await ((ITusReadableStore)ctx.Store).GetFileAsync(ctx.FileId, ctx.CancellationToken);
+            var file = await ctx.GetFileAsync();
 		    await DoSomeProcessing(file);
         }
     }
