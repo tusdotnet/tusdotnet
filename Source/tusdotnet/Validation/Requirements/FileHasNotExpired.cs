@@ -14,15 +14,15 @@ namespace tusdotnet.Validation.Requirements
                 return Task.FromResult(0);
             }
 
-            return ValidateLocal();
+            return ValidateInternal(context, expirationStore);
+        }
 
-            async Task ValidateLocal()
+        private async Task ValidateInternal(ContextAdapter context, ITusExpirationStore expirationStore)
+        {
+            var expires = await expirationStore.GetExpirationAsync(context.Request.FileId, context.CancellationToken);
+            if (expires?.HasPassed() == true)
             {
-                var expires = await expirationStore.GetExpirationAsync(context.GetFileId(), context.CancellationToken);
-                if (expires?.HasPassed() == true)
-                {
-                    await NotFound();
-                }
+                await NotFound();
             }
         }
     }

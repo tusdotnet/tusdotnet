@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27004.2010
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28407.52
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{22CCF3EF-66E2-4710-8361-EBF5517A3B56}"
 EndProject
@@ -23,7 +23,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCore_net462_TestApp",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCore_netcoreapp2.1_TestApp", "TestSites\AspNetCore_netcoreapp2.1_TestApp\AspNetCore_netcoreapp2.1_TestApp.csproj", "{EE308D15-9B63-4598-826B-382841E406C9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCore_netcoreapp2.2_TestApp", "TestSites\AspNetCore_netcoreapp2.2_TestApp\AspNetCore_netcoreapp2.2_TestApp.csproj", "{356CF8A1-03E1-40B9-945F-3C9D7F49DA91}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCore_netcoreapp2.2_TestApp", "TestSites\AspNetCore_netcoreapp2.2_TestApp\AspNetCore_netcoreapp2.2_TestApp.csproj", "{356CF8A1-03E1-40B9-945F-3C9D7F49DA91}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tusdotnet.benchmark", "tusdotnet.benchmark\tusdotnet.benchmark.csproj", "{3E02BAE7-09DD-497D-B9B9-F2A0CD86C454}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,6 +61,10 @@ Global
 		{356CF8A1-03E1-40B9-945F-3C9D7F49DA91}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{356CF8A1-03E1-40B9-945F-3C9D7F49DA91}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{356CF8A1-03E1-40B9-945F-3C9D7F49DA91}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E02BAE7-09DD-497D-B9B9-F2A0CD86C454}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E02BAE7-09DD-497D-B9B9-F2A0CD86C454}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E02BAE7-09DD-497D-B9B9-F2A0CD86C454}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E02BAE7-09DD-497D-B9B9-F2A0CD86C454}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -72,6 +78,7 @@ Global
 		{9BE53A4B-8006-4944-B785-F95427AEB74A} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 		{EE308D15-9B63-4598-826B-382841E406C9} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 		{356CF8A1-03E1-40B9-945F-3C9D7F49DA91} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
+		{3E02BAE7-09DD-497D-B9B9-F2A0CD86C454} = {38F739AF-5933-4416-A148-33C126AB9021}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B8AC21C3-0FBB-4B48-AB05-0523CCBAC8EC}

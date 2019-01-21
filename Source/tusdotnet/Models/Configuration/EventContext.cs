@@ -3,6 +3,10 @@ using System.Threading;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
+using Microsoft.AspNetCore.Http;
+#if netfull
+using Microsoft.Owin;
+#endif
 
 namespace tusdotnet.Models.Configuration
 {
@@ -27,9 +31,23 @@ namespace tusdotnet.Models.Configuration
         /// </summary>
         public CancellationToken CancellationToken { get; set; }
 
+
+#if netfull
+
+        /// <summary>
+        /// The OWIN context for the current request
+        /// </summary>
+        public IOwinContext OwinContext { get; private set; }
+
+#endif
+        /// <summary>
+        /// The http context for the current request
+        /// </summary>
+        public HttpContext HttpContext { get; private set; }
+
         internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)
         {
-            var fileId = context.GetFileId();
+            var fileId = context.Request.FileId;
             if (string.IsNullOrEmpty(fileId))
             {
                 fileId = null;
@@ -39,7 +57,11 @@ namespace tusdotnet.Models.Configuration
             {
                 Store = context.Configuration.Store,
                 CancellationToken = context.CancellationToken,
-                FileId = fileId
+                FileId = fileId,
+                HttpContext = context.HttpContext,
+#if netfull
+                OwinContext = context.OwinContext
+#endif
             };
 
             configure?.Invoke(eventContext);

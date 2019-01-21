@@ -1,14 +1,13 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
+using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
-namespace tusdotnet.ProtocolHandlers
+namespace tusdotnet.IntentHandlers
 {
     /*
     * The Server MUST always include the Upload-Offset header in the response for a HEAD request, 
@@ -22,7 +21,6 @@ namespace tusdotnet.ProtocolHandlers
     * If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
     * and its value as specified by the Client during the creation.
     * 
-    * Concatenation:
     * The response to a HEAD request for a final upload SHOULD NOT contain the Upload-Offset header unless the 
     * concatenation has been successfully finished. After successful concatenation, the Upload-Offset and Upload-Length 
     * MUST be set and their values MUST be equal. The value of the Upload-Offset header before concatenation is not 
@@ -31,44 +29,41 @@ namespace tusdotnet.ProtocolHandlers
     * Response to HEAD request against partial or final upload MUST include the Upload-Concat header and its value as received 
     * in the upload creation request.
     */
-    internal class HeadHandler : ProtocolMethodHandler
-    {
-       internal override bool RequiresLock => false;
 
+    internal class GetFileInfoHandler : IntentHandler
+    {
         internal override Requirement[] Requires => new Requirement[]
         {
             new FileExist(),
             new FileHasNotExpired()
         };
 
-        internal override bool CanHandleRequest(ContextAdapter context)
+        public GetFileInfoHandler(ContextAdapter context) 
+            : base(context, IntentType.GetFileInfo, LockType.NoLock)
         {
-            return context.UrlMatchesFileIdUrl();
         }
 
-        internal override async Task<bool> Handle(ContextAdapter context)
+        internal override async Task Invoke()
         {
-            var response = context.Response;
-            var cancellationToken = context.CancellationToken;
-            var store = context.Configuration.Store;
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            Response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
 
-            var fileId = context.GetFileId();
+            var uploadMetadata = await GetMetadata(Context);
+            if (!string.IsNullOrEmpty(uploadMetadata))
+            {
+                Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
+            }
+            
+            var uploadLength = await Store.GetUploadLengthAsync(Request.FileId, CancellationToken);
+            SetUploadLengthHeader(Context, uploadLength);
 
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
-
-            await AddUploadMetadata(context, fileId, cancellationToken);
-
-            var uploadLength = await store.GetUploadLengthAsync(fileId, cancellationToken);
-            AddUploadLength(context, uploadLength);
-
-            var uploadOffset = await store.GetUploadOffsetAsync(fileId, cancellationToken);
+            var uploadOffset = await Store.GetUploadOffsetAsync(Request.FileId, CancellationToken);
 
             FileConcat uploadConcat = null;
             var addUploadOffset = true;
-            if (context.Configuration.Store is ITusConcatenationStore tusConcatStore)
+            if (Context.Configuration.Store is ITusConcatenationStore tusConcatStore)
             {
-                uploadConcat = await tusConcatStore.GetUploadConcatAsync(fileId, cancellationToken);
+                uploadConcat = await tusConcatStore.GetUploadConcatAsync(Request.FileId, CancellationToken);
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -79,19 +74,25 @@ namespace tusdotnet.ProtocolHandlers
 
             if (addUploadOffset)
             {
-                response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
+                Response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
             }
 
             if (uploadConcat != null)
             {
-                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(context.Configuration.UrlPath);
-                response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
+                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Configuration.UrlPath);
+                Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
-
-            return true;
         }
 
-        private static void AddUploadLength(ContextAdapter context, long? uploadLength)
+        private Task<string> GetMetadata(ContextAdapter context)
+        {
+            if (context.Configuration.Store is ITusCreationStore tusCreationStore)
+                return tusCreationStore.GetUploadMetadataAsync(Request.FileId, context.CancellationToken);
+
+            return Task.FromResult<string>(null);
+        }
+
+        private static void SetUploadLengthHeader(ContextAdapter context, long? uploadLength)
         {
             if (uploadLength != null)
             {
@@ -100,26 +101,6 @@ namespace tusdotnet.ProtocolHandlers
             else if (context.Configuration.Store is ITusCreationDeferLengthStore)
             {
                 context.Response.SetHeader(HeaderConstants.UploadDeferLength, "1");
-            }
-        }
-
-        private static Task AddUploadMetadata(ContextAdapter context, string fileId,
-            CancellationToken cancellationToken)
-        {
-            if (!(context.Configuration.Store is ITusCreationStore tusCreationStore))
-            {
-                return Task.FromResult(0);
-            }
-
-            return AddUploadMetadataLocal();
-
-            async Task AddUploadMetadataLocal()
-            {
-                var uploadMetadata = await tusCreationStore.GetUploadMetadataAsync(fileId, cancellationToken);
-                if (!string.IsNullOrEmpty(uploadMetadata))
-                {
-                    context.Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
-                }
             }
         }
     }

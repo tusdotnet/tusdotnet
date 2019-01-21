@@ -25,71 +25,77 @@ namespace tusdotnet.test.Tests
 {
     public class PostTests
     {
+        private bool _callForwarded;
+        private bool _onAuthorizeWasCalled;
+
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            var callForwarded = false;
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => new DefaultTusConfiguration
                 {
                     Store = new TusDiskStore(@"C:\temp"),
-                    UrlPath = "/files"
+                    UrlPath = "/files",
+                    Events = new Events
+                    {
+                        OnAuthorizeAsync = ctx =>
+                        {
+                            _onAuthorizeWasCalled = true;
+                            return Task.FromResult(0);
+                        }
+                    }
                 });
 
                 app.Use((ctx, next) =>
                 {
-                    callForwarded = true;
+                    _callForwarded = true;
                     return Task.FromResult(true);
                 });
             }))
             {
-                await server
-                    .CreateRequest("/files")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .SendAsync("POST");
+                await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST");
 
-                callForwarded.ShouldBeFalse();
+                AssertForwardCall(false);
 
-                await server
-                    .CreateRequest("/otherfiles")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .SendAsync("POST");
+                await server.CreateRequest("/otherfiles").AddHeader("Tus-Resumable", "1.0.0").SendAsync("POST");
 
-                callForwarded.ShouldBeTrue();
+                AssertForwardCall(true);
 
-                callForwarded = false;
+                await server.CreateRequest("/files/testfile").AddHeader("Tus-Resumable", "1.0.0").SendAsync("POST");
 
-                await server
-                    .CreateRequest("/files/testfile")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .SendAsync("POST");
-
-                callForwarded.ShouldBeTrue();
+                AssertForwardCall(true);
             }
         }
 
         [Fact]
         public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Creation()
         {
-            var callForwared = false;
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => new DefaultTusConfiguration
                 {
                     Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files"
+                    UrlPath = "/files",
+                    Events = new Events
+                    {
+                        OnAuthorizeAsync = ctx =>
+                        {
+                            _onAuthorizeWasCalled = true;
+                            return Task.FromResult(0);
+                        }
+                    }
                 });
 
                 app.Use((context, func) =>
                 {
-                    callForwared = true;
+                    _callForwarded = true;
                     return Task.FromResult(true);
                 });
             }))
             {
                 await server.CreateRequest("/files").PostAsync();
-                callForwared.ShouldBeTrue();
+                AssertForwardCall(true);
             }
         }
 
@@ -114,29 +120,15 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory]
-        [InlineData("uploadlength", "")]
-        [InlineData("0.1", "")]
+        [InlineData("uploadlength", "Could not parse Upload-Length")]
+        [InlineData("0.1", "Could not parse Upload-Length")]
         [InlineData("-100", "Header Upload-Length must be a positive number")]
-        public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Invalid(string uploadLength,
-            string expectedServerErrorMessage)
+        public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Invalid(string uploadLength, string expectedServerErrorMessage)
         {
-            using (var server = TestServerFactory.Create(app =>
+            using (var server = TestServerFactory.Create(Substitute.For<ITusStore, ITusCreationStore>()))
             {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore, ITusCreationStore>(),
-                    UrlPath = "/files"
-                });
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", uploadLength)
-                    .PostAsync();
-                await
-                    response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                        string.IsNullOrEmpty(expectedServerErrorMessage) ? "Could not parse Upload-Length" : expectedServerErrorMessage);
+                var response = await server.CreateRequest("/files").AddTusResumableHeader().AddHeader("Upload-Length", uploadLength).PostAsync();
+                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, expectedServerErrorMessage);
             }
         }
 
@@ -578,6 +570,61 @@ namespace tusdotnet.test.Tests
                 metadata.ContainsKey("filename").ShouldBeTrue();
                 metadata.ContainsKey("othermeta").ShouldBeTrue();
             }
+        }
+
+        [Fact]
+        public async Task OnAuthorized_Is_Called()
+        {
+            var onAuthorizeWasCalled = false;
+            IntentType? intentProvidedToOnAuthorize = null;
+
+            var store = Substitute.For<ITusCreationStore, ITusStore>();
+            store.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            using (var server = TestServerFactory.Create((ITusStore)store, new Events
+            {
+                OnAuthorizeAsync = ctx =>
+                {
+                    onAuthorizeWasCalled = true;
+                    intentProvidedToOnAuthorize = ctx.Intent;
+                    return Task.FromResult(0);
+                }
+            }))
+            {
+                var response = await server.CreateRequest("/files").AddTusResumableHeader().AddHeader("Upload-Length", "1").SendAsync("POST");
+
+                onAuthorizeWasCalled.ShouldBeTrue();
+                intentProvidedToOnAuthorize.ShouldBe(IntentType.CreateFile);
+            }
+        }
+
+        [Fact]
+        public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
+        {
+            var store = Substitute.For<ITusStore, ITusCreationStore>();
+            using (var server = TestServerFactory.Create(store, new Events
+            {
+                OnAuthorizeAsync = ctx =>
+                {
+                    ctx.FailRequest(HttpStatusCode.Unauthorized);
+                    return Task.FromResult(0);
+                }
+            }))
+            {
+                var response = await server.CreateRequest("/files").AddTusResumableHeader().AddHeader("Upload-Length", "1").SendAsync("POST");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+                response.ShouldNotContainHeaders("Tus-Resumable", "Location", "Content-Type");
+            }
+        }
+
+        private void AssertForwardCall(bool expectedCallForwarded)
+        {
+            _callForwarded.ShouldBe(expectedCallForwarded);
+            _onAuthorizeWasCalled.ShouldBe(!expectedCallForwarded);
+
+            _onAuthorizeWasCalled = false;
+            _callForwarded = false;
         }
     }
 }

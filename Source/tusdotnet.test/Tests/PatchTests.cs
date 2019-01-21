@@ -13,7 +13,6 @@ using tusdotnet.Adapters;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
-using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
@@ -28,47 +27,45 @@ namespace tusdotnet.test.Tests
 {
     public class PatchTests
     {
+        private bool _callForwarded;
+        private bool _onAuthorizeWasCalled;
+        private IntentType? _onAuthorizeWasCalledWithIntent;
+
+
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            var callForwarded = false;
             using (var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => new DefaultTusConfiguration
                 {
-                    Store = new TusDiskStore(@"C:\temp"),
-                    UrlPath = "/files"
+                    Store = Substitute.For<ITusStore>(),
+                    UrlPath = "/files",
+                    Events = new Events
+                    {
+                        OnAuthorizeAsync = ctx =>
+                        {
+                            _onAuthorizeWasCalled = true;
+                            return Task.FromResult(0);
+                        }
+                    }
                 });
 
                 app.Use((ctx, next) =>
                 {
-                    callForwarded = true;
+                    _callForwarded = true;
                     return Task.FromResult(true);
                 });
             }))
             {
-                await server
-                    .CreateRequest("/files")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .SendAsync("PATCH");
+                await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("PATCH");
+                AssertForwardCall(true);
 
-                callForwarded.ShouldBeTrue();
+                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH");
+                AssertForwardCall(false);
 
-                callForwarded = false;
-
-                await server
-                    .CreateRequest("/files/testfile")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .SendAsync("PATCH");
-
-                callForwarded.ShouldBeFalse();
-
-                await server
-                    .CreateRequest("/otherfiles/testfile")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .SendAsync("PATCH");
-
-                callForwarded.ShouldBeTrue();
+                await server.CreateRequest("/otherfiles/testfile").AddTusResumableHeader().SendAsync("PATCH");
+                AssertForwardCall(true);
             }
         }
 
@@ -302,7 +299,6 @@ namespace tusdotnet.test.Tests
                 response.ShouldContainTusResumableHeader();
                 response.ShouldContainHeader("Upload-Offset", "10");
                 response.Headers.Contains("Upload-Expires").ShouldBeFalse();
-                response.Headers.Contains("Upload-Expires").ShouldBeFalse();
             }
         }
 
@@ -367,7 +363,7 @@ namespace tusdotnet.test.Tests
                     });
 
             var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var responseStatus = 200;
+            var responseStatus = HttpStatusCode.OK;
             var response = new ResponseAdapter
             {
                 Body = new MemoryStream(),
@@ -383,7 +379,7 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     Store = store
                 },
-                Request = new RequestAdapter
+                Request = new RequestAdapter("/files")
                 {
                     Headers = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
                     {
@@ -398,10 +394,10 @@ namespace tusdotnet.test.Tests
                 Response = response
             };
 
-            var handled = await TusProtocolHandler.Invoke(context);
+            var handled = await TusProtocolHandlerIntentBased.Invoke(context);
 
-            handled.ShouldBeTrue();
-            responseStatus.ShouldBe(200);
+            handled.ShouldBe(ResultType.StopExecution);
+            responseStatus.ShouldBe(HttpStatusCode.OK);
             responseHeaders.Count.ShouldBe(0);
             response.Body.Length.ShouldBe(0);
         }
@@ -506,7 +502,9 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
+#pragma warning disable CS0618 // Type or member is obsolete
                     OnUploadCompleteAsync = (fileId, cbStore, cancellationToken) =>
+#pragma warning restore CS0618 // Type or member is obsolete
                     {
                         // Check that the store provided is the same as the one in the configuration.
                         cbStore.ShouldBeSameAs(store);
@@ -591,10 +589,7 @@ namespace tusdotnet.test.Tests
                             ctx.Store.ShouldBeSameAs(store);
                             ctx.CancellationToken.ShouldNotBe(default(CancellationToken));
 
-                            if (onUploadCompleteCallCounts.TryGetValue(ctx.FileId, out int count))
-                            {
-                                onUploadCompleteCallCounts[ctx.FileId] = count;
-                            }
+                            onUploadCompleteCallCounts.TryGetValue(ctx.FileId, out int count);
 
                             count++;
                             onUploadCompleteCallCounts[ctx.FileId] = count;
@@ -635,6 +630,79 @@ namespace tusdotnet.test.Tests
                 onUploadCompleteCallCounts["file1"].ShouldBe(1);
                 onUploadCompleteCallCounts["file2"].ShouldBe(0);
             }
+        }
+
+        [Fact]
+        public async Task OnAuthorized_Is_Called()
+        {
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+
+            using (var server = TestServerFactory.Create(store, new Events
+            {
+                OnAuthorizeAsync = ctx =>
+                {
+                    _onAuthorizeWasCalled = true;
+                    _onAuthorizeWasCalledWithIntent = ctx.Intent;
+                    return Task.FromResult(0);
+                }
+            }))
+            {
+                var response = await server
+                    .CreateRequest("/files/testfile")
+                    .And(m => m.AddBody())
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Offset", "5")
+                    .SendAsync("PATCH");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+                _onAuthorizeWasCalled.ShouldBeTrue();
+                _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.WriteFile);
+            }
+        }
+
+        [Fact]
+        public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
+        {
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+
+            using (var server = TestServerFactory.Create(store, new Events
+            {
+                OnAuthorizeAsync = ctx =>
+                {
+                    ctx.FailRequest(HttpStatusCode.Unauthorized);
+                    return Task.FromResult(0);
+                }
+            }))
+            {
+                var response = await server
+                    .CreateRequest("/files/testfile")
+                    .And(m => m.AddBody())
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Offset", "5")
+                    .SendAsync("PATCH");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+                response.ShouldNotContainHeaders("Tus-Resumable", "Upload-Offset", "Upload-Expires");
+            }
+        }
+
+        private void AssertForwardCall(bool expectedCallForwarded)
+        {
+            _callForwarded.ShouldBe(expectedCallForwarded);
+            _onAuthorizeWasCalled.ShouldBe(!expectedCallForwarded);
+
+            _onAuthorizeWasCalled = false;
+            _callForwarded = false;
+            _onAuthorizeWasCalledWithIntent = null;
         }
     }
 }

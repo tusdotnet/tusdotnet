@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Extensions;
 
 namespace tusdotnet.Validation.Requirements
 {
@@ -10,8 +9,7 @@ namespace tusdotnet.Validation.Requirements
         public override async Task Validate(ContextAdapter context)
         {
             var requestOffset = long.Parse(context.Request.GetHeader(HeaderConstants.UploadOffset));
-            var fileOffset =
-                await context.Configuration.Store.GetUploadOffsetAsync(context.GetFileId(), context.CancellationToken);
+            var fileOffset = await context.Configuration.Store.GetUploadOffsetAsync(context.Request.FileId, context.CancellationToken);
 
             if (requestOffset != fileOffset)
             {

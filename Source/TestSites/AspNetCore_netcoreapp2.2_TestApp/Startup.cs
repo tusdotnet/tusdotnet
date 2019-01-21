@@ -1,10 +1,15 @@
-﻿using AspNetCore_netcoreapp2_2_TestApp.Middleware;
+﻿using AspNetCore_netcoreapp2_2_TestApp.Authentication;
+using AspNetCore_netcoreapp2_2_TestApp.Middleware;
 using AspNetCore_netcoreapp2_2_TestApp.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet;
 using tusdotnet.Helpers;
@@ -18,6 +23,13 @@ namespace AspNetCore_netcoreapp2_2_TestApp
 {
     public class Startup
     {
+        private readonly IConfiguration _configuration;
+
+        public Startup(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
@@ -25,6 +37,8 @@ namespace AspNetCore_netcoreapp2_2_TestApp
             services.AddCors();
             services.AddSingleton(CreateTusConfiguration);
             services.AddHostedService<ExpiredFilesCleanupService>();
+            services.AddAuthentication("BasicAuthentication")
+                    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -34,6 +48,8 @@ namespace AspNetCore_netcoreapp2_2_TestApp
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseAuthentication();
 
             app.UseDefaultFiles();
             app.UseStaticFiles();
@@ -60,12 +76,62 @@ namespace AspNetCore_netcoreapp2_2_TestApp
         {
             var logger = serviceProvider.GetService<ILoggerFactory>().CreateLogger<Startup>();
 
+            // Change the value of EnableOnAuthorize in appsettings.json to enable or disable
+            // the new authorization event.
+            var enableAuthorize = _configuration.GetValue<bool>("EnableOnAuthorize");
+
             return new DefaultTusConfiguration
             {
                 UrlPath = "/files",
                 Store = new TusDiskStore(@"C:\tusfiles\"),
                 Events = new Events
                 {
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        if (!enableAuthorize)
+                            return Task.CompletedTask;
+
+                        if (!ctx.HttpContext.User.Identity.IsAuthenticated)
+                        {
+                            ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp2.2"));
+                            ctx.FailRequest(HttpStatusCode.Unauthorized);
+                            return Task.CompletedTask;
+                        }
+
+                        if (ctx.HttpContext.User.Identity.Name != "test")
+                        {
+                            ctx.FailRequest(HttpStatusCode.Forbidden, "'test' is the only allowed user");
+                            return Task.CompletedTask;
+                        }
+
+                        // Do other verification on the user; claims, roles, etc.
+
+                        // Verify different things depending on the intent of the request.
+                        // E.g.:
+                        //   Does the file about to be written belong to this user?
+                        //   Is the current user allowed to create new files or have they reached their quota?
+                        //   etc etc
+                        switch (ctx.Intent)
+                        {
+                            case IntentType.CreateFile:
+                                break;
+                            case IntentType.ConcatenateFiles:
+                                break;
+                            case IntentType.WriteFile:
+                                break;
+                            case IntentType.DeleteFile:
+                                break;
+                            case IntentType.GetFileInfo:
+                                break;
+                            case IntentType.GetOptions:
+                                break;
+                            default:
+                                break;
+                        }
+
+                        return Task.CompletedTask;
+                    },
+
                     OnBeforeCreateAsync = ctx =>
                     {
                         // Partial files are not complete so we do not need to validate

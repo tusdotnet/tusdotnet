@@ -1,79 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal sealed class UploadConcat : Requirement
+    internal sealed class UploadConcatForConcatenateFiles : Requirement
     {
+        private readonly Models.Concatenation.UploadConcat _uploadConcat;
+        private readonly ITusConcatenationStore _concatenationStore;
+
+        public UploadConcatForConcatenateFiles(Models.Concatenation.UploadConcat uploadConcat, ITusConcatenationStore concatenationStore)
+        {
+            _uploadConcat = uploadConcat;
+            _concatenationStore = concatenationStore;
+        }
+
         public override async Task Validate(ContextAdapter context)
         {
-            if (context.Request.GetMethod().Equals("post", StringComparison.OrdinalIgnoreCase))
+            if (!_uploadConcat.IsValid)
             {
-                await ValidateForPost(context);
-            }
-            else
-            {
-                await ValidateForPatch(context);
-            }
-        }
-
-        private Task ValidateForPatch(ContextAdapter context)
-        {
-            if (!(context.Configuration.Store is ITusConcatenationStore concatStore))
-            {
-                return Done;
+                await BadRequest(_uploadConcat.ErrorMessage);
+                return;
             }
 
-            return ValidateForPatchLocal();
-
-            async Task ValidateForPatchLocal()
+            if (_uploadConcat.Type is FileConcatFinal finalConcat)
             {
-                var uploadConcat = await concatStore.GetUploadConcatAsync(context.GetFileId(), context.CancellationToken);
-
-                if (uploadConcat is FileConcatFinal)
-                {
-                    await Forbidden("File with \"Upload-Concat: final\" cannot be patched");
-                }
+                await ValidateFinalFileCreation(finalConcat, context);
             }
         }
 
-        private Task ValidateForPost(ContextAdapter context)
-        {
-            if (!(context.Configuration.Store is ITusConcatenationStore concatenationStore)
-                || !context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat))
-            {
-                return Done;
-            }
-
-            return ValidateForPost();
-
-            async Task ValidateForPost()
-            {
-                var uploadConcat = new Models.Concatenation.UploadConcat(
-                    context.Request.GetHeader(HeaderConstants.UploadConcat),
-                    context.Configuration.UrlPath);
-
-                if (!uploadConcat.IsValid)
-                {
-                    await BadRequest(uploadConcat.ErrorMessage);
-                    return;
-                }
-
-                if (uploadConcat.Type is FileConcatFinal finalConcat)
-                {
-                    await ValidateFinalFileCreation(finalConcat, context, concatenationStore);
-                }
-            }
-        }
-
-        private async Task ValidateFinalFileCreation(FileConcatFinal finalConcat, ContextAdapter context, ITusConcatenationStore store)
+        private async Task ValidateFinalFileCreation(FileConcatFinal finalConcat, ContextAdapter context)
         {
             var filesExist = await Task.WhenAll(finalConcat.Files.Select(f =>
                 context.Configuration.Store.FileExistAsync(f, context.CancellationToken)));
@@ -86,7 +46,7 @@ namespace tusdotnet.Validation.Requirements
             }
 
             var filesArePartial = await Task.WhenAll(
-                finalConcat.Files.Select(f => store.GetUploadConcatAsync(f, context.CancellationToken)));
+                finalConcat.Files.Select(f => _concatenationStore.GetUploadConcatAsync(f, context.CancellationToken)));
 
             if (filesArePartial.Any(f => !(f is FileConcatPartial)))
             {

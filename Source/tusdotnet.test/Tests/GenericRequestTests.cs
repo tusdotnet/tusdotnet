@@ -7,6 +7,7 @@ using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
+using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
@@ -18,76 +19,79 @@ namespace tusdotnet.test.Tests
 {
 	public class GenericRequestTests
 	{
-		[Fact]
+        private bool _callForwarded;
+        private bool _onAuthorizeWasCalled;
+
+        [Fact]
 		public async Task Ignores_Requests_Without_The_Tus_Resumable_Header()
 		{
-			var callForwarded = false;
 			using (var server = TestServerFactory.Create(app =>
 			{
-				app.UseTus(request =>
-				{
-					var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
-					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
-					tusConfiguration.UrlPath.Returns("/files");
-					return tusConfiguration;
-				});
+                app.UseTus(_ => new DefaultTusConfiguration
+                {
+                    Store = Substitute.For<ITusStore>(),
+                    UrlPath = "/files",
+                    Events = new Events
+                    {
+                        OnAuthorizeAsync = ctx =>
+                        {
+                            _onAuthorizeWasCalled = true;
+                            return Task.FromResult(0);
+                        }
+                    }
+                });
 
 				app.Use((ctx, next) =>
 				{
-					callForwarded = true;
+					_callForwarded = true;
 					return Task.FromResult(true);
 				});
 			}))
 			{
 				await server.CreateRequest("/files").SendAsync("POST");
-				callForwarded.ShouldBeTrue();
-				callForwarded = false;
-				await server.CreateRequest("/files/testfile").SendAsync("HEAD");
-				callForwarded.ShouldBeTrue();
-				callForwarded = false;
-				await server.CreateRequest("/files").SendAsync("POST");
-				callForwarded.ShouldBeTrue();
-				callForwarded = false;
+                AssertForwardCall(true);
 
-				// OPTIONS requests ignore the Tus-Resumable header according to spec.
-				await server.CreateRequest("/files").SendAsync("OPTIONS");
-				callForwarded.ShouldBeFalse();
-			}
+				await server.CreateRequest("/files/testfile").SendAsync("HEAD");
+                AssertForwardCall(true);
+
+                // OPTIONS requests ignore the Tus-Resumable header according to spec.
+                await server.CreateRequest("/files").SendAsync("OPTIONS");
+                AssertForwardCall(false);
+            }
 		}
 
 		[Fact]
 		public async Task Ignores_Requests_Where_Method_Is_Not_Supported()
 		{
-			var callForwarded = false;
 			using (var server = TestServerFactory.Create(app =>
 			{
-				app.UseTus(request =>
-				{
-					var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
-					tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
-					tusConfiguration.UrlPath.Returns("/files");
-					return tusConfiguration;
+				app.UseTus(_ => new DefaultTusConfiguration
+                {
+                    Store = Substitute.For<ITusStore>(),
+                    UrlPath = "/files",
+                    Events = new Events
+                    {
+                        OnAuthorizeAsync = ctx =>
+                        {
+                            _onAuthorizeWasCalled = true; 
+                            return Task.FromResult(0);
+                        }
+                    }
 				});
 
 				app.Use((ctx, next) =>
 				{
-					callForwarded = true;
+					_callForwarded = true;
 					return Task.FromResult(true);
 				});
 			}))
 			{
-				await server
-					.CreateRequest("/files")
-					.AddTusResumableHeader()
-					.GetAsync();
+                await server.CreateRequest("/files").AddTusResumableHeader().GetAsync();
+				AssertForwardCall(true);
 
-				callForwarded.ShouldBeTrue();
-				callForwarded = false;
-				await server
-					.CreateRequest("/files/testfile")
-					.AddTusResumableHeader()
-					.GetAsync();
-			}
+                await server.CreateRequest("/files/testfile").AddTusResumableHeader().GetAsync();
+                AssertForwardCall(true);
+            }
 		}
 
 		[Theory]
@@ -119,5 +123,14 @@ namespace tusdotnet.test.Tests
                 delete.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
             }
 		}
-	}
+
+        private void AssertForwardCall(bool expectedCallForwarded)
+        {
+            _callForwarded.ShouldBe(expectedCallForwarded);
+            _onAuthorizeWasCalled.ShouldBe(!expectedCallForwarded);
+
+            _onAuthorizeWasCalled = false;
+            _callForwarded = false;
+        }
+    }
 }

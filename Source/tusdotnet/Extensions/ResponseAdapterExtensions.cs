@@ -8,22 +8,29 @@ namespace tusdotnet.Extensions
 {
     internal static class ResponseAdapterExtensions
     {
-        internal static bool NotFound(this ResponseAdapter response)
+        private static readonly Encoding _utf8Encoding = new UTF8Encoding();
+
+        internal static void NotFound(this ResponseAdapter response)
         {
             response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             response.SetHeader(HeaderConstants.CacheControl, HeaderConstants.NoStore);
-            response.SetStatus((int)HttpStatusCode.NotFound);
-            return true;
+            response.SetStatus(HttpStatusCode.NotFound);
         }
 
-        internal static async Task<bool> Error(this ResponseAdapter response, HttpStatusCode statusCode, string message)
+        internal static async Task Error(this ResponseAdapter response, HttpStatusCode statusCode, string message, bool includeTusResumableHeader = true)
         {
-            response.SetHeader(HeaderConstants.ContentType, "text/plain");
-            response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            response.SetStatus((int)statusCode);
-            var buffer = new UTF8Encoding().GetBytes(message);
-            await response.Body.WriteAsync(buffer, 0, buffer.Length);
-            return true;
+            if (includeTusResumableHeader)
+            {
+                response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            }
+
+            response.SetStatus(statusCode);
+            if (message != null)
+            {
+                response.SetHeader(HeaderConstants.ContentType, "text/plain");
+                var buffer = _utf8Encoding.GetBytes(message);
+                await response.Body.WriteAsync(buffer, 0, buffer.Length);
+            }
         }
     }
 }
