@@ -37,7 +37,7 @@ namespace tusdotnet.test.Tests.ModelTests
         }
 
         [Fact]
-        public async Task GetFileAsync_Returns_Null_If_Store_Does_Not_Support_ITusReadableStore()
+        public async Task GetFileAsync_Throws_InvalidCastException_If_Store_Does_Not_Support_ITusReadableStore()
         {
             var context = new EventContextForTest
             {
@@ -45,8 +45,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 Store = Substitute.For<ITusStore>()
             };
 
-            var file = await context.GetFileAsync();
-            file.ShouldBeNull();
+            await Should.ThrowAsync(async () => await context.GetFileAsync(), typeof(InvalidCastException));
         }
 
         private ITusStore CreateReadableStoreWithExistingFile()

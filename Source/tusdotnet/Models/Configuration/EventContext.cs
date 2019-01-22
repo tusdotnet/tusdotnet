@@ -48,18 +48,15 @@ namespace tusdotnet.Models.Configuration
 
         /// <summary>
         /// Get the file with the id specified in the <see cref="FileId"/> property.
-		/// Returns null if there is no file id, the current store does not implement <see cref="ITusReadableStore"/> or if the file was not found.
+		/// Returns null if there is no file id or if the file was not found.
         /// </summary>
         /// <returns>The file or null</returns>
         public Task<ITusFile> GetFileAsync()
         {
-            if (!(Store is ITusReadableStore readableStore))
-                return Task.FromResult<ITusFile>(null);
-
             if(string.IsNullOrEmpty(FileId))
                 return Task.FromResult<ITusFile>(null);
 
-            return readableStore.GetFileAsync(FileId, CancellationToken);
+            return ((ITusReadableStore)Store).GetFileAsync(FileId, CancellationToken);
         }
 
         internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)
