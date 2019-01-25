@@ -471,9 +471,17 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
-        public async Task Runs_Old_OnUploadComplete_When_Upload_Is_Complete()
+        public async Task Runs_OnFileCompleteAsync_And_OnUploadCompleteAsync_When_Upload_Is_Complete()
         {
+            // Old callback handler
             var onUploadCompleteCallCounts = new Dictionary<string, int>(2)
+            {
+                {"file1", 0},
+                {"file2", 0}
+            };
+
+            // New event handler
+            var onFileCompleteAsyncCallbackCounts = new Dictionary<string, int>(2)
             {
                 {"file1", 0},
                 {"file2", 0}
@@ -510,77 +518,12 @@ namespace tusdotnet.test.Tests
                         cbStore.ShouldBeSameAs(store);
                         cancellationToken.ShouldNotBe(default(CancellationToken));
 
-                        onUploadCompleteCallCounts[fileId]++;
+                        onUploadCompleteCallCounts.TryGetValue(fileId, out int count);
+
+                        count++;
+                        onUploadCompleteCallCounts[fileId] = count;
                         return Task.FromResult(true);
-                    }
-                });
-            }))
-            {
-                var response1 = await server
-                    .CreateRequest("/files/file1")
-                    .And(m => m.AddBody())
-                    .AddHeader("Upload-Offset", "3")
-                    .AddTusResumableHeader()
-                    .SendAsync("PATCH");
-
-                response1.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-                var response2 = await server
-                    .CreateRequest("/files/file2")
-                    .And(m => m.AddBody())
-                    .AddHeader("Upload-Offset", "2")
-                    .AddTusResumableHeader()
-                    .SendAsync("PATCH");
-
-                response2.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-                // File is already complete, make sure it does not run OnUploadComplete twice.
-                response1 = await server
-                    .CreateRequest("/files/file1")
-                    .And(m => m.AddBody())
-                    .AddHeader("Upload-Offset", "6")
-                    .AddTusResumableHeader()
-                    .SendAsync("PATCH");
-
-                response1.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-
-                onUploadCompleteCallCounts["file1"].ShouldBe(1);
-                onUploadCompleteCallCounts["file2"].ShouldBe(0);
-            }
-        }
-
-        [Fact]
-        public async Task Runs_OnFileCompleteAsync_When_Upload_Is_Complete()
-        {
-            var onUploadCompleteCallCounts = new Dictionary<string, int>(2)
-            {
-                {"file1", 0},
-                {"file2", 0}
-            };
-            var firstOffset = 3;
-            var secondOffset = 2;
-
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("file1", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadLengthAsync("file1", Arg.Any<CancellationToken>()).Returns(6);
-                store.GetUploadOffsetAsync("file1", Arg.Any<CancellationToken>()).Returns(info => firstOffset);
-                store.AppendDataAsync("file1", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(3)
-                    .AndDoes(info => firstOffset += 3);
-
-                store.FileExistAsync("file2", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadLengthAsync("file2", Arg.Any<CancellationToken>()).Returns(6);
-                store.GetUploadOffsetAsync("file2", Arg.Any<CancellationToken>()).Returns(info => secondOffset);
-                store.AppendDataAsync("file2", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(3)
-                    .AndDoes(info => secondOffset += 3);
-
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+                    },
                     Events = new Events
                     {
                         OnFileCompleteAsync = ctx =>
@@ -589,10 +532,10 @@ namespace tusdotnet.test.Tests
                             ctx.Store.ShouldBeSameAs(store);
                             ctx.CancellationToken.ShouldNotBe(default(CancellationToken));
 
-                            onUploadCompleteCallCounts.TryGetValue(ctx.FileId, out int count);
+                            onFileCompleteAsyncCallbackCounts.TryGetValue(ctx.FileId, out int count);
 
                             count++;
-                            onUploadCompleteCallCounts[ctx.FileId] = count;
+                            onFileCompleteAsyncCallbackCounts[ctx.FileId] = count;
                             return Task.FromResult(true);
                         }
                     }
@@ -627,8 +570,8 @@ namespace tusdotnet.test.Tests
 
                 response1.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-                onUploadCompleteCallCounts["file1"].ShouldBe(1);
-                onUploadCompleteCallCounts["file2"].ShouldBe(0);
+                onFileCompleteAsyncCallbackCounts["file1"].ShouldBe(1);
+                onFileCompleteAsyncCallbackCounts["file2"].ShouldBe(0);
             }
         }
 
