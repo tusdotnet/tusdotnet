@@ -30,13 +30,16 @@ namespace tusdotnet.test.Data
     /// Data attribute to provide the different pipelines and helpers for PatchTests -> Handles_Abrupt_Disconnects_Gracefully
     /// CT indicates if CancellationToken.IsCancellationRequested is set or not
     /// Pipelines: 
-    /// System.Web.Host -> CT = true, Exception = "Client disconnected"
+    /// System.Web.Host -> CT = true, Exception = Exception with message "Client disconnected"
     /// Microsoft.Owin.SelfHost -> CT = true, Exception = IOException, Exception.InnerException is System.Net.HttpListenerException
-    /// .NET Core reverse proxy IIS on ASP.NET Core 1.1 and 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
-    /// .NET Core reverse proxy IIS on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Connections.ConnectionResetException
-    /// .NET Core direct Kestrel on ASP.NET Core 1.1 -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
-    /// .NET Core direct Kestrel on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
-    /// .NET Core direct Kestrel on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException
+    /// .NET Core 1.1 reverse proxy IIS on ASP.NET Core 1.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
+    /// .NET Core 2.0 reverse proxy IIS on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
+    /// .NET Core 2.1 reverse proxy IIS on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Connections.ConnectionResetException
+    /// .NET Core 2.2 reverse proxy IIS on ASP.NET Core 2.2 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET Core 1.1 direct Kestrel on ASP.NET Core 1.1 -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
+    /// .NET Core 2.0 direct Kestrel on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
+    /// .NET Core 2.1 direct Kestrel on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException
+    /// .NET Core 2.2 direct Kestrel on ASP.NET Core 2.2 -> CT = true, Exception = System.OperationCanceledException
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     internal sealed class PipelineDisconnectEmulationDataAttribute : DataAttribute
@@ -100,13 +103,19 @@ namespace tusdotnet.test.Data
 #elif NETCOREAPP2_1
             const bool properlyCancelsCancellationToken = true;
             var badHttpRequestExceptionCtorParams = new object[] { "", -1, RequestRejectionReason.UnexpectedEndOfRequestContent };
+#elif NETCOREAPP2_2
+            const bool properlyCancelsCancellationToken = true;
+            var exception = new OperationCanceledException();
 #else
             const bool properlyCancelsCancellationToken = true;
             var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
 #endif
 
+            // NETCOREAPP2_2 does not create a BadHttpRequestException when a client disconnects
+#if !NETCOREAPP2_2
             var ctor = typeof(BadHttpRequestException).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)[0];
-            var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);
+            var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);                
+#endif
 
             return new DisconnectPipelineEmulationInfo(properlyCancelsCancellationToken, exception);
         }
@@ -115,6 +124,8 @@ namespace tusdotnet.test.Data
         {
 #if NETCOREAPP2_1
             var exceptionToThrow = new ConnectionResetException("Test");
+#elif NETCOREAPP2_2
+            var exceptionToThrow = new OperationCanceledException();
 #else
             var exceptionToThrow = new IOException("Test", new UvException("Test", -4077));
 #endif

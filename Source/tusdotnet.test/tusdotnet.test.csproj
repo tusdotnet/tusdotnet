@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netcoreapp1.1;netcoreapp2.0;netcoreapp2.1;net452</TargetFrameworks>
+        <TargetFrameworks>netcoreapp1.1;netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;net452</TargetFrameworks>
         <DebugType>portable</DebugType>
         <AssemblyName>tusdotnet.test</AssemblyName>
         <PackageId>tusdotnet.test</PackageId>
@@ -43,6 +43,11 @@
         <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.1.1" />
     </ItemGroup>
 
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.2' ">
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
+  </ItemGroup>
+
     <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
         <PackageReference Include="Microsoft.Owin.Testing" Version="4.0.0" />
         <PackageReference Include="Owin" Version="1.0.0" />
@@ -62,6 +67,10 @@
     <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.1' ">
         <DefineConstants>$(DefineConstants);netstandard;</DefineConstants>
     </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.2' ">
+    <DefineConstants>$(DefineConstants);netstandard;</DefineConstants>
+  </PropertyGroup>
 
     <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
         <DefineConstants>$(DefineConstants);netfull</DefineConstants>
