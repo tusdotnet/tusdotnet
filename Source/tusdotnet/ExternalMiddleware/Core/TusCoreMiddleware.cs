@@ -34,6 +34,13 @@ namespace tusdotnet
         public async Task Invoke(HttpContext context)
         {
             var config = await _configFactory(context);
+
+            if (config == null)
+            {
+                await _next(context);
+                return;
+            }
+
             var requestUri = GetRequestUri(context);
 
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(requestUri, config))

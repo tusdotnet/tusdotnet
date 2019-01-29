@@ -6,6 +6,7 @@ using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.test.Extensions;
+using tusdotnet.test.Data;
 using Xunit;
 using tusdotnet.Models.Configuration;
 #if netfull
@@ -17,16 +18,16 @@ using Microsoft.AspNetCore.Builder;
 
 namespace tusdotnet.test.Tests
 {
-	public class GenericRequestTests
-	{
+    public class GenericRequestTests
+    {
         private bool _callForwarded;
         private bool _onAuthorizeWasCalled;
 
         [Fact]
-		public async Task Ignores_Requests_Without_The_Tus_Resumable_Header()
-		{
-			using (var server = TestServerFactory.Create(app =>
-			{
+        public async Task Ignores_Requests_Without_The_Tus_Resumable_Header()
+        {
+            using (var server = TestServerFactory.Create(app =>
+            {
                 app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = Substitute.For<ITusStore>(),
@@ -41,31 +42,31 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-				app.Use((ctx, next) =>
-				{
-					_callForwarded = true;
-					return Task.FromResult(true);
-				});
-			}))
-			{
-				await server.CreateRequest("/files").SendAsync("POST");
+                app.Use((ctx, next) =>
+                {
+                    _callForwarded = true;
+                    return Task.FromResult(true);
+                });
+            }))
+            {
+                await server.CreateRequest("/files").SendAsync("POST");
                 AssertForwardCall(true);
 
-				await server.CreateRequest("/files/testfile").SendAsync("HEAD");
+                await server.CreateRequest("/files/testfile").SendAsync("HEAD");
                 AssertForwardCall(true);
 
                 // OPTIONS requests ignore the Tus-Resumable header according to spec.
                 await server.CreateRequest("/files").SendAsync("OPTIONS");
                 AssertForwardCall(false);
             }
-		}
+        }
 
-		[Fact]
-		public async Task Ignores_Requests_Where_Method_Is_Not_Supported()
-		{
-			using (var server = TestServerFactory.Create(app =>
-			{
-				app.UseTus(_ => new DefaultTusConfiguration
+        [Fact]
+        public async Task Ignores_Requests_Where_Method_Is_Not_Supported()
+        {
+            using (var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = Substitute.For<ITusStore>(),
                     UrlPath = "/files",
@@ -73,38 +74,38 @@ namespace tusdotnet.test.Tests
                     {
                         OnAuthorizeAsync = ctx =>
                         {
-                            _onAuthorizeWasCalled = true; 
+                            _onAuthorizeWasCalled = true;
                             return Task.FromResult(0);
                         }
                     }
-				});
+                });
 
-				app.Use((ctx, next) =>
-				{
-					_callForwarded = true;
-					return Task.FromResult(true);
-				});
-			}))
-			{
+                app.Use((ctx, next) =>
+                {
+                    _callForwarded = true;
+                    return Task.FromResult(true);
+                });
+            }))
+            {
                 await server.CreateRequest("/files").AddTusResumableHeader().GetAsync();
-				AssertForwardCall(true);
+                AssertForwardCall(true);
 
                 await server.CreateRequest("/files/testfile").AddTusResumableHeader().GetAsync();
                 AssertForwardCall(true);
             }
-		}
+        }
 
-		[Theory]
-		[InlineData("0")]
-		[InlineData("0.1b")]
-		[InlineData("0.0.2")]
-		[InlineData("1.0.1")]
-		[InlineData("1.1.1")]
-		[InlineData("1.0.0b")]
-		public async Task Returns_412_Precondition_Failed_If_Tus_Resumable_Does_Not_Match_The_Supported_Version(string version)
-		{
-		    var store = Substitute.For<ITusStore, ITusCreationStore, ITusTerminationStore>();
-		    store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+        [Theory]
+        [InlineData("0")]
+        [InlineData("0.1b")]
+        [InlineData("0.0.2")]
+        [InlineData("1.0.1")]
+        [InlineData("1.1.1")]
+        [InlineData("1.0.0b")]
+        public async Task Returns_412_Precondition_Failed_If_Tus_Resumable_Does_Not_Match_The_Supported_Version(string version)
+        {
+            var store = Substitute.For<ITusStore, ITusCreationStore, ITusTerminationStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
             using (var server = TestServerFactory.Create(store))
             {
                 var options = server.CreateRequest("/files").AddHeader("Tus-Resumable", version).SendAsync("OPTIONS");
@@ -122,7 +123,27 @@ namespace tusdotnet.test.Tests
                 patch.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
                 delete.Result.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
             }
-		}
+        }
+
+        [Theory]
+        [XHttpMethodOverrideData]
+        public async Task Ignores_Request_If_Configuration_Factory_Returns_Null(string httpMethod)
+        {
+            using (var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ => default(DefaultTusConfiguration));
+
+                app.Use((ctx, next) =>
+                {
+                    _callForwarded = true;
+                    return Task.FromResult(true);
+                });
+            }))
+            {
+                var request = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync(httpMethod);
+                AssertForwardCall(true);
+            }
+        }
 
         private void AssertForwardCall(bool expectedCallForwarded)
         {

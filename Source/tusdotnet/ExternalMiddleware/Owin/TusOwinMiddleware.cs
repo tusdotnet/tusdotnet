@@ -34,6 +34,12 @@ namespace tusdotnet
         {
             var config = await _configFactory(context.Request);
 
+            if(config == null)
+            {
+                await Next.Invoke(context);
+                return;
+            }
+
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(context.Request.Uri, config))
             {
                 await Next.Invoke(context);
