@@ -39,7 +39,7 @@ function verifyNuget() {
 function createPackage() {
 	Push-Location tusdotnet\
 	$version = git describe --abbrev=0 --tags
-	& dotnet pack -c Release tusdotnet.csproj /p:Version=$version --include-symbols --include-source -p:SymbolPackageFormat=snupkg -o ..\
+	& dotnet pack -c Release tusdotnet.csproj /p:Version=$version -o ..\
 	Pop-Location
 }
 
