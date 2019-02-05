@@ -12,29 +12,19 @@ namespace tusdotnet.Stores
 	/// </summary>
 	public class TusDiskFile : ITusFile
 	{
-		private readonly string _metadata;
-		private readonly string _filePath;
+        private readonly InternalFileRep _data;
+        private readonly InternalFileRep _metadata;
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="TusDiskFile"/> class.
-		/// </summary>
-		///  <param name="directoryPath">The directory path on disk where the store save it's files</param>
-		/// <param name="fileId">The file id</param>
-		/// <param name="metadata">The raw Upload-Metadata header</param>
-		internal TusDiskFile(string directoryPath, string fileId, string metadata)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TusDiskFile"/> class.
+        /// </summary>
+        /// <param name="data">The file representation of the data</param>
+        /// <param name="metadata">The file representation of the metadata</param>
+        internal TusDiskFile(InternalFileRep data, InternalFileRep metadata)
 		{
-			_metadata = metadata;
-			Id = fileId;
-			_filePath = Path.Combine(directoryPath, Id);
-		}
-
-		/// <summary>
-		/// Returns true if the file exists.
-		/// </summary>
-		/// <returns>True if the file exists</returns>
-		internal bool Exist()
-		{
-			return File.Exists(_filePath);
+            Id = data.FileId;
+            _data = data;
+            _metadata = metadata;
 		}
 
 		/// <inheritdoc />
@@ -43,14 +33,13 @@ namespace tusdotnet.Stores
 		/// <inheritdoc />
 		public Task<Stream> GetContentAsync(CancellationToken cancellationToken)
 		{
-			var stream = File.Open(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-			return Task.FromResult<Stream>(stream);
+            return Task.FromResult<Stream>(_data.GetStream(FileMode.Open, FileAccess.Read, FileShare.Read));
 		}
 
 		/// <inheritdoc />
 		public Task<Dictionary<string, Metadata>> GetMetadataAsync(CancellationToken cancellationToken)
 		{
-			return Task.FromResult(Metadata.Parse(_metadata));
+            return Task.FromResult(Metadata.Parse(_metadata.ReadFirstLine(true)));
 		}
 	}
 }

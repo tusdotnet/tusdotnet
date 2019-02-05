@@ -5,14 +5,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Stores
 {
-    // TODO: Enable async operations: 
-    // https://msdn.microsoft.com/en-us/library/mt674879.aspx
     /// <summary>
     /// The built in data store that save files on disk.
     /// </summary>
@@ -126,9 +125,9 @@ namespace tusdotnet.Stores
         public Task<long?> GetUploadLengthAsync(string fileId, CancellationToken cancellationToken)
         {
             var firstLine = _fileRepFactory.UploadLength(new InternalFileId(fileId)).ReadFirstLine(true);
-            return firstLine == null
-                ? Task.FromResult<long?>(null)
-                : Task.FromResult(new long?(long.Parse(firstLine)));
+            return Task.FromResult(firstLine == null
+                ? (long?)null
+                : long.Parse(firstLine));
         }
 
         /// <inheritdoc />
@@ -158,11 +157,14 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
+        public Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
         {
-            var metadata = await GetUploadMetadataAsync(fileId, cancellationToken);
-            var file = new TusDiskFile(_directoryPath, fileId, metadata);
-            return file.Exist() ? file : null;
+            var internalFileId = new InternalFileId(fileId);
+            var data = _fileRepFactory.Data(internalFileId);
+
+            return Task.FromResult<ITusFile>(data.Exist()
+                ? new TusDiskFile(data, _fileRepFactory.Metadata(internalFileId))
+                : null);
         }
 
         /// <inheritdoc />
@@ -184,7 +186,7 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(new[] { "sha1" } as IEnumerable<string>);
+            return Task.FromResult<IEnumerable<string>>(new[] { "sha1" });
         }
 
         /// <inheritdoc />
@@ -216,9 +218,9 @@ namespace tusdotnet.Stores
         public Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken cancellationToken)
         {
             var firstLine = _fileRepFactory.UploadConcat(new InternalFileId(fileId)).ReadFirstLine(true);
-            return string.IsNullOrWhiteSpace(firstLine)
-                ? Task.FromResult<FileConcat>(null)
-                : Task.FromResult(new UploadConcat(firstLine).Type);
+            return Task.FromResult(string.IsNullOrWhiteSpace(firstLine)
+                ? null
+                : new UploadConcat(firstLine).Type);
         }
 
         /// <inheritdoc />
@@ -275,7 +277,8 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
         {
-            return Task.Run(() => _fileRepFactory.Expiration(new InternalFileId(fileId)).Write(expires.ToString("O")), cancellationToken);
+            _fileRepFactory.Expiration(new InternalFileId(fileId)).Write(expires.ToString("O"));
+            return TaskHelper.Completed;
         }
 
         /// <inheritdoc />
@@ -330,7 +333,8 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken cancellationToken)
         {
-            return Task.Run(() => _fileRepFactory.UploadLength(new InternalFileId(fileId)).Write(uploadLength.ToString()), cancellationToken);
+            _fileRepFactory.UploadLength(new InternalFileId(fileId)).Write(uploadLength.ToString());
+            return TaskHelper.Completed;
         }
     }
 }
