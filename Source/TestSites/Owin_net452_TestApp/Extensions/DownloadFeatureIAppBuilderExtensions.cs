@@ -48,6 +48,8 @@ namespace Owin_net452_TestApp.Extensions
                             ? metadata["contentType"].GetString(Encoding.UTF8)
                             : "application/octet-stream";
 
+                        context.Response.ContentLength = fileStream.Length;
+
                         if (metadata.TryGetValue("name", out var nameMetadata))
                         {
                             context.Response.Headers.Add("Content-Disposition",

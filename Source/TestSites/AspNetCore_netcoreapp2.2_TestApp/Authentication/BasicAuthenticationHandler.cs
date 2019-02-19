@@ -28,7 +28,7 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Authentication
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
-                return Task.FromResult(AuthenticateResult.Fail("Missing Authorization Header"));
+                return Task.FromResult(AuthenticateResult.NoResult());
 
             bool isAuthenticated;
             try
