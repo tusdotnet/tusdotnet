@@ -32,7 +32,7 @@ namespace tusdotnet.Stores
         // Number of bytes to read at the time from the input stream.
         // The lower the value, the less data needs to be re-submitted on errors.
         // However, the lower the value, the slower the operation is. 51200 = 50 KB.
-        private const int ByteChunkSize = 5120000;
+        private readonly int ByteChunkSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -49,17 +49,20 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int byteChunkSize = 5120000)
         {
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
+            ByteChunkSize = byteChunkSize;
         }
 
         /// <inheritdoc />
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
         {
             var internalFileId = new InternalFileId(fileId);
+            var buffer = new byte[ByteChunkSize];
+            var chunkBuffer = new MemoryStream(ByteChunkSize);
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
             using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
@@ -92,7 +95,6 @@ namespace tusdotnet.Stores
                         break;
                     }
 
-                    var buffer = new byte[ByteChunkSize];
                     bytesRead = await stream.ReadAsync(buffer, 0, ByteChunkSize, cancellationToken);
 
                     fileLength += bytesRead;
@@ -103,7 +105,7 @@ namespace tusdotnet.Stores
                             $"Stream contains more data than the file's upload length. Stream data: {fileLength}, upload length: {uploadLength}.");
                     }
 
-                    file.Write(buffer, 0, bytesRead);
+                    chunkBuffer.Write(buffer, 0, bytesRead);
                     bytesWritten += bytesRead;
 
                 } while (bytesRead != 0);
