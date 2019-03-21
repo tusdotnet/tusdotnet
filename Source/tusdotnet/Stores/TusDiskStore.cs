@@ -32,7 +32,7 @@ namespace tusdotnet.Stores
         // Number of bytes to read at the time from the input stream.
         // The lower the value, the less data needs to be re-submitted on errors.
         // However, the lower the value, the slower the operation is. 51200 = 50 KB.
-        private readonly int ByteChunkSize;
+        private readonly int _byteChunkSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -54,15 +54,15 @@ namespace tusdotnet.Stores
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
-            ByteChunkSize = byteChunkSize;
+            _byteChunkSize = byteChunkSize;
         }
 
         /// <inheritdoc />
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
         {
             var internalFileId = new InternalFileId(fileId);
-            var buffer = new byte[ByteChunkSize];
-            var chunkBuffer = new MemoryStream(ByteChunkSize);
+            var buffer = new byte[_byteChunkSize];
+            var chunkBuffer = new MemoryStream(_byteChunkSize);
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
             using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
@@ -95,7 +95,7 @@ namespace tusdotnet.Stores
                         break;
                     }
 
-                    bytesRead = await stream.ReadAsync(buffer, 0, ByteChunkSize, cancellationToken);
+                    bytesRead = await stream.ReadAsync(buffer, 0, _byteChunkSize, cancellationToken);
 
                     fileLength += bytesRead;
 
