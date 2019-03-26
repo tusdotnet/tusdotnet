@@ -110,7 +110,8 @@ namespace tusdotnet.Stores
 
                 } while (bytesRead != 0);
                 
-                file.Write(chunkBuffer.ToArray(), 0, (int)bytesWritten);
+                if(bytesWritten != 0) // Flush the full chunk to disk.
+                    file.Write(chunkBuffer.ToArray(), 0, (int)bytesWritten);
 
                 // Chunk is complete. Mark it as complete.
                 chunkComplete.Write("1");
