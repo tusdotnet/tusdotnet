@@ -39,7 +39,7 @@ namespace tusdotnet.Stores
         /// Using this overload will not delete partial files if a final concatenation is performed.
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
-        public TusDiskStore(string directoryPath) : this(directoryPath, false)
+        public TusDiskStore(string directoryPath) : this(directoryPath, false, 51200)
         {
             // Left blank.
         }
@@ -49,7 +49,18 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int byteChunkSize = 5120000)
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) : this(directoryPath, false, 51200)
+        {
+            
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
+        /// </summary>
+        /// <param name="directoryPath">The path on disk where to save files</param>
+        /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
+        /// <param name="byteChunkSize">This allows you to set the chunk size, same as your clients. Higher values lowers Disk/CPU at the cost of RAM</param>
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int byteChunkSize)
         {
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
@@ -96,7 +107,6 @@ namespace tusdotnet.Stores
                     }
 
                     bytesRead = await stream.ReadAsync(buffer, 0, _byteChunkSize, cancellationToken);
-
                     fileLength += bytesRead;
 
                     if (fileLength > uploadLength)
