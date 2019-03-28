@@ -32,14 +32,16 @@ namespace tusdotnet.Stores
         // Number of bytes to read at the time from the input stream.
         // The lower the value, the less data needs to be re-submitted on errors.
         // However, the lower the value, the slower the operation is. 51200 = 50 KB.
+        private const int _defaultChunkSize = 51200;
         private readonly int _byteChunkSize;
+        private readonly int _maxWriteBufferSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
         /// Using this overload will not delete partial files if a final concatenation is performed.
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
-        public TusDiskStore(string directoryPath) : this(directoryPath, false, 51200)
+        public TusDiskStore(string directoryPath) : this(directoryPath, false, _defaultChunkSize, _defaultChunkSize)
         {
             // Left blank.
         }
@@ -49,9 +51,9 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) : this(directoryPath, false, 51200)
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) : this(directoryPath, false, _defaultChunkSize, _defaultChunkSize)
         {
-            
+            // Left blank.
         }
 
         /// <summary>
@@ -60,12 +62,14 @@ namespace tusdotnet.Stores
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
         /// <param name="byteChunkSize">This allows you to set the chunk size, same as your clients. Higher values lowers Disk/CPU at the cost of RAM</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int byteChunkSize)
+        /// <param name="maxWriteBufferSize">Any write operations will be buffered up to this amount before written to disk</param>
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int byteChunkSize,int maxWriteBufferSize)
         {
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
             _byteChunkSize = byteChunkSize;
+            _maxWriteBufferSize = maxWriteBufferSize;
         }
 
         /// <inheritdoc />
@@ -73,9 +77,11 @@ namespace tusdotnet.Stores
         {
             var internalFileId = new InternalFileId(fileId);
             var buffer = new byte[_byteChunkSize];
-            var chunkBuffer = new MemoryStream(_byteChunkSize);
+
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
+
+            using (var writeBuffer = new MemoryStream(_byteChunkSize))
             using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
             {
                 var fileLength = file.Length;
@@ -115,19 +121,29 @@ namespace tusdotnet.Stores
                             $"Stream contains more data than the file's upload length. Stream data: {fileLength}, upload length: {uploadLength}.");
                     }
 
-                    chunkBuffer.Write(buffer, 0, bytesRead);
+                    writeBuffer.Write(buffer, 0, bytesRead);
                     bytesWritten += bytesRead;
 
+                    if (writeBuffer.Length >= _maxWriteBufferSize) // If the buffer is above max size we flush it now.
+                        FlushFileWriteBuffer(writeBuffer, file);
+
                 } while (bytesRead != 0);
-                
-                if(bytesWritten != 0) // Flush the full chunk to disk.
-                    file.Write(chunkBuffer.ToArray(), 0, (int)bytesWritten);
+
+                if (writeBuffer.Length != 0) // Flush the full chunk to disk.
+                    FlushFileWriteBuffer(writeBuffer, file);
 
                 // Chunk is complete. Mark it as complete.
                 chunkComplete.Write("1");
-
                 return bytesWritten;
             }
+        }
+
+        private void FlushFileWriteBuffer(MemoryStream buffer,Stream fileStream)
+        {            
+            buffer.WriteTo(fileStream);
+
+            buffer.SetLength(0); // Best way to clear a memory buffer.
+            buffer.Capacity = _maxWriteBufferSize;
         }
 
         /// <inheritdoc />
