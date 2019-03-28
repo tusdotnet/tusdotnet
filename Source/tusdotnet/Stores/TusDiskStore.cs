@@ -35,8 +35,8 @@ namespace tusdotnet.Stores
         private const int _defaultBufferSize = 51200;
 
         // These are the read and write buffers, they will get the value of _defaultBufferSize if not set in the constructor.
-        private readonly int _ReadBufferSize;
-        private readonly int _WriteBufferSize;
+        private readonly int _maxReadBufferSize;
+        private readonly int _maxWriteBufferSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -70,20 +70,20 @@ namespace tusdotnet.Stores
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
-            _ReadBufferSize = readBufferSize;
-            _WriteBufferSize = writeBufferSize;
+            _maxReadBufferSize = readBufferSize;
+            _maxWriteBufferSize = writeBufferSize;
         }
 
         /// <inheritdoc />
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
         {
             var internalFileId = new InternalFileId(fileId);
-            var buffer = new byte[_ReadBufferSize];
+            var buffer = new byte[_maxReadBufferSize];
 
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
 
-            using (var writeBuffer = new MemoryStream(_ReadBufferSize))
+            using (var writeBuffer = new MemoryStream(_maxReadBufferSize))
             using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
             {
                 var fileLength = file.Length;
@@ -114,7 +114,7 @@ namespace tusdotnet.Stores
                         break;
                     }
 
-                    bytesRead = await stream.ReadAsync(buffer, 0, _ReadBufferSize, cancellationToken);
+                    bytesRead = await stream.ReadAsync(buffer, 0, _maxReadBufferSize, cancellationToken);
                     fileLength += bytesRead;
 
                     if (fileLength > uploadLength)
@@ -126,7 +126,7 @@ namespace tusdotnet.Stores
                     writeBuffer.Write(buffer, 0, bytesRead);
                     bytesWritten += bytesRead;
 
-                    if (writeBuffer.Length >= _WriteBufferSize) // If the buffer is above max size we flush it now.
+                    if (writeBuffer.Length >= _maxWriteBufferSize) // If the buffer is above max size we flush it now.
                         FlushFileWriteBuffer(writeBuffer, file);
 
                 } while (bytesRead != 0);
@@ -367,7 +367,7 @@ namespace tusdotnet.Stores
             buffer.WriteTo(fileStream);
 
             buffer.SetLength(0); // Best way to clear a memory buffer.
-            buffer.Capacity = _WriteBufferSize;
+            buffer.Capacity = _maxWriteBufferSize;
         }
     }
 }
