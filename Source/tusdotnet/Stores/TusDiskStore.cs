@@ -63,8 +63,8 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        /// <param name="readBufferSize">This buffer is the maximum amount of data read from the clients stream at once, value should higher then writeBufferSize.</param>
-        /// <param name="writeBufferSize">This buffer is the maximum amount of data write to disk from the clients stream at once, higher values means increased ram and transfer speed, but lowers CPU and Disk IO.</param>
+        /// <param name="readBufferSize">This buffer is the maximum amount of data read from the clients stream at once, value should lower then writeBufferSize.</param>
+        /// <param name="writeBufferSize">This buffer is the maximum amount of data write to disk from the clients stream at once, higher values means increased ram and transfer speed, but lowers CPU and Disk IO load.</param>
         public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int readBufferSize, int writeBufferSize)
         {
             _directoryPath = directoryPath;
@@ -78,12 +78,12 @@ namespace tusdotnet.Stores
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
         {
             var internalFileId = new InternalFileId(fileId);
-            var buffer = new byte[_maxReadBufferSize];
+            var reciveReadBuffer = new byte[_maxReadBufferSize];
 
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
 
-            using (var writeBuffer = new MemoryStream(_maxReadBufferSize))
+            using (var writeBuffer = new MemoryStream(_maxWriteBufferSize))
             using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
             {
                 var fileLength = file.Length;
@@ -114,7 +114,7 @@ namespace tusdotnet.Stores
                         break;
                     }
 
-                    bytesRead = await stream.ReadAsync(buffer, 0, _maxReadBufferSize, cancellationToken);
+                    bytesRead = await stream.ReadAsync(reciveReadBuffer, 0, _maxReadBufferSize, cancellationToken);
                     fileLength += bytesRead;
 
                     if (fileLength > uploadLength)
@@ -123,7 +123,7 @@ namespace tusdotnet.Stores
                             $"Stream contains more data than the file's upload length. Stream data: {fileLength}, upload length: {uploadLength}.");
                     }
 
-                    writeBuffer.Write(buffer, 0, bytesRead);
+                    writeBuffer.Write(reciveReadBuffer, 0, bytesRead);
                     bytesWritten += bytesRead;
 
                     if (writeBuffer.Length >= _maxWriteBufferSize) // If the buffer is above max size we flush it now.
