@@ -32,14 +32,18 @@ namespace tusdotnet.Stores
         // Number of bytes to read at the time from the input stream.
         // The lower the value, the less data needs to be re-submitted on errors.
         // However, the lower the value, the slower the operation is. 51200 = 50 KB.
-        private const int ByteChunkSize = 5120000;
+        private const int _defaultBufferSize = 51200;
+
+        // These are the read and write buffers, they will get the value of _defaultBufferSize if not set in the constructor.
+        private readonly int _maxReadBufferSize;
+        private readonly int _maxWriteBufferSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
         /// Using this overload will not delete partial files if a final concatenation is performed.
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
-        public TusDiskStore(string directoryPath) : this(directoryPath, false)
+        public TusDiskStore(string directoryPath) : this(directoryPath, false, _defaultBufferSize, _defaultBufferSize)
         {
             // Left blank.
         }
@@ -49,19 +53,37 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) : this(directoryPath, false, _defaultBufferSize, _defaultBufferSize)
+        {
+            // Left blank.
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
+        /// </summary>
+        /// <param name="directoryPath">The path on disk where to save files</param>
+        /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
+        /// <param name="readBufferSize">This buffer is the maximum amount of data read from the clients stream at once, value should lower then writeBufferSize.</param>
+        /// <param name="writeBufferSize">This buffer is the maximum amount of data write to disk from the clients stream at once, higher values means increased ram and transfer speed, but lowers CPU and Disk IO load.</param>
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, int readBufferSize, int writeBufferSize)
         {
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
+            _maxReadBufferSize = readBufferSize;
+            _maxWriteBufferSize = writeBufferSize;
         }
 
         /// <inheritdoc />
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
         {
             var internalFileId = new InternalFileId(fileId);
+            var reciveReadBuffer = new byte[_maxReadBufferSize];
+
             long bytesWritten = 0;
             var uploadLength = await GetUploadLengthAsync(fileId, cancellationToken);
+
+            using (var writeBuffer = new MemoryStream(_maxWriteBufferSize))
             using (var file = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None))
             {
                 var fileLength = file.Length;
@@ -92,9 +114,7 @@ namespace tusdotnet.Stores
                         break;
                     }
 
-                    var buffer = new byte[ByteChunkSize];
-                    bytesRead = await stream.ReadAsync(buffer, 0, ByteChunkSize, cancellationToken);
-
+                    bytesRead = await stream.ReadAsync(reciveReadBuffer, 0, _maxReadBufferSize, cancellationToken);
                     fileLength += bytesRead;
 
                     if (fileLength > uploadLength)
@@ -103,14 +123,19 @@ namespace tusdotnet.Stores
                             $"Stream contains more data than the file's upload length. Stream data: {fileLength}, upload length: {uploadLength}.");
                     }
 
-                    file.Write(buffer, 0, bytesRead);
+                    writeBuffer.Write(reciveReadBuffer, 0, bytesRead);
                     bytesWritten += bytesRead;
+
+                    if (writeBuffer.Length >= _maxWriteBufferSize) // If the buffer is above max size we flush it now.
+                        FlushFileWriteBuffer(writeBuffer, file);
 
                 } while (bytesRead != 0);
 
+                if (writeBuffer.Length != 0) // Flush the full chunk to disk.
+                    FlushFileWriteBuffer(writeBuffer, file);
+
                 // Chunk is complete. Mark it as complete.
                 chunkComplete.Write("1");
-
                 return bytesWritten;
             }
         }
@@ -335,6 +360,14 @@ namespace tusdotnet.Stores
         {
             _fileRepFactory.UploadLength(new InternalFileId(fileId)).Write(uploadLength.ToString());
             return TaskHelper.Completed;
+        }
+
+        private void FlushFileWriteBuffer(MemoryStream buffer, Stream fileStream)
+        {
+            buffer.WriteTo(fileStream);
+
+            buffer.SetLength(0); // Best way to clear a memory buffer.
+            buffer.Capacity = _maxWriteBufferSize;
         }
     }
 }

@@ -269,6 +269,24 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
+        public async Task VerifyCorrectDataWrittenToDisk()
+        {
+            var random = new Random();
+            const int bufferSize = 5321;
+            var fakeData = new Byte[bufferSize];
+            for (int i = 0; i < bufferSize; i++)
+                fakeData[i] = (byte)random.Next(0, 255);
+
+
+            var fileId = await _fixture.Store.CreateFileAsync(fakeData.Length, null, CancellationToken.None);
+            using (var stream = new MemoryStream(fakeData))
+            {
+                var dataWrittenToDisk = await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+                dataWrittenToDisk.ShouldBe(bufferSize);
+            }            
+        }
+
+        [Fact]
         public async Task VerifyChecksumAsync()
         {
             const string checksum = "9jSJuBxGMnq4UffwNYM8ct1tYQQ=";
