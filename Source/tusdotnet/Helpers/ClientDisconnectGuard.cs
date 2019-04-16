@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +26,19 @@ namespace tusdotnet.Helpers
             catch (Exception exc) when (ClientDisconnected(exc, requestCancellationToken))
             {
                 return true;
+            }
+        }
+
+        internal static async Task<ClientDisconnectGuardReadStreamAsyncResult> ReadStreamAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var bytesRead = await stream.ReadAsync(buffer, offset, count, cancellationToken);
+                return new ClientDisconnectGuardReadStreamAsyncResult(false, bytesRead);
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, cancellationToken))
+            {
+                return new ClientDisconnectGuardReadStreamAsyncResult(true, 0);
             }
         }
 

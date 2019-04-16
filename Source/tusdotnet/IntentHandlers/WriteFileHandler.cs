@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -73,15 +74,10 @@ namespace tusdotnet.IntentHandlers
         {
             await WriteUploadLengthIfDefered();
 
-            var bytesWritten = 0L;
-            var clientDisconnected = await ClientDisconnectGuard.ExecuteAsync(
-                async () =>
-                {
-                    bytesWritten = await Store.AppendDataAsync(Request.FileId, Request.Body, CancellationToken);
-                },
-                CancellationToken);
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
+            var bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
 
-            if (clientDisconnected)
+            if (guardedStream.CancellationToken.IsCancellationRequested)
             {
                 return;
             }

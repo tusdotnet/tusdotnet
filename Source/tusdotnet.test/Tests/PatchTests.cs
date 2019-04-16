@@ -31,7 +31,6 @@ namespace tusdotnet.test.Tests
         private bool _onAuthorizeWasCalled;
         private IntentType? _onAuthorizeWasCalledWithIntent;
 
-
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
@@ -351,16 +350,19 @@ namespace tusdotnet.test.Tests
             store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
             store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                .Throws(
-                    info =>
+            var requestStream = Substitute.For<Stream>();
+            requestStream.ReadAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                .ThrowsForAnyArgs(_ =>
+                {
+                    if (pipelineDetails.FlagsCancellationTokenAsCancelled)
                     {
-                        if (pipelineDetails.FlagsCancellationTokenAsCancelled)
-                        {
-                            cts.Cancel();
-                        }
-                        throw pipelineDetails.ExceptionThatIsThrown;
-                    });
+                        cts.Cancel();
+                    }
+                    throw pipelineDetails.ExceptionThatIsThrown;
+                });
+
+            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .ReturnsForAnyArgs<Task<long>>(async callInfo => await callInfo.Arg<Stream>().ReadAsync(null, 0, 0, callInfo.Arg<CancellationToken>()));
 
             var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var responseStatus = HttpStatusCode.OK;
@@ -388,7 +390,7 @@ namespace tusdotnet.test.Tests
                         {"Upload-Offset", new List<string>(1) {"5"}}
                     },
                     Method = "PATCH",
-                    Body = new MemoryStream(new byte[3]),
+                    Body = requestStream,
                     RequestUri = new Uri("https://localhost:8080/files/testfile")
                 },
                 Response = response

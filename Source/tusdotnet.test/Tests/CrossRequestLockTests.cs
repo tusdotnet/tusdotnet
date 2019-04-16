@@ -28,13 +28,13 @@ namespace tusdotnet.test.Tests
             {
                 var store = Substitute.For<ITusStore, ITusTerminationStore>();
                 store.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
-                ((ITusTerminationStore)store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>()).Returns(info =>
+                ((ITusTerminationStore)store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ =>
                {
                    Thread.Sleep(500);
                    return Task.FromResult(0);
                });
 
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files"
@@ -44,6 +44,8 @@ namespace tusdotnet.test.Tests
                 var deleteRequest = server.CreateRequest($"/files/{fileId}")
                     .AddTusResumableHeader()
                     .SendAsync("DELETE");
+
+                await Task.Delay(50);
 
                 var patchRequest = server.CreateRequest($"/files/{fileId}")
                     .And(message =>
@@ -74,15 +76,15 @@ namespace tusdotnet.test.Tests
                 store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(0);
                 store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(10);
                 store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(info =>
+                    .Returns(_ =>
                     {
                         Thread.Sleep(5000);
                         return 3;
                     });
-                ((ITusTerminationStore) store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>())
+                ((ITusTerminationStore)store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult(0));
 
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files"
