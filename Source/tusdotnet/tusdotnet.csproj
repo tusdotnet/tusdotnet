@@ -11,7 +11,7 @@
     <PackageTags>Tus;Tus-Resumable;ResumableFileUploads;FileUpload</PackageTags>
     <PackageReleaseNotes>Release notes at https://github.com/tusdotnet/tusdotnet/releases</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/tusdotnet/tusdotnet</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/tusdotnet/tusdotnet/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
