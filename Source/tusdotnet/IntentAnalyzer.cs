@@ -125,7 +125,7 @@ namespace tusdotnet
 
         private static bool UrlMatchesUrlPath(Uri requestUri, string configUrlPath)
         {
-            return requestUri.LocalPath.TrimEnd('/') == configUrlPath.TrimEnd('/');
+            return requestUri.LocalPath.TrimEnd('/').Equals(configUrlPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool UrlMatchesFileIdUrl(Uri requestUri, string configUrlPath)
