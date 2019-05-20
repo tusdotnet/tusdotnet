@@ -103,7 +103,7 @@ namespace tusdotnet.Models.Concatenation
 					? uri.LocalPath
 					: uri.ToString();
 
-				if (!localPath.StartsWith(urlPath))
+				if (!localPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase))
 				{
 					IsValid = false;
 					ErrorMessage = "Unable to parse Upload-Concat header";
