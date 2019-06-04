@@ -9,6 +9,14 @@ using tusdotnet.Models;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+using System.Collections.Generic;
+using tusdotnet.Adapters;
+#if netfull
+using Owin;
+#endif
+#if netstandard
+using Microsoft.AspNetCore.Builder;
+#endif
 
 namespace tusdotnet.test.Tests
 {
@@ -64,7 +72,7 @@ namespace tusdotnet.test.Tests
         {
             using (var server = TestServerFactory.Create(app =>
             {
-                var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
+                var store = Substitute.For<ITusStore, ITusChecksumStore>();
                 store.FileExistAsync("checksum", CancellationToken.None).ReturnsForAnyArgs(true);
                 store.GetUploadOffsetAsync("checksum", Arg.Any<CancellationToken>()).Returns(5);
                 store.GetUploadLengthAsync("checksum", Arg.Any<CancellationToken>()).Returns(10);
@@ -94,6 +102,67 @@ namespace tusdotnet.test.Tests
                 await response.ShouldBeErrorResponse((HttpStatusCode)460,
                     "Header Upload-Checksum does not match the checksum of the file");
                 response.ShouldContainTusResumableHeader();
+            }
+        }
+
+        [Fact]
+        public async Task Checksum_Is_Verified_If_Client_Disconnects()
+        {
+            var cts = new CancellationTokenSource();
+
+            var store = Substitute.For<ITusStore, ITusChecksumStore>();
+            store.FileExistAsync("checksum", CancellationToken.None).ReturnsForAnyArgs(true);
+            store.GetUploadOffsetAsync("checksum", Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync("checksum", Arg.Any<CancellationToken>()).Returns(10);
+
+            // Cancel token source to emulate a client disconnect
+            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5).AndDoes(_ => cts.Cancel());
+
+            var cstore = (ITusChecksumStore)store;
+            cstore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
+            cstore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(false);
+
+            var responseStatusCode = HttpStatusCode.OK;
+            var responseStream = new MemoryStream();
+
+            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            {
+                CancellationToken = cts.Token,
+                Configuration = new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files",
+                },
+                Request = new RequestAdapter("/files")
+                {
+                    Body = new MemoryStream(),
+                    RequestUri = new System.Uri("https://localhost/files/checksum"),
+                    Headers = new Dictionary<string, List<string>>
+                    {
+                        { Constants.HeaderConstants.TusResumable, new List<string> { Constants.HeaderConstants.TusResumableValue } },
+                        // Just random gibberish as checksum
+                        { Constants.HeaderConstants.UploadChecksum, new List<string> { "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=" } },
+                        { Constants.HeaderConstants.UploadOffset, new List<string> { "5" } },
+                        { Constants.HeaderConstants.ContentType, new List<string> { "application/offset+octet-stream" } },
+                    },
+                    Method = "PATCH"
+                },
+                Response = new ResponseAdapter
+                {
+                    Body = responseStream,
+                    SetHeader = (key, value) => { },
+                    SetStatus = status => responseStatusCode = status
+                }
+            });
+
+            await cstore.ReceivedWithAnyArgs().VerifyChecksumAsync(null, null, null, CancellationToken.None);
+
+            responseStatusCode.ShouldBe((HttpStatusCode)460);
+
+            responseStream.Seek(0, SeekOrigin.Begin);
+            using(var sr = new StreamReader(responseStream))
+            {
+                sr.ReadToEnd().ShouldBe("Header Upload-Checksum does not match the checksum of the file");
             }
         }
 

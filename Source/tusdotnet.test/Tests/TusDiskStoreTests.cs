@@ -363,51 +363,18 @@ namespace tusdotnet.test.Tests
 
             var buffer = new UTF8Encoding(false).GetBytes(message);
 
-            var bytesWritten = 0L;
+            var cts = new CancellationTokenSource();
 
-            var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
+            var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, cts.Token);
 
-            // Emulate several requests
-            do
-            {
-                // Create a new store and cancellation token source on each request as one would do in a real scenario.
-                _fixture.CreateNewStore();
-                var cts = new CancellationTokenSource();
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(buffer), cts);
+            await _fixture.Store.AppendDataAsync(fileId, guardedStream, guardedStream.CancellationToken);
 
-                var requestStream = new RequestStreamFake(
-                    (stream, bufferToFill, offset, count, ct) =>
-                    {
-                        // Emulate that the request completed
-                        if (bytesWritten == buffer.Length)
-                        {
-                            return Task.FromResult(0);
-                        }
-
-                        // Emulate client disconnect after two bytes read.
-                        if (stream.Position == 2)
-                        {
-                            cts.Cancel();
-                            cts.Token.ThrowIfCancellationRequested();
-                        }
-
-                        bytesWritten += 2;
-                        return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, ct);
-                    },
-                    buffer.Skip((int)bytesWritten).ToArray());
-
-                await ClientDisconnectGuard.ExecuteAsync(
-                    () => _fixture.Store.AppendDataAsync(fileId, requestStream, cts.Token),
-                    cts.Token);
-
-            } while (bytesWritten < buffer.Length);
-
-            var checksumOk = await _fixture.Store
-                .VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum), CancellationToken.None);
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum), cts.Token);
 
             // File should not have been saved.
             checksumOk.ShouldBeFalse();
-            var filePath = Path.Combine(_fixture.Path, fileId);
-            new FileInfo(filePath).Length.ShouldBe(0);
+            new FileInfo(Path.Combine(_fixture.Path, fileId)).Length.ShouldBe(0);
         }
 
         [Fact]
@@ -424,6 +391,7 @@ namespace tusdotnet.test.Tests
             var totalSize = 0;
 
             var fileId = await _fixture.Store.CreateFileAsync(chunks.Sum(f => encoding.GetBytes(f.Item1).Length), null, CancellationToken.None);
+            var filePath = Path.Combine(_fixture.Path, fileId);
 
             foreach (var chunk in chunks)
             {
@@ -432,51 +400,80 @@ namespace tusdotnet.test.Tests
                 var isValidChecksum = chunk.Item3;
                 var dataBuffer = encoding.GetBytes(data);
 
-                var bytesWritten = 0L;
+                // Create a new store and cancellation token source on each request as one would do in a real scenario.
+                _fixture.CreateNewStore();
+                var cts = new CancellationTokenSource();
 
-                // Emulate several requests
-                do
-                {
-                    // Create a new store and cancellation token source on each request as one would do in a real scenario.
-                    _fixture.CreateNewStore();
-                    var cts = new CancellationTokenSource();
+                var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(dataBuffer), cts);
+                await _fixture.Store.AppendDataAsync(fileId, guardedStream, guardedStream.CancellationToken);
 
-                    var buffer = new RequestStreamFake(
-                        (stream, bufferToFill, offset, count, ct) =>
-                        {
-                            // Emulate that the request completed
-                            if (bytesWritten == dataBuffer.Length)
-                            {
-                                return Task.FromResult(0);
-                            }
-
-                            // Emulate client disconnect after two bytes read.
-                            if (stream.Position == 2)
-                            {
-                                cts.Cancel();
-                                cts.Token.ThrowIfCancellationRequested();
-                            }
-
-                            bytesWritten += 2;
-                            return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, ct);
-                        },
-                        dataBuffer.Skip((int)bytesWritten).ToArray());
-
-                    var guardedStream = new ClientDisconnectGuardedReadOnlyStream(buffer, cts);
-                    await _fixture.Store.AppendDataAsync(fileId, guardedStream, guardedStream.CancellationToken);
-
-                } while (bytesWritten < dataBuffer.Length);
-
-                var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1",
-                    Convert.FromBase64String(checksum), CancellationToken.None);
+                var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum), cts.Token);
 
                 checksumOk.ShouldBe(isValidChecksum);
 
                 totalSize += isValidChecksum ? dataBuffer.Length : 0;
-            }
 
-            var filePath = Path.Combine(_fixture.Path, fileId);
-            new FileInfo(filePath).Length.ShouldBe(totalSize);
+                new FileInfo(filePath).Length.ShouldBe(totalSize);
+            }
+        }
+
+        [Fact]
+        public async Task VerifyChecksumAsync_Data_Is_Truncated_If_Client_Disconnects()
+        {
+            // Checksum is valid for "Hello " <-- note the last space
+            const string checksum = "lka6E6To6r7KT1JZv9faQdNooaY=";
+            var dataBuffer = new UTF8Encoding(false).GetBytes("Hello ");
+
+            var fileId = await _fixture.Store.CreateFileAsync(6, null, CancellationToken.None);
+
+            var cts = new CancellationTokenSource();
+            var requestStream = new RequestStreamFake(
+                (stream, bufferToFill, offset, count, cancellationToken) =>
+                {
+                    // Emulate client disconnect before entire stream has been read
+                    if (stream.Position == 2)
+                    {
+                        cts.Cancel();
+                        cts.Token.ThrowIfCancellationRequested();
+                    }
+
+                    return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, cancellationToken);
+                },
+                dataBuffer);
+
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(requestStream, cts);
+
+            await _fixture.Store.AppendDataAsync(fileId, guardedStream, guardedStream.CancellationToken);
+
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum), cts.Token);
+
+            checksumOk.ShouldBeFalse();
+
+            new FileInfo(Path.Combine(_fixture.Path, fileId)).Length.ShouldBe(0);
+        }
+
+        [Fact]
+        public async Task VerifyChecksumAsync_Data_Is_Kept_If_Client_Disconnects_After_Complete_Chunk_Has_Been_Written_And_Checksum_Matches()
+        {
+            // Checksum is valid for "Hello " <-- note the last space
+            const string checksum = "lka6E6To6r7KT1JZv9faQdNooaY=";
+            var dataBuffer = new UTF8Encoding(false).GetBytes("Hello ");
+
+            var fileId = await _fixture.Store.CreateFileAsync(6, null, CancellationToken.None);
+
+            var cts = new CancellationTokenSource();
+
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(dataBuffer), cts);
+            await _fixture.Store.AppendDataAsync(fileId, guardedStream, guardedStream.CancellationToken);
+
+            // Emulate client disconnect after entire stream has been read
+            cts.Cancel();
+
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum), cts.Token);
+
+            checksumOk.ShouldBeTrue();
+
+            new FileInfo(Path.Combine(_fixture.Path, fileId)).Length.ShouldBe(6);
         }
 
         [Fact]

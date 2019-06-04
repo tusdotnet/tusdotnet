@@ -77,11 +77,6 @@ namespace tusdotnet.IntentHandlers
             var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
             var bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
 
-            if (guardedStream.CancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
             var expires = _expirationHelper.IsSlidingExpiration
                 ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, CancellationToken)
                 : await _expirationHelper.GetExpirationIfSupported(Request.FileId, CancellationToken);
@@ -89,6 +84,11 @@ namespace tusdotnet.IntentHandlers
             if (!await MatchChecksum())
             {
                 await Response.Error((HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+                return;
+            }
+
+            if (guardedStream.CancellationToken.IsCancellationRequested)
+            {
                 return;
             }
 

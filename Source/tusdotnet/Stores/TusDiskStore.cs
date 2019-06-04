@@ -90,21 +90,13 @@ namespace tusdotnet.Stores
                     return 0;
                 }
 
-                var chunkStart = _fileRepFactory.ChunkStartPosition(internalFileId);
                 var chunkComplete = _fileRepFactory.ChunkComplete(internalFileId);
+                chunkComplete.Delete();
 
-                if (chunkComplete.Exist())
-                {
-                    chunkStart.Delete();
-                    chunkComplete.Delete();
-                }
-
-                if (!chunkStart.Exist())
-                {
-                    chunkStart.Write(fileLength.ToString());
-                }
+                _fileRepFactory.ChunkStartPosition(internalFileId).Write(fileLength.ToString());
 
                 int bytesRead;
+                var clientDisconnectedDuringRead = false;
                 do
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -113,6 +105,8 @@ namespace tusdotnet.Stores
                     }
 
                     bytesRead = await stream.ReadAsync(reciveReadBuffer, 0, _maxReadBufferSize, cancellationToken);
+                    clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
+
                     fileLength += bytesRead;
 
                     if (fileLength > uploadLength)
@@ -134,7 +128,7 @@ namespace tusdotnet.Stores
                 if (writeBuffer.Length != 0)
                     await FlushFileWriteBuffer(writeBuffer, file);
 
-                if (!cancellationToken.IsCancellationRequested)
+                if (!clientDisconnectedDuringRead)
                 {
                     // Chunk is complete. Mark it as complete.
                     chunkComplete.Write("1");
@@ -221,22 +215,26 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
         {
-            bool valid;
+            var valid = false;
             var internalFileId = new InternalFileId(fileId);
             using (var dataStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
             {
                 var chunkPositionFile = _fileRepFactory.ChunkStartPosition(internalFileId);
                 var chunkStartPosition = chunkPositionFile.ReadFirstLineAsLong(true, 0);
+                var chunkCompleteFile = _fileRepFactory.ChunkComplete(internalFileId);
 
-                var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
-                valid = checksum.SequenceEqual(calculateSha1);
+                // Only verify the checksum if the entire lastest chunk has been written.
+                // If not, just discard the last chunk as it won't match the checksum anyway.
+                if (chunkCompleteFile.Exist())
+                {
+                    var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
+                    valid = checksum.SequenceEqual(calculateSha1);
+                }
 
                 if (!valid)
                 {
                     dataStream.Seek(0, SeekOrigin.Begin);
                     dataStream.SetLength(chunkStartPosition);
-                    chunkPositionFile.Delete();
-                    _fileRepFactory.ChunkComplete(internalFileId).Delete();
                 }
             }
 

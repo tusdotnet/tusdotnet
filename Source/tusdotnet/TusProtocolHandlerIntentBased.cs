@@ -40,7 +40,7 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            if(await VerifyTusVersionIfApplicable(context, intentHandler) == ResultType.StopExecution) 
+            if (await VerifyTusVersionIfApplicable(context, intentHandler) == ResultType.StopExecution)
             {
                 return ResultType.StopExecution;
             }
