@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using tusdotnet.Interfaces;
 
 namespace tusdotnet.Stores
 {
@@ -75,21 +76,21 @@ namespace tusdotnet.Stores
                 _directoryPath = directoryPath;
             }
 
-            public InternalFileRep Data(InternalFileId fileId) => Create(fileId, "");
+            public InternalFileRep Data(ITusFileIdProvider fileId) => Create(fileId, "");
 
-            public InternalFileRep UploadLength(InternalFileId fileId) => Create(fileId, "uploadlength");
+            public InternalFileRep UploadLength(ITusFileIdProvider fileId) => Create(fileId, "uploadlength");
 
-            public InternalFileRep UploadConcat(InternalFileId fileId) => Create(fileId, "uploadconcat");
+            public InternalFileRep UploadConcat(ITusFileIdProvider fileId) => Create(fileId, "uploadconcat");
 
-            public InternalFileRep Metadata(InternalFileId fileId) => Create(fileId, "metadata");
+            public InternalFileRep Metadata(ITusFileIdProvider fileId) => Create(fileId, "metadata");
 
-            public InternalFileRep Expiration(InternalFileId fileId) => Create(fileId, "expiration");
+            public InternalFileRep Expiration(ITusFileIdProvider fileId) => Create(fileId, "expiration");
 
-            public InternalFileRep ChunkStartPosition(InternalFileId fileId) => Create(fileId, "chunkstart");
+            public InternalFileRep ChunkStartPosition(ITusFileIdProvider fileId) => Create(fileId, "chunkstart");
 
-            public InternalFileRep ChunkComplete(InternalFileId fileId) => Create(fileId, "chunkcomplete");
+            public InternalFileRep ChunkComplete(ITusFileIdProvider fileId) => Create(fileId, "chunkcomplete");
 
-            private InternalFileRep Create(InternalFileId fileId, string extension)
+            private InternalFileRep Create(ITusFileIdProvider fileId, string extension)
             {
                 var fileName = fileId.FileId;
                 if (!string.IsNullOrEmpty(extension))

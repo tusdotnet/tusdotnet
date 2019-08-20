@@ -1,18 +1,19 @@
 ﻿using System;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
 namespace tusdotnet.Stores
 {
-    internal sealed class InternalFileId
+    public sealed class InternalFileId: ITusFileIdProvider
     {
-        public string FileId { get; set; }
+        public string FileId { get; private set; }
 
         public InternalFileId()
         {
             FileId = Guid.NewGuid().ToString("n");
         }
 
-        public InternalFileId(string fileId)
+        public ITusFileIdProvider Use(string fileId)
         {
             if (!Guid.TryParseExact(fileId, "n", out var _))
             {
@@ -20,6 +21,8 @@ namespace tusdotnet.Stores
             }
 
             FileId = fileId;
+
+            return this;
         }
 
         public override string ToString()
