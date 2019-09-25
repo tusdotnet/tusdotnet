@@ -61,6 +61,7 @@ Test sites are available for:
 * ASP.NET Core 2.0 (.NET Framework 4.6.2)
 * ASP.NET Core 2.1 (.NET Core 2.1)
 * ASP.NET Core 2.2 (.NET Core 2.2)
+* ASP.NET Core 3.0 (.NET Core 3.0)
 
 ## Clients
 
