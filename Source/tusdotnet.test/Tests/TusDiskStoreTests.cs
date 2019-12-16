@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
-using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Stores;
@@ -155,10 +154,10 @@ namespace tusdotnet.test.Tests
         public async Task AppendDataAsync_Returns_Zero_If_File_Is_Already_Complete()
         {
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
-            var length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(new byte[100]), CancellationToken.None);
+            var length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(_fixture.CreateByteArrayWithRandomData(100)), CancellationToken.None);
             length.ShouldBe(100);
 
-            length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(new byte[1]), CancellationToken.None);
+            length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(_fixture.CreateByteArrayWithRandomData(1)), CancellationToken.None);
             length.ShouldBe(0);
         }
 
@@ -168,17 +167,17 @@ namespace tusdotnet.test.Tests
         [InlineData(51200, 2621800, 2621800, 1, 52)]
         [InlineData(10240, 102400, 307201, 4, 31)]
         [InlineData(51200, 52428800, 157286405, 4, 3073)]
+        [InlineData(50, 100, 400, 4, 8)]
         public async Task AppendDataAsync_Uses_The_Read_And_Write_Buffers_Correctly(int readBufferSize, int writeBufferSize, int fileSize, int expectedNumberOfWrites, int expectedNumberOfReads)
         {
-            int readsPerWrite = (int)Math.Ceiling((double)writeBufferSize / readBufferSize);
+            int numberOfReadsPerWrite = (int)Math.Ceiling((double)writeBufferSize / readBufferSize);
 
             var store = new TusDiskStore(_fixture.Path, false, new TusDiskBufferSize(writeBufferSize, readBufferSize));
 
             var totalNumberOfWrites = 0;
             var totalNumberOfReads = 0;
             var numberOfReadsSinceLastWrite = 0;
-            var firstWrite = true;
-            int bytesWritten = 0;
+            int totalBytesWritten = 0;
 
             var fileId = await store.CreateFileAsync(fileSize, null, CancellationToken.None);
 
@@ -190,27 +189,30 @@ namespace tusdotnet.test.Tests
                                                         =>
             {
                 count.ShouldBe(readBufferSize);
-                numberOfReadsSinceLastWrite++;
 
-                var bytesRead = await stream.ReadBackingStreamAsync(bufferToFill, offset, count, cancellationToken);
+                var bytesReadFromStream = await stream.ReadBackingStreamAsync(bufferToFill, offset, count, cancellationToken);
 
-                // Need to subtract from readsPerWrite due to this expression being checked _after_ the write has happened.
-                var previousReadShouldHaveTriggeredWrite = numberOfReadsSinceLastWrite == readsPerWrite - (firstWrite ? 0 : 1) + 1;
-
-                if (bytesRead != 0 && previousReadShouldHaveTriggeredWrite)
+                // There should have been a write after the previous read.
+                if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
                 {
-                    numberOfReadsSinceLastWrite = 0;
-                    firstWrite = false;
+                    // Calculate the amount of data that should have been written to disk so far.
+                    var expectedFileSizeRightNow = CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
 
-                    GetLengthFromFileOnDisk().ShouldBe(bytesWritten);
+                    // Assert that the size on disk is correct.
+                    GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
+
                     totalNumberOfWrites++;
+
+                    // Set to one as the write happened on the previous write, making this the second read since that write.
+                    numberOfReadsSinceLastWrite = 1;
                 }
 
+                numberOfReadsSinceLastWrite++;
                 totalNumberOfReads++;
 
-                bytesWritten += bytesRead;
+                totalBytesWritten += bytesReadFromStream;
 
-                return bytesRead;
+                return bytesReadFromStream;
             }, new byte[fileSize]);
 
             await store.AppendDataAsync(fileId, requestStream, CancellationToken.None);
@@ -227,6 +229,24 @@ namespace tusdotnet.test.Tests
             {
                 return new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;
             }
+        }
+
+        private long CalculateExpectedFileSize(int totalNumberOfReads, int readBufferSize, int writeBufferSize)
+        {
+            var expectedFileSizeRightNow = 0;
+            var writeBufferPosition = 0;
+            for (int i = 0; i < totalNumberOfReads; i++)
+            {
+                if (writeBufferPosition + readBufferSize > writeBufferSize)
+                {
+                    expectedFileSizeRightNow += writeBufferPosition;
+                    writeBufferPosition = 0;
+                }
+
+                writeBufferPosition += readBufferSize;
+            }
+
+            return expectedFileSizeRightNow;
         }
 
         [Fact]
@@ -866,6 +886,16 @@ namespace tusdotnet.test.Tests
                 Directory.Delete(Path, true);
             }
             Directory.CreateDirectory(Path);
+        }
+
+        public byte[] CreateByteArrayWithRandomData(int size)
+        {
+            var bytes = new byte[size];
+
+            var random = new Random();
+            random.NextBytes(bytes);
+
+            return bytes;
         }
     }
 }

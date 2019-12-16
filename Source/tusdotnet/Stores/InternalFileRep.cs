@@ -47,18 +47,14 @@ namespace tusdotnet.Stores
                 return null;
             }
 
-            using (var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read))
-            {
-                using (var sr = new StreamReader(stream))
-                {
-                    return sr.ReadLine();
-                }
-            }
+            using var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var sr = new StreamReader(stream);
+            return sr.ReadLine();
         }
 
         public FileStream GetStream(FileMode mode, FileAccess access, FileShare share)
         {
-            return File.Open(Path, mode, access, share);
+            return new FileStream(Path, mode, access, share, bufferSize: 4096, useAsync: true);
         }
 
         public long GetLength()
