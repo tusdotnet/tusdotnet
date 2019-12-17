@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>AspNetCore_netcoreapp3._1_TestApp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="index.html" />
+    <None Remove="tus.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\tusdotnet\tusdotnet.csproj" />
+  </ItemGroup>
+
+</Project>
