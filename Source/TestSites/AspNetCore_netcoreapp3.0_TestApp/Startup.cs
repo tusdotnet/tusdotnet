@@ -3,10 +3,12 @@ using System.Net;
 using System.Threading.Tasks;
 using AspNetCore_netcoreapp3._0_TestApp.Endpoints;
 using AspNetCore_netcoreapp3_0_TestApp.Authentication;
+using AspNetCore_netcoreapp3_0_TestApp.Middleware;
 using AspNetCore_netcoreapp3_0_TestApp.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -43,10 +45,20 @@ namespace AspNetCore_netcoreapp3._0_TestApp
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.Use((context, next) =>
+            {
+                // Default limit was changed some time ago. Should work by setting MaxRequestBodySize to null using ConfigureKestrel but this does not seem to work for IISExpress.
+                // Source: https://github.com/aspnet/Announcements/issues/267
+                context.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize = null;
+                return next.Invoke();
+            });
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseSimpleExceptionHandler();
 
             app.UseAuthentication();
 
@@ -176,7 +188,7 @@ namespace AspNetCore_netcoreapp3._0_TestApp
                 // This value can either be absolute or sliding.
                 // Absolute expiration will be saved per file on create
                 // Sliding expiration will be saved per file on create and updated on each patch/update.
-                Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
             };
         }
     }

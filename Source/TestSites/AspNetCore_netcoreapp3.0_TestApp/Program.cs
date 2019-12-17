@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace AspNetCore_netcoreapp3._0_TestApp
 {
-    public class Program
+    public static class Program
     {
         public static void Main(string[] args)
         {
@@ -14,7 +14,7 @@ namespace AspNetCore_netcoreapp3._0_TestApp
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    webBuilder.UseStartup<Startup>().ConfigureKestrel(opt => opt.Limits.MaxRequestBodySize = null);
                 });
     }
 }
