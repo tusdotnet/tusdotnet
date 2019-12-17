@@ -36,10 +36,14 @@ namespace tusdotnet.test.Data
     /// .NET Core 2.0 reverse proxy IIS on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
     /// .NET Core 2.1 reverse proxy IIS on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Connections.ConnectionResetException
     /// .NET Core 2.2 reverse proxy IIS on ASP.NET Core 2.2 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET Core 3.0 reverse proxy IIS on ASP.NET Core 3.0 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET Core 3.1 reverse proxy IIS on ASP.NET Core 3.1 -> CT = true, Exception = System.OperationCanceledException
     /// .NET Core 1.1 direct Kestrel on ASP.NET Core 1.1 -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
     /// .NET Core 2.0 direct Kestrel on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
     /// .NET Core 2.1 direct Kestrel on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException
     /// .NET Core 2.2 direct Kestrel on ASP.NET Core 2.2 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET Core 3.0 direct Kestrel on ASP.NET Core 3.0 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET Core 3.1 direct Kestrel on ASP.NET Core 3.1 -> CT = true, Exception = System.OperationCanceledException
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     internal sealed class PipelineDisconnectEmulationDataAttribute : DataAttribute
@@ -96,14 +100,14 @@ namespace tusdotnet.test.Data
 
         private static DisconnectPipelineEmulationInfo Kestrel()
         {
-            // Request cancellation token is not flagged properly in ASP.NET Core 1.1, but it is in ASP.NET Core 2.0 and 2.1.
+            // Request cancellation token is not flagged properly in ASP.NET Core 1.1, but it is in ASP.NET Core 2.0 and later.
 #if NETCOREAPP1_1
             const bool properlyCancelsCancellationToken = false;
             var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
 #elif NETCOREAPP2_1
             const bool properlyCancelsCancellationToken = true;
             var badHttpRequestExceptionCtorParams = new object[] { "", -1, RequestRejectionReason.UnexpectedEndOfRequestContent };
-#elif NETCOREAPP2_2
+#elif NETCOREAPP2_2 || NETCOREAPP3_0 || NETCOREAPP3_1
             const bool properlyCancelsCancellationToken = true;
             var exception = new OperationCanceledException();
 #else
@@ -111,10 +115,10 @@ namespace tusdotnet.test.Data
             var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
 #endif
 
-            // NETCOREAPP2_2 does not create a BadHttpRequestException when a client disconnects
-#if !NETCOREAPP2_2
+            // NETCOREAPP2_2 and later does not create a BadHttpRequestException when a client disconnects
+#if !NETCOREAPP2_2 && !NETCOREAPP3_0 && !NETCOREAPP3_1
             var ctor = typeof(BadHttpRequestException).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)[0];
-            var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);                
+            var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);
 #endif
 
             return new DisconnectPipelineEmulationInfo(properlyCancelsCancellationToken, exception);
@@ -124,7 +128,7 @@ namespace tusdotnet.test.Data
         {
 #if NETCOREAPP2_1
             var exceptionToThrow = new ConnectionResetException("Test");
-#elif NETCOREAPP2_2
+#elif NETCOREAPP2_2 || NETCOREAPP3_0 || NETCOREAPP3_1
             var exceptionToThrow = new OperationCanceledException();
 #else
             var exceptionToThrow = new IOException("Test", new UvException("Test", -4077));
