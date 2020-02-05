@@ -48,7 +48,7 @@
         <br /><br />
         <a href="https://developers.google.com/web/tools/chrome-devtools/network-performance/network-conditions" target="_blank">Throttle your network</a> to make it easier to follow the requests and responses.
         <br /><br />
-        <a href="#" onclick="resetLocalCache(event)" title="Once an upload has started the file url is cached in browser. Click here to reset this cache so that all files will be uploaded from scratch.">Click here to reset local file cache to restart uploads from scratch</a>
+              <a href="#" onclick="resetLocalCache(event)" title="Once an upload has started the file url is cached in browser. Click here to reset this cache so that all files will be uploaded from scratch.">Click here to reset local file cache to restart uploads from scratch</a>
 
         <div class="uploadControl">
             <input type="file" name="droppedFile" id="droppedFile" />
@@ -89,7 +89,8 @@
                     onSuccess: onTusSuccess,
                     metadata: {
                         name: file.name,
-                        contentType: file.type || 'application/octet-stream'
+                        contentType: file.type || 'application/octet-stream',
+                        emptyMetaKey: ''
                     }
                 });
 

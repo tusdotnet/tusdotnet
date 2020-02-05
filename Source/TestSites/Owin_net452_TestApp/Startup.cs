@@ -22,7 +22,6 @@ namespace OwinTestApp
     {
         public void Configuration(IAppBuilder app)
         {
-
             // Change the value of EnableOnAuthorize in app.config to enable or disable
             // the new authorization event.
             var enableAuthorize = Convert.ToBoolean(ConfigurationManager.AppSettings["EnableOnAuthorize"]);
@@ -55,8 +54,9 @@ namespace OwinTestApp
         {
             return new DefaultTusConfiguration
             {
-                Store = new TusDiskStore(@"C:\tusfiles\"),
                 UrlPath = "/files",
+                Store = new TusDiskStore(@"C:\tusfiles\"),
+                MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
                 Events = new Events
                 {
                     OnAuthorizeAsync = ctx =>
@@ -116,12 +116,12 @@ namespace OwinTestApp
                             return Task.FromResult(true);
                         }
 
-                        if (!ctx.Metadata.ContainsKey("name"))
+                        if (!ctx.Metadata.ContainsKey("name") || ctx.Metadata["name"].HasEmptyValue)
                         {
                             ctx.FailRequest("name metadata must be specified. ");
                         }
 
-                        if (!ctx.Metadata.ContainsKey("contentType"))
+                        if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
                         {
                             ctx.FailRequest("contentType metadata must be specified. ");
                         }

@@ -33,13 +33,13 @@ namespace tusdotnet.test.Tests
         {
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = new TusDiskStore(@"C:\temp"),
                     UrlPath = "/files",
                     Events = new Events
                     {
-                        OnAuthorizeAsync = ctx =>
+                        OnAuthorizeAsync = __ =>
                         {
                             _onAuthorizeWasCalled = true;
                             return Task.FromResult(0);
@@ -47,7 +47,7 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((ctx, next) =>
+                app.Use((_, __) =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);
@@ -73,13 +73,13 @@ namespace tusdotnet.test.Tests
         {
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = Substitute.For<ITusStore>(),
                     UrlPath = "/files",
                     Events = new Events
                     {
-                        OnAuthorizeAsync = ctx =>
+                        OnAuthorizeAsync = __ =>
                         {
                             _onAuthorizeWasCalled = true;
                             return Task.FromResult(0);
@@ -87,7 +87,7 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((context, func) =>
+                app.Use((_, __) =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);
@@ -102,14 +102,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Not_Specified()
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore, ITusCreationStore>(),
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(Substitute.For<ITusStore, ITusCreationStore>()))
             {
                 var response = await server
                     .CreateRequest("/files")
@@ -135,17 +128,10 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_201_Created_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
                 var response = await server
                     .CreateRequest("/files")
@@ -161,17 +147,10 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
                 var response = await server
                     .CreateRequest("/files")
@@ -191,19 +170,10 @@ namespace tusdotnet.test.Tests
         {
             const string metadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
 
-            ITusCreationStore tusStore = null;
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using (var server = TestServerFactory.Create(app =>
-            {
-                tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
-
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
                 var response = await server
                     .CreateRequest("/files")
@@ -231,17 +201,11 @@ namespace tusdotnet.test.Tests
         public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_Empty()
         {
             // The Upload-Metadata request and response header MUST consist of one or more comma-separated key-value pairs. 
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
                 // Check empty header
                 var response = await server
@@ -260,87 +224,65 @@ namespace tusdotnet.test.Tests
         }
 #endif
 
-        [Fact]
-        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format()
+        [Theory]
+        [InlineData("somekey")]
+        [InlineData("somekey c29tZXZhbHVl, someotherkey", "Header Upload-Metadata: Key must not be empty")]
+        [InlineData("   c29tZXZhbHVl")]
+        [InlineData("somekey c29tZXZhbHVl someotherkey")]
+        [InlineData("somekey c29tZXZhbHVl - someotherkey")]
+        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format_Using_Original_Metadata_Parsing_Strategy(string uploadHeader, string expectedErrorMessage = "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique.")
         {
             // The key and value MUST be separated by a space.
             // The key MUST NOT contain spaces and commas and MUST NOT be empty. 
-            using (var server = TestServerFactory.Create(app =>
+
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
-
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
-            {
-                const string formatErrorMessage =
-                    "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded.All keys MUST be unique.";
-
-                const string emptyKeyErrorMessage = "Header Upload-Metadata: Key must not be empty";
-
                 // Check header with only a key and no value
                 var response = await server
                     .CreateRequest("/files")
                     .AddTusResumableHeader()
                     .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Metadata", "somekey")
+                    .AddHeader("Upload-Metadata", uploadHeader)
                     .PostAsync();
 
                 response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
                 var message = await response.Content.ReadAsStringAsync();
-                message.ShouldBe(formatErrorMessage);
+                message.ShouldBe(expectedErrorMessage);
+            }
+        }
 
-                // Check empty key
-                response = await server
+        [Theory]
+        [InlineData("somekey c29tZXZhbHVl, someotherkey", "Header Upload-Metadata: Key must not be empty")]
+        [InlineData("   c29tZXZhbHVl")]
+        [InlineData(" c29tZXZhbHVl", "Header Upload-Metadata: Key must not be empty")]
+        [InlineData("somekey c29tZXZhbHVl someotherkey")]
+        [InlineData("somekey c29tZXZhbHVl - someotherkey")]
+        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format_Using_AllowEmptyValues_Metadata_Parsing_Strategy(string uploadHeader, string expectedErrorMessage = "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique. The value MAY be empty. In these cases, the space, which would normally separate the key and the value, MAY be left out.")
+        {
+            // The key and value MUST be separated by a space.
+            // The key MUST NOT contain spaces and commas and MUST NOT be empty. 
+            // The value MAY be empty. 
+            // In these cases, the space, which would normally separate the key and the value, MAY be left out.
+
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            using (var server = TestServerFactory.Create((ITusStore)tusStore, metadataParsingStrategy: MetadataParsingStrategy.AllowEmptyValues))
+            {
+                // Check header with only a key and no value
+                var response = await server
                     .CreateRequest("/files")
                     .AddTusResumableHeader()
                     .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Metadata", "somekey c29tZXZhbHVl, someotherkey")
+                    .AddHeader("Upload-Metadata", uploadHeader)
                     .PostAsync();
 
                 response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-                message = await response.Content.ReadAsStringAsync();
-                message.ShouldBe(emptyKeyErrorMessage);
-
-                // Check missing key
-                response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Metadata", "   c29tZXZhbHVl")
-                    .PostAsync();
-
-                response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-                message = await response.Content.ReadAsStringAsync();
-                message.ShouldBe(formatErrorMessage);
-
-                // Check header with space separated keys and values
-                response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Metadata", "somekey c29tZXZhbHVl someotherkey")
-                    .PostAsync();
-
-                response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-                message = await response.Content.ReadAsStringAsync();
-                message.ShouldBe(formatErrorMessage);
-
-                // Check header with dash separated keys and values
-                response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Metadata", "somekey c29tZXZhbHVl - someotherkey")
-                    .PostAsync();
-
-                response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-                message = await response.Content.ReadAsStringAsync();
-                message.ShouldBe(formatErrorMessage);
+                var message = await response.Content.ReadAsStringAsync();
+                message.ShouldBe(expectedErrorMessage);
             }
         }
 
@@ -348,17 +290,11 @@ namespace tusdotnet.test.Tests
         public async Task Returns_400_Bad_Request_If_UploadMetadata_Contains_Values_That_Are_Not_Base64_Encoded()
         {
             // The key SHOULD be ASCII encoded and the value MUST be Base64 encoded
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
                 // Check empty header
                 var response = await server
@@ -377,17 +313,11 @@ namespace tusdotnet.test.Tests
         public async Task Returns_400_Bad_Request_Is_All_UploadMetadata_Keys_Are_Not_Unique()
         {
             // All keys MUST be unique.
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files"
-                });
-            }))
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            using (var server = TestServerFactory.Create((ITusStore)tusStore))
             {
                 var response = await server
                     .CreateRequest("/files")
@@ -411,7 +341,7 @@ namespace tusdotnet.test.Tests
                 var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
                 tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = (ITusStore)tusStore,
                     UrlPath = "/files",

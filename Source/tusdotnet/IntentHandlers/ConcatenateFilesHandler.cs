@@ -37,7 +37,9 @@ namespace tusdotnet.IntentHandlers
     {
         internal override Requirement[] Requires => BuildListOfRequirements();
 
-        public UploadConcat UploadConcat { get; private set; }
+        public UploadConcat UploadConcat { get; }
+
+        private Dictionary<string, Metadata> _metadataFromRequirement;
 
         public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
@@ -53,14 +55,13 @@ namespace tusdotnet.IntentHandlers
         internal override async Task Invoke()
         {
             var metadataString = Request.GetHeader(HeaderConstants.UploadMetadata);
-            var metadata = Metadata.Parse(metadataString);
 
             string fileId;
             DateTimeOffset? expires = null;
 
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
-                ctx.Metadata = metadata;
+                ctx.Metadata = _metadataFromRequirement;
                 ctx.UploadLength = Request.UploadLength;
                 ctx.FileConcatenation = UploadConcat.Type;
             });
@@ -70,7 +71,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            fileId = await HandleCreationOfConcatFiles(Request.UploadLength, metadataString, metadata);
+            fileId = await HandleCreationOfConcatFiles(Request.UploadLength, metadataString, _metadataFromRequirement);
 
             if (IsPartialFile())
             {
@@ -101,7 +102,7 @@ namespace tusdotnet.IntentHandlers
                 requirements.Add(new Validation.Requirements.UploadLengthForCreateFileAndConcatenateFiles());
             }
 
-            requirements.Add(new Validation.Requirements.UploadMetadata());
+            requirements.Add(new Validation.Requirements.UploadMetadata(metadata => _metadataFromRequirement = metadata));
 
             return requirements.ToArray();
         }
@@ -133,7 +134,6 @@ namespace tusdotnet.IntentHandlers
                 });
 
                 await EventHelper.NotifyFileComplete(Context, ctx => ctx.FileId = createdFileId);
-
             }
             else
             {

@@ -36,13 +36,13 @@ namespace tusdotnet.test.Tests
         {
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = Substitute.For<ITusStore>(),
                     UrlPath = "/files",
                     Events = new Events
                     {
-                        OnAuthorizeAsync = ctx =>
+                        OnAuthorizeAsync = __ =>
                         {
                             _onAuthorizeWasCalled = true;
                             return Task.FromResult(0);
@@ -50,7 +50,7 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((ctx, next) =>
+                app.Use((_, __) =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);
@@ -71,14 +71,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_404_Not_Found_If_File_Was_Not_Found()
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -100,14 +93,7 @@ namespace tusdotnet.test.Tests
         [InlineData("application/json")]
         public async Task Returns_400_Bad_Request_If_An_Incorrect_Content_Type_Is_Provided(string contentType)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
             {
                 var requestBuilder = server
                     .CreateRequest("/files/testfile")
@@ -130,14 +116,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_For_Missing_Upload_Offset_Header()
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -157,14 +136,7 @@ namespace tusdotnet.test.Tests
         public async Task Returns_400_Bad_Request_For_Invalid_Upload_Offset_Header(string uploadOffset,
             string expectedServerErrorMessage)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -186,18 +158,11 @@ namespace tusdotnet.test.Tests
         [InlineData(100)]
         public async Task Returns_409_Conflict_If_Upload_Offset_Does_Not_Match_File_Offset(int offset)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -214,19 +179,12 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_If_Upload_Is_Already_Complete()
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-                store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -242,20 +200,13 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-                store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-                store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -272,20 +223,13 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore, ITusCreationDeferLengthStore>();
-                store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-                store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-                store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            var store = Substitute.For<ITusStore, ITusCreationDeferLengthStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files"
-                });
-            }))
+            using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
                     .CreateRequest("/files/testfile")
@@ -306,21 +250,15 @@ namespace tusdotnet.test.Tests
         {
             // This test does not work properly using the OWIN TestServer.
             // It will always throw an exception instead of returning the proper error message to the client.
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-                store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-                store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Throws(new TusStoreException("Test exception"));
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files"
-                });
-            }))
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Throws(new TusStoreException("Test exception"));
+
+            using (var server = TestServerFactory.Create(store))
             {
                 var requestBuilder = server
                     .CreateRequest("/files/testfile")
@@ -407,32 +345,25 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
         {
-            using (var server = TestServerFactory.Create(app =>
-            {
-                var random = new Random();
-                var offset = 5;
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-                store
-                    .GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>())
-                    .Returns(offset);
-                store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-                store
-                    .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(info =>
-                    {
-                        // Emulate some latency in the request.
-                        Thread.Sleep(random.Next(100, 301));
-                        offset += 3;
-                        return 3;
-                    });
-
-                app.UseTus(request => new DefaultTusConfiguration
+            var random = new Random();
+            var offset = 5;
+            var store = Substitute.For<ITusStore>();
+            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
+            store
+                .GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>())
+                .Returns(offset);
+            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            store
+                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(_ =>
                 {
-                    Store = store,
-                    UrlPath = "/files"
+                    // Emulate some latency in the request.
+                    Thread.Sleep(random.Next(100, 301));
+                    offset += 3;
+                    return 3;
                 });
-            }))
+
+            using (var server = TestServerFactory.Create(store))
             {
                 // Duplicated code due to: 
                 // "System.InvalidOperationException: The request message was already sent. Cannot send the same request message multiple times."
@@ -496,19 +427,19 @@ namespace tusdotnet.test.Tests
                 var store = Substitute.For<ITusStore>();
                 store.FileExistAsync("file1", Arg.Any<CancellationToken>()).Returns(true);
                 store.GetUploadLengthAsync("file1", Arg.Any<CancellationToken>()).Returns(6);
-                store.GetUploadOffsetAsync("file1", Arg.Any<CancellationToken>()).Returns(info => firstOffset);
+                store.GetUploadOffsetAsync("file1", Arg.Any<CancellationToken>()).Returns(_ => firstOffset);
                 store.AppendDataAsync("file1", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                     .Returns(3)
-                    .AndDoes(info => firstOffset += 3);
+                    .AndDoes(_ => firstOffset += 3);
 
                 store.FileExistAsync("file2", Arg.Any<CancellationToken>()).Returns(true);
                 store.GetUploadLengthAsync("file2", Arg.Any<CancellationToken>()).Returns(6);
-                store.GetUploadOffsetAsync("file2", Arg.Any<CancellationToken>()).Returns(info => secondOffset);
+                store.GetUploadOffsetAsync("file2", Arg.Any<CancellationToken>()).Returns(_ => secondOffset);
                 store.AppendDataAsync("file2", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                     .Returns(3)
-                    .AndDoes(info => secondOffset += 3);
+                    .AndDoes(_ => secondOffset += 3);
 
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -518,7 +449,7 @@ namespace tusdotnet.test.Tests
                     {
                         // Check that the store provided is the same as the one in the configuration.
                         cbStore.ShouldBeSameAs(store);
-                        cancellationToken.ShouldNotBe(default(CancellationToken));
+                        cancellationToken.ShouldNotBe(default);
 
                         onUploadCompleteCallCounts.TryGetValue(fileId, out int count);
 
@@ -532,7 +463,7 @@ namespace tusdotnet.test.Tests
                         {
                             // Check that the store provided is the same as the one in the configuration.
                             ctx.Store.ShouldBeSameAs(store);
-                            ctx.CancellationToken.ShouldNotBe(default(CancellationToken));
+                            ctx.CancellationToken.ShouldNotBe(default);
 
                             onFileCompleteAsyncCallbackCounts.TryGetValue(ctx.FileId, out int count);
 

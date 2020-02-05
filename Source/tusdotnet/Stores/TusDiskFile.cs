@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Parsers;
 
 namespace tusdotnet.Stores
 {
@@ -39,7 +40,11 @@ namespace tusdotnet.Stores
 		/// <inheritdoc />
 		public Task<Dictionary<string, Metadata>> GetMetadataAsync(CancellationToken cancellationToken)
 		{
-            return Task.FromResult(Metadata.Parse(_metadata.ReadFirstLine(true)));
+			var data = _metadata.ReadFirstLine(fileIsOptional: true);
+
+			var parsedMetadata = MetadataParser.ParseAndValidate(MetadataParsingStrategy.AllowEmptyValues, data);
+
+			return Task.FromResult(parsedMetadata.Metadata);
 		}
 	}
 }
