@@ -50,7 +50,7 @@ namespace tusdotnet.test.Tests
                 app.Use((_, __) =>
                 {
                     _callForwarded = true;
-                    return Task.FromResult(true);
+                    return Task.FromResult(0);
                 });
             }))
             {
@@ -90,7 +90,7 @@ namespace tusdotnet.test.Tests
                 app.Use((_, __) =>
                 {
                     _callForwarded = true;
-                    return Task.FromResult(true);
+                    return Task.FromResult(0);
                 });
             }))
             {
@@ -191,6 +191,42 @@ namespace tusdotnet.test.Tests
                 createFileAsyncCall.ShouldNotBeNull("No call to CreateFileAsync occurred.");
                 // ReSharper disable once PossibleNullReferenceException
                 createFileAsyncCall.GetArguments()[1].ShouldBe(metadata);
+            }
+        }
+
+        [Fact]
+        public async Task No_UploadMetadata_Is_Saved_If_None_Is_Provided()
+        {
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+
+            var events = new Events
+            {
+                OnBeforeCreateAsync = ctx =>
+                {
+                    ctx.Metadata.ShouldNotBeNull();
+                    ctx.Metadata.Keys.Count.ShouldBe(0);
+                    return Task.FromResult(0);
+                }
+            };
+
+            using (var server = TestServerFactory.Create((ITusStore)tusStore, events))
+            {
+                var response = await server
+                    .CreateRequest("/files")
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Length", "1")
+                    .PostAsync();
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+                var createFileAsyncCall = tusStore
+                    .ReceivedCalls()
+                    .FirstOrDefault(f => f.GetMethodInfo().Name == nameof(tusStore.CreateFileAsync));
+
+                createFileAsyncCall.ShouldNotBeNull("No call to CreateFileAsync occurred.");
+                // ReSharper disable once PossibleNullReferenceException
+                createFileAsyncCall.GetArguments()[1].ShouldBe(null);
             }
         }
 
