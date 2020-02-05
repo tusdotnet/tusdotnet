@@ -22,6 +22,7 @@ namespace tusdotnet.Validation.Requirements
         {
             if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
             {
+                _cacheResult?.Invoke(new Dictionary<string, Metadata>());
                 return TaskHelper.Completed;
             }
 
