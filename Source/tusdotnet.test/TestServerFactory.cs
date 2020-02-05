@@ -30,15 +30,16 @@ namespace tusdotnet.test
             return new TestServer(host);
         }
 
-        public static TestServer Create(ITusStore store, Events events = null)
+        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original)
         {
             return Create(app =>
             {
-                app.UseTus(context => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
                     Store = store,
-                    Events = events
+                    Events = events,
+                    MetadataParsingStrategy = metadataParsingStrategy
                 });
             });
         }
@@ -52,15 +53,16 @@ namespace tusdotnet.test
 		    return TestServer.Create(startup);
 	    }
 
-        public static TestServer Create(ITusStore store, Events events = null)
+        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original)
         {
             return Create(app =>
             {
-                app.UseTus(context => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
                     Store = store,
-                    Events = events
+                    Events = events,
+                    MetadataParsingStrategy = metadataParsingStrategy
                 });
             });
         }

@@ -2,7 +2,6 @@
 #if netstandard
 using System.Linq;
 #endif
-using System.Reflection;
 using System.Text;
 using Shouldly;
 using tusdotnet.Models;
@@ -53,42 +52,6 @@ namespace tusdotnet.test.Tests.ModelTests
 			var meta = Metadata.Parse(UploadMetadata);
 			meta.ContainsKey("filename").ShouldBeTrue();
 			Should.Throw<ArgumentNullException>(() => meta["filename"].GetString(null));
-		}
-
-		[Fact]
-		public void Ctor_Throws_Exception_If_Encoded_Value_Is_Null_Or_Empty()
-		{
-		    void AssertArgumentNullException(ConstructorInfo ctor, object ctorValue)
-		    {
-		        var exception = Should.Throw<TargetInvocationException>(() => ctor.Invoke(new[] {ctorValue}));
-		        exception.InnerException.ShouldNotBeNull();
-		        // ReSharper disable once PossibleNullReferenceException
-		        exception.InnerException.GetType().ShouldBe(typeof(ArgumentNullException));
-		    }
-
-		    // Ctor is private so use reflection to fetch it and create an instance.
-#if netfull
-			var constructor = typeof(Metadata).GetConstructor(
-				BindingFlags.Instance | BindingFlags.NonPublic,
-				null,
-				new[] { typeof(string) },
-				null);
-#else
-			var constructor = typeof(Metadata).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).FirstOrDefault(
-				f =>
-				{
-					var param = f.GetParameters();
-					return param.Length == 1 && param[0].ParameterType == typeof(string);
-				});
-#endif
-
-			constructor.ShouldNotBeNull();
-
-			Should.NotThrow(() => constructor.Invoke(new object[] { "d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==" }));
-
-			AssertArgumentNullException(constructor, null);
-			AssertArgumentNullException(constructor, "");
-			AssertArgumentNullException(constructor, " ");
 		}
 
         [Fact]
