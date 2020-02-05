@@ -89,7 +89,8 @@
                     onSuccess: onTusSuccess,
                     metadata: {
                         name: file.name,
-                        contentType: file.type || 'application/octet-stream'
+                        contentType: file.type || 'application/octet-stream',
+                        emptyMetaKey: ''
                     }
                 });
 

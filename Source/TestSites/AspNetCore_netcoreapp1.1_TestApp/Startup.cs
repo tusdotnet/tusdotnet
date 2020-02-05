@@ -64,6 +64,7 @@ namespace AspNetCore_netcoreapp1_1_TestApp
             {
                 UrlPath = "/files",
                 Store = new TusDiskStore(@"C:\tusfiles\"),
+                MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
                 Events = new Events
                 {
                     OnBeforeCreateAsync = ctx =>
@@ -75,12 +76,12 @@ namespace AspNetCore_netcoreapp1_1_TestApp
                             return Task.CompletedTask;
                         }
 
-                        if (!ctx.Metadata.ContainsKey("name"))
+                        if (!ctx.Metadata.ContainsKey("name") || ctx.Metadata["name"].HasEmptyValue)
                         {
                             ctx.FailRequest("name metadata must be specified. ");
                         }
 
-                        if (!ctx.Metadata.ContainsKey("contentType"))
+                        if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
                         {
                             ctx.FailRequest("contentType metadata must be specified. ");
                         }
