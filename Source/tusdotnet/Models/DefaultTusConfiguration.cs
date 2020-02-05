@@ -60,6 +60,12 @@ namespace tusdotnet.Models
         public virtual ExpirationBase Expiration { get; set; }
 
         /// <summary>
+        /// Set the strategy to use when parsing metadata. Defaults to <see cref="MetadataParsingStrategy.Original"/> for backwards compatibility.
+        /// It is recommended to use <c>AllowEmptyValues</c> for better compatibility with tus clients.
+        /// </summary>
+        public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
+
+        /// <summary>
         /// Check that the config is valid. Throws a <exception cref="TusConfigurationException">TusConfigurationException</exception> if the config is invalid.
         /// </summary>
         internal void Validate()
@@ -72,6 +78,11 @@ namespace tusdotnet.Models
             if (string.IsNullOrWhiteSpace(UrlPath))
             {
                 throw new TusConfigurationException($"{nameof(UrlPath)} cannot be empty.");
+            }
+
+            if (!Enum.IsDefined(typeof(MetadataParsingStrategy), MetadataParsingStrategy))
+            {
+                throw new TusConfigurationException($"{nameof(MetadataParsingStrategy)} is not a valid value.");
             }
         }
 

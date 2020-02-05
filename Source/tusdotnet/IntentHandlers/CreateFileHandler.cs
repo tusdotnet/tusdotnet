@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
@@ -38,12 +39,14 @@ namespace tusdotnet.IntentHandlers
         internal override Requirement[] Requires => new Requirement[]
         {
             new UploadLengthForCreateFileAndConcatenateFiles(),
-            new UploadMetadata()
+            new UploadMetadata(metadata => _metadataFromRequirement = metadata)
         };
 
         private readonly ITusCreationStore _creationStore;
 
         private readonly ExpirationHelper _expirationHelper;
+
+        private Dictionary<string, Metadata> _metadataFromRequirement;
 
         public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore)
             : base(context, IntentType.CreateFile, LockType.NoLock)
@@ -55,12 +58,10 @@ namespace tusdotnet.IntentHandlers
         internal override async Task Invoke()
         {
             var metadata = Request.GetHeader(HeaderConstants.UploadMetadata);
-            var parsedMetadata = Metadata.Parse(metadata);
-
 
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
-                ctx.Metadata = parsedMetadata;
+                ctx.Metadata = _metadataFromRequirement;
                 ctx.UploadLength = Request.UploadLength;
             });
 
@@ -75,7 +76,7 @@ namespace tusdotnet.IntentHandlers
             {
                 ctx.FileId = fileId;
                 ctx.FileConcatenation = null;
-                ctx.Metadata = parsedMetadata;
+                ctx.Metadata = _metadataFromRequirement;
                 ctx.UploadLength = Request.UploadLength;
             });
 
