@@ -11,7 +11,8 @@ namespace tusdotnet.Validation.Requirements
         {
             if (context.Request.ContentType?.Equals("application/offset+octet-stream", StringComparison.OrdinalIgnoreCase) != true)
             {
-                return BadRequest($"Content-Type {context.Request.ContentType} is invalid. Must be application/offset+octet-stream");
+                var errorMessage = $"Content-Type {context.Request.ContentType} is invalid. Must be application/offset+octet-stream";
+                return UnsupportedMediaType(errorMessage);
             }
 
             return TaskHelper.Completed;

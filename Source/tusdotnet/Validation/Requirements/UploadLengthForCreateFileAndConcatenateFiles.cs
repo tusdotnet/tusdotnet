@@ -11,35 +11,28 @@ namespace tusdotnet.Validation.Requirements
         {
             var uploadDeferLengthHeader = context.Request.GetHeader(HeaderConstants.UploadDeferLength);
             var uploadLengthHeader = context.Request.GetHeader(HeaderConstants.UploadLength);
-            return ValidateForPost(context, uploadLengthHeader, uploadDeferLengthHeader);
-        }
 
-        private Task ValidateForPost(ContextAdapter context, string uploadLengthHeader, string uploadDeferLengthHeader)
-        {
             if (uploadLengthHeader != null && uploadDeferLengthHeader != null)
             {
-                return BadRequest(
-                    $"Headers {HeaderConstants.UploadLength} and {HeaderConstants.UploadDeferLength} are mutually exclusive and cannot be used in the same request");
+                return BadRequest($"Headers {HeaderConstants.UploadLength} and {HeaderConstants.UploadDeferLength} are mutually exclusive and cannot be used in the same request");
             }
-            
+
             if (uploadDeferLengthHeader == null)
             {
-                VerifyRequestUploadLength(context, uploadLengthHeader);
-            }
-            else
-            {
-                VerifyDeferLength(uploadDeferLengthHeader);
+                return VerifyRequestUploadLength(context, uploadLengthHeader);
             }
 
-            return TaskHelper.Completed;
+            return VerifyDeferLength(uploadDeferLengthHeader);
         }
 
-        private void VerifyDeferLength(string uploadDeferLengthHeader)
+        private Task VerifyDeferLength(string uploadDeferLengthHeader)
         {
             if (uploadDeferLengthHeader != "1")
             {
-                BadRequest($"Header {HeaderConstants.UploadDeferLength} must have the value '1' or be omitted");
+                return BadRequest($"Header {HeaderConstants.UploadDeferLength} must have the value '1' or be omitted");
             }
+
+            return TaskHelper.Completed;
         }
 
         private Task VerifyRequestUploadLength(ContextAdapter context, string uploadLengthHeader)
