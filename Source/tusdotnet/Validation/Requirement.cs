@@ -44,6 +44,11 @@ namespace tusdotnet.Validation
             return Error(HttpStatusCode.NotFound, null);
         }
 
+        protected Task UnsupportedMediaType(string errorMessage)
+        {
+            return Error(HttpStatusCode.UnsupportedMediaType, errorMessage);
+        }
+
         private Task Error(HttpStatusCode status, string errorMessage)
         {
             StatusCode = status;

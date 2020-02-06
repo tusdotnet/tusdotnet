@@ -91,7 +91,7 @@ namespace tusdotnet.test.Tests
         [InlineData(null)]
         [InlineData("application/octet-stream")]
         [InlineData("application/json")]
-        public async Task Returns_400_Bad_Request_If_An_Incorrect_Content_Type_Is_Provided(string contentType)
+        public async Task Returns_415_Unsupported_Media_Type_If_An_Incorrect_Content_Type_Is_Provided(string contentType)
         {
             using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
             {
@@ -107,7 +107,7 @@ namespace tusdotnet.test.Tests
 
                 var response = await requestBuilder.SendAsync("PATCH");
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
+                await response.ShouldBeErrorResponse(HttpStatusCode.UnsupportedMediaType,
                     $"Content-Type {contentType} is invalid. Must be application/offset+octet-stream");
                 response.ShouldContainTusResumableHeader();
             }
