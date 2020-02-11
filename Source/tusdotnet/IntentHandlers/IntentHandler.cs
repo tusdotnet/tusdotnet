@@ -45,11 +45,11 @@ namespace tusdotnet.IntentHandlers
             LockType = requiresLock;
         }
 
-        internal async Task<bool> Validate(ContextAdapter context)
+        internal async Task<bool> Validate()
         {
             var validator = new Validator(Requires);
 
-            validator.Validate(context);
+            validator.Validate(Context);
 
             if (validator.StatusCode == HttpStatusCode.OK)
             {
@@ -58,11 +58,11 @@ namespace tusdotnet.IntentHandlers
 
             if (validator.StatusCode == HttpStatusCode.NotFound)
             {
-                context.Response.NotFound();
+                Context.Response.NotFound();
                 return false;
             }
 
-            await context.Response.Error(validator.StatusCode, validator.ErrorMessage);
+            await Context.Response.Error(validator.StatusCode, validator.ErrorMessage);
             return false;
         }
     }

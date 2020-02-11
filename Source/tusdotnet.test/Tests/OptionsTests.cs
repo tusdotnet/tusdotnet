@@ -214,7 +214,7 @@ namespace tusdotnet.test.Tests
         {
             response.ShouldContainHeader("Tus-Resumable", "1.0.0");
             response.ShouldContainHeader("Tus-Version", "1.0.0");
-            response.ShouldContainHeader("Tus-Extension", "creation,termination,checksum,concatenation,expiration,creation-defer-length");
+            response.ShouldContainHeader("Tus-Extension", "creation,creation-with-upload,termination,checksum,concatenation,expiration,creation-defer-length");
             response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
         }
 

@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Validation;
@@ -58,10 +56,12 @@ namespace tusdotnet.IntentHandlers
 
         private List<string> DetectExtensions()
         {
-            var extensions = new List<string>(6);
+            var extensions = new List<string>(7);
+
             if (Context.Configuration.Store is ITusCreationStore)
             {
                 extensions.Add(ExtensionConstants.Creation);
+                extensions.Add(ExtensionConstants.CreationWithUpload);
             }
 
             if (Context.Configuration.Store is ITusTerminationStore)

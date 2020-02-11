@@ -96,7 +96,7 @@ namespace tusdotnet
 
             var hasUploadConcatHeader = context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat);
 
-            if (context.Configuration.Store is tusdotnet.Interfaces.ITusConcatenationStore tusConcatenationStore
+            if (context.Configuration.Store is ITusConcatenationStore tusConcatenationStore
                 && hasUploadConcatHeader)
             {
                 return new ConcatenateFilesHandler(context, tusConcatenationStore);
