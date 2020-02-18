@@ -10,6 +10,8 @@ namespace tusdotnet.Models
     /// </summary>
     public class Metadata
     {
+        private static readonly byte[] _emptyBytes = new byte[0];
+
         private readonly byte[] _decodedValue;
 
         /// <summary>
@@ -32,7 +34,7 @@ namespace tusdotnet.Models
         /// <returns>The raw byte array of the encoded value</returns>
         public byte[] GetBytes()
         {
-            return _decodedValue;
+            return _decodedValue ?? _emptyBytes;
         }
 
         /// <summary>
@@ -51,7 +53,7 @@ namespace tusdotnet.Models
 
             if (bytes == null)
             {
-                return null;
+                return string.Empty;
             }
 
             return encoding.GetString(bytes);

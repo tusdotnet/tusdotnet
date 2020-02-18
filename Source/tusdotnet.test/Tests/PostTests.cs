@@ -234,14 +234,14 @@ namespace tusdotnet.test.Tests
 
         // This test is not applicable for ASP.NET Core as it removes empty headers before hitting the middleware.
         [Fact]
-        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_Empty()
+        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_Empty_And_Original_Parsing_Strategy_Is_Used()
         {
             // The Upload-Metadata request and response header MUST consist of one or more comma-separated key-value pairs. 
 
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using (var server = TestServerFactory.Create((ITusStore)tusStore))
+            using (var server = TestServerFactory.Create((ITusStore)tusStore, metadataParsingStrategy: MetadataParsingStrategy.Original))
             {
                 // Check empty header
                 var response = await server
@@ -274,7 +274,7 @@ namespace tusdotnet.test.Tests
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using (var server = TestServerFactory.Create((ITusStore)tusStore))
+            using (var server = TestServerFactory.Create((ITusStore)tusStore, metadataParsingStrategy: MetadataParsingStrategy.Original))
             {
                 // Check header with only a key and no value
                 var response = await server

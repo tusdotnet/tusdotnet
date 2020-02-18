@@ -60,8 +60,8 @@ namespace tusdotnet.Models
         public virtual ExpirationBase Expiration { get; set; }
 
         /// <summary>
-        /// Set the strategy to use when parsing metadata. Defaults to <see cref="MetadataParsingStrategy.Original"/> for backwards compatibility.
-        /// It is recommended to use <c>AllowEmptyValues</c> for better compatibility with tus clients.
+        /// Set the strategy to use when parsing metadata. Defaults to <see cref="MetadataParsingStrategy.AllowEmptyValues"/> for better compatibility with tus clients.
+        /// Change to <see cref="MetadataParsingStrategy.Original"/> to use the old format.
         /// </summary>
         public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
 

@@ -30,7 +30,7 @@ namespace tusdotnet.test
             return new TestServer(host);
         }
 
-        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original)
+        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues)
         {
             return Create(app =>
             {
@@ -53,7 +53,7 @@ namespace tusdotnet.test
 		    return TestServer.Create(startup);
 	    }
 
-        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original)
+        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues)
         {
             return Create(app =>
             {
