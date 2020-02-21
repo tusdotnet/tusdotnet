@@ -32,21 +32,15 @@ namespace tusdotnet
                 return IntentHandler.NotApplicable;
             }
 
-            switch (httpMethod)
+            return httpMethod switch
             {
-                case "post":
-                    return DetermineIntentForPost(context);
-                case "patch":
-                    return DetermineIntentForPatch(context);
-                case "head":
-                    return DetermineIntentForHead(context);
-                case "options":
-                    return DetermineIntentForOptions(context);
-                case "delete":
-                    return DetermineIntentForDelete(context);
-                default:
-                    return IntentHandler.NotApplicable;
-            }
+                "post" => DetermineIntentForPost(context),
+                "patch" => DetermineIntentForPatch(context),
+                "head" => DetermineIntentForHead(context),
+                "options" => DetermineIntentForOptions(context),
+                "delete" => DetermineIntentForDelete(context),
+                _ => IntentHandler.NotApplicable,
+            };
         }
 
         /// <summary>
