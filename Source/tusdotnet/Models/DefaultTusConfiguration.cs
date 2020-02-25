@@ -93,5 +93,17 @@ namespace tusdotnet.Models
         {
             return MaxAllowedUploadSizeInBytesLong ?? MaxAllowedUploadSizeInBytes;
         }
+
+        private DateTimeOffset? _systemTime;
+
+        internal void MockSystemTime(DateTimeOffset systemTime)
+        {
+            _systemTime = systemTime;
+        }
+
+        internal DateTimeOffset GetSystemTime()
+        {
+            return _systemTime ?? DateTimeOffset.UtcNow;
+        }
     }
 }

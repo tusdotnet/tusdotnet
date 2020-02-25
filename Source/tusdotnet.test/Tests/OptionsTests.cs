@@ -9,6 +9,7 @@ using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 using tusdotnet.Models.Configuration;
+using System;
 #if netfull
 using Owin;
 #endif
@@ -195,10 +196,7 @@ namespace tusdotnet.test.Tests
                 }
             }))
             {
-                var response = await server
-                    .CreateRequest("/files/testfile")
-                    .AddTusResumableHeader()
-                    .SendAsync("HEAD");
+                var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
                 response.ShouldNotContainHeaders(
@@ -207,6 +205,26 @@ namespace tusdotnet.test.Tests
                     "Tus-Extension",
                     "Tus-Checksum-Algorithm",
                     "Content-Type");
+            }
+        }
+
+        [Theory]
+        [InlineData(typeof(ITusCreationStore), "creation,creation-with-upload")]
+        [InlineData(typeof(ITusTerminationStore), "termination")]
+        [InlineData(typeof(ITusChecksumStore), "checksum")]
+        [InlineData(typeof(ITusConcatenationStore), "concatenation")]
+        [InlineData(typeof(ITusExpirationStore), "expiration")]
+        [InlineData(typeof(ITusCreationDeferLengthStore), "creation-defer-length")]
+        public async Task Extensions_Depend_On_What_The_Store_Supports(Type storeInterfaceType, string expectedExtensions)
+        {
+            var store = (ITusStore)Substitute.For(new[] { typeof(ITusStore), storeInterfaceType }, null);
+
+            using (var server = TestServerFactory.Create(store))
+            {
+                var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                response.ShouldContainHeader("Tus-Extension", expectedExtensions);
             }
         }
 

@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -15,6 +12,7 @@ namespace tusdotnet.Helpers
         private readonly ITusExpirationStore _expirationStore;
         private readonly ExpirationBase _expiration;
         private readonly bool _isSupported;
+        private readonly Func<DateTimeOffset> _getSystemTime;
 
         public bool IsSlidingExpiration => _expiration is SlidingExpiration;
 
@@ -23,6 +21,7 @@ namespace tusdotnet.Helpers
             _expirationStore = configuration.Store as ITusExpirationStore;
             _expiration = configuration.Expiration;
             _isSupported = _expirationStore != null && _expiration != null;
+            _getSystemTime = configuration.GetSystemTime;
         }
 
         internal async Task<DateTimeOffset?> SetExpirationIfSupported(string fileId, CancellationToken cancellationToken)
@@ -32,7 +31,7 @@ namespace tusdotnet.Helpers
                 return null;
             }
 
-            var expires = DateTimeOffset.UtcNow.Add(_expiration.Timeout);
+            var expires = _getSystemTime().Add(_expiration.Timeout);
             await _expirationStore.SetExpirationAsync(fileId, expires, cancellationToken);
 
             return expires;

@@ -63,7 +63,6 @@ namespace tusdotnet.Helpers
 
             var eventContext = FileCompleteContext.Create(context, configure);
 
-
             if (context.Configuration.OnUploadCompleteAsync != null)
 
             {
