@@ -89,6 +89,7 @@ namespace tusdotnet.IntentHandlers
             if (writeFileContext.FileContentIsAvailable)
             {
                 uploadOffset = await writeFileContext.SaveFileContent();
+                expires = writeFileContext.UploadExpires;
             }
 
             SetReponseHeaders(fileId, expires, uploadOffset);

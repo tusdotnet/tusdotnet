@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using tusdotnet.Constants;
@@ -19,6 +20,8 @@ namespace tusdotnet.Adapters
         internal Stream ResponseStream { get; }
 
         internal int? UploadOffset => GetUploadOffset();
+
+        internal DateTimeOffset? UploadExpires => GetUploadExpires();
 
         internal bool FileContentIsAvailable { get; }
 
@@ -115,6 +118,21 @@ namespace tusdotnet.Adapters
             if (int.TryParse(uploadOffset, out var i))
             {
                 return i;
+            }
+
+            return null;
+        }
+
+        private DateTimeOffset? GetUploadExpires()
+        {
+            if (!ResponseHeaders.TryGetValue("Upload-Expires", out var uploadExpires))
+            {
+                return null;
+            }
+
+            if(DateTimeOffset.TryParseExact(uploadExpires, "R", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            {
+                return d;
             }
 
             return null;
