@@ -13,19 +13,18 @@ namespace tusdotnet.Adapters
 {
     internal sealed class WriteFileContextForCreationWithUpload
     {
-        internal ContextAdapter Context { get; }
-
-        internal Dictionary<string, string> ResponseHeaders { get; }
-
-        internal Stream ResponseStream { get; }
-
-        internal int? UploadOffset => GetUploadOffset();
-
         internal DateTimeOffset? UploadExpires => GetUploadExpires();
 
         internal bool FileContentIsAvailable { get; }
 
-        internal static async Task<WriteFileContextForCreationWithUpload> CreateFromContext(ContextAdapter creationContext, string fileId)
+        private readonly ContextAdapter _context;
+
+        private readonly Dictionary<string, string> _responseHeaders;
+
+        private readonly Stream _responseStream;
+        private readonly string _fileId;
+
+        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
             // Check if there is any file content available in the request.
             var buffer = new byte[1];
@@ -34,9 +33,9 @@ namespace tusdotnet.Adapters
             return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
         }
 
-        internal async Task<int?> SaveFileContent()
+        internal async Task<long?> SaveFileContent()
         {
-            var authResponse = await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
+            var authResponse = await EventHelper.Validate<AuthorizeContext>(_context, ctx =>
             {
                 ctx.Intent = IntentType.WriteFile;
                 ctx.FileConcatenation = null;
@@ -47,26 +46,34 @@ namespace tusdotnet.Adapters
                 return 0;
             }
 
-            var writeFileHandler = new WriteFileHandler(Context);
+            var writeFileHandler = new WriteFileHandler(_context, initiatedFromCreationWithUpload: true);
 
             if (!await writeFileHandler.Validate())
             {
                 return 0;
             }
 
-            await writeFileHandler.Invoke();
+            try
+            {
+                await writeFileHandler.Invoke();
+            }
+            catch
+            {
+                // Left blank
+            }
 
-            return UploadOffset;
+            return GetUploadOffset() ?? (await _context.Configuration.Store.GetUploadOffsetAsync(_fileId, _context.CancellationToken));
         }
 
         private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte preReadByte)
         {
-            ResponseHeaders = new Dictionary<string, string>();
-            ResponseStream = new MemoryStream();
+            _responseHeaders = new Dictionary<string, string>();
+            _responseStream = new MemoryStream();
+            _fileId = fileId;
 
             FileContentIsAvailable = hasData;
 
-            Context = new ContextAdapter
+            _context = new ContextAdapter
             {
                 CancellationToken = creationContext.CancellationToken,
                 Configuration = creationContext.Configuration,
@@ -83,8 +90,8 @@ namespace tusdotnet.Adapters
         {
             return new ResponseAdapter
             {
-                Body = ResponseStream,
-                SetHeader = (key, value) => ResponseHeaders[key] = value,
+                Body = _responseStream,
+                SetHeader = (key, value) => _responseHeaders[key] = value,
                 SetStatus = _ => { }
             };
         }
@@ -108,14 +115,14 @@ namespace tusdotnet.Adapters
             return writeFileRequest;
         }
 
-        private int? GetUploadOffset()
+        private long? GetUploadOffset()
         {
-            if (!ResponseHeaders.TryGetValue(HeaderConstants.UploadOffset, out var uploadOffset))
+            if (!_responseHeaders.TryGetValue(HeaderConstants.UploadOffset, out var uploadOffset))
             {
                 return null;
             }
 
-            if (int.TryParse(uploadOffset, out var i))
+            if (long.TryParse(uploadOffset, out var i))
             {
                 return i;
             }
@@ -125,7 +132,7 @@ namespace tusdotnet.Adapters
 
         private DateTimeOffset? GetUploadExpires()
         {
-            if (!ResponseHeaders.TryGetValue("Upload-Expires", out var uploadExpires))
+            if (!_responseHeaders.TryGetValue(HeaderConstants.UploadExpires, out var uploadExpires))
             {
                 return null;
             }

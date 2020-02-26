@@ -40,24 +40,14 @@ namespace tusdotnet.IntentHandlers
 
     internal class WriteFileHandler : IntentHandler
     {
-        internal override Requirement[] Requires => new Requirement[]
-        {
-            new UploadConcatForWriteFile(),
-            new ContentType(),
-            new UploadLengthForWriteFile(),
-            new UploadOffset(),
-            new UploadChecksum(_checksum),
-            new FileExist(),
-            new FileHasNotExpired(),
-            new RequestOffsetMatchesFileOffset(),
-            new FileIsNotCompleted()
-        };
+        internal override Requirement[] Requires => GetListOfRequirements();
 
         private readonly Checksum _checksum;
 
         private readonly ExpirationHelper _expirationHelper;
+        private readonly bool _initiatedFromCreationWithUpload;
 
-        public WriteFileHandler(ContextAdapter context)
+        public WriteFileHandler(ContextAdapter context, bool initiatedFromCreationWithUpload)
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
             var checksumHeader = Request.GetHeader(HeaderConstants.UploadChecksum);
@@ -68,6 +58,7 @@ namespace tusdotnet.IntentHandlers
             }
 
             _expirationHelper = new ExpirationHelper(Context.Configuration);
+            _initiatedFromCreationWithUpload = initiatedFromCreationWithUpload;
         }
 
         internal override async Task Invoke()
@@ -164,6 +155,40 @@ namespace tusdotnet.IntentHandlers
                 _checksum.Algorithm,
                 _checksum.Hash,
                 CancellationToken);
+        }
+
+        private Requirement[] GetListOfRequirements()
+        {
+            var contentTypeRequirement = new ContentType();
+            var uploadLengthRequirement = new UploadLengthForWriteFile();
+            var uploadChecksumRequirement = new UploadChecksum(_checksum);
+            var fileHasExpired = new FileHasNotExpired();
+
+            // Initiated using creation-with-upload meaning that we can guarantee that the file already exist, the offset is correct etc.
+            if (_initiatedFromCreationWithUpload)
+            {
+                return new Requirement[]
+                {
+                    contentTypeRequirement,
+                    uploadLengthRequirement,
+                    uploadChecksumRequirement,
+                    fileHasExpired
+                };
+            }
+
+            
+            return new Requirement[]
+            {
+                new UploadConcatForWriteFile(),
+                contentTypeRequirement,
+                uploadLengthRequirement,
+                new UploadOffset(),
+                uploadChecksumRequirement,
+                new FileExist(),
+                fileHasExpired,
+                new RequestOffsetMatchesFileOffset(),
+                new FileIsNotCompleted()
+            };
         }
     }
 }

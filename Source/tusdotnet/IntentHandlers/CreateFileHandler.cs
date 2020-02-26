@@ -84,8 +84,8 @@ namespace tusdotnet.IntentHandlers
 
             var expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
 
-            int? uploadOffset = null;
-            var writeFileContext = await WriteFileContextForCreationWithUpload.CreateFromContext(Context, fileId);
+            long? uploadOffset = null;
+            var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
             if (writeFileContext.FileContentIsAvailable)
             {
                 uploadOffset = await writeFileContext.SaveFileContent();
@@ -97,7 +97,7 @@ namespace tusdotnet.IntentHandlers
             Response.SetStatus(HttpStatusCode.Created);
         }
 
-        private void SetReponseHeaders(string fileId, DateTimeOffset? expires, int? uploadOffset)
+        private void SetReponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
         {
             if (expires != null)
             {

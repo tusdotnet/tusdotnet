@@ -101,7 +101,7 @@ namespace tusdotnet
 
         private static IntentHandler DetermineIntentForPatch(ContextAdapter context)
         {
-            return new WriteFileHandler(context);
+            return new WriteFileHandler(context, initiatedFromCreationWithUpload: false);
         }
 
         private static IntentHandler DetermineIntentForDelete(ContextAdapter context)
