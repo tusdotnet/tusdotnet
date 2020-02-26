@@ -1,4 +1,5 @@
 ﻿using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Shouldly;
 using System;
 using System.Collections.Generic;
@@ -60,7 +61,6 @@ namespace tusdotnet.test.Tests
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
                 response.ShouldNotContainHeaders("Upload-Offset");
 
-                await tusStore.DidNotReceiveWithAnyArgs().FileExistAsync(fileId, Arg.Any<CancellationToken>());
                 await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
             }
         }
@@ -131,7 +131,6 @@ namespace tusdotnet.test.Tests
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
                 response.ShouldContainHeader("Upload-Offset", "0");
 
-                await tusStore.DidNotReceiveWithAnyArgs().FileExistAsync(fileId, Arg.Any<CancellationToken>());
                 await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
             }
         }
@@ -142,17 +141,10 @@ namespace tusdotnet.test.Tests
         public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_Write_File_Validation_Fails(string headerName, string invalidValueForHeaderName)
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusStore)Substitute.For(new[]{
-                typeof(ITusStore),
-                typeof(ITusCreationStore),
-                typeof(ITusConcatenationStore),
-                typeof(ITusChecksumStore)
-            }, null);
+            var tusStore = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
             var tusCreationStore = (ITusCreationStore)tusStore;
             tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
             tusStore.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
-            tusStore.FileExistAsync("a", Arg.Any<CancellationToken>()).Returns(true);
-            tusStore.FileExistAsync("b", Arg.Any<CancellationToken>()).Returns(true);
             tusStore.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(3);
 
             using (var server = TestServerFactory.Create(tusStore))
@@ -175,6 +167,83 @@ namespace tusdotnet.test.Tests
             }
         }
 
+        [Theory]
+        [InlineData(typeof(Exception))]
+        [InlineData(typeof(TusStoreException))]
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_The_Correct_Upload_Offset_If_Writing_Of_File_Fails(Type typeOfExceptionThrownByStore)
+        {
+            var fileId = Guid.NewGuid().ToString("n");
+            var tusStore = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
+            var tusCreationStore = (ITusCreationStore)tusStore;
+            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+
+            // Emulate that we could write 1 byte before an exception occurred.
+            var exception = (Exception)Activator.CreateInstance(typeOfExceptionThrownByStore, new[] { "Test message" });
+            tusStore.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Throws(exception);
+            tusStore.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
+
+            using (var server = TestServerFactory.Create(tusStore))
+            {
+                var response = await server
+                    .CreateTusResumableRequest("/files")
+                    .AddHeader("Upload-Length", "100")
+                    .AddBody()
+                    .SendAsync("POST");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created, response.StatusCode.ToString());
+                response.ShouldContainHeader("Upload-Offset", "1");
+
+                await tusStore.Received().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            }
+        }
+
+        [Fact]
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_UploadDeferLength_Is_Used_Without_ContentLength()
+        {
+            var fileId = Guid.NewGuid().ToString("n");
+            var tusStore = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var tusCreationStore = (ITusCreationStore)tusStore;
+            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+
+            using (var server = TestServerFactory.Create(tusStore))
+            {
+                var response = await server
+                    .CreateTusResumableRequest("/files")
+                    .AddHeader("Upload-Defer-Length", "1")
+                    .AddBody()
+                    .SendAsync("POST");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created, response.StatusCode.ToString());
+                response.ShouldContainHeader("Upload-Offset", "0");
+
+                await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            }
+        }
+
+        [Fact]
+        public async Task No_Data_Is_Written_And_400_Bad_Request_Is_Returned_Without_Upload_Offset_If_UploadDeferLength_Is_Used_With_ContentLength()
+        {
+            var fileId = Guid.NewGuid().ToString("n");
+            var tusStore = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var tusCreationStore = (ITusCreationStore)tusStore;
+            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+
+            using (var server = TestServerFactory.Create(tusStore))
+            {
+                var response = await server
+                    .CreateTusResumableRequest("/files")
+                    .AddHeader("Upload-Defer-Length", "1")
+                    .AddHeader("Upload-Length", "100")
+                    .AddBody()
+                    .SendAsync("POST");
+
+                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request");
+                response.ShouldNotContainHeaders("Upload-Offset");
+
+                await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            }
+        }
+
         [Fact]
         public async Task Expiration_Is_Updated_After_File_Write_If_Sliding_Expiration_Is_Used()
         {
@@ -190,34 +259,34 @@ namespace tusdotnet.test.Tests
 
             DateTimeOffset? uploadExpiresAt = null;
 
-            using(var server = TestServerFactory.Create(app =>
-            {
-                var config = new DefaultTusConfiguration
-                {
-                    Store = tusStore,
-                    UrlPath = "/files",
-                    Expiration = expiration,
-                };
+            using (var server = TestServerFactory.Create(app =>
+             {
+                 var config = new DefaultTusConfiguration
+                 {
+                     Store = tusStore,
+                     UrlPath = "/files",
+                     Expiration = expiration,
+                 };
 
-                config.Events = new Events
-                {
-                    OnAuthorizeAsync = ctx =>
-                    {
-                        if (ctx.Intent != IntentType.WriteFile)
-                        {
-                            return Task.FromResult(0);
-                        }
+                 config.Events = new Events
+                 {
+                     OnAuthorizeAsync = ctx =>
+                     {
+                         if (ctx.Intent != IntentType.WriteFile)
+                         {
+                             return Task.FromResult(0);
+                         }
 
-                        // Emulate that OnCreateComplete took 10 sec to complete.
-                        var fakeSystemTime = DateTimeOffset.UtcNow.AddSeconds(10);
-                        config.MockSystemTime(fakeSystemTime);
-                        uploadExpiresAt = fakeSystemTime.Add(expiration.Timeout);
-                        return Task.FromResult(0);
-                    }
-                };
+                         // Emulate that OnCreateComplete took 10 sec to complete.
+                         var fakeSystemTime = DateTimeOffset.UtcNow.AddSeconds(10);
+                         config.MockSystemTime(fakeSystemTime);
+                         uploadExpiresAt = fakeSystemTime.Add(expiration.Timeout);
+                         return Task.FromResult(0);
+                     }
+                 };
 
-                app.UseTus(_ => config);
-            }))
+                 app.UseTus(_ => config);
+             }))
             {
                 var response = await server
                     .CreateTusResumableRequest("/files")
