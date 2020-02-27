@@ -32,7 +32,6 @@ namespace tusdotnet.Models.Configuration
         /// </summary>
         public CancellationToken CancellationToken { get; set; }
 
-
 #if netfull
 
         /// <summary>

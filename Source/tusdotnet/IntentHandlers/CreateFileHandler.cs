@@ -33,6 +33,8 @@ namespace tusdotnet.IntentHandlers
     * The Client MUST perform the actual upload using the core protocol.
     * 
     * If the expiration is known at the creation, the Upload-Expires header MUST be included in the response to the initial POST request. 
+    * 
+    * The Client MAY include parts of the upload in the initial Creation request using the Creation With Upload extension.
     */
     internal class CreateFileHandler : IntentHandler
     {
@@ -82,16 +84,29 @@ namespace tusdotnet.IntentHandlers
 
             var expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
 
-            SetReponseHeaders(fileId, expires);
+            long? uploadOffset = null;
+            var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
+            if (writeFileContext.FileContentIsAvailable)
+            {
+                uploadOffset = await writeFileContext.SaveFileContent();
+                expires = writeFileContext.UploadExpires;
+            }
+
+            SetReponseHeaders(fileId, expires, uploadOffset);
 
             Response.SetStatus(HttpStatusCode.Created);
         }
 
-        private void SetReponseHeaders(string fileId, DateTimeOffset? expires)
+        private void SetReponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
         {
             if (expires != null)
             {
                 Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
+            }
+
+            if (uploadOffset != null)
+            {
+                Response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.Value.ToString());
             }
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);

@@ -9,16 +9,16 @@ namespace tusdotnet.Adapters
     /// Request adapter that handles different pipeline requests.
     /// </summary>
     internal sealed class RequestAdapter
-	{
-		public string Method { get; set; }
+    {
+        public string Method { get; set; }
 
-		public Uri RequestUri { get; set; }
+        public Uri RequestUri { get; set; }
 
-		public Stream Body { get; set; }
+        public Stream Body { get; set; }
 
-		public Dictionary<string, List<string>> Headers { get; set; }
+        public Dictionary<string, List<string>> Headers { get; set; }
 
-		public string ContentType => GetHeader("Content-Type");
+        public string ContentType => GetHeader("Content-Type");
 
         public string FileId => _fileId.Value;
 
@@ -36,9 +36,9 @@ namespace tusdotnet.Adapters
         }
 
         public string GetHeader(string name)
-		{
-			return Headers?.ContainsKey(name) == true ? Headers[name][0] : null;
-		}
+        {
+            return Headers?.ContainsKey(name) == true ? Headers[name][0] : null;
+        }
 
         private string ParseFileId()
         {
@@ -47,7 +47,7 @@ namespace tusdotnet.Adapters
             return RequestUri.LocalPath.Substring(startIndex).Trim('/');
         }
 
-        private long ParseUploadLength() 
+        private long ParseUploadLength()
         {
             return Headers.ContainsKey(HeaderConstants.UploadDeferLength)
                 ? -1

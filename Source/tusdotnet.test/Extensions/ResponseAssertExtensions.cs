@@ -25,7 +25,7 @@ namespace tusdotnet.test.Extensions
 
 		internal static void ShouldContainHeader(this HttpResponseMessage response, string headerName, string headerValue)
 		{
-			response.Headers.Contains(headerName).ShouldBeTrue();
+			response.Headers.Contains(headerName).ShouldBeTrue("Header "  + headerName + " was not found in response");
 			var value = response.Headers.GetValues(headerName).ToList();
 			value.Count.ShouldBe(1);
 			value[0].ShouldBe(headerValue);

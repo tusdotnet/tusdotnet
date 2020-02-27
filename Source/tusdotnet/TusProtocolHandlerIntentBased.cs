@@ -61,7 +61,7 @@ namespace tusdotnet
 
             try
             {
-                if (!await intentHandler.Validate(context))
+                if (!await intentHandler.Validate())
                 {
                     return ResultType.StopExecution;
                 }

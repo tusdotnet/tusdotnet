@@ -38,7 +38,7 @@ namespace tusdotnet.IntentHandlers
             new FileHasNotExpired()
         };
 
-        public GetFileInfoHandler(ContextAdapter context) 
+        public GetFileInfoHandler(ContextAdapter context)
             : base(context, IntentType.GetFileInfo, LockType.NoLock)
         {
         }
@@ -53,7 +53,7 @@ namespace tusdotnet.IntentHandlers
             {
                 Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
             }
-            
+
             var uploadLength = await Store.GetUploadLengthAsync(Request.FileId, CancellationToken);
             SetUploadLengthHeader(Context, uploadLength);
 
