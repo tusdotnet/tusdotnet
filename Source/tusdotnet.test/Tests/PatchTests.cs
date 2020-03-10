@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using NSubstitute;
@@ -93,16 +91,16 @@ namespace tusdotnet.test.Tests
         [InlineData("application/json")]
         public async Task Returns_415_Unsupported_Media_Type_If_An_Incorrect_Content_Type_Is_Provided(string contentType)
         {
-            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile");
+            using (var server = TestServerFactory.Create(store))
             {
                 var requestBuilder = server
-                    .CreateRequest("/files/testfile")
-                    .AddHeader("Upload-Offset", "0")
-                    .AddTusResumableHeader();
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "0");
 
                 if (contentType != null)
                 {
-                    requestBuilder = requestBuilder.And(m => m.AddBody(contentType));
+                    requestBuilder = requestBuilder.AddBody(contentType);
                 }
 
                 var response = await requestBuilder.SendAsync("PATCH");
@@ -116,12 +114,13 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_For_Missing_Upload_Offset_Header()
         {
-            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile");
+
+            using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddBody()
                     .SendAsync("patch");
 
                 await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Missing Upload-Offset header");
@@ -136,13 +135,14 @@ namespace tusdotnet.test.Tests
         public async Task Returns_400_Bad_Request_For_Invalid_Upload_Offset_Header(string uploadOffset,
             string expectedServerErrorMessage)
         {
-            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile");
+
+            using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddBody()
                     .AddHeader("Upload-Offset", uploadOffset)
-                    .AddTusResumableHeader()
                     .SendAsync("patch");
 
                 await
@@ -158,17 +158,14 @@ namespace tusdotnet.test.Tests
         [InlineData(100)]
         public async Task Returns_409_Conflict_If_Upload_Offset_Does_Not_Match_File_Offset(int offset)
         {
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 15, uploadOffset: 10);
 
             using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", offset.ToString())
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 await response.ShouldBeErrorResponse(HttpStatusCode.Conflict,
@@ -179,18 +176,14 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_If_Upload_Is_Already_Complete()
         {
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 10);
 
             using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "10")
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Upload is already complete.");
@@ -200,19 +193,15 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_On_Success(string methodToUse)
         {
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
+                    .AddBody()
                     .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
                     .SendAsync(methodToUse);
 
@@ -223,25 +212,21 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationDeferLengthStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             using (var server = TestServerFactory.Create(store))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
+                    .AddBody()
                     .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
                     .SendAsync(methodToUse);
 
                 response.ShouldContainTusResumableHeader();
                 response.ShouldContainHeader("Upload-Offset", "10");
-                response.Headers.Contains("Upload-Expires").ShouldBeFalse();
+                response.ShouldNotContainHeaders("Upload-Expires");
             }
         }
 
@@ -251,22 +236,18 @@ namespace tusdotnet.test.Tests
             // This test does not work properly using the OWIN TestServer.
             // It will always throw an exception instead of returning the proper error message to the client.
 
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                 .Throws(new TusStoreException("Test exception"));
 
             using (var server = TestServerFactory.Create(store))
             {
-                var requestBuilder = server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", "5");
+                var response = await server
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "5")
+                    .AddBody()
+                    .SendAsync("PATCH");
 
-                var response = await requestBuilder.SendAsync("PATCH");
                 response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
                 response.Content.ReadAsStringAsync().Result.ShouldBe("Test exception");
             }
@@ -283,10 +264,7 @@ namespace tusdotnet.test.Tests
             var pipelineDetails = PipelineDisconnectEmulationDataAttribute.GetInfo(pipeline);
 
             var cts = new CancellationTokenSource();
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
 
             var requestStream = Substitute.For<Stream>();
             requestStream.ReadAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -347,12 +325,7 @@ namespace tusdotnet.test.Tests
         {
             var random = new Random();
             var offset = 5;
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store
-                .GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>())
-                .Returns(offset);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: offset);
             store
                 .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                 .Returns(_ =>
@@ -368,24 +341,15 @@ namespace tusdotnet.test.Tests
                 // Duplicated code due to: 
                 // "System.InvalidOperationException: The request message was already sent. Cannot send the same request message multiple times."
                 var task1 = server
-                    .CreateRequest("/files/testfile")
-                    .And(message =>
-                    {
-                        message.Content = new StreamContent(new MemoryStream(new byte[3]));
-                        message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/offset+octet-stream");
-                    })
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
-                    .AddTusResumableHeader()
+                    .AddBody()
                     .SendAsync("PATCH");
+
                 var task2 = server
-                    .CreateRequest("/files/testfile")
-                    .And(message =>
-                    {
-                        message.Content = new StreamContent(new MemoryStream(new byte[3]));
-                        message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/offset+octet-stream");
-                    })
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
-                    .AddTusResumableHeader()
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 await Task.WhenAll(task1, task2);
@@ -419,22 +383,18 @@ namespace tusdotnet.test.Tests
                 {"file1", 0},
                 {"file2", 0}
             };
+
             var firstOffset = 3;
             var secondOffset = 2;
 
             using (var server = TestServerFactory.Create(app =>
             {
-                var store = Substitute.For<ITusStore>();
-                store.FileExistAsync("file1", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadLengthAsync("file1", Arg.Any<CancellationToken>()).Returns(6);
-                store.GetUploadOffsetAsync("file1", Arg.Any<CancellationToken>()).Returns(_ => firstOffset);
+                var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 6, _ => firstOffset);
                 store.AppendDataAsync("file1", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                     .Returns(3)
                     .AndDoes(_ => firstOffset += 3);
 
-                store.FileExistAsync("file2", Arg.Any<CancellationToken>()).Returns(true);
-                store.GetUploadLengthAsync("file2", Arg.Any<CancellationToken>()).Returns(6);
-                store.GetUploadOffsetAsync("file2", Arg.Any<CancellationToken>()).Returns(_ => secondOffset);
+                store = store.WithExistingFile("file2", _ => 6, _ => secondOffset);
                 store.AppendDataAsync("file2", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                     .Returns(3)
                     .AndDoes(_ => secondOffset += 3);
@@ -476,29 +436,26 @@ namespace tusdotnet.test.Tests
             }))
             {
                 var response1 = await server
-                    .CreateRequest("/files/file1")
-                    .And(m => m.AddBody())
+                    .CreateTusResumableRequest("/files/file1")
                     .AddHeader("Upload-Offset", "3")
-                    .AddTusResumableHeader()
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 response1.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
                 var response2 = await server
-                    .CreateRequest("/files/file2")
-                    .And(m => m.AddBody())
+                    .CreateTusResumableRequest("/files/file2")
                     .AddHeader("Upload-Offset", "2")
-                    .AddTusResumableHeader()
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 response2.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
                 // File is already complete, make sure it does not run OnUploadComplete twice.
                 response1 = await server
-                    .CreateRequest("/files/file1")
-                    .And(m => m.AddBody())
+                    .CreateTusResumableRequest("/files/file1")
                     .AddHeader("Upload-Offset", "6")
-                    .AddTusResumableHeader()
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 response1.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -511,10 +468,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             using (var server = TestServerFactory.Create(store, new Events
@@ -528,10 +482,9 @@ namespace tusdotnet.test.Tests
             }))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -544,10 +497,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
-            var store = Substitute.For<ITusStore>();
-            store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(10);
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             using (var server = TestServerFactory.Create(store, new Events
@@ -560,14 +510,45 @@ namespace tusdotnet.test.Tests
             }))
             {
                 var response = await server
-                    .CreateRequest("/files/testfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
+                    .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
+                    .AddBody()
                     .SendAsync("PATCH");
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
                 response.ShouldNotContainHeaders("Tus-Resumable", "Upload-Offset", "Upload-Expires");
+            }
+        }
+
+        [Fact]
+        public async Task Returns_400_Bad_Request_If_File_Was_Created_Using_UploadDeferLength_But_The_Store_Used_For_Writing_Data_Does_Not_Support_UploadDeferLength()
+        {
+            var creationStore = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            ((ITusCreationStore)creationStore).CreateFileAsync(default, default, default).ReturnsForAnyArgs("testfile");
+
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: null, uploadOffset: 0);
+
+            using(var server = TestServerFactory.Create(creationStore))
+            {
+                var response = await server
+                    .CreateTusResumableRequest("/files")
+                    .AddHeader("Upload-Defer-Length", "1")
+                    .SendAsync("POST");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            }
+
+            using (var server = TestServerFactory.Create(store))
+            {
+                var response = await server
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "0")
+                    .AddHeader("Upload-Length", "100")
+                    .AddBody()
+                    .SendAsync("PATCH");
+
+                await response.ShouldBeErrorResponse(HttpStatusCode.InternalServerError, "Header Upload-Defer-Length was used to create this file but the current configuration does not support Upload-Defer-Length");
+                response.ShouldNotContainHeaders("Upload-Offset", "Upload-Expires");
             }
         }
 

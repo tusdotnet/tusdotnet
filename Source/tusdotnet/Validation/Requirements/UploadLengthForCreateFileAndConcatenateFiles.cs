@@ -2,6 +2,7 @@
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
+using tusdotnet.Interfaces;
 
 namespace tusdotnet.Validation.Requirements
 {
@@ -22,11 +23,17 @@ namespace tusdotnet.Validation.Requirements
                 return VerifyRequestUploadLength(context, uploadLengthHeader);
             }
 
-            return VerifyDeferLength(uploadDeferLengthHeader);
+            var deferLengthStore = context.Configuration.Store as ITusCreationDeferLengthStore;
+            return VerifyDeferLength(deferLengthStore, uploadDeferLengthHeader);
         }
 
-        private Task VerifyDeferLength(string uploadDeferLengthHeader)
+        private Task VerifyDeferLength(ITusCreationDeferLengthStore deferLengthStore, string uploadDeferLengthHeader)
         {
+            if (deferLengthStore == null)
+            {
+                return BadRequest($"Header {HeaderConstants.UploadDeferLength} is not supported");
+            }
+
             if (uploadDeferLengthHeader != "1")
             {
                 return BadRequest($"Header {HeaderConstants.UploadDeferLength} must have the value '1' or be omitted");

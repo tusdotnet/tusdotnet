@@ -27,6 +27,7 @@ namespace tusdotnet.test.Tests
             tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
             tusStore.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(3);
             tusStore.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
+            tusStore.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
 
             using (var server = TestServerFactory.Create(tusStore))
             {
@@ -181,6 +182,7 @@ namespace tusdotnet.test.Tests
             var exception = (Exception)Activator.CreateInstance(typeOfExceptionThrownByStore, new[] { "Test message" });
             tusStore.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Throws(exception);
             tusStore.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
+            tusStore.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
 
             using (var server = TestServerFactory.Create(tusStore))
             {
@@ -254,6 +256,7 @@ namespace tusdotnet.test.Tests
             tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
             tusStore.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(3);
             tusStore.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
+            tusStore.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
 
             var expiration = new SlidingExpiration(TimeSpan.FromHours(24));
 

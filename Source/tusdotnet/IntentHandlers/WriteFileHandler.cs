@@ -176,15 +176,14 @@ namespace tusdotnet.IntentHandlers
                 };
             }
 
-            
             return new Requirement[]
             {
-                new UploadConcatForWriteFile(),
+                new FileExist(),
                 contentTypeRequirement,
                 uploadLengthRequirement,
                 new UploadOffset(),
+                new UploadConcatForWriteFile(),
                 uploadChecksumRequirement,
-                new FileExist(),
                 fileHasExpired,
                 new RequestOffsetMatchesFileOffset(),
                 new FileIsNotCompleted()

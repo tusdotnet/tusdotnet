@@ -191,7 +191,7 @@ namespace tusdotnet.test.Tests
         public async Task Returns_403_Forbidden_When_Patching_A_Final_File(string methodToUse)
         {
             var store = Substitute.For<ITusStore, ITusConcatenationStore>();
-            store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
+            store.WithExistingFile("concatFileforbidden", 10, 10);
 
             ((ITusConcatenationStore)store).GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(new FileConcatFinal("1", "2"));
 

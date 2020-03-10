@@ -21,17 +21,16 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Patch_Requests_Contain_Upload_Expires_Header_For_Normal_Uploads_If_Expiration_Is_Configured(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusExpirationStore>();
+            var store = Substitute.For<ITusStore, ITusExpirationStore>().WithExistingFile("expirationtestfile", 10, 3);
             var expirationStore = (ITusExpirationStore)store;
 
-            store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
-            store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs(10);
-            store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(3);
-            expirationStore.GetExpirationAsync(null, CancellationToken.None).ReturnsForAnyArgs(DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(8)));
+            var expires = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(8));
+
+            expirationStore.GetExpirationAsync(null, CancellationToken.None).ReturnsForAnyArgs(expires);
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -48,7 +47,7 @@ namespace tusdotnet.test.Tests
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Upload-Expires", DateTime.UtcNow.Add(TimeSpan.FromMinutes(8)).ToString("r"));
+                response.ShouldContainHeader("Upload-Expires", expires.ToString("r"));
             }
         }
 
@@ -56,21 +55,18 @@ namespace tusdotnet.test.Tests
         public async Task Patch_Requests_Contain_Upload_Expires_Header_For_Partial_Uploads_If_Expiration_Is_Configured(
             string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusExpirationStore, ITusConcatenationStore>();
+            var store = Substitute.For<ITusStore, ITusExpirationStore, ITusConcatenationStore>().WithExistingFile("expirationtestfile", 10, 3);
             var expirationStore = (ITusExpirationStore)store;
             var concatStore = (ITusConcatenationStore)store;
 
             var expires = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(8));
 
-            store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
-            store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs(10);
-            store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(3);
             expirationStore.GetExpirationAsync(null, CancellationToken.None).ReturnsForAnyArgs(expires);
             concatStore.GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(new FileConcatPartial());
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -101,14 +97,20 @@ namespace tusdotnet.test.Tests
             creationStore.CreateFileAsync(-1, null, CancellationToken.None)
                 .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
+            var now = DateTimeOffset.Now;
+
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                var config = new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
                     Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
-                });
+                };
+
+                config.MockSystemTime(now);
+
+                app.UseTus(_ => config);
             }))
             {
                 var response = await server
@@ -119,7 +121,7 @@ namespace tusdotnet.test.Tests
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.ShouldContainHeader("Upload-Expires", DateTime.UtcNow.Add(TimeSpan.FromMinutes(10)).ToString("r"));
+                response.ShouldContainHeader("Upload-Expires", now.Add(TimeSpan.FromMinutes(10)).ToString("r"));
             }
         }
 
@@ -138,18 +140,22 @@ namespace tusdotnet.test.Tests
             );
             var concatenationStore = (ITusConcatenationStore)store;
 
-            //store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(false);
-            concatenationStore.CreatePartialFileAsync(-1, null, CancellationToken.None)
-                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            concatenationStore.CreatePartialFileAsync(-1, null, CancellationToken.None).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+
+            var now = DateTimeOffset.Now;
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                var config = new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
                     Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
-                });
+                };
+
+                config.MockSystemTime(now);
+
+                app.UseTus(_ => config);
             }))
             {
                 var response = await server
@@ -161,7 +167,7 @@ namespace tusdotnet.test.Tests
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.ShouldContainHeader("Upload-Expires", DateTime.UtcNow.Add(TimeSpan.FromMinutes(10)).ToString("r"));
+                response.ShouldContainHeader("Upload-Expires", now.Add(TimeSpan.FromMinutes(10)).ToString("r"));
             }
         }
 
@@ -197,7 +203,7 @@ namespace tusdotnet.test.Tests
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -227,29 +233,27 @@ namespace tusdotnet.test.Tests
             var offset = 3;
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs(10);
-            store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(ci => offset);
-            store.AppendDataAsync("expirationtestfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(ci =>
-            {
-                offset += 3;
-                return offset;
-            });
+            store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(_ => offset);
+            store.AppendDataAsync("expirationtestfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(
+                _ =>
+                {
+                    offset += 3;
+                    return offset;
+                });
 
             var expires = DateTimeOffset.MaxValue;
 
-#pragma warning disable 4014
-            expirationStore.GetExpirationAsync("expirationtestfile", Arg.Any<CancellationToken>())
-                .ReturnsForAnyArgs(ci => expires);
+            expirationStore.GetExpirationAsync("expirationtestfile", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(_ => expires);
             expirationStore.SetExpirationAsync("expirationtestfile", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(
                 ci =>
                 {
                     expires = ci.Arg<DateTimeOffset>();
                     return Task.FromResult(0);
                 });
-#pragma warning restore 4014
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(c => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
                     Store = store,
@@ -287,23 +291,21 @@ namespace tusdotnet.test.Tests
             var offset = 3;
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs(10);
-            store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(ci => offset);
-            store.AppendDataAsync("testexpiration", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(ci =>
-            {
-                offset += 3;
-                return 3;
-            });
+            store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(_ => offset);
+            store.AppendDataAsync("testexpiration", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(
+                _ =>
+                {
+                    offset += 3;
+                    return 3;
+                });
 
             var expires = DateTimeOffset.UtcNow.AddSeconds(5);
-#pragma warning disable 4014
-            expirationStore.GetExpirationAsync("testexpiration", Arg.Any<CancellationToken>())
-                .ReturnsForAnyArgs(expires);
-            expirationStore.SetExpirationAsync("testexpiration", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
-#pragma warning restore 4014
+            expirationStore.GetExpirationAsync("testexpiration", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(expires);
+            await expirationStore.SetExpirationAsync("testexpiration", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(c => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
                     Store = store,
@@ -351,7 +353,7 @@ namespace tusdotnet.test.Tests
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(c => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
                     Store = store,
