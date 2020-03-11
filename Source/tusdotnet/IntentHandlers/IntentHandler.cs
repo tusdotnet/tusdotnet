@@ -49,7 +49,7 @@ namespace tusdotnet.IntentHandlers
         {
             var validator = new Validator(Requires);
 
-            validator.Validate(Context);
+            await validator.Validate(Context);
 
             if (validator.StatusCode == HttpStatusCode.OK)
             {

@@ -521,14 +521,14 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
-        public async Task Returns_400_Bad_Request_If_File_Was_Created_Using_UploadDeferLength_But_The_Store_Used_For_Writing_Data_Does_Not_Support_UploadDeferLength()
+        public async Task A_TusConfigurationException_Is_Thrown_If_File_Was_Created_Using_UploadDeferLength_But_The_Store_Used_For_Writing_Data_Does_Not_Support_UploadDeferLength()
         {
-            var creationStore = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
-            ((ITusCreationStore)creationStore).CreateFileAsync(default, default, default).ReturnsForAnyArgs("testfile");
+            var creationStoreWithUploadDeferLength = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            ((ITusCreationStore)creationStoreWithUploadDeferLength).CreateFileAsync(default, default, default).ReturnsForAnyArgs("testfile");
 
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: null, uploadOffset: 0);
+            var storeWithoutUploadDeferLength = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: null, uploadOffset: 0);
 
-            using(var server = TestServerFactory.Create(creationStore))
+            using (var server = TestServerFactory.Create(creationStoreWithUploadDeferLength))
             {
                 var response = await server
                     .CreateTusResumableRequest("/files")
@@ -538,17 +538,17 @@ namespace tusdotnet.test.Tests
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
             }
 
-            using (var server = TestServerFactory.Create(store))
+            using (var server = TestServerFactory.Create(storeWithoutUploadDeferLength))
             {
-                var response = await server
-                    .CreateTusResumableRequest("/files/testfile")
-                    .AddHeader("Upload-Offset", "0")
-                    .AddHeader("Upload-Length", "100")
-                    .AddBody()
-                    .SendAsync("PATCH");
+                var exception = await Assert.ThrowsAsync<TusConfigurationException>(
+                    async () => await server
+                                       .CreateTusResumableRequest("/files/testfile")
+                                       .AddHeader("Upload-Offset", "0")
+                                       .AddHeader("Upload-Length", "100")
+                                       .AddBody()
+                                       .SendAsync("PATCH"));
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.InternalServerError, "Header Upload-Defer-Length was used to create this file but the current configuration does not support Upload-Defer-Length");
-                response.ShouldNotContainHeaders("Upload-Offset", "Upload-Expires");
+                exception.Message.ShouldBe($"File testfile does not have an upload length and the current store ({storeWithoutUploadDeferLength.GetType().FullName}) does not support Upload-Defer-Length so no new upload length can be set");
             }
         }
 

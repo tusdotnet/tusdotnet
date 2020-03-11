@@ -49,11 +49,6 @@ namespace tusdotnet.Validation
             return Error(HttpStatusCode.UnsupportedMediaType, errorMessage);
         }
 
-        protected Task InternalServerError(string errorMessage)
-        {
-            return Error(HttpStatusCode.InternalServerError, errorMessage);
-        }
-
         private Task Error(HttpStatusCode status, string errorMessage)
         {
             StatusCode = status;

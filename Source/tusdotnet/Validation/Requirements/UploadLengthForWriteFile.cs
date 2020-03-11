@@ -2,6 +2,7 @@
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Interfaces;
+using tusdotnet.Models;
 
 namespace tusdotnet.Validation.Requirements
 {
@@ -14,8 +15,7 @@ namespace tusdotnet.Validation.Requirements
 
             if (!supportsUploadDeferLength && !uploadLengthIsSet)
             {
-                await InternalServerError($"Header {HeaderConstants.UploadDeferLength} was used to create this file but the current configuration does not support {HeaderConstants.UploadDeferLength}");
-                return;
+                throw new TusConfigurationException($"File {context.Request.FileId} does not have an upload length and the current store ({context.Configuration.Store.GetType().FullName}) does not support Upload-Defer-Length so no new upload length can be set");
             }
 
             if (!UploadLengthIsProvidedInRequest(context.Request) && !uploadLengthIsSet)

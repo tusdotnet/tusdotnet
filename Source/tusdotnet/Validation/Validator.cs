@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Threading.Tasks;
 using tusdotnet.Adapters;
 
 namespace tusdotnet.Validation
@@ -15,7 +16,7 @@ namespace tusdotnet.Validation
             _requirements = requirements ?? new Requirement[0];
         }
 
-        public void Validate(ContextAdapter context)
+        public async Task Validate(ContextAdapter context)
         {
             StatusCode = HttpStatusCode.OK;
             ErrorMessage = null;
@@ -23,7 +24,8 @@ namespace tusdotnet.Validation
             foreach (var spec in _requirements)
             {
                 spec.Reset();
-                spec.Validate(context);
+                await spec.Validate(context);
+
                 if (spec.StatusCode == 0)
                 {
                     continue;

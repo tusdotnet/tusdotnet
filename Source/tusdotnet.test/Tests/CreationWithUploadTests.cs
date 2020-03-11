@@ -73,6 +73,7 @@ namespace tusdotnet.test.Tests
             var tusStore = Substitute.For<ITusStore, ITusCreationStore>();
             var tusCreationStore = (ITusCreationStore)tusStore;
             tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusStore.WithExistingFile(fileId);
 
             var intents = new List<IntentType>(2);
             var events = new Events
@@ -144,8 +145,9 @@ namespace tusdotnet.test.Tests
             var fileId = Guid.NewGuid().ToString("n");
             var tusStore = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
-            tusStore.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
+
+            tusCreationStore.CreateFileAsync(10, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusStore.WithExistingFile(fileId, 10, 0);
             tusStore.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(3);
 
             using (var server = TestServerFactory.Create(tusStore))
