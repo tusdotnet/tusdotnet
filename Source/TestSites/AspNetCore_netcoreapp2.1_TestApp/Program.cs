@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 
 namespace AspNetCore_netcoreapp2_1_TestApp
 {
-    public class Program
+    public static class Program
     {
         public static void Main(string[] args)
         {

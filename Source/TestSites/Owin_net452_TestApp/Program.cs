@@ -2,9 +2,9 @@
 
 namespace OwinTestApp
 {
-    class Program
+    public static class Program
     {
-        static void Main(string[] args)
+        public static void Main()
         {
             const string url = "http://localhost:9000";
             using (Microsoft.Owin.Hosting.WebApp.Start<Startup>(url))

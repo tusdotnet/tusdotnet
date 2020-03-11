@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Hosting;
 
 namespace AspNetCore_netcoreapp1_1_TestApp
 {
-    public class Program
+    public static class Program
     {
-        public static void Main(string[] args)
+        public static void Main()
         {
             var host = new WebHostBuilder()
                 .UseKestrel(options => options.Limits.MaxRequestBufferSize = null)

@@ -5,9 +5,9 @@ using BenchmarkDotNet.Running;
 
 namespace tusdotnet.benchmark
 {
-    class Program
+    public static class Program
     {
-        static void Main(string[] args)
+        public static void Main()
         {
             //var summary = BenchmarkRunner.Run<CreateAndWriteFile>();
             //var summary = BenchmarkRunner.Run<NoTusResumableHeader>();
