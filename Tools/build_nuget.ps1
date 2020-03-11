@@ -21,15 +21,6 @@ function removeInternalVisibleTo() {
 	(Get-Content $file).replace($replaceTest, '').replace($replaceBenchmark, '') | Set-Content $file
 }
 
-function makeBuildFolder() {
-	if(Test-Path -Path ".\tusdotnet\" ){
-		Remove-Item -Recurse -Force .\tusdotnet\
-	}
-	
-	New-Item -ItemType directory .\tusdotnet\
-	robocopy /E ..\Source\tusdotnet\ .\tusdotnet\ /MIR
-}
-
 function verifyNuget() {
 	if(![bool](Get-Command dotnet -errorAction SilentlyContinue)) {
 		Throw "Could not find dotnet command"
@@ -44,16 +35,19 @@ function createPackage() {
 }
 
 function movePackage() {
-	Move-Item tusdotnet\bin\Release\*.nupkg .\
+	Move-Item *.*nupkg ..\tools\
 }
 
 function cleanup() {
-	Remove-Item -Recurse -Force .\tusdotnet\
+	# Reset InternalVisibleTo and Assembly version
+	& git checkout -- tusdotnet/Properties/AssemblyInfo.cs
 }
 
+$toolsLocation = Get-Location
+
 verifyNuget
-Write-Host Copying files for build...
-makeBuildFolder
+Write-Host Moving to source folder for build...
+Set-Location ..\Source\
 Write-Host Setting version info...
 setVersionInfo
 Write-Host Version info set
@@ -66,3 +60,5 @@ Write-Host Package created
 Write-Host Cleaning up...
 cleanup
 Write-Host Done!
+
+Set-Location $toolsLocation
