@@ -157,13 +157,13 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken)
+        public Task<bool> FileExistAsync(string fileId, CancellationToken _)
         {
             return Task.FromResult(_fileRepFactory.Data(new InternalFileId(fileId)).Exist());
         }
 
         /// <inheritdoc />
-        public Task<long?> GetUploadLengthAsync(string fileId, CancellationToken cancellationToken)
+        public Task<long?> GetUploadLengthAsync(string fileId, CancellationToken _)
         {
             var firstLine = _fileRepFactory.UploadLength(new InternalFileId(fileId)).ReadFirstLine(true);
             return Task.FromResult(firstLine == null
@@ -172,7 +172,7 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
+        public Task<long> GetUploadOffsetAsync(string fileId, CancellationToken _)
         {
             return Task.FromResult(_fileRepFactory.Data(new InternalFileId(fileId)).GetLength());
         }
@@ -191,14 +191,14 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
+        public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken _)
         {
             var firstLine = _fileRepFactory.Metadata(new InternalFileId(fileId)).ReadFirstLine(true);
             return string.IsNullOrEmpty(firstLine) ? Task.FromResult<string>(null) : Task.FromResult(firstLine);
         }
 
         /// <inheritdoc />
-        public Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
+        public Task<ITusFile> GetFileAsync(string fileId, CancellationToken _)
         {
             var internalFileId = new InternalFileId(fileId);
             var data = _fileRepFactory.Data(internalFileId);
@@ -209,7 +209,7 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
+        public Task DeleteFileAsync(string fileId, CancellationToken _)
         {
             var internalFileId = new InternalFileId(fileId);
             return Task.Run(() =>
@@ -218,20 +218,20 @@ namespace tusdotnet.Stores
                 _fileRepFactory.UploadLength(internalFileId).Delete();
                 _fileRepFactory.Metadata(internalFileId).Delete();
                 _fileRepFactory.UploadConcat(internalFileId).Delete();
-                _fileRepFactory.Expiration(internalFileId).Delete();
                 _fileRepFactory.ChunkStartPosition(internalFileId).Delete();
                 _fileRepFactory.ChunkComplete(internalFileId).Delete();
-            }, cancellationToken);
+                _fileRepFactory.Expiration(internalFileId).Delete();
+            });
         }
 
         /// <inheritdoc />
-        public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken cancellationToken)
+        public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken _)
         {
             return Task.FromResult<IEnumerable<string>>(new[] { "sha1" });
         }
 
         /// <inheritdoc />
-        public Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
+        public Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken _)
         {
             var valid = false;
             var internalFileId = new InternalFileId(fileId);
@@ -260,7 +260,7 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken cancellationToken)
+        public Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken _)
         {
             var firstLine = _fileRepFactory.UploadConcat(new InternalFileId(fileId)).ReadFirstLine(true);
             return Task.FromResult(string.IsNullOrWhiteSpace(firstLine)
@@ -308,7 +308,6 @@ namespace tusdotnet.Stores
                 }
             }
 
-            // ReSharper disable once InvertIf
             if (_deletePartialFilesOnConcat)
             {
                 await Task.WhenAll(partialInternalFileReps.Select(f => DeleteFileAsync(f.FileId, cancellationToken)));
@@ -318,14 +317,14 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
+        public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken _)
         {
             _fileRepFactory.Expiration(new InternalFileId(fileId)).Write(expires.ToString("O"));
             return TaskHelper.Completed;
         }
 
         /// <inheritdoc />
-        public Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken cancellationToken)
+        public Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken _)
         {
             var expiration = _fileRepFactory.Expiration(new InternalFileId(fileId)).ReadFirstLine(true);
 
@@ -335,7 +334,7 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
+        public Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken _)
         {
             var expiredFiles = Directory.EnumerateFiles(_directoryPath, "*.expiration")
                 .Select(Path.GetFileNameWithoutExtension)
@@ -355,26 +354,37 @@ namespace tusdotnet.Stores
 
             bool FileIsIncomplete(InternalFileId fileId)
             {
-                return _fileRepFactory.UploadLength(fileId).ReadFirstLineAsLong()
-                        != _fileRepFactory.Data(fileId).GetLength();
+                var uploadLength = _fileRepFactory.UploadLength(fileId).ReadFirstLineAsLong(fileIsOptional: true, defaultValue: long.MinValue);
+
+                if (uploadLength == long.MinValue)
+                {
+                    return true;
+                }
+
+                var dataFile = _fileRepFactory.Data(fileId);
+
+                if (!dataFile.Exist())
+                {
+                    return true;
+                }
+
+                return uploadLength != dataFile.GetLength();
             }
         }
 
         /// <inheritdoc />
         public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
         {
-            return await Cleanup(await GetExpiredFilesAsync(cancellationToken));
+            var expiredFiles = await GetExpiredFilesAsync(cancellationToken);
+            var deleteFileTasks = expiredFiles.Select(file => DeleteFileAsync(file, cancellationToken)).ToList();
 
-            async Task<int> Cleanup(IEnumerable<string> files)
-            {
-                var tasks = files.Select(file => DeleteFileAsync(file, cancellationToken)).ToList();
-                await Task.WhenAll(tasks);
-                return tasks.Count;
-            }
+            await Task.WhenAll(deleteFileTasks);
+
+            return deleteFileTasks.Count;
         }
 
         /// <inheritdoc />
-        public Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken cancellationToken)
+        public Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken _)
         {
             _fileRepFactory.UploadLength(new InternalFileId(fileId)).Write(uploadLength.ToString());
             return TaskHelper.Completed;
