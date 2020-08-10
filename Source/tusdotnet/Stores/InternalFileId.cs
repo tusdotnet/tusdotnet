@@ -1,4 +1,5 @@
 ﻿using System;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
 namespace tusdotnet.Stores
@@ -7,14 +8,14 @@ namespace tusdotnet.Stores
     {
         public string FileId { get; set; }
 
-        public InternalFileId()
+        public InternalFileId(ITusFileIdProvider provider)
         {
-            FileId = Guid.NewGuid().ToString("n");
+            FileId = provider.CreateId();
         }
 
-        public InternalFileId(string fileId)
+        public InternalFileId(ITusFileIdProvider provider, string fileId)
         {
-            if (!Guid.TryParseExact(fileId, "n", out var _))
+            if (!provider.ValidateId(fileId))
             {
                 throw new TusStoreException("Invalid file id");
             }
