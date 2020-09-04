@@ -34,6 +34,21 @@ jobs:
             echo "Version from version.txt:"
             cat ./version.txt
 
+      - run:
+          name: Pack and publish
+          command: |
+            version=$(cat ./version.txt)
+
+            if [ "${CIRCLE_BRANCH}" == "master" ] || [ -n "${CIRCLE_TAG}" ]; then
+              echo "Branch is master or tag: Pushing nuget package version: $version to artifactory."
+              dotnet pack -c Release -p:PackageVersion=$version -o ./nupkgs ./Source/tusdotnet/tusdotnet.csproj
+              dotnet nuget push ./nupkgs/qlik-tusdotnet*.nupkg -k ${NUGET_USER}:${NUGET_PASS} -s https://qliktech.jfrog.io/qliktech/api/nuget/qlik-nugets-local
+            # else
+            #   echo "Branch is not master or tag: Pushing nuget package version: ${CIRCLE_BRANCH}-$version to artifactory."
+            #   dotnet pack -c Release -p:PackageVersion=${CIRCLE_BRANCH}-$version -o ./nupkgs ./Source/tusdotnet/tusdotnet.csproj
+            #   find ./nupkgs -name '*.nupkg' | xargs -i dotnet nuget push {} -k ${NUGET_CRED} -s https://qliktech.jfrog.io/qliktech/api/nuget/qlik-nugets-local
+            fi
+            
 workflows:
   version: 2
   build-workflow:
