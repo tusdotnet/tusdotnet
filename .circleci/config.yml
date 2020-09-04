@@ -20,6 +20,20 @@ jobs:
           command: |
             dotnet test -c Release --no-build Source/tusdotnet.test
 
+      - run:
+          name: Set build version
+          command: |
+            set -x
+            if [ -n "${CIRCLE_TAG}" ]; then
+              version=${CIRCLE_TAG#v}
+            else
+              version=$(git describe --tags --match 'v[0-9]*' --abbrev=0)-$CIRCLE_BUILD_NUM
+              version=${version#v}
+            fi
+            echo "$version" > ./version.txt
+            echo "Version from version.txt:"
+            cat ./version.txt
+
 workflows:
   version: 2
   build-workflow:
