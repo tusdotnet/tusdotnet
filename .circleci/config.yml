@@ -1,0 +1,36 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/qlik-tusdotnet
+
+    docker:
+      - image: mcr.microsoft.com/dotnet/core/sdk:3.1
+
+    steps:
+      - checkout
+
+      - run:
+          name: Build
+          command: |
+            dotnet restore Source/tusdotnet.sln
+            dotnet build Source/tusdotnet.sln -c Release
+
+      - run:
+          name: Run Tests
+          command: |
+            dotnet test -c Release --no-build Source/tusdotnet.test
+
+workflows:
+  version: 2
+  build-workflow:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /^v.*/
+
+experimental:
+  notify:
+    branches:
+      only:
+        - master

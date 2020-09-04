@@ -3,11 +3,11 @@
   <PropertyGroup>
     <Description>.NET server implementation of the Tus protocol for resumable file uploads. Read more at https://github.com/tusdotnet/tusdotnet and https://tus.io</Description>
     <Copyright>Copyright Stefan Matsson 2016</Copyright>
-    <AssemblyTitle>tusdotnet</AssemblyTitle>
+    <AssemblyTitle>qlik-tusdotnet</AssemblyTitle>
     <Authors>Stefan Matsson</Authors>
-    <TargetFrameworks>net452;netstandard1.3</TargetFrameworks>
-    <AssemblyName>tusdotnet</AssemblyName>
-    <PackageId>tusdotnet</PackageId>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>qlik-tusdotnet</AssemblyName>
+    <PackageId>qlik-tusdotnet</PackageId>
     <PackageTags>Tus;Tus-Resumable;ResumableFileUploads;FileUpload</PackageTags>
     <PackageReleaseNotes>Release notes at https://github.com/tusdotnet/tusdotnet/releases</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/tusdotnet/tusdotnet</PackageProjectUrl>
@@ -49,14 +49,14 @@
     <DefineConstants>$(DefineConstants);netfull</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">
     <DefineConstants>$(DefineConstants);netstandard</DefineConstants>
   </PropertyGroup>
 
   <!-- Generic package references -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="1.1.1" />
-    <PackageReference Include="System.Buffers" Version="4.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+    <PackageReference Include="System.Buffers" Version="4.5.1" />
   </ItemGroup>
 
   <!-- Package references for .NET Framework -->
