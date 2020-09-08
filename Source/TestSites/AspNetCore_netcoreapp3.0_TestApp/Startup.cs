@@ -15,6 +15,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using tusdotnet;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -35,6 +36,7 @@ namespace AspNetCore_netcoreapp3._0_TestApp
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
             services.AddSingleton(CreateTusConfiguration);
             services.AddHostedService<ExpiredFilesCleanupService>();
 
@@ -66,6 +68,12 @@ namespace AspNetCore_netcoreapp3._0_TestApp
             app.UseStaticFiles();
 
             app.UseHttpsRedirection();
+
+            app.UseCors(builder => builder
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowAnyOrigin()
+               .WithExposedHeaders(CorsHelper.GetExposedHeaders()));
 
             // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
             // In this case we just return the same configuration for everyone.
