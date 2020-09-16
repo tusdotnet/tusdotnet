@@ -1,6 +1,7 @@
 ﻿using System;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
 
@@ -20,7 +21,15 @@ namespace tusdotnet
                 }
             }
 
-            if (MethodRequiresFileIdUrl(httpMethod))
+            // TODO: Hack, fix in a better way
+            if (httpMethod == "head" && context.Configuration.SupportsClientTag())
+            {
+                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Configuration.UrlPath) && !UrlMatchesUrlPath(context.Request.RequestUri, context.Configuration.UrlPath))
+                {
+                    return IntentHandler.NotApplicable;
+                }
+            }
+            else if (MethodRequiresFileIdUrl(httpMethod))
             {
                 if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Configuration.UrlPath))
                 {
@@ -90,13 +99,15 @@ namespace tusdotnet
 
             var hasUploadConcatHeader = context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat);
 
+            var clientTagStore = context.Configuration.SupportsClientTag() ? (ITusClientTagStore)context.Configuration.Store : null;
+
             if (context.Configuration.Store is ITusConcatenationStore tusConcatenationStore
                 && hasUploadConcatHeader)
             {
-                return new ConcatenateFilesHandler(context, tusConcatenationStore);
+                return new ConcatenateFilesHandler(context, tusConcatenationStore, clientTagStore);
             }
 
-            return new CreateFileHandler(context, creationStore);
+            return new CreateFileHandler(context, creationStore, clientTagStore);
         }
 
         private static IntentHandler DetermineIntentForPatch(ContextAdapter context)

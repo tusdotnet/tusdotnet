@@ -24,7 +24,8 @@ namespace tusdotnet.Stores
         ITusChecksumStore,
         ITusConcatenationStore,
         ITusExpirationStore,
-        ITusCreationDeferLengthStore
+        ITusCreationDeferLengthStore,
+        ITusClientTagStore
     {
         private readonly string _directoryPath;
         private readonly bool _deletePartialFilesOnConcat;
@@ -221,6 +222,15 @@ namespace tusdotnet.Stores
                 _fileRepFactory.ChunkStartPosition(internalFileId).Delete();
                 _fileRepFactory.ChunkComplete(internalFileId).Delete();
                 _fileRepFactory.Expiration(internalFileId).Delete();
+
+                var clientTagFile = _fileRepFactory.ClientTag(internalFileId);
+                var clientTagValue = clientTagFile.ReadFirstLine(true);
+                if (!string.IsNullOrWhiteSpace(clientTagValue))
+                {
+                    clientTagFile.Delete();
+                    _fileRepFactory.ClientTag(clientTagValue).Delete();
+                    _fileRepFactory.ClientTagBelongsToUser(internalFileId).Delete();
+                }
             });
         }
 
@@ -388,6 +398,37 @@ namespace tusdotnet.Stores
         {
             _fileRepFactory.UploadLength(new InternalFileId(fileId)).Write(uploadLength.ToString());
             return TaskHelper.Completed;
+        }
+
+        public Task SetClientTagAsync(string fileId, string uploadTag, string user)
+        {
+            var internalFileId = new InternalFileId(fileId);
+            _fileRepFactory.ClientTag(uploadTag).Write(fileId);
+            _fileRepFactory.ClientTag(internalFileId).Write(uploadTag);
+            if (!string.IsNullOrWhiteSpace(user))
+            {
+                _fileRepFactory.ClientTagBelongsToUser(internalFileId).Write(user);
+            }
+
+            return TaskHelper.Completed;
+        }
+
+        public Task<ClientTagFileIdMap> ResolveUploadTagToFileIdAsync(string uploadTag)
+        {
+            var fileId = _fileRepFactory.ClientTag(uploadTag).ReadFirstLine(true);
+
+            if (string.IsNullOrWhiteSpace(fileId))
+                return Task.FromResult<ClientTagFileIdMap>(null);
+
+            var belongsToUser = _fileRepFactory.ClientTagBelongsToUser(new InternalFileId(fileId)).ReadFirstLine(true);
+
+            var result = new ClientTagFileIdMap
+            {
+                FileId = fileId,
+                User = belongsToUser
+            };
+
+            return Task.FromResult(result);
         }
 
         private InternalFileRep InitializeChunk(InternalFileId internalFileId, long totalDiskFileLength)

@@ -45,5 +45,8 @@ namespace tusdotnet.Models.Configuration
         /// Calling the <code>FailRequest</code> method on the context will return a 400 Bad Request to the client.
         /// </summary>
         public Func<AuthorizeContext, Task> OnAuthorizeAsync { get; set; }
+
+
+        public Func<ResolveClientTagContext, Task> OnResolveClientTagAsync { get; set; }
     }
 }

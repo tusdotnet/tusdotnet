@@ -41,16 +41,18 @@ namespace tusdotnet.IntentHandlers
 
         private Dictionary<string, Metadata> _metadataFromRequirement;
 
-        public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore)
+        public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore, ITusClientTagStore clientTagStore)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
             UploadConcat = ParseUploadConcatHeader();
             _concatenationStore = concatenationStore;
             _expirationHelper = new ExpirationHelper(context.Configuration);
+            _clientTagStore = clientTagStore;
         }
 
         private readonly ITusConcatenationStore _concatenationStore;
         private readonly ExpirationHelper _expirationHelper;
+        private readonly ITusClientTagStore _clientTagStore;
 
         internal override async Task Invoke()
         {
@@ -78,8 +80,14 @@ namespace tusdotnet.IntentHandlers
                 expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
             }
 
+            string uploadTag = null;
+            if (_clientTagStore != null && (uploadTag = Request.GetHeader(HeaderConstants.UploadTag)) != null)
+            {
+                await _clientTagStore.SetClientTagAsync(fileId, uploadTag, Context.GetUsername());
+            }
+
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            Response.SetHeader(HeaderConstants.Location, Context.CreateLocationHeaderValue(fileId));
 
             if (expires != null)
             {
@@ -103,6 +111,7 @@ namespace tusdotnet.IntentHandlers
             }
 
             requirements.Add(new Validation.Requirements.UploadMetadata(metadata => _metadataFromRequirement = metadata));
+            requirements.Add(new Validation.Requirements.ClientTagForPost(_clientTagStore));
 
             return requirements.ToArray();
         }

@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using tusdotnet.Models;
 
 namespace tusdotnet.Stores
 {
@@ -85,6 +86,12 @@ namespace tusdotnet.Stores
 
             public InternalFileRep ChunkComplete(InternalFileId fileId) => Create(fileId, "chunkcomplete");
 
+            public InternalFileRep ClientTag(string clientTag) => CreateClientTag(clientTag);
+
+            public InternalFileRep ClientTag(InternalFileId fileId) => Create(fileId, "clienttag");
+
+            public InternalFileRep ClientTagBelongsToUser(InternalFileId fileId) => Create(fileId, "clienttagbelongstouser");
+
             private InternalFileRep Create(InternalFileId fileId, string extension)
             {
                 var fileName = fileId.FileId;
@@ -94,6 +101,15 @@ namespace tusdotnet.Stores
                 }
 
                 return new InternalFileRep(fileId.FileId, System.IO.Path.Combine(_directoryPath, fileName));
+            }
+
+            private InternalFileRep CreateClientTag(string clientTag)
+            {
+                // TODO: Validate file name in a better way...
+                if (System.IO.Path.GetFileNameWithoutExtension(clientTag) != clientTag)
+                    throw new TusStoreException("Invalid client tag");
+
+                return new InternalFileRep(clientTag, System.IO.Path.Combine(_directoryPath, clientTag));
             }
         }
     }

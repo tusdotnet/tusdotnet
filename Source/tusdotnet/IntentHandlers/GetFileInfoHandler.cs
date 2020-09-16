@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -34,6 +35,7 @@ namespace tusdotnet.IntentHandlers
     {
         internal override Requirement[] Requires => new Requirement[]
         {
+            new ClientTagForHead(),
             new FileExist(),
             new FileHasNotExpired()
         };
@@ -81,6 +83,11 @@ namespace tusdotnet.IntentHandlers
             {
                 (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Configuration.UrlPath);
                 Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
+            }
+
+            if (Context.Configuration.SupportsClientTag())
+            {
+                Response.SetHeader(HeaderConstants.Location, Context.CreateLocationHeaderValue(Request.FileId));
             }
         }
 

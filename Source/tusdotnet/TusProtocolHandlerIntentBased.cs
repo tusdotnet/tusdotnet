@@ -33,6 +33,7 @@ namespace tusdotnet
             {
                 ctx.Intent = intentHandler.Intent;
                 ctx.FileConcatenation = GetFileConcatenationFromIntentHandler(intentHandler);
+                // TODO: Add client-tag and resolved file id here or in a separate event/callback?
             });
 
             if (onAuhorizeResult == ResultType.StopExecution)

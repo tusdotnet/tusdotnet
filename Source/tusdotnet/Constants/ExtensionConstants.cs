@@ -10,6 +10,7 @@
 		public const string Checksum = "checksum";
 		public const string Concatenation = "concatenation";
 	    public const string Expiration = "expiration";
-	}
+		public const string ClientTag = "client-tag";
+    }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

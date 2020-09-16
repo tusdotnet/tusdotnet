@@ -38,23 +38,31 @@ namespace tusdotnet.IntentHandlers
     */
     internal class CreateFileHandler : IntentHandler
     {
-        internal override Requirement[] Requires => new Requirement[]
+        internal override Requirement[] Requires => GetListOfRequirements();
+
+        private Requirement[] GetListOfRequirements()
         {
-            new UploadLengthForCreateFileAndConcatenateFiles(),
-            new UploadMetadata(metadata => _metadataFromRequirement = metadata)
-        };
+            return new Requirement[]
+            {
+                new UploadLengthForCreateFileAndConcatenateFiles(),
+                new UploadMetadata(metadata => _metadataFromRequirement = metadata),
+                new ClientTagForPost(_clientTagStore)
+            };
+        }
 
         private readonly ITusCreationStore _creationStore;
 
         private readonly ExpirationHelper _expirationHelper;
 
         private Dictionary<string, Metadata> _metadataFromRequirement;
+        private readonly ITusClientTagStore _clientTagStore;
 
-        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore)
+        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore, ITusClientTagStore clientTagStore)
             : base(context, IntentType.CreateFile, LockType.NoLock)
         {
             _creationStore = creationStore;
             _expirationHelper = new ExpirationHelper(context.Configuration);
+            _clientTagStore = clientTagStore;
         }
 
         internal override async Task Invoke()
@@ -74,10 +82,17 @@ namespace tusdotnet.IntentHandlers
 
             var fileId = await _creationStore.CreateFileAsync(Request.UploadLength, metadata, CancellationToken);
 
+            string uploadTag = null;
+            if(_clientTagStore != null && (uploadTag = Request.GetHeader(HeaderConstants.UploadTag)) != null)
+            {
+                await _clientTagStore.SetClientTagAsync(fileId, uploadTag, Context.GetUsername());
+            }
+
             await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
             {
                 ctx.FileId = fileId;
                 ctx.FileConcatenation = null;
+                ctx.UploadTag = uploadTag;
                 ctx.Metadata = _metadataFromRequirement;
                 ctx.UploadLength = Request.UploadLength;
             });
@@ -110,7 +125,7 @@ namespace tusdotnet.IntentHandlers
             }
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            Response.SetHeader(HeaderConstants.Location, Context.CreateLocationHeaderValue(fileId));
         }
     }
 }

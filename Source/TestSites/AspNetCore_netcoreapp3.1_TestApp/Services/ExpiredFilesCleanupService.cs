@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using AspNetCore_netcoreapp3._1_TestApp;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -53,6 +55,25 @@ namespace AspNetCore_netcoreapp3_1_TestApp.Services
                 _logger.LogInformation("Running cleanup job...");
                 var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(cancellationToken);
                 _logger.LogInformation($"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms");
+
+                // TODO: Cleanup for POC, should not be here later
+
+                foreach (var filePath in Directory.EnumerateFiles(Startup.DirectoryPath))
+                {
+                    if (filePath.Contains("."))
+                        continue;
+
+                    var file = new FileInfo(filePath);
+                    if (DateTime.UtcNow.Subtract(file.LastWriteTimeUtc).TotalSeconds > _expiration.Timeout.TotalSeconds)
+                    {
+                        foreach (var deleteMe in Directory.EnumerateFiles(Startup.DirectoryPath, file.Name + "*"))
+                        {
+                            File.Delete(deleteMe);
+                        }
+                    }
+                }
+
+
             }
             catch (Exception exc)
             {

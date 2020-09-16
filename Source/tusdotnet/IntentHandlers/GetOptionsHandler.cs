@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Validation;
@@ -87,6 +88,11 @@ namespace tusdotnet.IntentHandlers
             if (Context.Configuration.Store is ITusCreationDeferLengthStore)
             {
                 extensions.Add(ExtensionConstants.CreationDeferLength);
+            }
+
+            if (Context.Configuration.SupportsClientTag())
+            {
+                extensions.Add(ExtensionConstants.ClientTag);
             }
 
             return extensions;

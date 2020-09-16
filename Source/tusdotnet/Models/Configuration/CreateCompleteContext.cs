@@ -28,5 +28,7 @@ namespace tusdotnet.Models.Configuration
         /// otherwise null.
         /// </summary>
         public FileConcat FileConcatenation { get; set; }
+
+        public string UploadTag { get; set; }
     }
 }

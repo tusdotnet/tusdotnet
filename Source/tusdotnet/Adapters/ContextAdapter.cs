@@ -26,5 +26,16 @@ namespace tusdotnet.Adapters
         public IOwinContext OwinContext { get; set; }
 
 #endif
+
+        internal string CreateLocationHeaderValue(string fileId)
+        {
+            return $"{Configuration.UrlPath.TrimEnd('/')}/{fileId}";
+        }
+
+        internal string GetUsername()
+        {
+            // TODO: Add support for OWIN
+            return HttpContext.User.Identity.Name;
+        }
     }
 }

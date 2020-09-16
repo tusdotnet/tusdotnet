@@ -17,7 +17,6 @@ using Microsoft.Extensions.Primitives;
 using tusdotnet;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
-using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
@@ -26,6 +25,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 {
     public class Startup
     {
+        public const string DirectoryPath = @"D:\home\site\wwwroot\files\";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -65,8 +66,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             app.UseAuthentication();
 
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
+            //app.UseDefaultFiles();
+            //app.UseStaticFiles();
 
             app.UseHttpsRedirection();
 
@@ -92,32 +93,21 @@ namespace AspNetCore_netcoreapp3._1_TestApp
         {
             var logger = serviceProvider.GetService<ILoggerFactory>().CreateLogger<Startup>();
 
-            // Change the value of EnableOnAuthorize in appsettings.json to enable or disable
-            // the new authorization event.
-            var enableAuthorize = Configuration.GetValue<bool>("EnableOnAuthorize");
-
             return new DefaultTusConfiguration
             {
                 UrlPath = "/files",
-                Store = new TusDiskStore(@"C:\tusfiles\"),
+                Store = new TusDiskStore(DirectoryPath),
                 MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(30)),
+                MaxAllowedUploadSizeInBytesLong = 1024 * 1024,
                 Events = new Events
                 {
                     OnAuthorizeAsync = ctx =>
                     {
-                        if (!enableAuthorize)
-                            return Task.CompletedTask;
-
                         if (!ctx.HttpContext.User.Identity.IsAuthenticated)
                         {
-                            ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp2.2"));
+                            ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp3.1"));
                             ctx.FailRequest(HttpStatusCode.Unauthorized);
-                            return Task.CompletedTask;
-                        }
-
-                        if (ctx.HttpContext.User.Identity.Name != "test")
-                        {
-                            ctx.FailRequest(HttpStatusCode.Forbidden, "'test' is the only allowed user");
                             return Task.CompletedTask;
                         }
 
@@ -149,35 +139,9 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                         return Task.CompletedTask;
                     },
 
-                    OnBeforeCreateAsync = ctx =>
-                    {
-                        // Partial files are not complete so we do not need to validate
-                        // the metadata in our example.
-                        if (ctx.FileConcatenation is FileConcatPartial)
-                        {
-                            return Task.CompletedTask;
-                        }
-
-                        if (!ctx.Metadata.ContainsKey("name") || ctx.Metadata["name"].HasEmptyValue)
-                        {
-                            ctx.FailRequest("name metadata must be specified. ");
-                        }
-
-                        if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
-                        {
-                            ctx.FailRequest("contentType metadata must be specified. ");
-                        }
-
-                        return Task.CompletedTask;
-                    },
                     OnCreateCompleteAsync = ctx =>
                     {
                         logger.LogInformation($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
-                        return Task.CompletedTask;
-                    },
-                    OnBeforeDeleteAsync = ctx =>
-                    {
-                        // Can the file be deleted? If not call ctx.FailRequest(<message>);
                         return Task.CompletedTask;
                     },
                     OnDeleteCompleteAsync = ctx =>
@@ -192,13 +156,19 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                         // The default TusDiskStore implements this interface:
                         //var file = await ctx.GetFileAsync();
                         return Task.CompletedTask;
+                    },
+                    OnResolveClientTagAsync = ctx =>
+                    {
+                        if (ctx.ClientTagBelongsToCurrentUser || ctx.RequestPassesChallenge)
+                        {
+                            ctx.Allow();
+                        }
+
+                        // Other custom logic goes here, e.g. allowing all users in a group access or similar.
+
+                        return Task.CompletedTask;
                     }
-                },
-                // Set an expiration time where incomplete files can no longer be updated.
-                // This value can either be absolute or sliding.
-                // Absolute expiration will be saved per file on create
-                // Sliding expiration will be saved per file on create and updated on each patch/update.
-                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+                }
             };
         }
     }

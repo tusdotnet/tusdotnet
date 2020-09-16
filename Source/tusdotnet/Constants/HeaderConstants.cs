@@ -20,8 +20,9 @@
 		public const string UploadChecksum = "Upload-Checksum";
 		public const string UploadConcat = "Upload-Concat";
 	    public const string UploadExpires = "Upload-Expires";
+		public const string UploadTag = "Upload-Tag";
 
-        public const string CacheControl = "Cache-Control";
+		public const string CacheControl = "Cache-Control";
 		public const string NoStore = "no-store";
 		public const string Location = "location";
 
