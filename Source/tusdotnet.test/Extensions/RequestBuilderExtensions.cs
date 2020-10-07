@@ -17,6 +17,11 @@ namespace tusdotnet.test.Extensions
 			return builder.AddHeader("Tus-Resumable", "1.0.0");
 		}
 
+		internal static RequestBuilder AddHeaderIfNotEmpty(this RequestBuilder builder, string name, string value)
+		{
+			return string.IsNullOrEmpty(value) ? builder : builder.AddHeader(name, value);
+		}
+
 		internal static RequestBuilder CreateTusResumableRequest(this TestServer server, string path)
 		{
 			return server.CreateRequest(path).AddTusResumableHeader();
@@ -57,7 +62,12 @@ namespace tusdotnet.test.Extensions
 			return builder.AddHeader("Tus-Resumable", "1.0.0");
 		}
 
-		internal static RequestBuilder CreateTusResumableRequest(this TestServer server, string path)
+		internal static RequestBuilder AddHeaderIfNotEmpty(this RequestBuilder builder, string name, string value)
+        {
+            return string.IsNullOrEmpty(value) ? builder : builder.AddHeader(name, value);
+        }
+
+        internal static RequestBuilder CreateTusResumableRequest(this TestServer server, string path)
 		{
 			return server.CreateRequest(path).AddTusResumableHeader();
 		}

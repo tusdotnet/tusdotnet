@@ -32,6 +32,9 @@ namespace tusdotnet.IntentHandlers
     * The Server MAY delete partial uploads after concatenation. They MAY however be used multiple times to form a final resource. 
     * 
     * If the expiration is known at the creation, the Upload-Expires header MUST be included in the response to the initial POST request. 
+    * 
+    * The Client MAY include parts of the upload in the initial Creation request using the Creation With Upload extension.
+    *   NOTE: The above is only applicable for partial files as final files cannot be patched.
      */
     internal class ConcatenateFilesHandler : IntentHandler
     {
@@ -47,10 +50,12 @@ namespace tusdotnet.IntentHandlers
             UploadConcat = ParseUploadConcatHeader();
             _concatenationStore = concatenationStore;
             _expirationHelper = new ExpirationHelper(context.Configuration);
+            _isPartialFile = UploadConcat.Type is FileConcatPartial;
         }
 
         private readonly ITusConcatenationStore _concatenationStore;
         private readonly ExpirationHelper _expirationHelper;
+        private readonly bool _isPartialFile;
 
         internal override async Task Invoke()
         {
@@ -58,6 +63,7 @@ namespace tusdotnet.IntentHandlers
 
             string fileId;
             DateTimeOffset? expires = null;
+            long? uploadOffset = null;
 
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
@@ -73,18 +79,19 @@ namespace tusdotnet.IntentHandlers
 
             fileId = await HandleCreationOfConcatFiles(Request.UploadLength, metadataString, _metadataFromRequirement);
 
-            if (IsPartialFile())
+            if (_isPartialFile)
             {
                 expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
+
+                var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
+                if (writeFileContext.FileContentIsAvailable)
+                {
+                    uploadOffset = await writeFileContext.SaveFileContent(UploadConcat.Type);
+                    expires = writeFileContext.UploadExpires;
+                }
             }
 
-            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
-
-            if (expires != null)
-            {
-                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
-            }
+            SetResponseHeaders(fileId, expires, uploadOffset);
 
             Response.SetStatus(HttpStatusCode.Created);
         }
@@ -97,7 +104,7 @@ namespace tusdotnet.IntentHandlers
             };
 
             // Only validate upload length for partial files as the length of a final file is implicit.
-            if (IsPartialFile())
+            if (_isPartialFile)
             {
                 requirements.Add(new Validation.Requirements.UploadLengthForCreateFileAndConcatenateFiles());
             }
@@ -105,11 +112,6 @@ namespace tusdotnet.IntentHandlers
             requirements.Add(new Validation.Requirements.UploadMetadata(metadata => _metadataFromRequirement = metadata));
 
             return requirements.ToArray();
-        }
-
-        private bool IsPartialFile()
-        {
-            return UploadConcat.Type is FileConcatPartial;
         }
 
         private UploadConcat ParseUploadConcatHeader()
@@ -149,6 +151,22 @@ namespace tusdotnet.IntentHandlers
             }
 
             return createdFileId;
+        }
+
+        private void SetResponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
+        {
+            Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
+            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+
+            if (expires != null)
+            {
+                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
+            }
+
+            if (uploadOffset != null)
+            {
+                Response.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
+            }
         }
     }
 }

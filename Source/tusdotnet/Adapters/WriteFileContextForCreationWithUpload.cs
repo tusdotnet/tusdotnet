@@ -7,6 +7,7 @@ using tusdotnet.Constants;
 using tusdotnet.Helpers;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Adapters
@@ -33,12 +34,18 @@ namespace tusdotnet.Adapters
             return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
         }
 
-        internal async Task<long?> SaveFileContent()
+        /// <summary>
+        /// Creates an internal WriteFile request and runs it. Returns the Upload-Offset for the file or 0 if something failed.
+        /// The <code>UploadExpires</code> property is also updated if sliding expiration is used.
+        /// </summary>
+        /// <param name="fileConcat">Null for regular files or FileConcatPartial if the file is a partial file</param>
+        /// <returns>The Upload-Offset for the file or 0 if something failed.</returns>
+        internal async Task<long> SaveFileContent(FileConcat fileConcat = null)
         {
             var authResponse = await EventHelper.Validate<AuthorizeContext>(_context, ctx =>
             {
                 ctx.Intent = IntentType.WriteFile;
-                ctx.FileConcatenation = null;
+                ctx.FileConcatenation = fileConcat;
             });
 
             if (authResponse == ResultType.StopExecution)
@@ -137,7 +144,7 @@ namespace tusdotnet.Adapters
                 return null;
             }
 
-            if(DateTimeOffset.TryParseExact(uploadExpires, "R", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            if (DateTimeOffset.TryParseExact(uploadExpires, "R", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
             {
                 return d;
             }

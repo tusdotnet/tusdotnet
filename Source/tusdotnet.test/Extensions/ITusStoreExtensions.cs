@@ -8,6 +8,15 @@ namespace tusdotnet.test.Extensions
 {
     internal static class ITusStoreExtensions
     {
+        internal static ITusStore WithExistingPartialFile(this ITusStore store, string fileId, long? uploadLength = 1, long uploadOffset = 0)
+        {
+            store.WithExistingFile(fileId, uploadLength, uploadOffset);
+
+            ((ITusConcatenationStore)store).GetUploadConcatAsync(fileId, Arg.Any<CancellationToken>()).Returns(new Models.Concatenation.FileConcatPartial());
+
+            return store;
+        }
+
         internal static ITusStore WithExistingFile(this ITusStore store, string fileId, long? uploadLength = 1, long uploadOffset = 0)
         {
             return store.WithExistingFile(fileId, _ => uploadLength, _ => uploadOffset);

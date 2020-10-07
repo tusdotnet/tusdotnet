@@ -16,6 +16,7 @@ using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
+using tusdotnet.test.Helpers;
 using Xunit;
 
 namespace tusdotnet.test.Tests
@@ -42,7 +43,7 @@ namespace tusdotnet.test.Tests
                 response.ShouldContainHeader("location", "/files/finalId");
 
                 var createFinalFileCall = concatStore.ReceivedCalls().Single(f => f.GetMethodInfo().Name == nameof(concatStore.CreateFinalFileAsync));
-                var files = createFinalFileCall.GetArguments().First() as string[];
+                var files = (string[])createFinalFileCall.GetArguments()[0];
                 files.Length.ShouldBe(2);
                 files[0].ShouldBe("partial1");
                 files[1].ShouldBe("partial2");
@@ -52,7 +53,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_Upload_Concat_Header_Is_Unparsable_Or_Not_Final_Nor_Partial(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>()))
+            using (var server = TestServerFactory.Create(MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>()))
             {
                 var invalidValues = new[]
                 {
@@ -81,7 +82,7 @@ namespace tusdotnet.test.Tests
         {
             var uploadOffset = 10;
 
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
             store.FileExistAsync("finalconcat", Arg.Any<CancellationToken>()).Returns(true);
             store.GetUploadLengthAsync("finalconcat", Arg.Any<CancellationToken>()).Returns(100);
             store.GetUploadOffsetAsync("finalconcat", Arg.Any<CancellationToken>()).Returns(_ => uploadOffset);
@@ -110,7 +111,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Head_Request_To_Partial_File_Contains_Upload_Offset_Header(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
             store.FileExistAsync("partialconcat", Arg.Any<CancellationToken>()).Returns(true);
             store.GetUploadLengthAsync("partialconcat", Arg.Any<CancellationToken>()).Returns(100);
             store.GetUploadOffsetAsync("partialconcat", Arg.Any<CancellationToken>()).Returns(10);
@@ -134,7 +135,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Head_Request_To_Final_File_Contains_Upload_Concat_Header(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusConcatenationStore>();
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
 
             ((ITusConcatenationStore)store).GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(new FileConcatFinal("1", "2"));
@@ -154,7 +155,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Head_Request_To_Partial_File_Contains_Upload_Concat_Header(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusConcatenationStore>();
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
 
             ((ITusConcatenationStore)store).GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(new FileConcatFinal("a", "b"));
@@ -170,7 +171,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Head_Request_To_Regular_File_Does_Not_Contain_Upload_Concat_Header(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusConcatenationStore>();
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
 
             ((ITusConcatenationStore)store).GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(null as FileConcat);
@@ -190,7 +191,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_403_Forbidden_When_Patching_A_Final_File(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusConcatenationStore>();
             store.WithExistingFile("concatFileforbidden", 10, 10);
 
             ((ITusConcatenationStore)store).GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(new FileConcatFinal("1", "2"));
@@ -216,17 +217,14 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Partial_File_Metadata_Is_Not_Transfered_To_Final_File(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
             var concatStore = (ITusConcatenationStore)store;
             var creationStore = (ITusCreationStore)store;
-            store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
-            store.FileExistAsync("partial2", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadLengthAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
-            store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadOffsetAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
-            concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
-            concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+
+            store
+                .WithExistingPartialFile("partial1", 10, 10)
+                .WithExistingPartialFile("partial2", 20, 20);
+
             creationStore.GetUploadMetadataAsync("partial1", Arg.Any<CancellationToken>()).Returns("metaforpartial1");
             creationStore.GetUploadMetadataAsync("partial2", Arg.Any<CancellationToken>()).Returns("metaforpartial2");
 
@@ -247,11 +245,11 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_Any_Of_The_Partial_Files_Are_Not_Found(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
             // ReSharper disable once SuspiciousTypeConversion.Global
             var concatStore = (ITusConcatenationStore)store;
             concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>())
-                .ThrowsForAnyArgs(info => new TusStoreException("File partial2 does not exist"));
+                .ThrowsForAnyArgs(_ => new TusStoreException("File partial2 does not exist"));
 
             using (var server = TestServerFactory.Create(store))
             {
@@ -279,7 +277,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_Any_Of_The_Partial_Files_Are_Not_Partial(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
             // ReSharper disable once SuspiciousTypeConversion.Global
             var concatStore = (ITusConcatenationStore)store;
             store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
@@ -304,17 +302,10 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_Any_Partial_File_Is_Not_Complete(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
-            // ReSharper disable once SuspiciousTypeConversion.Global
-            var concatStore = (ITusConcatenationStore)store;
-            store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
-            store.FileExistAsync("partial2", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadLengthAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
-            store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadOffsetAsync("partial2", Arg.Any<CancellationToken>()).Returns(15);
-            concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
-            concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
+            store
+                .WithExistingPartialFile("partial1", 10, 10)
+                .WithExistingPartialFile("partial2", 20, 15);
 
             using (var server = TestServerFactory.Create(store))
             {
@@ -349,7 +340,6 @@ namespace tusdotnet.test.Tests
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
                 response.ShouldContainHeader("location", "/files/partial1");
                 await concatStore.Received().CreatePartialFileAsync(1, null, Arg.Any<CancellationToken>());
-
             }
         }
 
@@ -359,7 +349,7 @@ namespace tusdotnet.test.Tests
             var store = CreateStoreForFinalFileConcatenation();
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -392,7 +382,7 @@ namespace tusdotnet.test.Tests
 
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -435,20 +425,19 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Does_Not_Run_OnFileCompleteAsync_When_A_Partial_File_Is_Created(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
+            store.WithExistingPartialFile("partial1");
+            store.AppendDataAsync("partial1", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(1);
+
             var concatStore = (ITusConcatenationStore)store;
             concatStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("partial1");
             concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
-            store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(1);
-            store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(0);
-            store.AppendDataAsync("partial1", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(1);
 
             var oldCallbackCalled = false;
             var callbackCalled = false;
             using (var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(request => new DefaultTusConfiguration
+                app.UseTus(_ => new DefaultTusConfiguration
                 {
                     Store = store,
                     UrlPath = "/files",
@@ -564,12 +553,12 @@ namespace tusdotnet.test.Tests
         {
             FileConcat fileConcat = null;
 
-            using (var server = TestServerFactory.Create(CreateStoreForPartialFileConcatenation(), (Events)new Events
+            using (var server = TestServerFactory.Create(CreateStoreForPartialFileConcatenation(), new Events
             {
                 OnCreateCompleteAsync = ctx =>
                 {
                     fileConcat = ctx.FileConcatenation;
-                    return (Task)Task.FromResult((int)0);
+                    return Task.FromResult(0);
                 }
             }))
             {
@@ -591,12 +580,12 @@ namespace tusdotnet.test.Tests
         {
             FileConcat fileConcat = null;
 
-            using (var server = TestServerFactory.Create(CreateStoreForFinalFileConcatenation(), (Events)new Events
+            using (var server = TestServerFactory.Create(CreateStoreForFinalFileConcatenation(), new Events
             {
                 OnCreateCompleteAsync = ctx =>
                 {
                     fileConcat = ctx.FileConcatenation;
-                    return (Task)Task.FromResult((int)0);
+                    return Task.FromResult(0);
                 }
             }))
             {
@@ -713,18 +702,12 @@ namespace tusdotnet.test.Tests
 
         private static ITusStore CreateStoreForFinalFileConcatenation()
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
+            store
+                .WithExistingPartialFile("partial1", 10, 10)
+                .WithExistingPartialFile("partial2", 20, 20);
+
             var concatStore = (ITusConcatenationStore)store;
-
-            store.FileExistAsync("partial1", Arg.Any<CancellationToken>()).Returns(true);
-            store.FileExistAsync("partial2", Arg.Any<CancellationToken>()).Returns(true);
-            store.GetUploadLengthAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadLengthAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
-            store.GetUploadOffsetAsync("partial1", Arg.Any<CancellationToken>()).Returns(10);
-            store.GetUploadOffsetAsync("partial2", Arg.Any<CancellationToken>()).Returns(20);
-
-            concatStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
-            concatStore.GetUploadConcatAsync("partial2", Arg.Any<CancellationToken>()).Returns(new FileConcatPartial());
             concatStore.CreateFinalFileAsync(null, null, Arg.Any<CancellationToken>()).ReturnsForAnyArgs("finalId");
 
             return store;
@@ -732,9 +715,9 @@ namespace tusdotnet.test.Tests
 
         private static ITusStore CreateStoreForPartialFileConcatenation(string returnThisPartialFileIdOnCreate = null)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusConcatenationStore>();
-            var concatStore = (ITusConcatenationStore)store;
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
 
+            var concatStore = (ITusConcatenationStore)store;
             concatStore.CreatePartialFileAsync(-1, null, CancellationToken.None).ReturnsForAnyArgs(returnThisPartialFileIdOnCreate ?? Guid.NewGuid().ToString());
 
             return store;
