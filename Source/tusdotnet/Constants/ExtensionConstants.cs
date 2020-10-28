@@ -11,6 +11,7 @@
 		public const string Concatenation = "concatenation";
 	    public const string Expiration = "expiration";
 		public const string ClientTag = "client-tag";
+		public const string Challenge = "challenge";
     }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

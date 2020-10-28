@@ -347,7 +347,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task GetSupportedAlgorithmsAsync()
         {
-            var algorithms = await _fixture.Store.GetSupportedAlgorithmsAsync(CancellationToken.None);
+            var algorithms = await ((Interfaces.ITusChecksumStore)_fixture.Store).GetSupportedAlgorithmsAsync(CancellationToken.None);
             // ReSharper disable PossibleMultipleEnumeration
             algorithms.ShouldNotBeNull();
             algorithms.Count().ShouldBe(1);

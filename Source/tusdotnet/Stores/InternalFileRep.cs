@@ -92,6 +92,8 @@ namespace tusdotnet.Stores
 
             public InternalFileRep ClientTagBelongsToUser(InternalFileId fileId) => Create(fileId, "clienttagbelongstouser");
 
+            public InternalFileRep UploadSecret(InternalFileId fileId) => Create(fileId, "uploadsecret");
+
             private InternalFileRep Create(InternalFileId fileId, string extension)
             {
                 var fileName = fileId.FileId;

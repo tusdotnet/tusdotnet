@@ -24,6 +24,8 @@ namespace tusdotnet.Adapters
 
         public long UploadLength => _uploadLength.Value;
 
+        public bool UploadChallengeProvidedAndPassed { get; set; }
+
         private Lazy<string> _fileId;
         private readonly Lazy<long> _uploadLength;
         private readonly string _configUrlPath;

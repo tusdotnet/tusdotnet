@@ -46,7 +46,8 @@ namespace tusdotnet.IntentHandlers
             {
                 new UploadLengthForCreateFileAndConcatenateFiles(),
                 new UploadMetadata(metadata => _metadataFromRequirement = metadata),
-                new ClientTagForPost(_clientTagStore)
+                new ClientTagForPost(_clientTagStore),
+                new UploadSecretForPost(_challengeStore)
             };
         }
 
@@ -56,13 +57,15 @@ namespace tusdotnet.IntentHandlers
 
         private Dictionary<string, Metadata> _metadataFromRequirement;
         private readonly ITusClientTagStore _clientTagStore;
+        private readonly ITusChallengeStore _challengeStore;
 
-        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore, ITusClientTagStore clientTagStore)
+        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore, ITusClientTagStore clientTagStore, ITusChallengeStore challengeStore)
             : base(context, IntentType.CreateFile, LockType.NoLock)
         {
             _creationStore = creationStore;
             _expirationHelper = new ExpirationHelper(context.Configuration);
             _clientTagStore = clientTagStore;
+            _challengeStore = challengeStore;
         }
 
         internal override async Task Invoke()
@@ -83,9 +86,15 @@ namespace tusdotnet.IntentHandlers
             var fileId = await _creationStore.CreateFileAsync(Request.UploadLength, metadata, CancellationToken);
 
             string uploadTag = null;
-            if(_clientTagStore != null && (uploadTag = Request.GetHeader(HeaderConstants.UploadTag)) != null)
+            if (_clientTagStore != null && (uploadTag = Request.GetHeader(HeaderConstants.UploadTag)) != null)
             {
                 await _clientTagStore.SetClientTagAsync(fileId, uploadTag, Context.GetUsername());
+            }
+
+            string uploadSecret = null;
+            if (_challengeStore != null && (uploadSecret = Request.GetHeader(HeaderConstants.UploadSecret)) != null)
+            {
+                await _challengeStore.SetUploadSecretAsync(fileId, uploadSecret, Context.CancellationToken);
             }
 
             await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>

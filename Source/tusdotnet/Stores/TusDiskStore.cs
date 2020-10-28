@@ -25,7 +25,8 @@ namespace tusdotnet.Stores
         ITusConcatenationStore,
         ITusExpirationStore,
         ITusCreationDeferLengthStore,
-        ITusClientTagStore
+        ITusClientTagStore,
+        ITusChallengeStore
     {
         private readonly string _directoryPath;
         private readonly bool _deletePartialFilesOnConcat;
@@ -235,7 +236,7 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken _)
+        Task<IEnumerable<string>> ITusChecksumStore.GetSupportedAlgorithmsAsync(CancellationToken _)
         {
             return Task.FromResult<IEnumerable<string>>(new[] { "sha1" });
         }
@@ -449,6 +450,42 @@ namespace tusdotnet.Stores
         {
             await fileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex);
             await fileStream.FlushAsync();
+        }
+
+        Task ITusChallengeStore.SetUploadSecretAsync(string fileId, string uploadSecret, CancellationToken _)
+        {
+            _fileRepFactory.UploadSecret(new InternalFileId(fileId)).Write(uploadSecret);
+            return TaskHelper.Completed;
+        }
+
+        /// <inheritdoc />
+        Task<IEnumerable<string>> ITusChallengeStore.GetSupportedAlgorithmsAsync(CancellationToken _)
+        {
+            return Task.FromResult<IEnumerable<string>>(new[] { "sha256" });
+        }
+
+        Task<string> ITusChallengeStore.GetUploadSecretAsync(string fileId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_fileRepFactory.UploadSecret(new InternalFileId(fileId)).ReadFirstLine(fileIsOptional: true));
+        }
+
+        Task<ITusChallengeStoreHashFunction> ITusChallengeStore.GetHashFunctionAsync(string algorithm, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Sha256HashFunction.Instance);
+        }
+
+        private class Sha256HashFunction : ITusChallengeStoreHashFunction
+        {
+            public static ITusChallengeStoreHashFunction Instance { get; } = new Sha256HashFunction();
+
+            private Sha256HashFunction()
+            {
+            }
+
+            public byte[] CreateHash(string input)
+            {
+                return ChecksumCalculator.CalculateSha256(input);
+            }
         }
     }
 }

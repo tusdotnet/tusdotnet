@@ -96,7 +96,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             return new DefaultTusConfiguration
             {
                 UrlPath = "/files",
-                Store = new TusDiskStore(DirectoryPath),
+                //Store = new TusDiskStore(DirectoryPath),
+                Store = new TusDiskStore(@"R:\tusfiles"),
                 MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
                 Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(30)),
                 MaxAllowedUploadSizeInBytesLong = 1024 * 1024,
@@ -104,12 +105,12 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 {
                     OnAuthorizeAsync = ctx =>
                     {
-                        if (!ctx.HttpContext.User.Identity.IsAuthenticated)
-                        {
-                            ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp3.1"));
-                            ctx.FailRequest(HttpStatusCode.Unauthorized);
-                            return Task.CompletedTask;
-                        }
+                        //if (!ctx.HttpContext.User.Identity.IsAuthenticated)
+                        //{
+                        //    ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp3.1"));
+                        //    ctx.FailRequest(HttpStatusCode.Unauthorized);
+                        //    return Task.CompletedTask;
+                        //}
 
                         // Do other verification on the user; claims, roles, etc.
 

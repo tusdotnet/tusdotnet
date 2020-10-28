@@ -2,10 +2,12 @@
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.Authenticators;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.IntentHandlers;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 
@@ -27,6 +29,12 @@ namespace tusdotnet
             if (intentHandler == IntentHandler.NotApplicable)
             {
                 return ResultType.ContinueExecution;
+            }
+
+            // Hack for Upload-Challenge, fix a chain of authenticators (challenge + OnAuthorizeAsync)
+            if (await VerifyUploadChallengeIfApplicable(context, intentHandler) == ResultType.StopExecution)
+            {
+                return ResultType.StopExecution;
             }
 
             var onAuhorizeResult = await EventHelper.Validate<AuthorizeContext>(context, ctx =>
@@ -79,6 +87,31 @@ namespace tusdotnet
             {
                 fileLock?.ReleaseIfHeld();
             }
+        }
+
+        private static async Task<ResultType> VerifyUploadChallengeIfApplicable(ContextAdapter context, IntentHandler intentHandler)
+        {
+            /*
+             * The Client MAY add the `Upload-Secret` header to `POST` requests, if it wants to protect the
+upload using the Challenge extension. All subsequent request targeting that upload resource MUST contain
+the corresponding `Upload-Challenge` header. These requests include but are not limited to:
+
+- `HEAD` requests to the upload creation URL with an `Upload-Tag` header
+- `POST` requests to the upload creation URL with an `Upload-Concat` header
+             * 
+             * */
+
+            if (intentHandler.Intent == IntentType.GetOptions)
+                return ResultType.ContinueExecution;
+
+            var challengeAuthenticator = new ChallengeAuthenticator();
+            var onChallengeResult = await challengeAuthenticator.Authenticate(context, intentHandler.Intent);
+            if (onChallengeResult == ResultType.StopExecution)
+            {
+                return ResultType.StopExecution;
+            }
+
+            return ResultType.ContinueExecution;
         }
 
         private static Models.Concatenation.FileConcat GetFileConcatenationFromIntentHandler(IntentHandler intentHandler)

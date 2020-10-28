@@ -27,6 +27,11 @@ namespace tusdotnet.Validation.Requirements
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(context.Request.FileId))
+            {
+                return;
+            }
+
             var clientTagStore = (ITusClientTagStore)context.Configuration.Store;
 
             var uploadTag = context.Request.GetHeader(HeaderConstants.UploadTag);
@@ -43,8 +48,7 @@ namespace tusdotnet.Validation.Requirements
             var resolveClientTagContext = ResolveClientTagContext.Create(context, ctx =>
             {
                 ctx.UploadTag = uploadTag;
-                // TODO: Implement challenge once completed
-                ctx.RequestPassesChallenge = false;
+                ctx.RequestPassesChallenge = context.Request.UploadChallengeProvidedAndPassed;
                 ctx.ClientTagBelongsToCurrentUser = fileIdMap.User == context.GetUsername();
             });
             await context.Configuration.Events.OnResolveClientTagAsync(resolveClientTagContext);

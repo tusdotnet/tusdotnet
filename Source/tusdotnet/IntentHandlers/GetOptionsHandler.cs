@@ -52,6 +52,12 @@ namespace tusdotnet.IntentHandlers
                 response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
             }
 
+            if (Context.Configuration.Store is ITusChallengeStore challengeStore)
+            {
+                var checksumAlgorithms = await challengeStore.GetSupportedAlgorithmsAsync(Context.CancellationToken);
+                response.SetHeader(HeaderConstants.TusChallengeAlgorithm, string.Join(",", checksumAlgorithms));
+            }
+
             response.SetStatus(HttpStatusCode.NoContent);
         }
 
@@ -93,6 +99,11 @@ namespace tusdotnet.IntentHandlers
             if (Context.Configuration.SupportsClientTag())
             {
                 extensions.Add(ExtensionConstants.ClientTag);
+            }
+
+            if (Context.Configuration.Store is ITusChallengeStore)
+            {
+                extensions.Add(ExtensionConstants.Challenge);
             }
 
             return extensions;

@@ -5,6 +5,7 @@ using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
@@ -30,6 +31,8 @@ namespace tusdotnet.IntentHandlers
         protected CancellationToken CancellationToken { get; }
 
         protected ITusStore Store { get; }
+
+        internal abstract Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStore challengeStore);
 
         internal abstract Task Invoke();
 

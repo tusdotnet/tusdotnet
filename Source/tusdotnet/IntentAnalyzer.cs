@@ -11,7 +11,7 @@ namespace tusdotnet
     {
         public static IntentHandler DetermineIntent(ContextAdapter context)
         {
-            var httpMethod = GetHttpMethod(context.Request);
+            var httpMethod = context.Request.GetHttpMethod();
 
             if (RequestRequiresTusResumableHeader(httpMethod))
             {
@@ -52,23 +52,6 @@ namespace tusdotnet
             };
         }
 
-        /// <summary>
-        /// Returns the request method taking X-Http-Method-Override into account.
-        /// </summary>
-        /// <param name="request">The request to get the method for</param>
-        /// <returns>The request method</returns>
-        private static string GetHttpMethod(RequestAdapter request)
-        {
-            var method = request.GetHeader(HeaderConstants.XHttpMethodOveride);
-
-            if (string.IsNullOrWhiteSpace(method))
-            {
-                method = request.Method;
-            }
-
-            return method.ToLower();
-        }
-
         private static bool MethodRequiresFileIdUrl(string httpMethod)
         {
             switch (httpMethod)
@@ -107,7 +90,7 @@ namespace tusdotnet
                 return new ConcatenateFilesHandler(context, tusConcatenationStore, clientTagStore);
             }
 
-            return new CreateFileHandler(context, creationStore, clientTagStore);
+            return new CreateFileHandler(context, creationStore, clientTagStore, context.Configuration.Store as ITusChallengeStore);
         }
 
         private static IntentHandler DetermineIntentForPatch(ContextAdapter context)

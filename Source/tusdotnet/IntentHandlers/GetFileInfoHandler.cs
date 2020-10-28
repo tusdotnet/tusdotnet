@@ -5,6 +5,7 @@ using tusdotnet.Extensions.Internal;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
@@ -43,6 +44,11 @@ namespace tusdotnet.IntentHandlers
         public GetFileInfoHandler(ContextAdapter context)
             : base(context, IntentType.GetFileInfo, LockType.NoLock)
         {
+        }
+
+        internal override Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStore challengeStore)
+        {
+            throw new System.NotImplementedException();
         }
 
         internal override async Task Invoke()
@@ -87,6 +93,7 @@ namespace tusdotnet.IntentHandlers
 
             if (Context.Configuration.SupportsClientTag())
             {
+                // TODO: Only add location if upload-tag was used (not if directly for a file resource)
                 Response.SetHeader(HeaderConstants.Location, Context.CreateLocationHeaderValue(Request.FileId));
             }
         }
