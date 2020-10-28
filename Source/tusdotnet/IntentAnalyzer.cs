@@ -84,13 +84,15 @@ namespace tusdotnet
 
             var clientTagStore = context.Configuration.SupportsClientTag() ? (ITusClientTagStore)context.Configuration.Store : null;
 
+            var challengeStore = context.Configuration.Store as ITusChallengeStore;
+
             if (context.Configuration.Store is ITusConcatenationStore tusConcatenationStore
                 && hasUploadConcatHeader)
             {
-                return new ConcatenateFilesHandler(context, tusConcatenationStore, clientTagStore);
+                return new ConcatenateFilesHandler(context, tusConcatenationStore, clientTagStore, challengeStore);
             }
 
-            return new CreateFileHandler(context, creationStore, clientTagStore, context.Configuration.Store as ITusChallengeStore);
+            return new CreateFileHandler(context, creationStore, clientTagStore, challengeStore);
         }
 
         private static IntentHandler DetermineIntentForPatch(ContextAdapter context)

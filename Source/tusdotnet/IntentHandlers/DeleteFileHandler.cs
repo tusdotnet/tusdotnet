@@ -2,10 +2,13 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
@@ -20,17 +23,39 @@ namespace tusdotnet.IntentHandlers
     {
         private readonly ITusTerminationStore _terminationStore;
 
-        public DeleteFileHandler(ContextAdapter context, ITusTerminationStore terminationStore) 
+        public DeleteFileHandler(ContextAdapter context, ITusTerminationStore terminationStore)
             : base(context, IntentType.DeleteFile, LockType.RequiresLock)
         {
             _terminationStore = terminationStore;
         }
 
-        internal override Requirement[] Requires => new Requirement[] 
+        internal override Requirement[] Requires => new Requirement[]
         {
             new Validation.Requirements.FileExist(),
             new Validation.Requirements.FileHasNotExpired()
         };
+
+        internal override async Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore)
+        {
+            var secret = await challengeStore.GetUploadSecretAsync(Context.Request.FileId, Context.CancellationToken);
+
+            if (string.IsNullOrEmpty(secret))
+                return ResultType.ContinueExecution;
+
+            if (!uploadChallenge.AssertUploadChallengeIsProvidedIfSecretIsSet(secret))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            if (!uploadChallenge.VerifyChecksum(Context.Request.GetHeader(HeaderConstants.UploadOffset), Context.Request.GetHttpMethod(), secret, hashFunction))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            return ResultType.ContinueExecution;
+        }
 
         internal override async Task Invoke()
         {

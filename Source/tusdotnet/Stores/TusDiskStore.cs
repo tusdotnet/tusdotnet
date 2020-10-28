@@ -223,6 +223,7 @@ namespace tusdotnet.Stores
                 _fileRepFactory.ChunkStartPosition(internalFileId).Delete();
                 _fileRepFactory.ChunkComplete(internalFileId).Delete();
                 _fileRepFactory.Expiration(internalFileId).Delete();
+                _fileRepFactory.UploadSecret(internalFileId).Delete();
 
                 var clientTagFile = _fileRepFactory.ClientTag(internalFileId);
                 var clientTagValue = clientTagFile.ReadFirstLine(true);
@@ -474,6 +475,7 @@ namespace tusdotnet.Stores
             return Task.FromResult(Sha256HashFunction.Instance);
         }
 
+        // TODO: Add this as some kind of helper function so that others can use it
         private class Sha256HashFunction : ITusChallengeStoreHashFunction
         {
             public static ITusChallengeStoreHashFunction Instance { get; } = new Sha256HashFunction();

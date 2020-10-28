@@ -8,6 +8,7 @@ using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
@@ -135,6 +136,11 @@ namespace tusdotnet.IntentHandlers
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             Response.SetHeader(HeaderConstants.Location, Context.CreateLocationHeaderValue(fileId));
+        }
+
+        internal override Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore)
+        {
+            return Task.FromResult(ResultType.ContinueExecution);
         }
     }
 }

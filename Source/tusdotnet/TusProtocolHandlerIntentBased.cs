@@ -2,7 +2,6 @@
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Authenticators;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
@@ -10,6 +9,7 @@ using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Parsers;
 
 namespace tusdotnet
 {
@@ -91,23 +91,30 @@ namespace tusdotnet
 
         private static async Task<ResultType> VerifyUploadChallengeIfApplicable(ContextAdapter context, IntentHandler intentHandler)
         {
-            /*
-             * The Client MAY add the `Upload-Secret` header to `POST` requests, if it wants to protect the
-upload using the Challenge extension. All subsequent request targeting that upload resource MUST contain
-the corresponding `Upload-Challenge` header. These requests include but are not limited to:
-
-- `HEAD` requests to the upload creation URL with an `Upload-Tag` header
-- `POST` requests to the upload creation URL with an `Upload-Concat` header
-             * 
-             * */
-
-            if (intentHandler.Intent == IntentType.GetOptions)
+            if (!(context.Configuration.Store is ITusChallengeStore challengeStore))
                 return ResultType.ContinueExecution;
 
-            var challengeAuthenticator = new ChallengeAuthenticator();
-            var onChallengeResult = await challengeAuthenticator.Authenticate(context, intentHandler.Intent);
-            if (onChallengeResult == ResultType.StopExecution)
+            UploadChallengeParserResult parsedUploadChallenge = null;
+            ITusChallengeStoreHashFunction hashFunction = null;
+
+            var uploadChallengeHeader = context.Request.GetHeader(HeaderConstants.UploadChallenge);
+
+            if (!string.IsNullOrEmpty(uploadChallengeHeader))
             {
+                parsedUploadChallenge = UploadChallengeParser.ParseAndValidate(uploadChallengeHeader, await challengeStore.GetSupportedAlgorithmsAsync(context.CancellationToken));
+                if (!parsedUploadChallenge.Success)
+                {
+                    await context.Response.Error(HttpStatusCode.BadRequest, parsedUploadChallenge.ErrorMessage);
+                    return ResultType.StopExecution;
+                }
+
+                hashFunction = await challengeStore.GetHashFunctionAsync(parsedUploadChallenge.Algorithm, context.CancellationToken);
+            }
+
+            var challengeResult = await intentHandler.Challenge(parsedUploadChallenge, hashFunction, challengeStore);
+            if (challengeResult == ResultType.StopExecution)
+            {
+                context.Response.NotFound();
                 return ResultType.StopExecution;
             }
 

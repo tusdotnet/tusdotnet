@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
@@ -41,18 +45,72 @@ namespace tusdotnet.IntentHandlers
 
         private Dictionary<string, Metadata> _metadataFromRequirement;
 
-        public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore, ITusClientTagStore clientTagStore)
+        public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore, ITusClientTagStore clientTagStore, ITusChallengeStore challengeStore)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
             UploadConcat = ParseUploadConcatHeader();
             _concatenationStore = concatenationStore;
             _expirationHelper = new ExpirationHelper(context.Configuration);
             _clientTagStore = clientTagStore;
+            _challengeStore = challengeStore;
         }
 
         private readonly ITusConcatenationStore _concatenationStore;
         private readonly ExpirationHelper _expirationHelper;
         private readonly ITusClientTagStore _clientTagStore;
+        private readonly ITusChallengeStore _challengeStore;
+
+        internal override async Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore)
+        {
+            if (UploadConcat.Type is FileConcatPartial)
+                return ResultType.ContinueExecution;
+
+            var finalConcat = (FileConcatFinal)UploadConcat.Type;
+            var partialChecksums = new List<string>(finalConcat.Files.Length);
+
+            var partialSecrets = finalConcat.Files.Select(async partialFileId => await challengeStore.GetUploadSecretAsync(partialFileId, Context.CancellationToken));
+
+            if (partialSecrets.Any(secret => secret != null) && uploadChallenge == null)
+            {
+                // TODO: 400 Bad request instead? Seems odd that this endpoint should not exist.
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            foreach (var partialFileId in finalConcat.Files)
+            {
+                /*
+                 * Upload-Challenge
+	= "sha256" + " " + SHA256("sha256 sXfhFCwyWMjnH1DMPkArsByfa4FEGtpf3LsAt6uDkTU=" + "sha256 JbVm0kH59MDQfGtzjJ3s9oBjzHp+Yqtv7O2/OzYTUqg=")
+	= "sha256 jWk0GUnLo2QNZaY3zHZ1N/Rgf7EWHtFI677w1mB5aMg="
+                 * */
+
+                var secret = await challengeStore.GetUploadSecretAsync(partialFileId, Context.CancellationToken);
+                if (string.IsNullOrEmpty(secret))
+                {
+                    partialChecksums.Add(string.Empty);
+                    continue;
+                }
+
+                // TODO Change 0 to #
+                var partialHash = hashFunction?.CreateHash("POST0" + secret) ?? new byte[0];
+                partialChecksums.Add(Convert.ToBase64String(partialHash));
+            }
+
+            var inputToHash = "";
+            foreach (var item in partialChecksums)
+            {
+                inputToHash += $"{uploadChallenge.Algorithm} {item}";
+            }
+
+            if (!uploadChallenge.VerifyChecksum(inputToHash, hashFunction))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            return ResultType.ContinueExecution;
+        }
 
         internal override async Task Invoke()
         {
@@ -84,6 +142,12 @@ namespace tusdotnet.IntentHandlers
             if (_clientTagStore != null && (uploadTag = Request.GetHeader(HeaderConstants.UploadTag)) != null)
             {
                 await _clientTagStore.SetClientTagAsync(fileId, uploadTag, Context.GetUsername());
+            }
+
+            string uploadSecret = null;
+            if (_challengeStore != null && (uploadSecret = Request.GetHeader(HeaderConstants.UploadSecret)) != null)
+            {
+                await _challengeStore.SetUploadSecretAsync(fileId, uploadSecret, Context.CancellationToken);
             }
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);

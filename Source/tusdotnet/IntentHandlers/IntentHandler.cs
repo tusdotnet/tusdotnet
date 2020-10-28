@@ -32,7 +32,7 @@ namespace tusdotnet.IntentHandlers
 
         protected ITusStore Store { get; }
 
-        internal abstract Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStore challengeStore);
+        internal abstract Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore);
 
         internal abstract Task Invoke();
 

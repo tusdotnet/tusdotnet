@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions;
 using tusdotnet.Extensions.Internal;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
@@ -46,9 +47,49 @@ namespace tusdotnet.IntentHandlers
         {
         }
 
-        internal override Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStore challengeStore)
+        internal override async Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore)
         {
-            throw new System.NotImplementedException();
+            var fileId = Context.Request.FileId;
+            var uploadTag = Context.Request.GetHeader(HeaderConstants.UploadTag);
+
+            if (string.IsNullOrEmpty(fileId))
+            {
+                if (Context.Configuration.SupportsClientTag() && !string.IsNullOrEmpty(uploadTag))
+                {
+                    var fileIdMap = await ((ITusClientTagStore)Context.Configuration.Store).ResolveUploadTagToFileIdAsync(uploadTag);
+                    if (fileIdMap == null)
+                    {
+                        Context.Response.NotFound();
+                        return ResultType.StopExecution;
+                    }
+
+                    // TODO: Cache this through the request somehow
+                    fileId = fileIdMap.FileId;
+                }
+                else
+                {
+                    Context.Response.NotFound();
+                    return ResultType.StopExecution;
+                }
+            }
+            var secret = await challengeStore.GetUploadSecretAsync(fileId, Context.CancellationToken);
+
+            if (string.IsNullOrEmpty(secret))
+                return ResultType.ContinueExecution;
+
+            if (!uploadChallenge.AssertUploadChallengeIsProvidedIfSecretIsSet(secret))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            if (!uploadChallenge.VerifyChecksum(Context.Request.GetHeader(HeaderConstants.UploadOffset), Context.Request.GetHttpMethod(), secret, hashFunction))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            return ResultType.ContinueExecution;
         }
 
         internal override async Task Invoke()

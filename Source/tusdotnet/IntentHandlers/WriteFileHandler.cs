@@ -4,10 +4,12 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
@@ -188,6 +190,27 @@ namespace tusdotnet.IntentHandlers
                 new RequestOffsetMatchesFileOffset(),
                 new FileIsNotCompleted()
             };
+        }
+
+        internal override async Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore)
+        {
+            var secret = await challengeStore.GetUploadSecretAsync(Context.Request.FileId, Context.CancellationToken);
+            if (string.IsNullOrEmpty(secret))
+                return ResultType.ContinueExecution;
+
+            if (!uploadChallenge.AssertUploadChallengeIsProvidedIfSecretIsSet(secret))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            if (!uploadChallenge.VerifyChecksum(Context.Request.GetHeader(HeaderConstants.UploadOffset), Context.Request.GetHttpMethod(), secret, hashFunction))
+            {
+                Context.Response.NotFound();
+                return ResultType.StopExecution;
+            }
+
+            return ResultType.ContinueExecution;
         }
     }
 }

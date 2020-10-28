@@ -6,6 +6,7 @@ using tusdotnet.Constants;
 using tusdotnet.Extensions.Internal;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Parsers;
 using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
@@ -107,6 +108,11 @@ namespace tusdotnet.IntentHandlers
             }
 
             return extensions;
+        }
+
+        internal override Task<ResultType> Challenge(UploadChallengeParserResult uploadChallenge, ITusChallengeStoreHashFunction hashFunction, ITusChallengeStore challengeStore)
+        {
+            return Task.FromResult(ResultType.ContinueExecution);
         }
     }
 }
