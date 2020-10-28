@@ -96,8 +96,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             return new DefaultTusConfiguration
             {
                 UrlPath = "/files",
-                //Store = new TusDiskStore(DirectoryPath),
-                Store = new TusDiskStore(@"R:\tusfiles"),
+                Store = new TusDiskStore(DirectoryPath),
                 MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
                 Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(30)),
                 MaxAllowedUploadSizeInBytesLong = 1024 * 1024,

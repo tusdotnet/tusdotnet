@@ -89,6 +89,7 @@ namespace tusdotnet.IntentHandlers
                 return ResultType.StopExecution;
             }
 
+            Context.Request.UploadChallengeProvidedAndPassed = true;
             return ResultType.ContinueExecution;
         }
 
