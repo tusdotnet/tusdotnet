@@ -1,14 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
+using tusdotnet.Interfaces;
 
 namespace tusdotnet.Helpers
 {
-    internal static class ChecksumCalculator
+    internal sealed class ChallengeChecksumCalculator : ITusChallengeStoreHashFunction
     {
+        internal static ITusChallengeStoreHashFunction Sha256 { get; } = new ChallengeChecksumCalculator();
+
+        internal static string[] SupportedAlgorithms = new[] { "sha256" };
+
+        private ChallengeChecksumCalculator()
+        {
+        }
+
+        public byte[] ComputeHash(string input) => CalculateSha256(input);
+
 #if netfull
 
         public static byte[] CalculateSha256(string valueToHash)

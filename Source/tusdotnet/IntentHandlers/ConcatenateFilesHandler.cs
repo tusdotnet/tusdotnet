@@ -93,7 +93,7 @@ namespace tusdotnet.IntentHandlers
                 }
 
                 // TODO Change 0 to #
-                var partialHash = hashFunction?.CreateHash("POST0" + secret) ?? new byte[0];
+                var partialHash = hashFunction?.ComputeHash("POST0" + secret) ?? new byte[0];
                 partialChecksums.Add(Convert.ToBase64String(partialHash));
             }
 

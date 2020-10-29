@@ -24,7 +24,7 @@ namespace tusdotnet.Extensions.Internal
 
         internal static bool VerifyChecksum(this UploadChallengeParserResult uploadChallenge, string dataToHash, ITusChallengeStoreHashFunction hashFunction)
         {
-            var calculatedHash = hashFunction.CreateHash(dataToHash);
+            var calculatedHash = hashFunction.ComputeHash(dataToHash);
 
             return calculatedHash.SequenceEqual(uploadChallenge.Hash);
         }

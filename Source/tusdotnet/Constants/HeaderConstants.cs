@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-
-namespace tusdotnet.Constants
+﻿namespace tusdotnet.Constants
 {
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public static class HeaderConstants

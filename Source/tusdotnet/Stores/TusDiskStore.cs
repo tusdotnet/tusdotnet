@@ -459,35 +459,9 @@ namespace tusdotnet.Stores
             return TaskHelper.Completed;
         }
 
-        /// <inheritdoc />
-        Task<IEnumerable<string>> ITusChallengeStore.GetSupportedAlgorithmsAsync(CancellationToken _)
-        {
-            return Task.FromResult<IEnumerable<string>>(new[] { "sha256" });
-        }
-
         Task<string> ITusChallengeStore.GetUploadSecretAsync(string fileId, CancellationToken cancellationToken)
         {
             return Task.FromResult(_fileRepFactory.UploadSecret(new InternalFileId(fileId)).ReadFirstLine(fileIsOptional: true));
-        }
-
-        Task<ITusChallengeStoreHashFunction> ITusChallengeStore.GetHashFunctionAsync(string algorithm, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(Sha256HashFunction.Instance);
-        }
-
-        // TODO: Add this as some kind of helper function so that others can use it
-        private class Sha256HashFunction : ITusChallengeStoreHashFunction
-        {
-            public static ITusChallengeStoreHashFunction Instance { get; } = new Sha256HashFunction();
-
-            private Sha256HashFunction()
-            {
-            }
-
-            public byte[] CreateHash(string input)
-            {
-                return ChecksumCalculator.CalculateSha256(input);
-            }
         }
     }
 }

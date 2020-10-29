@@ -101,14 +101,14 @@ namespace tusdotnet
 
             if (!string.IsNullOrEmpty(uploadChallengeHeader))
             {
-                parsedUploadChallenge = UploadChallengeParser.ParseAndValidate(uploadChallengeHeader, await challengeStore.GetSupportedAlgorithmsAsync(context.CancellationToken));
+                parsedUploadChallenge = UploadChallengeParser.ParseAndValidate(uploadChallengeHeader, ChallengeChecksumCalculator.SupportedAlgorithms);
                 if (!parsedUploadChallenge.Success)
                 {
                     await context.Response.Error(HttpStatusCode.BadRequest, parsedUploadChallenge.ErrorMessage);
                     return ResultType.StopExecution;
                 }
 
-                hashFunction = await challengeStore.GetHashFunctionAsync(parsedUploadChallenge.Algorithm, context.CancellationToken);
+                hashFunction = ChallengeChecksumCalculator.Sha256;
             }
 
             var challengeResult = await intentHandler.Challenge(parsedUploadChallenge, hashFunction, challengeStore);

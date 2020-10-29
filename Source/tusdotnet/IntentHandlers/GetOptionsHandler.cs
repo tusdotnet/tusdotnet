@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions.Internal;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Parsers;
@@ -55,8 +56,7 @@ namespace tusdotnet.IntentHandlers
 
             if (Context.Configuration.Store is ITusChallengeStore challengeStore)
             {
-                var checksumAlgorithms = await challengeStore.GetSupportedAlgorithmsAsync(Context.CancellationToken);
-                response.SetHeader(HeaderConstants.TusChallengeAlgorithm, string.Join(",", checksumAlgorithms));
+                response.SetHeader(HeaderConstants.TusChallengeAlgorithm, string.Join(",", ChallengeChecksumCalculator.SupportedAlgorithms));
             }
 
             response.SetStatus(HttpStatusCode.NoContent);
