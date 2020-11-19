@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using tusdotnet.Interfaces;
 
 namespace tusdotnet.Helpers
 {
 	/// <summary>
 	/// Lock for a specific file so that it can only be updated by one caller.
 	/// </summary>
-	internal sealed class InMemoryFileLock
+	internal sealed class InMemoryFileLock : ITusFileLock
 	{
 		private readonly string _fileId;
 		private static readonly HashSet<string> LockedFiles = new HashSet<string>();

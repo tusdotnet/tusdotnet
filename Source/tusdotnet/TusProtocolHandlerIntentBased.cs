@@ -6,6 +6,7 @@ using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.IntentHandlers;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 
@@ -45,11 +46,14 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            InMemoryFileLock fileLock = null;
+            ITusFileLock fileLock = null;
 
             if (intentHandler.LockType == LockType.RequiresLock)
             {
-                fileLock = new InMemoryFileLock(context.Request.FileId);
+                if (context.Configuration.AquireFileLock != null)
+                    fileLock = context.Configuration.AquireFileLock(context.Request.FileId);
+                else
+                    fileLock = new InMemoryFileLock(context.Configuration.UrlPath + context.Request.FileId);
 
                 var hasLock = fileLock.Lock();
                 if (!hasLock)
