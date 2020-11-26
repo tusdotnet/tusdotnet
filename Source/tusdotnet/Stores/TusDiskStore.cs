@@ -196,7 +196,7 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
         {
-            var fileId = await InternalFileId.Create(_fileIdProvider);
+            var fileId = await InternalFileId.Create(metadata, _fileIdProvider);
             File.Create(_fileRepFactory.Data(fileId).Path).Dispose();
             if (uploadLength != -1)
             {

@@ -14,7 +14,7 @@ namespace tusdotnet.Interfaces
         /// <summary>
         /// Creates a new file id
         /// </summary>
-        Task<string> CreateId();
+        Task<string> CreateId(string metadata);
 
         /// <summary>
         /// Checks if the file id is valid

@@ -23,7 +23,7 @@ namespace tusdotnet.Stores.FileIdProviders
         }
 
         /// <inheritdoc />
-        public virtual Task<string> CreateId()
+        public virtual Task<string> CreateId(string metadata)
         {
             return Task.FromResult(Guid.NewGuid().ToString(_guildFormat));
         }

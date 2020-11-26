@@ -31,7 +31,7 @@ namespace tusdotnet.Stores.FileIdProviders
         }
 
         /// <inheritdoc />
-        public virtual Task<string> CreateId()
+        public virtual Task<string> CreateId(string metadata)
         {
 
             var key = new byte[_byteLength];

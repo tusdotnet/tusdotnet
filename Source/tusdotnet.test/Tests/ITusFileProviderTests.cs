@@ -35,7 +35,7 @@ namespace tusdotnet.test.Tests
             }
             else throw new ArgumentException("Invalid file id provider type", nameof(type));
 
-            var id = await provider.CreateId();
+            var id = await provider.CreateId(string.Empty);
 
             id.ShouldNotBeNullOrWhiteSpace();
 
@@ -62,7 +62,7 @@ namespace tusdotnet.test.Tests
             List<Task<string>> idTasks = new List<Task<string>>();
             for (int i = 0; i < 1_000_000; i++)
             {
-                var task = provider.CreateId();
+                var task = provider.CreateId(string.Empty);
                 idTasks.Add(task);
             }
 
