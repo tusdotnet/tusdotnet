@@ -31,7 +31,7 @@ namespace tusdotnet.Stores.FileIdProviders
         }
 
         /// <inheritdoc />
-        public virtual string CreateId()
+        public virtual Task<string> CreateId()
         {
 
             var key = new byte[_byteLength];
@@ -65,11 +65,11 @@ namespace tusdotnet.Stores.FileIdProviders
                 }
             }
 
-            return new string(output, 0, i);
+            return Task.FromResult(new string(output, 0, i));
         }
 
         /// <inheritdoc />
-        public virtual bool ValidateId(string fileId)
+        public virtual Task<bool> ValidateId(string fileId)
         {
             // add length of padding chars
             int realIdLength;
@@ -85,11 +85,11 @@ namespace tusdotnet.Stores.FileIdProviders
                     realIdLength = fileId.Length + 1;
                     break;
                 default:
-                    return false;
+                    return Task.FromResult(false);
             }
 
-            if (realIdLength != _idLength) return false;
-            return true;
+            if (realIdLength != _idLength) return Task.FromResult(false);
+            return Task.FromResult(true);
         }
     }
 }

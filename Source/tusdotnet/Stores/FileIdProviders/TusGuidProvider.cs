@@ -23,15 +23,15 @@ namespace tusdotnet.Stores.FileIdProviders
         }
 
         /// <inheritdoc />
-        public virtual string CreateId()
+        public virtual Task<string> CreateId()
         {
-            return Guid.NewGuid().ToString(_guildFormat);
+            return Task.FromResult(Guid.NewGuid().ToString(_guildFormat));
         }
 
         /// <inheritdoc />
-        public virtual bool ValidateId(string fileId)
+        public virtual Task<bool> ValidateId(string fileId)
         {
-            return Guid.TryParseExact(fileId, _guildFormat, out var _);
+            return Task.FromResult(Guid.TryParseExact(fileId, _guildFormat, out var _));
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
@@ -8,19 +9,25 @@ namespace tusdotnet.Stores
     {
         public string FileId { get; set; }
 
-        public InternalFileId(ITusFileIdProvider provider)
+        public InternalFileId(string fileId)
         {
-            FileId = provider.CreateId();
+            FileId = fileId;
         }
 
-        public InternalFileId(ITusFileIdProvider provider, string fileId)
+        public static async Task<InternalFileId> Create(ITusFileIdProvider provider)
         {
-            if (!provider.ValidateId(fileId))
+            var fileId = await provider.CreateId();
+            return new InternalFileId(fileId);
+        }
+
+        public static async Task<InternalFileId> Create(ITusFileIdProvider provider, string fileId)
+        {
+            if (!await provider.ValidateId(fileId))
             {
                 throw new TusStoreException("Invalid file id");
             }
 
-            FileId = fileId;
+            return new InternalFileId(fileId);
         }
 
         public override string ToString()

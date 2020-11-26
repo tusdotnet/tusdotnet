@@ -14,11 +14,11 @@ namespace tusdotnet.Interfaces
         /// <summary>
         /// Creates a new file id
         /// </summary>
-        string CreateId();
+        Task<string> CreateId();
 
         /// <summary>
         /// Checks if the file id is valid
         /// </summary>
-        bool ValidateId(string fileId);
+        Task<bool> ValidateId(string fileId);
     }
 }

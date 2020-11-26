@@ -55,7 +55,7 @@ namespace tusdotnet
                 else
                     fileLock = new InMemoryFileLock(context.Configuration.UrlPath + context.Request.FileId);
 
-                var hasLock = fileLock.Lock();
+                var hasLock = await fileLock.Lock();
                 if (!hasLock)
                 {
                     await context.Response.Error(HttpStatusCode.Conflict, $"File {context.Request.FileId} is currently being updated. Please try again later");

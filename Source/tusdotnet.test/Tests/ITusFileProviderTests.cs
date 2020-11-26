@@ -22,7 +22,7 @@ namespace tusdotnet.test.Tests
         [Theory]
         [InlineData(typeof(TusGuidProvider))]
         [InlineData(typeof(TusBase64IdProvider))]
-        public void File_Id_providers_return_valid_file_ids(Type type)
+        public async Task File_Id_providers_return_valid_file_ids(Type type)
         {
             ITusFileIdProvider provider;
             if (type == typeof(TusGuidProvider))
@@ -35,18 +35,18 @@ namespace tusdotnet.test.Tests
             }
             else throw new ArgumentException("Invalid file id provider type", nameof(type));
 
-            var id = provider.CreateId();
+            var id = await provider.CreateId();
 
             id.ShouldNotBeNullOrWhiteSpace();
 
-            provider.ValidateId(id).ShouldBeTrue();
-            provider.ValidateId("").ShouldBeFalse();
+            (await provider.ValidateId(id)).ShouldBeTrue();
+            (await provider.ValidateId("")).ShouldBeFalse();
         }
 
         [Theory]
         [InlineData(typeof(TusGuidProvider))]
         [InlineData(typeof(TusBase64IdProvider))]
-        public void File_Id_providers_return_no_duplicates(Type type)
+        public async Task File_Id_providers_return_no_duplicates(Type type)
         {
             ITusFileIdProvider provider;
             if (type == typeof(TusGuidProvider))
@@ -59,14 +59,14 @@ namespace tusdotnet.test.Tests
             }
             else throw new ArgumentException("Invalid file id provider type", nameof(type));
 
-            List<string> ids = new List<string>();
+            List<Task<string>> idTasks = new List<Task<string>>();
             for (int i = 0; i < 1_000_000; i++)
             {
-                var id = provider.CreateId();
-                id.ShouldNotBeNullOrWhiteSpace();
-
-                ids.Add(id);
+                var task = provider.CreateId();
+                idTasks.Add(task);
             }
+
+            var ids = (await Task.WhenAll(idTasks)).ToList();
 
             // check for duplicates
             (ids.Count == ids.Distinct().Count()).ShouldBeTrue();

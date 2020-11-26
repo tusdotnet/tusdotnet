@@ -15,7 +15,7 @@ namespace tusdotnet.Interfaces
 		/// Lock the file. Returns true if the file was locked or false if the file was already locked by another call.
 		/// </summary>
 		/// <returns>True if the file was locked or false if the file was already locked by another call.</returns>
-        public bool Lock();
+        public Task<bool> Lock();
 
         /// <summary>
 		/// Release the lock if held. If not held by the caller, this method is a no op.
