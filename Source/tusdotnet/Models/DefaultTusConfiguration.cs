@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Adapters;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
@@ -30,6 +33,12 @@ namespace tusdotnet.Models
         /// </summary>
         [Obsolete("This callback is obsolete. Use DefaultTusConfiguration.Events.OnFileCompleteAsync instead.")]
         public virtual Func<string, ITusStore, CancellationToken, Task> OnUploadCompleteAsync { get; set; }
+
+        /// <summary>
+        /// Callback to provide a file locking mechanism to prevent a file
+        /// from being accessed while the file is still in use
+        /// </summary>
+        public virtual Func<string, ITusFileLock> AquireFileLock { get; set; }
 
         /// <summary>
         /// Callbacks to run during different stages of the tusdotnet pipeline.
