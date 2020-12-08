@@ -6,7 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NSubstitute;
 using Shouldly;
+using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Stores;
@@ -36,6 +38,54 @@ namespace tusdotnet.test.Tests
                 var filePath = Path.Combine(_fixture.Path, fileId);
                 File.Exists(filePath).ShouldBeTrue();
             }
+        }
+
+        [Fact]
+        public async Task CreateFileAsync_Uses_The_Provided_TusFileIdProvider_To_Create_Ids()
+        {
+            var customProvider = Substitute.For<ITusFileIdProvider>();
+
+            var customFileId = 0;
+            var createIdCalls = 0;
+            customProvider.CreateId(null).ReturnsForAnyArgs(_ => (++customFileId).ToString()).AndDoes(_ => createIdCalls++);
+            customProvider.ValidateId(null).ReturnsForAnyArgs(true);
+
+            var store = new TusDiskStore(_fixture.Path, true, TusDiskBufferSize.Default, customProvider);
+
+            for (var i = 0; i < 10; i++)
+            {
+                var fileId = await store.CreateFileAsync(i, null, CancellationToken.None);
+                fileId.ShouldBe(customFileId.ToString());
+                var filePath = Path.Combine(_fixture.Path, fileId);
+                File.Exists(filePath).ShouldBeTrue();
+                createIdCalls.ShouldBe(i + 1);
+            }
+        }
+
+        [Fact]
+        public async Task CreateFileAsync_Throws_An_Exception_If_The_File_Id_Already_Exist()
+        {
+            var expectedFileId = Guid.NewGuid().ToString();
+
+            var nonUniqueFileIdProvider = Substitute.For<ITusFileIdProvider>();
+
+            nonUniqueFileIdProvider.CreateId(null).ReturnsForAnyArgs(expectedFileId);
+            nonUniqueFileIdProvider.ValidateId(null).ReturnsForAnyArgs(true);
+
+            var store = new TusDiskStore(_fixture.Path, false, TusDiskBufferSize.Default, nonUniqueFileIdProvider);
+
+            var fileId = await store.CreateFileAsync(1, null, CancellationToken.None);
+            fileId.ShouldBe(expectedFileId);
+
+            await store.AppendDataAsync(fileId, new MemoryStream(new[] { (byte)1 }), CancellationToken.None);
+
+            var filePath = Path.Combine(_fixture.Path, fileId);
+            File.Exists(filePath).ShouldBeTrue();
+            new FileInfo(filePath).Length.ShouldBe(1);
+
+            await Assert.ThrowsAnyAsync<Exception>(async () => await store.CreateFileAsync(1, null, CancellationToken.None));
+            File.Exists(filePath).ShouldBeTrue();
+            new FileInfo(filePath).Length.ShouldBe(1);
         }
 
         [Fact]

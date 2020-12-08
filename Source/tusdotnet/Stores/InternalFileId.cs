@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
@@ -7,20 +6,20 @@ namespace tusdotnet.Stores
 {
     internal sealed class InternalFileId
     {
-        public string FileId { get; set; }
+        private readonly string _fileId;
 
-        public InternalFileId(string fileId)
+        private InternalFileId(string fileId)
         {
-            FileId = fileId;
+            _fileId = fileId;
         }
 
-        public static async Task<InternalFileId> Create(string metadata, ITusFileIdProvider provider)
+        public static async Task<InternalFileId> CreateNew(ITusFileIdProvider provider, string metadata)
         {
             var fileId = await provider.CreateId(metadata);
             return new InternalFileId(fileId);
         }
 
-        public static async Task<InternalFileId> Create(ITusFileIdProvider provider, string fileId)
+        public static async Task<InternalFileId> Parse(ITusFileIdProvider provider, string fileId)
         {
             if (!await provider.ValidateId(fileId))
             {
@@ -30,9 +29,11 @@ namespace tusdotnet.Stores
             return new InternalFileId(fileId);
         }
 
+        public static implicit operator string(InternalFileId fileId) => fileId._fileId;
+
         public override string ToString()
         {
-            return FileId;
+            return _fileId;
         }
     }
 }

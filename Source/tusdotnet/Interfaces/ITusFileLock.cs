@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace tusdotnet.Interfaces
 {
@@ -20,6 +16,6 @@ namespace tusdotnet.Interfaces
         /// <summary>
 		/// Release the lock if held. If not held by the caller, this method is a no op.
 		/// </summary>
-        public void ReleaseIfHeld();
+        public Task ReleaseIfHeld();
     }
 }

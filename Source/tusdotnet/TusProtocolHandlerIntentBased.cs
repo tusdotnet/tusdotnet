@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
+using tusdotnet.FileLocks;
 using tusdotnet.Helpers;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;

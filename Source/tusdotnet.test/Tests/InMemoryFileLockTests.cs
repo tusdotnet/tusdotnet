@@ -1,6 +1,6 @@
 ﻿using Shouldly;
 using System.Threading.Tasks;
-using tusdotnet.Helpers;
+using tusdotnet.FileLocks;
 using Xunit;
 
 namespace tusdotnet.test.Tests
@@ -20,7 +20,7 @@ namespace tusdotnet.test.Tests
 
 			(await fileLock1.Lock()).ShouldBeTrue();
 
-			fileLock1.ReleaseIfHeld();
+			await fileLock1.ReleaseIfHeld();
 
 			(await fileLock2.Lock()).ShouldBeTrue();
 		}
@@ -38,7 +38,7 @@ namespace tusdotnet.test.Tests
 
 			(await fileLock1.Lock()).ShouldBeTrue();
 
-			fileLock1.ReleaseIfHeld();
+			await fileLock1.ReleaseIfHeld();
 
 			(await fileLock2.Lock()).ShouldBeTrue();
 		}
@@ -54,10 +54,10 @@ namespace tusdotnet.test.Tests
 			var fileLock2 = new InMemoryFileLock(fileId);
 			(await fileLock2.Lock()).ShouldBeFalse();
 
-			fileLock2.ReleaseIfHeld();
+			await fileLock2.ReleaseIfHeld();
 
 			var fileLock3 = new InMemoryFileLock(fileId);
-			fileLock3.ReleaseIfHeld();
+			await fileLock3.ReleaseIfHeld();
 			(await fileLock3.Lock()).ShouldBeFalse();
 		}
 	}
