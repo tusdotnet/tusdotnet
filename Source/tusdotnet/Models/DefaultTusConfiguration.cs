@@ -60,6 +60,11 @@ namespace tusdotnet.Models
         public virtual long? MaxAllowedUploadSizeInBytesLong { get; set; }
 
         /// <summary>
+        /// Disable the usage of System.IO.Pipelines library. This will degrade performance and should only be used in tests.
+        /// </summary>
+        public virtual bool DisablePipelines { get; set; }
+
+        /// <summary>
         /// Set an expiration time where incomplete files can no longer be updated.
         /// This value can either be <code>AbsoluteExpiration</code> or <code>SlidingExpiration</code>.
         /// Absolute expiration will be saved per file when the file is created.

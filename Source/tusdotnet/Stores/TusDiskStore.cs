@@ -120,6 +120,7 @@ namespace tusdotnet.Stores
 
             var bytesWrittenThisRequest = 0L;
             var clientDisconnectedDuringRead = false;
+            var requestMoreData = false;
 
             while (true)
             {
@@ -141,10 +142,16 @@ namespace tusdotnet.Stores
                         throw new TusStoreException($"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength + buffer.Length}, upload length: {fileUploadLengthProvidedDuringCreate}.");
                     }
 
+                    // wait for large enough buffer
+                    if (buffer.Length < _maxReadBufferSize)
+                    {
+                        requestMoreData = true;
+                        break;
+                    }
+
                     // Direct copy from raw kestrel memory to disk, not a single additional buffer used
                     while (buffer.TryGet(ref position, out ReadOnlyMemory<byte> memory))
                     {
-
                         await diskFileStream.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
 
                         bytesWrittenThisRequest += memory.Length;
@@ -164,7 +171,8 @@ namespace tusdotnet.Stores
                 {
                     // Always advance so the PipeReader is not left in the
                     // currently reading state
-                    pipeReader.AdvanceTo(consumed);
+                    if (requestMoreData) pipeReader.AdvanceTo(consumed, buffer.End);
+                    else pipeReader.AdvanceTo(consumed);
                 }
             }
 

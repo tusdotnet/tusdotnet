@@ -68,7 +68,7 @@ namespace tusdotnet.IntentHandlers
 #if NETCOREAPP3_0
             long bytesWritten;
             CancellationToken cancellationToken;
-            if (Store is ITusPipelineStore pipelineStore)
+            if (!Context.Configuration.DisablePipelines && Store is ITusPipelineStore pipelineStore)
             {
                 bytesWritten = await pipelineStore.AppendDataAsync(Request.FileId, Request.BodyReader, CancellationToken);
                 cancellationToken = CancellationToken;
