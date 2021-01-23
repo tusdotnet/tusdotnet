@@ -57,6 +57,9 @@ namespace tusdotnet
                         f => f.Value.ToList(),
                         StringComparer.OrdinalIgnoreCase),
                 Body = context.Request.Body,
+#if NETCOREAPP3_0
+                BodyReader = context.Request.BodyReader,
+#endif
                 Method = context.Request.Method,
                 RequestUri = requestUri
             };

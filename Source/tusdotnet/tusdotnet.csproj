@@ -5,7 +5,7 @@
     <Copyright>Copyright Stefan Matsson 2016</Copyright>
     <AssemblyTitle>tusdotnet</AssemblyTitle>
     <Authors>Stefan Matsson</Authors>
-    <TargetFrameworks>net452;netstandard1.3</TargetFrameworks>
+    <TargetFrameworks>net452;netstandard1.3;netcoreapp3.0</TargetFrameworks>
     <AssemblyName>tusdotnet</AssemblyName>
     <PackageId>tusdotnet</PackageId>
     <PackageTags>Tus;Tus-Resumable;ResumableFileUploads;FileUpload</PackageTags>
@@ -55,12 +55,12 @@
 
   <!-- Generic package references -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="1.1.1" />
     <PackageReference Include="System.Buffers" Version="4.5.0" />
   </ItemGroup>
 
   <!-- Package references for .NET Framework -->
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="1.1.1" />
     <PackageReference Include="Microsoft.Owin" Version="3.0.1" />
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
@@ -68,9 +68,15 @@
 
   <!-- Package references for .NET Standard -->
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="1.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="1.1.1" />
     <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.0" />
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />
+  </ItemGroup>
+
+  <!-- Package references for .NET Core 3.0+ -->
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.0' ">
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>

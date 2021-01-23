@@ -23,7 +23,7 @@ namespace tusdotnet.Extensions
 
 #endif
 
-#if netstandard
+#if netstandard || NETCOREAPP3_0
 
 		public static byte[] CalculateSha1(this FileStream fileStream, long chunkStartPosition)
 		{
