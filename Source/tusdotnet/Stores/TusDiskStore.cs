@@ -106,9 +106,10 @@ namespace tusdotnet.Stores
         {
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
 
+            //var fileWriteBuffer = _bufferPool.Rent(Math.Max(_maxWriteBufferSize, _maxReadBufferSize));
 
             var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken).ConfigureAwait(false);
-            using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
+            using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None, true, _maxWriteBufferSize);
 
             var totalDiskFileLength = diskFileStream.Length;
             if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
@@ -120,7 +121,7 @@ namespace tusdotnet.Stores
 
             var bytesWrittenThisRequest = 0L;
             var clientDisconnectedDuringRead = false;
-            var requestMoreData = false;
+            //var writeBufferNextFreeIndex = 0;
 
             while (true)
             {
@@ -142,14 +143,7 @@ namespace tusdotnet.Stores
                         throw new TusStoreException($"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength + buffer.Length}, upload length: {fileUploadLengthProvidedDuringCreate}.");
                     }
 
-                    // wait for large enough buffer
-                    if (buffer.Length < _maxReadBufferSize)
-                    {
-                        requestMoreData = true;
-                        break;
-                    }
-
-                    // Direct copy from raw kestrel memory to disk, not a single additional buffer used
+                    // Direct copy
                     while (buffer.TryGet(ref position, out ReadOnlyMemory<byte> memory))
                     {
                         await diskFileStream.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
@@ -158,6 +152,23 @@ namespace tusdotnet.Stores
                         totalDiskFileLength += memory.Length;
                         consumed = position;
                     }
+
+                    // Buffered copy
+                    /*while (buffer.TryGet(ref position, out ReadOnlyMemory<byte> memory))
+                    {
+                        if (writeBufferNextFreeIndex + memory.Length > fileWriteBuffer.Length)
+                        {
+                            await diskFileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex);
+                            writeBufferNextFreeIndex = 0;
+                        }
+
+                        memory.CopyTo(fileWriteBuffer.AsMemory().Slice(writeBufferNextFreeIndex));
+
+                        writeBufferNextFreeIndex += memory.Length;
+                        bytesWrittenThisRequest += memory.Length;
+                        totalDiskFileLength += memory.Length;
+                        consumed = position;
+                    }*/
 
                     // The while loop completed succesfully, so we've consumed the entire buffer.
                     consumed = buffer.End;
@@ -171,13 +182,14 @@ namespace tusdotnet.Stores
                 {
                     // Always advance so the PipeReader is not left in the
                     // currently reading state
-                    if (requestMoreData) pipeReader.AdvanceTo(consumed, buffer.End);
-                    else pipeReader.AdvanceTo(consumed);
+                    pipeReader.AdvanceTo(consumed);
                 }
             }
 
             // Flush the remaining buffer to disk.
-            await diskFileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            //if (writeBufferNextFreeIndex != 0)
+            //    await FlushFileToDisk(fileWriteBuffer, diskFileStream, writeBufferNextFreeIndex);
+            await diskFileStream.FlushAsync();
 
             if (!clientDisconnectedDuringRead)
             {
