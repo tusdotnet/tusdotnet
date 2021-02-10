@@ -60,9 +60,9 @@ namespace tusdotnet.Models
         public virtual long? MaxAllowedUploadSizeInBytesLong { get; set; }
 
         /// <summary>
-        /// Disable the usage of System.IO.Pipelines library. This will degrade performance and should only be used in tests.
+        /// Enable the usage of System.IO.Pipelines library. Implement ITusPipelineStore to use it.
         /// </summary>
-        public virtual bool DisablePipelines { get; set; }
+        public virtual bool EnablePipelines { get; set; }
 
         /// <summary>
         /// Set an expiration time where incomplete files can no longer be updated.

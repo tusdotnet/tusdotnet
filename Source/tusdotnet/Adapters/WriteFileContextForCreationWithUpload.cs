@@ -28,7 +28,7 @@ namespace tusdotnet.Adapters
 #if NETCOREAPP3_0
         internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
-            if (creationContext.Configuration.DisablePipelines)
+            if (!creationContext.Configuration.EnablePipelines)
             {
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
