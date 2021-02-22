@@ -53,6 +53,11 @@ namespace tusdotnet.test.Extensions
 			return builder.And(m => m.AddBody(contentType));
 		}
 
+		internal static RequestBuilder AddBody(this RequestBuilder builder, int size)
+		{
+			return builder.And(m => m.AddBody(size));
+		}
+
 #endif
 
 #if netstandard
@@ -80,6 +85,11 @@ namespace tusdotnet.test.Extensions
 		internal static RequestBuilder AddBody(this RequestBuilder builder, string contentType)
 		{
 			return builder.And(m => m.AddBody(contentType));
+		}
+
+		internal static RequestBuilder AddBody(this RequestBuilder builder, int size)
+		{
+			return builder.And(m => m.AddBody(size));
 		}
 
 		/// <summary>

@@ -64,7 +64,6 @@ namespace tusdotnet.Helpers
             var eventContext = FileCompleteContext.Create(context, configure);
 
             if (context.Configuration.OnUploadCompleteAsync != null)
-
             {
                 await context.Configuration.OnUploadCompleteAsync.Invoke(eventContext.FileId, eventContext.Store, eventContext.CancellationToken);
             }

@@ -82,14 +82,30 @@ namespace tusdotnet.IntentHandlers
                 ctx.UploadLength = Request.UploadLength;
             });
 
-            var expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
+            var isEmptyFile = Request.UploadLength == 0;
 
+            DateTimeOffset? expires = null;
             long? uploadOffset = null;
-            var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
-            if (writeFileContext.FileContentIsAvailable)
+
+            // If the file is empty there is no need to save any data.
+            if (isEmptyFile)
             {
-                uploadOffset = await writeFileContext.SaveFileContent();
-                expires = writeFileContext.UploadExpires;
+                // Normally we would call NotifyFileComplete from WriteFileHandler but since we never use 
+                // WriteFileContextForCreationWithUpload if the file is empty, nor allow PATCH requests for the file, we need to trigger the event here. 
+                await EventHelper.NotifyFileComplete(Context, ctx => ctx.FileId = fileId);
+            }
+            else
+            {
+                // Expiration is only used when patching files so if the file is not empty and we did not have any data in the current request body,
+                // we need to update the header here to be able to keep track of expiration for this file.
+                expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
+
+                var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
+                if (writeFileContext.FileContentIsAvailable)
+                {
+                    uploadOffset = await writeFileContext.SaveFileContent();
+                    expires = writeFileContext.UploadExpires;
+                }
             }
 
             SetReponseHeaders(fileId, expires, uploadOffset);
