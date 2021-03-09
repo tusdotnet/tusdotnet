@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,6 +8,7 @@ using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Stores.BufferHandlers;
 using tusdotnet.Stores.FileIdProviders;
 
 namespace tusdotnet.Stores
@@ -31,14 +31,13 @@ namespace tusdotnet.Stores
         private readonly InternalFileRep.FileRepFactory _fileRepFactory;
         private readonly ITusFileIdProvider _fileIdProvider;
 
-        // These are the read and write buffers, they will get the value of TusDiskBufferSize.Default if not set in the constructor.
-        private readonly int _maxReadBufferSize;
-        private readonly int _maxWriteBufferSize;
-
-        // Use our own array pool to not leak data to other parts of the running app.
-        private static readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Create();
-
         private static readonly TusGuidProvider DefaultFileIdProvider = new TusGuidProvider();
+
+        // The read and write buffer sizes that will get the value of TusDiskBufferSize.Default if not set in the constructor.
+        private readonly TusDiskBufferSize _bufferSize;
+
+        // The buffer handler to use when copying from the request stream and writing to the file on disk.
+        private readonly IBufferHandler _bufferHandler;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -78,7 +77,8 @@ namespace tusdotnet.Stores
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
         /// <param name="bufferSize">The buffer size to use when reading and writing. If unsure use <see cref="TusDiskBufferSize.Default"/>.</param>
         /// <param name="fileIdProvider">The provider that generates ids for files. If unsure use <see cref="TusGuidProvider"/>.</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize, ITusFileIdProvider fileIdProvider)
+        /// <param name="bufferHandler">The buffer handler to use when copying file data from the request stream to the file on disk</param>
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize, ITusFileIdProvider fileIdProvider, IBufferHandler bufferHandler = null)
         {
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
@@ -87,8 +87,8 @@ namespace tusdotnet.Stores
             if (bufferSize == null)
                 bufferSize = TusDiskBufferSize.Default;
 
-            _maxWriteBufferSize = bufferSize.WriteBufferSizeInBytes;
-            _maxReadBufferSize = bufferSize.ReadBufferSizeInBytes;
+            _bufferHandler = bufferHandler ?? NonConsecutiveMemoryBufferHandler.Instance;
+            _bufferSize = bufferSize;
 
             _fileIdProvider = fileIdProvider;
         }
@@ -98,79 +98,24 @@ namespace tusdotnet.Stores
         {
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
 
-            var httpReadBuffer = _bufferPool.Rent(_maxReadBufferSize);
-            var fileWriteBuffer = _bufferPool.Rent(Math.Max(_maxWriteBufferSize, _maxReadBufferSize));
+            var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken);
 
-            try
+            var totalDiskFileLength = _fileRepFactory.Data(internalFileId).GetLength();
+            if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
             {
-                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken);
-                using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
-
-                var totalDiskFileLength = diskFileStream.Length;
-                if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
-                {
-                    return 0;
-                }
-
-                var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
-
-                int numberOfbytesReadFromClient;
-                var bytesWrittenThisRequest = 0L;
-                var clientDisconnectedDuringRead = false;
-                var writeBufferNextFreeIndex = 0;
-
-                do
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    numberOfbytesReadFromClient = await stream.ReadAsync(httpReadBuffer, 0, _maxReadBufferSize, cancellationToken);
-                    clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
-
-                    totalDiskFileLength += numberOfbytesReadFromClient;
-
-                    if (totalDiskFileLength > fileUploadLengthProvidedDuringCreate)
-                    {
-                        throw new TusStoreException($"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength}, upload length: {fileUploadLengthProvidedDuringCreate}.");
-                    }
-
-                    // Can we fit the read data into the write buffer? If not flush it now.
-                    if (writeBufferNextFreeIndex + numberOfbytesReadFromClient > _maxWriteBufferSize)
-                    {
-                        await FlushFileToDisk(fileWriteBuffer, diskFileStream, writeBufferNextFreeIndex);
-                        writeBufferNextFreeIndex = 0;
-                    }
-
-                    Array.Copy(
-                        sourceArray: httpReadBuffer,
-                        sourceIndex: 0,
-                        destinationArray: fileWriteBuffer,
-                        destinationIndex: writeBufferNextFreeIndex,
-                        length: numberOfbytesReadFromClient);
-
-                    writeBufferNextFreeIndex += numberOfbytesReadFromClient;
-                    bytesWrittenThisRequest += numberOfbytesReadFromClient;
-
-                } while (numberOfbytesReadFromClient != 0);
-
-                // Flush the remaining buffer to disk.
-                if (writeBufferNextFreeIndex != 0)
-                    await FlushFileToDisk(fileWriteBuffer, diskFileStream, writeBufferNextFreeIndex);
-
-                if (!clientDisconnectedDuringRead)
-                {
-                    MarkChunkComplete(chunkCompleteFile);
-                }
-
-                return bytesWrittenThisRequest;
+                return 0;
             }
-            finally
+
+            var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
+
+            var result = await _bufferHandler.CopyToFile(_bufferSize, fileUploadLengthProvidedDuringCreate.Value, stream, _fileRepFactory.Data(internalFileId).Path, cancellationToken);
+
+            if (!result.ClientDisconnectedDuringRead)
             {
-                _bufferPool.Return(httpReadBuffer);
-                _bufferPool.Return(fileWriteBuffer);
+                MarkChunkComplete(chunkCompleteFile);
             }
+
+            return result.BytesWrittenThisRequest;
         }
 
         /// <inheritdoc />
@@ -419,12 +364,6 @@ namespace tusdotnet.Stores
         private void MarkChunkComplete(InternalFileRep chunkComplete)
         {
             chunkComplete.Write("1");
-        }
-
-        private static async Task FlushFileToDisk(byte[] fileWriteBuffer, FileStream fileStream, int writeBufferNextFreeIndex)
-        {
-            await fileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex);
-            await fileStream.FlushAsync();
         }
     }
 }

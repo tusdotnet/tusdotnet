@@ -211,7 +211,7 @@ namespace tusdotnet.test.Tests
             length.ShouldBe(0);
         }
 
-        [Theory]
+        [Theory(Skip="Uses the old buffer implementation so either rewrite this test or remove it")]
         [InlineData(103, 411, 4382, 11, 43)]
         [InlineData(51200, 51200, 2621800, 52, 52)]
         [InlineData(51200, 2621800, 2621800, 1, 52)]
@@ -884,7 +884,7 @@ namespace tusdotnet.test.Tests
                     await callWrapper();
                     return null;
                 }
-                catch (TusStoreException e)
+                catch (TusStoreException e) when (e.Message == "Invalid file id")
                 {
                     return e;
                 }

@@ -30,7 +30,7 @@ namespace tusdotnet.Interfaces
 
 		/// <summary>
 		/// Creates a final file by concatenating multiple files together. This method is called when a Upload-Concat header
-		/// is present with a "final" value. This method must throw a <exception cref="TusStoreException"></exception> if any of the provided
+		/// is present with a "final" value. This method must throw a <c>TusStoreException</c> if any of the provided
 		/// partial files does not exist.
 		/// </summary>
 		/// <param name="partialFiles">List of file ids to concatenate</param>
