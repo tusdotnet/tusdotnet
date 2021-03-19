@@ -14,6 +14,7 @@ namespace tusdotnet.Stores.FileIdProviders
         /// <summary>
         /// Creates a new TusGuildProvider
         /// </summary>
+        /// <param name="guildFormat">The format of the guid to use when creating IDs</param>
         public TusGuidProvider(string guildFormat = "n")
         {
             _guildFormat = guildFormat;
