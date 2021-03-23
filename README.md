@@ -59,9 +59,8 @@ Test sites are available for:
 * ASP.NET Core 3.1 (.NET Core 3.1)
 * ASP.NET Core 3.0 (.NET Core 3.0)
 * ASP.NET Core 2.2 (.NET Core 2.2)
+* ASP.NET Core 2.2 (.NET Framework 4.6.2)
 * ASP.NET Core 2.1 (.NET Core 2.1)
-* ASP.NET Core 2.0 (.NET Framework 4.6.2)
-* ASP.NET Core 1.1 (.NET Core 1.1)
 * OWIN (.NET Framework 4.5.2)
 
 ## Clients
