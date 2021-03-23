@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 #elif NETCOREAPP2_0
 using System.IO;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 #elif NETCOREAPP2_1
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -29,7 +29,7 @@ namespace tusdotnet.test.Data
     /// <summary>
     /// Data attribute to provide the different pipelines and helpers for PatchTests -> Handles_Abrupt_Disconnects_Gracefully
     /// CT indicates if CancellationToken.IsCancellationRequested is set or not
-    /// Pipelines: 
+    /// Pipelines:
     /// System.Web.Host -> CT = true, Exception = Exception with message "Client disconnected"
     /// Microsoft.Owin.SelfHost -> CT = true, Exception = IOException, Exception.InnerException is System.Net.HttpListenerException
     /// .NET Core 1.1 reverse proxy IIS on ASP.NET Core 1.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Internal.Networking.UvException
@@ -50,7 +50,7 @@ namespace tusdotnet.test.Data
     {
         public override IEnumerable<object[]> GetData(MethodInfo testMethod) => GetPipelines();
 
-        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new Lazy<Dictionary<string, MethodInfo>>(
+        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new(
             () =>
             {
                 return typeof(PipelineDisconnectEmulationDataAttribute)
@@ -128,7 +128,7 @@ namespace tusdotnet.test.Data
         {
 #if NETCOREAPP2_1
             var exceptionToThrow = new ConnectionResetException("Test");
-#elif NETCOREAPP2_2 || NETCOREAPP3_0 || NETCOREAPP3_1
+#elif NETCOREAPP2_1 || NETCOREAPP2_2 || NETCOREAPP3_0 || NETCOREAPP3_1
             var exceptionToThrow = new OperationCanceledException();
 #else
             var exceptionToThrow = new IOException("Test", new UvException("Test", -4077));
