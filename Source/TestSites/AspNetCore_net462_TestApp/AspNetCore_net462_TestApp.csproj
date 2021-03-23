@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <None Include="wwwroot\index.html" />
-    <None Include="wwwroot\tus.js" />
+    <None Include="wwwroot\tus.min.js" />
   </ItemGroup>
 
   <ItemGroup>

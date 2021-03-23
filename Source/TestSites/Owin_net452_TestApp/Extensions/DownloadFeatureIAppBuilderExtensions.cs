@@ -71,9 +71,9 @@ namespace Owin_net452_TestApp.Extensions
                         await context.Response.WriteAsync(File.ReadAllText("../../index.html"),
                             context.Request.CallCancelled);
                         break;
-                    case "/tus.js":
+                    case "/tus.min.js":
                         context.Response.ContentType = "application/js";
-                        await context.Response.WriteAsync(File.ReadAllText("../../tus.js"),
+                        await context.Response.WriteAsync(File.ReadAllText("../../tus.min.js"),
                             context.Request.CallCancelled);
                         break;
                     default:
