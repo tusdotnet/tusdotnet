@@ -68,12 +68,22 @@ namespace Owin_net452_TestApp.Extensions
                 {
                     case "/":
                         context.Response.ContentType = "text/html";
-                        await context.Response.WriteAsync(File.ReadAllText("../../index.html"),
+                        await context.Response.WriteAsync(File.ReadAllText("../../wwwroot/index.html"),
                             context.Request.CallCancelled);
                         break;
                     case "/tus.min.js":
                         context.Response.ContentType = "application/js";
-                        await context.Response.WriteAsync(File.ReadAllText("../../tus.min.js"),
+                        await context.Response.WriteAsync(File.ReadAllText("../../wwwroot/tus.min.js"),
+                            context.Request.CallCancelled);
+                        break;
+                    case "/index.js":
+                        context.Response.ContentType = "application/js";
+                        await context.Response.WriteAsync(File.ReadAllText("../../wwwroot/index.js"),
+                            context.Request.CallCancelled);
+                        break;
+                    case "/index.css":
+                        context.Response.ContentType = "text/css";
+                        await context.Response.WriteAsync(File.ReadAllText("../../wwwroot/index.css"),
                             context.Request.CallCancelled);
                         break;
                     default:

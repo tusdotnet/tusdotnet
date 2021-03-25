@@ -1,45 +1,6 @@
 ﻿<html>
 <head>
-
-    <style>
-
-        progress {
-            padding-top: 1em;
-            width: 25%;
-            text-align: center;
-            vertical-align: middle;
-            height: 3em;
-            -webkit-appearance: none;
-            border: none;
-            position: relative;
-        }
-
-            progress:before {
-                content: attr(data-label);
-                vertical-align: 0;
-                position: absolute;
-                top: 50%;
-                left: 0;
-                right: 0;
-            }
-
-            progress::-webkit-progress-bar {
-                background-color: #c9c9c9;
-            }
-
-            progress::-webkit-progress-value {
-                background-color: #7cc4ff;
-            }
-
-            progress::-moz-progress-bar {
-                background-color: #7cc4ff;
-            }
-
-        .uploadControl {
-            padding-top: 2em;
-        }
-    </style>
-
+    <link rel="stylesheet" href="index.css" />
 </head>
 
 <body>
@@ -48,7 +9,7 @@
         <br /><br />
         <a href="https://developers.google.com/web/tools/chrome-devtools/network-performance/network-conditions" target="_blank">Throttle your network</a> to make it easier to follow the requests and responses.
         <br /><br />
-              <a href="#" onclick="resetLocalCache(event)" title="Once an upload has started the file url is cached in browser. Click here to reset this cache so that all files will be uploaded from scratch.">Click here to reset local file cache to restart uploads from scratch</a>
+        <a href="#" onclick="resetLocalCache(event)" title="Once an upload has started the file url is cached in browser. Click here to reset this cache so that all files will be uploaded from scratch.">Click here to reset local file cache to restart uploads from scratch</a>
 
         <div class="uploadControl">
             <input type="file" name="droppedFile" id="droppedFile" />
@@ -62,87 +23,7 @@
     </form>
 
     <script src="tus.min.js"></script>
-    <script>
-
-        var uploadProgress = document.getElementById('uploadProgress');
-        var downloadLink = document.getElementById('downloadLink');
-        var cancelUploadButton = document.getElementById('cancelUploadButton');
-        var uploadButton = document.getElementById('uploadButton');
-        var upload;
-
-        function uploadFile() {
-            var file = document.getElementById('droppedFile').files[0];
-
-            uploadProgress.value = 0;
-            uploadProgress.removeAttribute('data');
-            uploadProgress.style.display = 'block';
-
-            disableUpload();
-
-            downloadLink.innerHTML = '';
-
-            upload = new tus.Upload(file,
-                {
-                    endpoint: 'files/',
-                    onError: onTusError,
-                    onProgress: onTusProgress,
-                    onSuccess: onTusSuccess,
-                    metadata: {
-                        name: file.name,
-                        contentType: file.type || 'application/octet-stream',
-                        emptyMetaKey: ''
-                    }
-                });
-
-            setProgressTest('Starting upload...');
-            upload.start();
-        }
-
-        function cancelUpload() {
-            upload && upload.abort();
-            setProgressTest('Upload aborted');
-            uploadProgress.value = 0;
-            enableUpload();
-        }
-
-        function resetLocalCache(e) {
-            e.preventDefault();
-            localStorage.clear();
-            alert('Cache cleared');
-        }
-
-        function onTusError(error) {
-            alert(error);
-            enableUpload();
-        }
-
-        function onTusProgress(bytesUploaded, bytesTotal) {
-            var percentage = (bytesUploaded / bytesTotal * 100).toFixed(2);
-
-            uploadProgress.value = percentage;
-            setProgressTest(bytesUploaded + '/' + bytesTotal + ' bytes uploaded');
-        }
-
-        function onTusSuccess() {
-            downloadLink.innerHTML = '<a href="' + upload.url + '">Download ' + upload.file.name + '</a>';
-            enableUpload();
-        }
-
-        function setProgressTest(text) {
-            uploadProgress.setAttribute('data-label', text);
-        }
-
-        function enableUpload() {
-            uploadButton.removeAttribute('disabled');
-            cancelUploadButton.setAttribute('disabled', 'disabled');
-        }
-
-        function disableUpload() {
-            uploadButton.setAttribute('disabled', 'disabled');
-            cancelUploadButton.removeAttribute('disabled');
-        }
-
-    </script>
+    <script src="index.js"></script>
 
 </body>
 
