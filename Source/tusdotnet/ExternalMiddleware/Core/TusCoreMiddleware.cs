@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.ExternalMiddleware.Core;
 using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
@@ -41,7 +42,7 @@ namespace tusdotnet
                 return;
             }
 
-            var requestUri = GetRequestUri(context);
+            var requestUri = ContextAdapterBuilder.GetRequestUri(context);
 
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(requestUri, config))
             {
@@ -49,43 +50,12 @@ namespace tusdotnet
                 return;
             }
 
-            var request = new RequestAdapter(config.UrlPath)
-            {
-                Headers =
-                    context.Request.Headers.ToDictionary(
-                        f => f.Key,
-                        f => f.Value.ToList(),
-                        StringComparer.OrdinalIgnoreCase),
-                Body = context.Request.Body,
-                Method = context.Request.Method,
-                RequestUri = requestUri
-            };
-
-            var response = new ResponseAdapter
-            {
-                Body = context.Response.Body,
-                SetHeader = (key, value) => context.Response.Headers[key] = value,
-                SetStatus = status => context.Response.StatusCode = (int)status
-            };
-
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
-            {
-                Request = request,
-                Response = response,
-                Configuration = config,
-                CancellationToken = context.RequestAborted,
-                HttpContext = context
-            });
+            var handled = await TusProtocolHandlerIntentBased.Invoke(ContextAdapterBuilder.FromHttpContext(context, config));
 
             if (handled == ResultType.ContinueExecution)
             {
                 await _next(context);
             }
-        }
-
-        private static Uri GetRequestUri(HttpContext context)
-        {
-            return new Uri($"{context.Request.Scheme}://{context.Request.Host}{context.Request.PathBase}{context.Request.Path}");
         }
     }
 }

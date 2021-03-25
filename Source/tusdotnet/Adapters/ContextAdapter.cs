@@ -1,5 +1,9 @@
 ﻿using System.Threading;
 using Microsoft.AspNetCore.Http;
+using tusdotnet.ExternalMiddleware.Core;
+#if endpointrouting
+using tusdotnet.ExternalMiddleware.EndpointRouting;
+#endif
 using tusdotnet.Models;
 #if netfull
 using Microsoft.Owin;
@@ -25,6 +29,10 @@ namespace tusdotnet.Adapters
 
         public IOwinContext OwinContext { get; set; }
 
+#endif
+
+#if endpointrouting
+        public EndpointOptions EndpointOptions { get; set; }
 #endif
     }
 }

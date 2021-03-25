@@ -25,6 +25,12 @@ namespace AspNetCore_netcoreapp3._1_TestApp.Authentication
         {
         }
 
+        protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+        {
+            Response.Headers["WWW-Authenticate"] = "Basic realm=\"tusdotnet-test-site\", charset=\"UTF-8\"";
+            return base.HandleChallengeAsync(properties);
+        }
+
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
@@ -48,6 +54,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp.Authentication
             var claims = new[] {
                 new Claim(ClaimTypes.NameIdentifier, Username),
                 new Claim(ClaimTypes.Name, Username),
+                new Claim(ClaimTypes.Role, "create-file")
             };
 
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
