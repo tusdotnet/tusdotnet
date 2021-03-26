@@ -50,7 +50,7 @@ namespace tusdotnet.test.Data
     {
         public override IEnumerable<object[]> GetData(MethodInfo testMethod) => GetPipelines();
 
-        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new(
+        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new Lazy<Dictionary<string, MethodInfo>>(
             () =>
             {
                 return typeof(PipelineDisconnectEmulationDataAttribute)
