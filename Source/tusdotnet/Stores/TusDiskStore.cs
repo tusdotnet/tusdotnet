@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -38,7 +39,7 @@ namespace tusdotnet.Stores
         // Use our own array pool to not leak data to other parts of the running app.
         private static readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Create();
 
-        private static readonly TusGuidProvider DefaultFileIdProvider = new TusGuidProvider();
+        private static readonly TusGuidProvider DefaultFileIdProvider = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -260,7 +261,8 @@ namespace tusdotnet.Stores
 
                 // Only verify the checksum if the entire lastest chunk has been written.
                 // If not, just discard the last chunk as it won't match the checksum anyway.
-                if (chunkCompleteFile.Exist())
+                // If the client has provided a faulty checksum-trailer we should also just discard the chunk.
+                if (chunkCompleteFile.Exist() && !ChecksumTrailerHelper.IsFallback(algorithm, checksum))
                 {
                     var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
                     valid = checksum.SequenceEqual(calculateSha1);
@@ -351,7 +353,7 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken _)
         {
-            List<string> expiredFiles = new List<string>();
+            var expiredFiles = new List<string>();
             foreach (var file in Directory.EnumerateFiles(_directoryPath, "*.expiration"))
             {
                 var f = await InternalFileId.Parse(_fileIdProvider, Path.GetFileNameWithoutExtension(file));

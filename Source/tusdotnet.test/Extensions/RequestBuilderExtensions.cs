@@ -107,7 +107,15 @@ namespace tusdotnet.test.Extensions
 				: builder;
 		}
 
-#endif
+	#if trailingheaders
 
+		internal static RequestBuilder DeclareTrailingChecksumHeader(this RequestBuilder builder)
+		{
+			return builder.And(req => req.Headers.Trailer.Add("Upload-Checksum"));
+		}
+
+	#endif
+
+#endif
 	}
 }

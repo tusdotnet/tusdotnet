@@ -36,7 +36,7 @@ namespace tusdotnet.Adapters
 
         /// <summary>
         /// Creates an internal WriteFile request and runs it. Returns the Upload-Offset for the file or 0 if something failed.
-        /// The <code>UploadExpires</code> property is also updated if sliding expiration is used.
+        /// The <c>UploadExpires</c> property is also updated if sliding expiration is used.
         /// </summary>
         /// <param name="fileConcat">Null for regular files or FileConcatPartial if the file is a partial file</param>
         /// <returns>The Upload-Offset for the file or 0 if something failed.</returns>
