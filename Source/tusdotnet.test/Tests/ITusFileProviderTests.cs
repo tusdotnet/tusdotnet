@@ -12,8 +12,8 @@ namespace tusdotnet.test.Tests
     public class ITusFileProviderTests
     {
         [Theory]
-        [InlineData(typeof(TusGuidProvider))]
-        [InlineData(typeof(TusBase64IdProvider))]
+        [InlineData(typeof(GuidFileIdProvider))]
+        [InlineData(typeof(Base64FileIdProvider))]
         public async Task File_Id_providers_return_valid_file_ids(Type type)
         {
             var provider = GetProvider(type);
@@ -27,8 +27,8 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory]
-        [InlineData(typeof(TusGuidProvider))]
-        [InlineData(typeof(TusBase64IdProvider))]
+        [InlineData(typeof(GuidFileIdProvider))]
+        [InlineData(typeof(Base64FileIdProvider))]
         public async Task File_Id_providers_return_no_duplicates(Type type)
         {
             var provider = GetProvider(type);
@@ -48,17 +48,12 @@ namespace tusdotnet.test.Tests
 
         private ITusFileIdProvider GetProvider(Type type)
         {
-            if (type == typeof(TusGuidProvider))
+            return type.Name switch
             {
-                return new TusGuidProvider();
-            }
-
-            if (type == typeof(TusBase64IdProvider))
-            {
-                return new TusBase64IdProvider();
-            }
-
-            throw new ArgumentException("Invalid file id provider type", nameof(type));
+                nameof(GuidFileIdProvider) => new GuidFileIdProvider(),
+                nameof(Base64FileIdProvider) => new Base64FileIdProvider(),
+                _ => throw new ArgumentException("Invalid file id provider type", nameof(type))
+            };
         }
     }
 }

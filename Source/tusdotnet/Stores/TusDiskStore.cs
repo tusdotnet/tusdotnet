@@ -39,7 +39,7 @@ namespace tusdotnet.Stores
         // Use our own array pool to not leak data to other parts of the running app.
         private static readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Create();
 
-        private static readonly TusGuidProvider DefaultFileIdProvider = new();
+        private static readonly GuidFileIdProvider DefaultFileIdProvider = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -78,7 +78,7 @@ namespace tusdotnet.Stores
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
         /// <param name="bufferSize">The buffer size to use when reading and writing. If unsure use <see cref="TusDiskBufferSize.Default"/>.</param>
-        /// <param name="fileIdProvider">The provider that generates ids for files. If unsure use <see cref="TusGuidProvider"/>.</param>
+        /// <param name="fileIdProvider">The provider that generates ids for files. If unsure use <see cref="GuidFileIdProvider"/>.</param>
         public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize, ITusFileIdProvider fileIdProvider)
         {
             _directoryPath = directoryPath;

@@ -7,7 +7,7 @@ namespace tusdotnet.Stores.FileIdProviders
     /// <summary>
     /// Provides file ids using GUIDs
     /// </summary>
-    public class TusGuidProvider : ITusFileIdProvider
+    public class GuidFileIdProvider : ITusFileIdProvider
     {
         private readonly string _guildFormat;
 
@@ -15,7 +15,7 @@ namespace tusdotnet.Stores.FileIdProviders
         /// Creates a new TusGuildProvider
         /// </summary>
         /// <param name="guildFormat">The format of the guid to use when creating IDs</param>
-        public TusGuidProvider(string guildFormat = "n")
+        public GuidFileIdProvider(string guildFormat = "n")
         {
             _guildFormat = guildFormat;
         }

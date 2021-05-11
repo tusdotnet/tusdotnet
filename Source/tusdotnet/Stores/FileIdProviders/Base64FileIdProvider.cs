@@ -8,7 +8,7 @@ namespace tusdotnet.Stores.FileIdProviders
     /// <summary>
     /// Provides file ids using a random secure url safe base64 string
     /// </summary>
-    public class TusBase64IdProvider : ITusFileIdProvider
+    public class Base64FileIdProvider : ITusFileIdProvider
     {
         private readonly int _byteLength;
         private readonly int _idLength;
@@ -19,7 +19,7 @@ namespace tusdotnet.Stores.FileIdProviders
         /// If you want an id similar to youtube, use a byte length of 8.
         /// </summary>
         /// <param name="byteLength">The amount of random bytes to encode to a base64 id</param>
-        public TusBase64IdProvider(int byteLength = 16)
+        public Base64FileIdProvider(int byteLength = 16)
         {
             _byteLength = byteLength;
 
@@ -30,7 +30,6 @@ namespace tusdotnet.Stores.FileIdProviders
         /// <inheritdoc />
         public virtual Task<string> CreateId(string metadata)
         {
-
             var key = new byte[_byteLength];
             using (var rng = RandomNumberGenerator.Create())
             {
