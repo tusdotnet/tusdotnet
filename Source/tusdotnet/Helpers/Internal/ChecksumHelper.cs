@@ -113,9 +113,12 @@ namespace tusdotnet.Helpers
             _checksum = tempChecksum;
         }
 
+        internal bool SupportsChecksumTrailer() => true;
 #else 
 
         internal ChecksumHelperResult VerifyStateForChecksumTrailer() => Ok;
+
+        internal bool SupportsChecksumTrailer() => false;
 
 #endif
 
