@@ -99,7 +99,7 @@ namespace tusdotnet.performance
             var filename = Convert.ToBase64String(Encoding.UTF8.GetBytes("filename" + Guid.NewGuid().ToString()));
             var contentType = Convert.ToBase64String(Encoding.UTF8.GetBytes("application/octet-stream"));
 
-            return $"filename {filename},contentType {contentType}";
+            return $"name {filename},contentType {contentType}";
         }
     }
 }
