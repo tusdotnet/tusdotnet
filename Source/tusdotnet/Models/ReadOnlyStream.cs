@@ -3,7 +3,7 @@ using System.IO;
 
 namespace tusdotnet.Models
 {
-    internal class ReadOnlyStream : Stream
+    internal abstract class ReadOnlyStream : Stream
     {
         protected Stream BackingStream { get; }
 
