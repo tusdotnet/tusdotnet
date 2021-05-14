@@ -12,6 +12,7 @@ using Xunit;
 using System.Collections.Generic;
 using tusdotnet.Adapters;
 using Microsoft.AspNetCore.Http;
+using System;
 #if netfull
 using Owin;
 #endif
@@ -23,9 +24,11 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_Checksum_Algorithm_Is_Not_Supported(string methodToUse)
         {
+            var fileId = Guid.NewGuid().ToString();
+
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
-            store = store.WithExistingFile("checksum", 10, 5);
-            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            store = store.WithExistingFile(fileId, 10, 5);
+            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             var checksumStore = (ITusChecksumStore)store;
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "md5" });
@@ -33,7 +36,7 @@ namespace tusdotnet.test.Tests
             using var server = TestServerFactory.Create(store);
 
             var response = await server
-                .CreateTusResumableRequest("/files/checksum")
+                .CreateTusResumableRequest("/files/" + fileId)
                 .AddHeader("Upload-Offset", "5")
                 .AddHeader("Upload-Checksum", "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=")
                 .AddBody()
@@ -44,16 +47,18 @@ namespace tusdotnet.test.Tests
             response.ShouldContainTusResumableHeader();
 
             await store.DidNotReceive().FileExistAsync(null, CancellationToken.None);
-            await store.DidNotReceive().GetUploadOffsetAsync("checksum", Arg.Any<CancellationToken>());
-            await store.DidNotReceive().AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            await store.DidNotReceive().GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>());
+            await store.DidNotReceive().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_460_Checksum_Mismatch_If_The_Checksum_Does_Not_Match(string methodToUse)
         {
+            var fileId = Guid.NewGuid().ToString();
+
             var store = Substitute.For<ITusStore, ITusChecksumStore>();
-            store = store.WithExistingFile("checksum", 10, 5);
-            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            store = store.WithExistingFile(fileId, 10, 5);
+            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             var checksumStore = (ITusChecksumStore)store;
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
@@ -62,7 +67,7 @@ namespace tusdotnet.test.Tests
             using var server = TestServerFactory.Create(store);
 
             var response = await server
-                .CreateTusResumableRequest("/files/checksum")
+                .CreateTusResumableRequest("/files/" + fileId)
                 .AddHeader("Upload-Offset", "5")
                 .AddHeader("Upload-Checksum", "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=")
                 .AddBody()
@@ -78,10 +83,12 @@ namespace tusdotnet.test.Tests
         {
             var cts = new CancellationTokenSource();
 
+            var fileId = Guid.NewGuid().ToString();
+
             var store = Substitute.For<ITusStore, ITusChecksumStore>();
-            store = store.WithExistingFile("checksum", 10, 5);
+            store = store.WithExistingFile(fileId, 10, 5);
             // Cancel token source to emulate a client disconnect
-            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5).AndDoes(_ => cts.Cancel());
+            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5).AndDoes(_ => cts.Cancel());
 
             var checksumStore = (ITusChecksumStore)store;
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
@@ -101,7 +108,7 @@ namespace tusdotnet.test.Tests
                 Request = new RequestAdapter("/files")
                 {
                     Body = new MemoryStream(),
-                    RequestUri = new System.Uri("https://localhost/files/checksum"),
+                    RequestUri = new Uri("https://localhost/files/" + fileId),
                     Headers = new Dictionary<string, List<string>>
                     {
                         { Constants.HeaderConstants.TusResumable, new List<string> { Constants.HeaderConstants.TusResumableValue } },
@@ -133,9 +140,11 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_If_Checksum_Matches(string methodToUse)
         {
+            var fileId = Guid.NewGuid().ToString();
+
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
-            store = store.WithExistingFile("checksum", 10, 5);
-            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            store = store.WithExistingFile(fileId, 10, 5);
+            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
             var checksumStore = (ITusChecksumStore)store;
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
             checksumStore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(true);
@@ -143,7 +152,7 @@ namespace tusdotnet.test.Tests
             using var server = TestServerFactory.Create(store);
 
             var response = await server
-                .CreateTusResumableRequest("/files/checksum")
+                .CreateTusResumableRequest("/files/" + fileId)
                 .AddHeader("Upload-Offset", "5")
                 .AddHeader("Upload-Checksum", "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=")
                 .AddBody()
@@ -157,11 +166,13 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_If_Store_Supports_Checksum_But_No_Checksum_Is_Provided(string methodToUse)
         {
+            var fileId = Guid.NewGuid().ToString();
+
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
-            store.FileExistAsync("checksum", CancellationToken.None).ReturnsForAnyArgs(true);
-            store.GetUploadOffsetAsync("checksum", Arg.Any<CancellationToken>()).Returns(5);
-            store.GetUploadLengthAsync("checksum", Arg.Any<CancellationToken>()).Returns(10);
-            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            store.FileExistAsync(fileId, CancellationToken.None).ReturnsForAnyArgs(true);
+            store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(5);
+            store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(10);
+            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
             var cstore = (ITusChecksumStore)store;
             cstore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
             cstore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(true);
@@ -169,7 +180,7 @@ namespace tusdotnet.test.Tests
             using var server = TestServerFactory.Create(store);
 
             var response = await server
-                .CreateRequest("/files/checksum")
+                .CreateRequest("/files/" + fileId)
                 .And(m => m.AddBody())
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Offset", "5")
@@ -183,9 +194,11 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_Upload_Checksum_Header_Is_Unparsable(string methodToUse)
         {
+            var fileId = Guid.NewGuid().ToString();
+
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
-            store = store.WithExistingFile("checksum", 10, 5);
-            store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            store = store.WithExistingFile(fileId, 10, 5);
+            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
             var checksumStore = (ITusChecksumStore)store;
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "md5" });
@@ -204,7 +217,7 @@ namespace tusdotnet.test.Tests
                 }
 #endif
                 var response = await server
-                    .CreateTusResumableRequest("/files/checksum")
+                    .CreateTusResumableRequest("/files/" + fileId)
                     .AddHeader("Upload-Offset", "5")
                     .AddHeader("Upload-Checksum", unparsables)
                     .AddBody()
@@ -215,8 +228,8 @@ namespace tusdotnet.test.Tests
                 response.ShouldContainTusResumableHeader();
             }
 
-            await store.DidNotReceive().GetUploadOffsetAsync("checksum", Arg.Any<CancellationToken>());
-            await store.DidNotReceive().AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            await store.DidNotReceive().GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>());
+            await store.DidNotReceive().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
             await checksumStore.DidNotReceive().GetSupportedAlgorithmsAsync(Arg.Any<CancellationToken>());
         }
     }
