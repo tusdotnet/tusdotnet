@@ -25,6 +25,34 @@ namespace tusdotnet.Adapters
         private readonly Stream _responseStream;
         private readonly string _fileId;
 
+#if NETCOREAPP3_0
+        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
+        {
+            if (!creationContext.Configuration.EnablePipelines)
+            {
+                // Check if there is any file content available in the request.
+                var buffer = new byte[1];
+                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1) > 0;
+
+                return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
+            }
+            else
+            {
+                // Check if there is any file content available in the request.
+                bool hasData;
+                if (creationContext.Request.BodyReader.TryRead(out var result))
+                {
+                    hasData = !result.IsCanceled && result.Buffer.Length > 0;
+
+                    creationContext.Request.BodyReader.AdvanceTo(result.Buffer.Start);
+                }
+                else hasData = false;
+
+                return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData);
+            }
+        }
+
+#else
         internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
             // Check if there is any file content available in the request.
@@ -33,6 +61,7 @@ namespace tusdotnet.Adapters
 
             return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
         }
+#endif
 
         /// <summary>
         /// Creates an internal WriteFile request and runs it. Returns the Upload-Offset for the file or 0 if something failed.
@@ -72,7 +101,7 @@ namespace tusdotnet.Adapters
             return GetUploadOffset() ?? (await _context.Configuration.Store.GetUploadOffsetAsync(_fileId, _context.CancellationToken));
         }
 
-        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte preReadByte)
+        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte? preReadByte = null)
         {
             _responseHeaders = new Dictionary<string, string>();
             _responseStream = new MemoryStream();
@@ -103,18 +132,35 @@ namespace tusdotnet.Adapters
             };
         }
 
-        private RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte preReadByte)
+        private RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByte = null)
         {
             var uriBuilder = new UriBuilder(context.Request.RequestUri);
             uriBuilder.Path = uriBuilder.Path + "/" + fileId;
 
-            var writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
+            RequestAdapter writeFileRequest;
+            if (preReadByte.HasValue)
             {
-                Body = new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByte),
-                Method = context.Request.Method,
-                RequestUri = uriBuilder.Uri,
-                Headers = context.Request.Headers
-            };
+                writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
+                {
+                    Body = new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByte.Value),
+                    Method = context.Request.Method,
+                    RequestUri = uriBuilder.Uri,
+                    Headers = context.Request.Headers
+                };
+            }
+            else
+            {
+                writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
+                {
+                    Body = context.Request.Body,
+#if NETCOREAPP3_0
+                    BodyReader = context.Request.BodyReader,
+#endif
+                    Method = context.Request.Method,
+                    RequestUri = uriBuilder.Uri,
+                    Headers = context.Request.Headers
+                };
+            }
 
             writeFileRequest.Headers[HeaderConstants.UploadOffset] = new List<string>(1) { "0" };
             writeFileRequest.Headers.Remove(HeaderConstants.UploadLength);

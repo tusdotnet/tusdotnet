@@ -57,6 +57,11 @@ namespace tusdotnet.Models
         public virtual long? MaxAllowedUploadSizeInBytesLong { get; set; }
 
         /// <summary>
+        /// Enable the usage of System.IO.Pipelines library. Implement ITusPipelineStore to use it.
+        /// </summary>
+        public virtual bool EnablePipelines { get; set; }
+
+        /// <summary>
         /// Set an expiration time where incomplete files can no longer be updated.
         /// This value can either be <c>AbsoluteExpiration</c> or <c>SlidingExpiration</c>.
         /// Absolute expiration will be saved per file when the file is created.

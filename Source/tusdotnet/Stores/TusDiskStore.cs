@@ -12,6 +12,10 @@ using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Stores.FileIdProviders;
 
+#if NETCOREAPP3_0
+using System.IO.Pipelines;
+#endif
+
 namespace tusdotnet.Stores
 {
     /// <summary>
@@ -19,6 +23,9 @@ namespace tusdotnet.Stores
     /// </summary>
     public class TusDiskStore :
         ITusStore,
+#if NETCOREAPP3_0
+        ITusPipelineStore,
+#endif
         ITusCreationStore,
         ITusReadableStore,
         ITusTerminationStore,
@@ -93,6 +100,107 @@ namespace tusdotnet.Stores
 
             _fileIdProvider = fileIdProvider;
         }
+
+#if NETCOREAPP3_0
+        /// <inheritdoc />
+        public async Task<long> AppendDataAsync(string fileId, PipeReader pipeReader, CancellationToken cancellationToken)
+        {
+            var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
+
+            //var fileWriteBuffer = _bufferPool.Rent(Math.Max(_maxWriteBufferSize, _maxReadBufferSize));
+
+            var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken).ConfigureAwait(false);
+            using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None, true, _maxWriteBufferSize);
+
+            var totalDiskFileLength = diskFileStream.Length;
+            if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
+            {
+                return 0;
+            }
+
+            var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
+
+            var bytesWrittenThisRequest = 0L;
+            var clientDisconnectedDuringRead = false;
+            //var writeBufferNextFreeIndex = 0;
+
+            while (true)
+            {
+                ReadResult result = await pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                ReadOnlySequence<byte> buffer = result.Buffer;
+                SequencePosition position = buffer.Start;
+                SequencePosition consumed = position;
+
+                try
+                {
+                    if (result.IsCanceled)
+                    {
+                        clientDisconnectedDuringRead = true;
+                        break;
+                    }
+
+                    if (totalDiskFileLength + buffer.Length > fileUploadLengthProvidedDuringCreate)
+                    {
+                        throw new TusStoreException($"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength + buffer.Length}, upload length: {fileUploadLengthProvidedDuringCreate}.");
+                    }
+
+                    // Direct copy
+                    while (buffer.TryGet(ref position, out ReadOnlyMemory<byte> memory))
+                    {
+                        await diskFileStream.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
+
+                        bytesWrittenThisRequest += memory.Length;
+                        totalDiskFileLength += memory.Length;
+                        consumed = position;
+                    }
+
+                    // Buffered copy
+                    /*while (buffer.TryGet(ref position, out ReadOnlyMemory<byte> memory))
+                    {
+                        if (writeBufferNextFreeIndex + memory.Length > fileWriteBuffer.Length)
+                        {
+                            await diskFileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex);
+                            writeBufferNextFreeIndex = 0;
+                        }
+
+                        memory.CopyTo(fileWriteBuffer.AsMemory().Slice(writeBufferNextFreeIndex));
+
+                        writeBufferNextFreeIndex += memory.Length;
+                        bytesWrittenThisRequest += memory.Length;
+                        totalDiskFileLength += memory.Length;
+                        consumed = position;
+                    }*/
+
+                    // The while loop completed succesfully, so we've consumed the entire buffer.
+                    consumed = buffer.End;
+
+                    if (result.IsCompleted)
+                    {
+                        break;
+                    }
+                }
+                finally
+                {
+                    // Always advance so the PipeReader is not left in the
+                    // currently reading state
+                    pipeReader.AdvanceTo(consumed);
+                }
+            }
+
+            // Flush the remaining buffer to disk.
+            //if (writeBufferNextFreeIndex != 0)
+            //    await FlushFileToDisk(fileWriteBuffer, diskFileStream, writeBufferNextFreeIndex);
+            await diskFileStream.FlushAsync();
+
+            if (!clientDisconnectedDuringRead)
+            {
+                MarkChunkComplete(chunkCompleteFile);
+            }
+
+            return bytesWrittenThisRequest;
+
+        }
+#endif
 
         /// <inheritdoc />
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)

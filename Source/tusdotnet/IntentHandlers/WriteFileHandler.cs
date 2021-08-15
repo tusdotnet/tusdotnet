@@ -62,8 +62,25 @@ namespace tusdotnet.IntentHandlers
         {
             await WriteUploadLengthIfDefered();
 
+#if NETCOREAPP3_0
+            long bytesWritten;
+            CancellationToken cancellationToken;
+            if (Context.Configuration.EnablePipelines && Store is ITusPipelineStore pipelineStore)
+            {
+                bytesWritten = await pipelineStore.AppendDataAsync(Request.FileId, Request.BodyReader, CancellationToken);
+                cancellationToken = CancellationToken;
+            }
+            else
+            {
+                var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
+                bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
+                cancellationToken = guardedStream.CancellationToken;
+            }
+#else
             var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
             var bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
+            var cancellationToken = guardedStream.CancellationToken;
+#endif
 
             var expires = _expirationHelper.IsSlidingExpiration
                 ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, CancellationToken)
@@ -77,7 +94,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            if (guardedStream.CancellationToken.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
