@@ -312,17 +312,15 @@ namespace tusdotnet.test.Tests
 
             file.Id.ShouldBe(fileId);
 
-            using (var fileContent = await file.GetContentAsync(CancellationToken.None))
+            using var fileContent = await file.GetContentAsync(CancellationToken.None);
+            fileContent.Length.ShouldBe(content.Length);
+
+            var fileContentBuffer = new byte[fileContent.Length];
+            fileContent.Read(fileContentBuffer, 0, fileContentBuffer.Length);
+
+            for (var i = 0; i < content.Length; i++)
             {
-                fileContent.Length.ShouldBe(content.Length);
-
-                var fileContentBuffer = new byte[fileContent.Length];
-                fileContent.Read(fileContentBuffer, 0, fileContentBuffer.Length);
-
-                for (var i = 0; i < content.Length; i++)
-                {
-                    fileContentBuffer[i].ShouldBe(content[i]);
-                }
+                fileContentBuffer[i].ShouldBe(content[i]);
             }
         }
 
@@ -498,7 +496,7 @@ namespace tusdotnet.test.Tests
 
             var cts = new CancellationTokenSource();
             var requestStream = new RequestStreamFake(
-                (stream, bufferToFill, offset, count, cancellationToken) =>
+                (stream, bufferToFill, offset, _, cancellationToken) =>
                 {
                     // Emulate client disconnect before entire stream has been read
                     if (stream.Position == 2)
@@ -611,10 +609,9 @@ namespace tusdotnet.test.Tests
             var partial2Id = await _fixture.Store.CreatePartialFileAsync(1, "key2 bWV0YWRhdGFmb3JwYXJ0aWFsMg==",
                 CancellationToken.None);
 
-#pragma warning disable 4014
-            _fixture.Store.AppendDataAsync(partial1Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
-            _fixture.Store.AppendDataAsync(partial2Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
-#pragma warning restore 4014
+            await Task.WhenAll(
+                _fixture.Store.AppendDataAsync(partial1Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None),
+                _fixture.Store.AppendDataAsync(partial2Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None));
 
             // Create final file with no metadata
             var finalId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id }, null, CancellationToken.None);
@@ -880,7 +877,7 @@ namespace tusdotnet.test.Tests
 
             allAsserted.All(f => isValid ? f.Result == null : f.Result != null).ShouldBeTrue();
 
-            async Task<Exception> AssertFileIdForMethod(Func<Task> callWrapper)
+            static async Task<Exception> AssertFileIdForMethod(Func<Task> callWrapper)
             {
                 try
                 {

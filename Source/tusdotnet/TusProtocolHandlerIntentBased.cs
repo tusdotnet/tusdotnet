@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
-using tusdotnet.FileLocks;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Helpers;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
@@ -51,10 +51,7 @@ namespace tusdotnet
 
             if (intentHandler.LockType == LockType.RequiresLock)
             {
-                if (context.Configuration.AquireFileLock != null)
-                    fileLock = context.Configuration.AquireFileLock(context.Request.FileId);
-                else
-                    fileLock = new InMemoryFileLock(context.Configuration.UrlPath + context.Request.FileId);
+                fileLock = await context.GetFileLock();
 
                 var hasLock = await fileLock.Lock();
                 if (!hasLock)

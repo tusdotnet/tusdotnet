@@ -61,5 +61,15 @@ namespace tusdotnet.Models
 				IsValid = false;
 			}
 		}
+
+		/// <summary>
+		/// Used internally to setup a fallback when trailing checksum header is invalid.
+		/// </summary>
+		internal Checksum(string algorithm, byte[] hash)
+        {
+			Algorithm = algorithm;
+			Hash = hash;
+			IsValid = true;
+        }
 	}
 }

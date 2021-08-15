@@ -9,6 +9,7 @@ using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
+using tusdotnet.Helpers;
 #if netfull
 using Microsoft.Owin.Testing;
 using Microsoft.Owin;
@@ -37,34 +38,33 @@ namespace tusdotnet.test.Tests
             configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
 #endif
 
-            using (var server = TestServerFactory.Create(app => app.UseTus(configFunc)))
+            using var server = TestServerFactory.Create(app => app.UseTus(configFunc));
+
+            // Test OPTIONS
+            for (var i = 0; i < 3; i++)
             {
-                // Test OPTIONS
-                for (var i = 0; i < 3; i++)
-                {
-                    await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
-                }
-
-                // Test POST
-                for (var i = 0; i < 3; i++)
-                {
-                    await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST");
-                }
-
-                // Test HEAD
-                for (var i = 0; i < 3; i++)
-                {
-                    await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD");
-                }
-
-                // Test PATCH
-                for (var i = 0; i < 3; i++)
-                {
-                    await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH");
-                }
-
-                configFunc.ReceivedCalls().Count().ShouldBe(12);
+                await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
             }
+
+            // Test POST
+            for (var i = 0; i < 3; i++)
+            {
+                await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST");
+            }
+
+            // Test HEAD
+            for (var i = 0; i < 3; i++)
+            {
+                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD");
+            }
+
+            // Test PATCH
+            for (var i = 0; i < 3; i++)
+            {
+                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH");
+            }
+
+            configFunc.ReceivedCalls().Count().ShouldBe(12);
         }
 
         [Fact]
@@ -73,44 +73,49 @@ namespace tusdotnet.test.Tests
             var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
 
             // Empty configuration
-            using (var server = TestServerFactory.Create(app =>
+            using (var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration)))
             {
-                // ReSharper disable once AccessToModifiedClosure
-                app.UseTus(request => tusConfiguration);
-            }))
-            {
-                // ReSharper disable once AccessToDisposedClosure
                 await AssertRequests(server);
             }
 
             // Configuration with only Store specified
             tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
-            using (var server = TestServerFactory.Create(app =>
+            using (var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration)))
             {
-                // ReSharper disable once AccessToModifiedClosure
-                app.UseTus(request => tusConfiguration);
-            }))
-            {
-                // ReSharper disable once AccessToDisposedClosure
                 await AssertRequests(server);
             }
 
             // Configuration with only url path specified
             tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.UrlPath.Returns("/files");
-            tusConfiguration.Store.Returns((ITusStore) null);
-            using (var server = TestServerFactory.Create(app => app.UseTus(request => tusConfiguration)))
+            tusConfiguration.Store.Returns((ITusStore)null);
+            using (var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration)))
             {
-                // ReSharper disable once AccessToDisposedClosure
                 await AssertRequests(server);
+            }
+
+            static async Task AssertRequests(TestServer server)
+            {
+                var funcs = new List<Func<Task>>(4)
+                {
+                    () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
+                    () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST"),
+                    () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD"),
+                    () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH")
+                };
+
+                foreach (var func in funcs)
+                {
+                    await Should.ThrowAsync<TusConfigurationException>(async () => await func());
+                }
             }
         }
 
         [Fact]
         public async Task Supports_Async_Configuration_Factories()
         {
-            var urlPath = $"/{Guid.NewGuid().ToString()}";
+            var urlPath = $"/{Guid.NewGuid()}";
             var tusConfiguration = new DefaultTusConfiguration
             {
                 UrlPath = urlPath,
@@ -118,35 +123,80 @@ namespace tusdotnet.test.Tests
             };
 
             // Empty configuration
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
-                // ReSharper disable once AccessToModifiedClosure
-                app.UseTus(async request =>
+                app.UseTus(async _ =>
                 {
                     await Task.Delay(10);
                     return tusConfiguration;
                 });
-            }))
+            });
+
+            var response = await server.CreateRequest(urlPath).SendAsync("OPTIONS");
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainHeader("Tus-Resumable", "1.0.0");
+        }
+
+        [Fact]
+        public async Task File_Lock_Provider_Is_Called_If_A_Lock_Is_Required()
+        {
+            var lockProvider = new FileLockProviderForTest();
+            var tusConfiguration = new DefaultTusConfiguration
             {
-                var response = await server.CreateRequest(urlPath).SendAsync("OPTIONS");
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Tus-Resumable", "1.0.0");
+                UrlPath = "/files",
+                Store = Substitute.For<ITusStore, ITusTerminationStore, ITusCreationStore>(),
+                FileLockProvider = lockProvider
+            };
+
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration));
+
+            const string urlPath = "/files/";
+            var fileIdUrl = urlPath + Guid.NewGuid();
+
+            // PATCH and DELETE are using locks.
+            var response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("PATCH");
+            response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("DELETE");
+
+            // Others will not lock.
+            response = await server.CreateTusResumableRequest(urlPath).SendAsync("OPTIONS");
+            response = await server.CreateTusResumableRequest(urlPath).SendAsync("POST");
+            response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("HEAD");
+
+            lockProvider.LockCount.ShouldBe(2);
+            lockProvider.ReleaseCount.ShouldBe(2);
+        }
+
+        private class FileLockProviderForTest : ITusFileLockProvider
+        {
+            public int LockCount { get; set; }
+
+            public int ReleaseCount { get; set; }
+
+            public Task<ITusFileLock> AquireLock(string fileId)
+            {
+                return Task.FromResult<ITusFileLock>(new FileLockForTest(this));
             }
         }
 
-        private static async Task AssertRequests(TestServer server)
+        private class FileLockForTest : ITusFileLock
         {
-            var funcs = new List<Func<Task>>(4)
-            {
-                () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
-                () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST"),
-                () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD"),
-                () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH")
-            };
+            private readonly FileLockProviderForTest _provider;
 
-            foreach (var func in funcs)
+            public FileLockForTest(FileLockProviderForTest provider)
             {
-                await Should.ThrowAsync<TusConfigurationException>(() => func());
+                _provider = provider;
+            }
+
+            public Task<bool> Lock()
+            {
+                _provider.LockCount++;
+                return Task.FromResult(true);
+            }
+
+            public Task ReleaseIfHeld()
+            {
+                _provider.ReleaseCount++;
+                return TaskHelper.Completed;
             }
         }
     }

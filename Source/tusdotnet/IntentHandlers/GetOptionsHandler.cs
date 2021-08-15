@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Validation;
@@ -18,11 +19,14 @@ namespace tusdotnet.IntentHandlers
 
     internal class GetOptionsHandler : IntentHandler
     {
+        private readonly ChecksumHelper _checksumHelper;
+
         internal override Requirement[] Requires => NoRequirements;
 
         public GetOptionsHandler(ContextAdapter context)
             : base(context, IntentType.GetOptions, LockType.NoLock)
         {
+            _checksumHelper = new ChecksumHelper(context);
         }
 
         internal override async Task Invoke()
@@ -72,6 +76,11 @@ namespace tusdotnet.IntentHandlers
             if (Context.Configuration.Store is ITusChecksumStore)
             {
                 extensions.Add(ExtensionConstants.Checksum);
+
+                if (_checksumHelper.SupportsChecksumTrailer())
+                {
+                    extensions.Add(ExtensionConstants.ChecksumTrailer);
+                }
             }
 
             if (Context.Configuration.Store is ITusConcatenationStore)

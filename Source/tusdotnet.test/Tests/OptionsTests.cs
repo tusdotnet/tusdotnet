@@ -39,7 +39,6 @@ namespace tusdotnet.test.Tests
                 typeof(ITusCreationDeferLengthStore)
             }, new object[0]);
 
-            // ReSharper disable once PossibleNullReferenceException
             ((ITusChecksumStore)store).GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
 
             _mockTusConfiguration = new DefaultTusConfiguration
@@ -61,7 +60,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(_ => _mockTusConfiguration);
 
@@ -70,30 +69,29 @@ namespace tusdotnet.test.Tests
                     _callForwarded = true;
                     return Task.FromResult(true);
                 });
-            }))
-            {
-                await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
-                AssertForwardCall(false);
+            });
 
-                await server.CreateRequest("/otherfiles").AddTusResumableHeader().SendAsync("OPTIONS");
-                AssertForwardCall(true);
+            await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            AssertForwardCall(false);
 
-                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("OPTIONS");
-                AssertForwardCall(true);
-            }
+            await server.CreateRequest("/otherfiles").AddTusResumableHeader().SendAsync("OPTIONS");
+            AssertForwardCall(true);
+
+            await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("OPTIONS");
+            AssertForwardCall(true);
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_NoContent_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
-            {
-                var response = await server
-                    .CreateRequest("/files")
-                    .OverrideHttpMethodIfNeeded("OPTIONS", methodToUse)
-                    .SendAsync(methodToUse);
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-            }
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+
+            var response = await server
+                .CreateRequest("/files")
+                .OverrideHttpMethodIfNeeded("OPTIONS", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -124,11 +122,10 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Tus_Max_Size_Is_Not_Included_If_No_Max_Size_Is_Configured()
         {
-            using (var server = TestServerFactory.Create(Substitute.For<ITusStore>()))
-            {
-                var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
-                response.Headers.Contains("Tus-Max-Size").ShouldBeFalse();
-            }
+            using var server = TestServerFactory.Create(Substitute.For<ITusStore>());
+
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+            response.Headers.Contains("Tus-Max-Size").ShouldBeFalse();
         }
 
         [Fact]
@@ -136,11 +133,10 @@ namespace tusdotnet.test.Tests
         {
             _mockTusConfiguration.MaxAllowedUploadSizeInBytes = 100;
 
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
-            {
-                var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
-                response.ShouldContainHeader("Tus-Max-Size", "100");
-            }
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+            response.ShouldContainHeader("Tus-Max-Size", "100");
         }
 
         [Fact]
@@ -149,11 +145,10 @@ namespace tusdotnet.test.Tests
             const long maxSizeLong = (long)int.MaxValue + 1;
             _mockTusConfiguration.MaxAllowedUploadSizeInBytesLong = maxSizeLong;
 
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
-            {
-                var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
-                response.ShouldContainHeader("Tus-Max-Size", maxSizeLong.ToString());
-            }
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+            response.ShouldContainHeader("Tus-Max-Size", maxSizeLong.ToString());
         }
 
         [Fact]
@@ -163,55 +158,56 @@ namespace tusdotnet.test.Tests
             _mockTusConfiguration.MaxAllowedUploadSizeInBytes = 100;
             _mockTusConfiguration.MaxAllowedUploadSizeInBytesLong = 50;
 
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
-            {
-                var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
-                response.ShouldContainHeader("Tus-Max-Size", "50");
-            }
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+            response.ShouldContainHeader("Tus-Max-Size", "50");
         }
 
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
-            {
-                var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
 
-                AssertContainsDefaultSuccessfulHeaders(response);
+            var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
 
-                _onAuthorizeWasCalled.ShouldBeTrue();
-                _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.GetOptions);
-            }
+            AssertContainsDefaultSuccessfulHeaders(response);
+
+            _onAuthorizeWasCalled.ShouldBeTrue();
+            _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.GetOptions);
         }
 
         [Fact]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
-            using (var server = TestServerFactory.Create(_mockTusConfiguration.Store, new Events
+            using var server = TestServerFactory.Create(_mockTusConfiguration.Store, new Events
             {
                 OnAuthorizeAsync = ctx =>
                 {
                     ctx.FailRequest(HttpStatusCode.Unauthorized);
                     return Task.FromResult(0);
                 }
-            }))
-            {
-                var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-                response.ShouldNotContainHeaders(
-                    "Tus-Resumable",
-                    "Tus-Version",
-                    "Tus-Extension",
-                    "Tus-Checksum-Algorithm",
-                    "Content-Type");
-            }
+            var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+            response.ShouldNotContainHeaders(
+                "Tus-Resumable",
+                "Tus-Version",
+                "Tus-Extension",
+                "Tus-Checksum-Algorithm",
+                "Content-Type");
         }
 
         [Theory]
         [InlineData(typeof(ITusCreationStore), "creation,creation-with-upload")]
         [InlineData(typeof(ITusTerminationStore), "termination")]
+#if trailingheaders
+        [InlineData(typeof(ITusChecksumStore), "checksum,checksum-trailer")]
+#else
         [InlineData(typeof(ITusChecksumStore), "checksum")]
+#endif
         [InlineData(typeof(ITusConcatenationStore), "concatenation")]
         [InlineData(typeof(ITusExpirationStore), "expiration")]
         [InlineData(typeof(ITusCreationDeferLengthStore), "creation-defer-length")]
@@ -219,20 +215,29 @@ namespace tusdotnet.test.Tests
         {
             var store = (ITusStore)Substitute.For(new[] { typeof(ITusStore), storeInterfaceType }, null);
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            using var server = TestServerFactory.Create(store);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Tus-Extension", expectedExtensions);
-            }
+            var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainHeader("Tus-Extension", expectedExtensions);
         }
 
         private static void AssertContainsDefaultSuccessfulHeaders(System.Net.Http.HttpResponseMessage response)
         {
+#if trailingheaders
+            const bool pipelineSupportsChecksumTrailer = true;
+#else
+            const bool pipelineSupportsChecksumTrailer = false;
+#endif
+
+            const string expectedExtensions = pipelineSupportsChecksumTrailer
+                ? "creation,creation-with-upload,termination,checksum,checksum-trailer,concatenation,expiration,creation-defer-length"
+                : "creation,creation-with-upload,termination,checksum,concatenation,expiration,creation-defer-length";
+
             response.ShouldContainHeader("Tus-Resumable", "1.0.0");
             response.ShouldContainHeader("Tus-Version", "1.0.0");
-            response.ShouldContainHeader("Tus-Extension", "creation,creation-with-upload,termination,checksum,concatenation,expiration,creation-defer-length");
+            response.ShouldContainHeader("Tus-Extension", expectedExtensions);
             response.ShouldContainHeader("Tus-Checksum-Algorithm", "sha1");
         }
 

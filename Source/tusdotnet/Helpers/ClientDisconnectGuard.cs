@@ -49,9 +49,22 @@ namespace tusdotnet.Helpers
                 return true;
             }
 
+            var exceptionFullName = exception.GetType().FullName;
+
             // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1). 
             // Instead the exception below is thrown.
-            return exception.GetType().FullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException";
+            if (exceptionFullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException")
+            {
+                return true;
+            }
+
+            // IsCancellationRequested is false in some scenarios when connecting directly to Kestrel in ASP.NET Core 3.1 (on netcoreapp3_1).
+            if (exceptionFullName == "Microsoft.AspNetCore.Connections.ConnectionResetException")
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -53,6 +53,11 @@ namespace tusdotnet.test.Extensions
 			return builder.And(m => m.AddBody(contentType));
 		}
 
+		internal static RequestBuilder AddBody(this RequestBuilder builder, int size)
+		{
+			return builder.And(m => m.AddBody(size));
+		}
+
 #endif
 
 #if netstandard
@@ -82,6 +87,11 @@ namespace tusdotnet.test.Extensions
 			return builder.And(m => m.AddBody(contentType));
 		}
 
+		internal static RequestBuilder AddBody(this RequestBuilder builder, int size)
+		{
+			return builder.And(m => m.AddBody(size));
+		}
+
 		/// <summary>
 		/// Add a X-Http-Method-Override to the builder if method and override does not match.
 		/// Otherwise just return the builder as is.
@@ -97,7 +107,15 @@ namespace tusdotnet.test.Extensions
 				: builder;
 		}
 
-#endif
+	#if trailingheaders
 
+		internal static RequestBuilder DeclareTrailingChecksumHeader(this RequestBuilder builder)
+		{
+			return builder.And(req => req.Headers.Trailer.Add("Upload-Checksum"));
+		}
+
+	#endif
+
+#endif
 	}
 }

@@ -1,51 +1,40 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Constants;
-using tusdotnet.Interfaces;
-using tusdotnet.Models;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
     internal sealed class UploadChecksum : Requirement
     {
-        private Checksum RequestChecksum { get; }
+        private ChecksumHelper ChecksumHelper { get; }
 
-        public UploadChecksum() : this(null)
+        public UploadChecksum(ChecksumHelper checksumHelper)
         {
-        }
-
-        public UploadChecksum(Checksum requestChecksum)
-        {
-            RequestChecksum = requestChecksum;
+            ChecksumHelper = checksumHelper;
         }
 
         public override async Task Validate(ContextAdapter context)
         {
-            var providedChecksum = RequestChecksum ?? GetProvidedChecksum(context);
-
-            if (context.Configuration.Store is ITusChecksumStore checksumStore && providedChecksum != null)
+            if (!ChecksumHelper.IsSupported())
             {
-                if (!providedChecksum.IsValid)
-                {
-                    await BadRequest($"Could not parse {HeaderConstants.UploadChecksum} header");
-                    return;
-                }
-
-                var checksumAlgorithms = (await checksumStore.GetSupportedAlgorithmsAsync(context.CancellationToken)).ToList();
-                if (!checksumAlgorithms.Contains(providedChecksum.Algorithm))
-                {
-                    await BadRequest(
-                        $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}");
-                }
+                return;
             }
-        }
 
-        private static Checksum GetProvidedChecksum(ContextAdapter context)
-        {
-            return context.Request.Headers.ContainsKey(HeaderConstants.UploadChecksum)
-                ? new Checksum(context.Request.Headers[HeaderConstants.UploadChecksum][0])
-                : null;
+            var leadingHeaderResult = await ChecksumHelper.VerifyLeadingHeader();
+
+            if (leadingHeaderResult.IsFailure())
+            {
+                await Error(leadingHeaderResult.Status, leadingHeaderResult.ErrorMessage);
+                return;
+            }
+
+            var trailingHeaderResult = ChecksumHelper.VerifyStateForChecksumTrailer();
+
+            if (trailingHeaderResult.IsFailure())
+            {
+                await Error(trailingHeaderResult.Status, trailingHeaderResult.ErrorMessage);
+                return;
+            }
         }
     }
 }

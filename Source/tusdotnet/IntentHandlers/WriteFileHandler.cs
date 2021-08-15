@@ -11,6 +11,10 @@ using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 
+#if trailingheaders
+using tusdotnet.Extensions.Internal;
+#endif
+
 namespace tusdotnet.IntentHandlers
 {
     /*
@@ -42,21 +46,14 @@ namespace tusdotnet.IntentHandlers
     {
         internal override Requirement[] Requires => GetListOfRequirements();
 
-        private readonly Checksum _checksum;
-
         private readonly ExpirationHelper _expirationHelper;
+        private readonly ChecksumHelper _checksumHelper;
         private readonly bool _initiatedFromCreationWithUpload;
 
         public WriteFileHandler(ContextAdapter context, bool initiatedFromCreationWithUpload)
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
-            var checksumHeader = Request.GetHeader(HeaderConstants.UploadChecksum);
-
-            if (checksumHeader != null)
-            {
-                _checksum = new Checksum(checksumHeader);
-            }
-
+            _checksumHelper = new ChecksumHelper(Context);
             _expirationHelper = new ExpirationHelper(Context.Configuration);
             _initiatedFromCreationWithUpload = initiatedFromCreationWithUpload;
         }
@@ -89,9 +86,11 @@ namespace tusdotnet.IntentHandlers
                 ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, CancellationToken)
                 : await _expirationHelper.GetExpirationIfSupported(Request.FileId, CancellationToken);
 
-            if (!await MatchChecksum())
+            var matchChecksumResult = await _checksumHelper.MatchChecksum(guardedStream.CancellationToken.IsCancellationRequested);
+
+            if (matchChecksumResult.IsFailure())
             {
-                await Response.Error((HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+                await Response.Error(matchChecksumResult.Status, matchChecksumResult.ErrorMessage);
                 return;
             }
 
@@ -134,7 +133,7 @@ namespace tusdotnet.IntentHandlers
 
         private Task<bool> IsPartialUpload()
         {
-            if (!(Store is ITusConcatenationStore concatenationStore))
+            if (Store is not ITusConcatenationStore concatenationStore)
             {
                 return Task.FromResult(false);
             }
@@ -155,30 +154,11 @@ namespace tusdotnet.IntentHandlers
             return fileOffset + bytesWritten == fileUploadLength;
         }
 
-        private Task<bool> MatchChecksum()
-        {
-            if (!(Store is ITusChecksumStore checksumStore))
-            {
-                return Task.FromResult(true);
-            }
-
-            if (_checksum == null)
-            {
-                return Task.FromResult(true);
-            }
-
-            return checksumStore.VerifyChecksumAsync(
-                Request.FileId,
-                _checksum.Algorithm,
-                _checksum.Hash,
-                CancellationToken);
-        }
-
         private Requirement[] GetListOfRequirements()
         {
             var contentTypeRequirement = new ContentType();
             var uploadLengthRequirement = new UploadLengthForWriteFile();
-            var uploadChecksumRequirement = new UploadChecksum(_checksum);
+            var uploadChecksumRequirement = new UploadChecksum(_checksumHelper);
             var fileHasExpired = new FileHasNotExpired();
 
             // Initiated using creation-with-upload meaning that we can guarantee that the file already exist, the offset is correct etc.
