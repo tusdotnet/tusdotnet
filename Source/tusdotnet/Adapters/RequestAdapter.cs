@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using tusdotnet.Constants;
+#if pipelines
+using System.IO.Pipelines;
+#endif
 
 namespace tusdotnet.Adapters
 {
@@ -16,8 +19,8 @@ namespace tusdotnet.Adapters
 
         public Stream Body { get; set; }
 
-#if NETCOREAPP3_0
-        public System.IO.Pipelines.PipeReader BodyReader { get; set; }
+#if pipelines
+        public PipeReader BodyReader { get; set; }
 #endif
 
         public Dictionary<string, List<string>> Headers { get; set; }

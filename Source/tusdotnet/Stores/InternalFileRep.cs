@@ -52,9 +52,9 @@ namespace tusdotnet.Stores
             return sr.ReadLine();
         }
 
-        public FileStream GetStream(FileMode mode, FileAccess access, FileShare share, bool buffered = true, int bufferSize = 4096)
+        public FileStream GetStream(FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
         {
-            return new FileStream(Path, mode, access, share, bufferSize, FileOptions.SequentialScan | FileOptions.Asynchronous | (buffered ? FileOptions.None : FileOptions.WriteThrough));
+            return new FileStream(Path, mode, access, share, bufferSize, FileOptions.SequentialScan | FileOptions.Asynchronous);
         }
 
         public long GetLength()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -28,8 +29,13 @@ namespace tusdotnet.performance
                 clients.Add(Task.Run(RunPerfTest));
             }
 
+            var sw = Stopwatch.StartNew();
+
             await Task.WhenAll(clients).ConfigureAwait(false);
 
+            sw.Stop();
+
+            Console.WriteLine("Time taken: " + sw.ElapsedMilliseconds + " ms");
             Console.WriteLine("Test completed. Press any key to exit.");
             Console.ReadKey(true);
         }
@@ -41,7 +47,7 @@ namespace tusdotnet.performance
                 BaseAddress = new Uri(SERVER_URL)
             };
 
-            var file = new byte[_random.Next(5000, 50000)];
+            var file = new byte[10_485_760];
             _random.NextBytes(file);
 
             var halfFileSize = (int)Math.Floor((decimal)file.Length / 2);

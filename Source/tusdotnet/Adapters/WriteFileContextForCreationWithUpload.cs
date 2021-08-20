@@ -25,10 +25,10 @@ namespace tusdotnet.Adapters
         private readonly Stream _responseStream;
         private readonly string _fileId;
 
-#if NETCOREAPP3_0
+#if pipelines
         internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
-            if (!creationContext.Configuration.EnablePipelines)
+            if (!creationContext.Configuration.UsePipelinesIfAvailable)
             {
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
@@ -43,8 +43,7 @@ namespace tusdotnet.Adapters
                 if (creationContext.Request.BodyReader.TryRead(out var result))
                 {
                     hasData = !result.IsCanceled && result.Buffer.Length > 0;
-
-                    creationContext.Request.BodyReader.AdvanceTo(result.Buffer.Start);
+                    creationContext.Request.BodyReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
                 }
                 else hasData = false;
 
@@ -153,7 +152,7 @@ namespace tusdotnet.Adapters
                 writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
                 {
                     Body = context.Request.Body,
-#if NETCOREAPP3_0
+#if pipelines
                     BodyReader = context.Request.BodyReader,
 #endif
                     Method = context.Request.Method,
