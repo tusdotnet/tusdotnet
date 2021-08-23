@@ -53,6 +53,8 @@ namespace tusdotnet.Extensions
             {
                 await stream.WriteAsync(segment);
             }
+
+            await stream.FlushAsync();
         }
 
 #endif
