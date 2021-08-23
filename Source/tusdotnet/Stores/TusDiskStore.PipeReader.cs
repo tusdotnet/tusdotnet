@@ -43,7 +43,7 @@ namespace tusdotnet.Stores
 
                     AssertNotToMuchData(fileSizeOnDisk, result.Buffer.Length, fileUploadLengthProvidedDuringCreate);
 
-                    if (result.Buffer.Length > _maxWriteBufferSize)
+                    if (result.Buffer.Length >= _maxWriteBufferSize)
                     {
                         await diskFileStream.FlushToDisk(result.Buffer);
 
