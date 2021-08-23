@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+#if pipelines
+using System.IO.Pipelines;
+#endif
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -298,6 +301,155 @@ namespace tusdotnet.test.Tests
 
             return expectedFileSizeRightNow;
         }
+
+#if pipelines
+
+        [Fact]
+        public async Task AppendDataAsync_With_PipeReader_Supports_Cancellation()
+        {
+            var cancellationToken = new CancellationTokenSource();
+
+            // Test cancellation.
+
+            // 5 MB
+            const int fileSize = 5 * 1024 * 1024;
+            var fileId = await _fixture.Store.CreateFileAsync(fileSize, null, cancellationToken.Token);
+
+            var pipeReader = PipeReader.Create(new SlowMemoryStream(new byte[fileSize]));
+
+            var appendTask = _fixture.Store
+                .AppendDataAsync(fileId, pipeReader, cancellationToken.Token);
+
+            await Task.Delay(150, CancellationToken.None);
+
+            cancellationToken.Cancel();
+
+            long bytesWritten = -1;
+
+            try
+            {
+                bytesWritten = await appendTask;
+                // Should have written something but should not have completed.
+                bytesWritten.ShouldBeInRange(1, 10240000);
+            }
+            catch (TaskCanceledException)
+            {
+                // The Owin test server throws this exception instead of just disconnecting the client.
+                // If this happens just ignore the error and verify that the file has been written properly below.
+            }
+
+            var fileOffset = await _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None);
+            if (bytesWritten != -1)
+            {
+                fileOffset.ShouldBe(bytesWritten);
+            }
+            else
+            {
+                fileOffset.ShouldBeInRange(1, 10240000);
+            }
+
+            var fileOnDiskSize = new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;
+            fileOnDiskSize.ShouldBe(fileOffset);
+        }
+
+        [Fact]
+        public async Task AppendDataAsync_With_PipeReader_Throws_Exception_If_More_Data_Than_Upload_Length_Is_Provided()
+        {
+            // Test that it does not allow more than upload length to be written.
+
+            var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
+
+            var storeException = await Should.ThrowAsync<TusStoreException>(
+                async () => await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(new byte[101])), CancellationToken.None));
+
+            storeException.Message.ShouldBe("Request contains more data than the file's upload length. Request data: 101, upload length: 100.");
+        }
+
+        [Fact]
+        public async Task AppendDataAsync_With_PipeReader_Returns_Zero_If_File_Is_Already_Complete()
+        {
+            var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
+            var length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(_fixture.CreateByteArrayWithRandomData(100))), CancellationToken.None);
+            length.ShouldBe(100);
+
+            length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(_fixture.CreateByteArrayWithRandomData(1))), CancellationToken.None);
+            length.ShouldBe(0);
+        }
+
+        [Theory]
+        [InlineData(411, 4382, 2)] // Note: PipeReader is by default using 4096 as read buffer i.e. everything below 4096 will be written at once.
+        [InlineData(51200, 2621800, 50)] // Note: 50 as each read from the PipeReader returns 4096 thus giving us 13 reads per write i.e. 53248 bytes written per write.
+        [InlineData(2621800, 2621800, 1)]
+        [InlineData(102400, 307201, 4)]
+        [InlineData(8192, 16384, 2)]
+        [InlineData(41943040, 209715200, 5)]
+        [InlineData(52428800, 157286405, 4)]
+        public async Task AppendDataAsync_With_PipeReader_Uses_The_Write_Buffer_Correctly(int writeBufferSize, int fileSize, int expectedNumberOfWrites)
+        {
+            // Default value for pipe reader
+            const int READ_BUFFER_SIZE = 4096;
+
+            int numberOfReadsPerWrite = (int)Math.Ceiling((double)writeBufferSize / READ_BUFFER_SIZE);
+
+            // Note: Read buffer size is set in the pipe reader and not in the disk store so just use the TusDiskBufferSize that only sets the write buffer size.
+            var store = new TusDiskStore(_fixture.Path, false, new TusDiskBufferSize(writeBufferSize));
+
+            var totalNumberOfWrites = 0;
+            var totalNumberOfReads = 0;
+            var numberOfReadsSinceLastWrite = 0;
+            int totalBytesWritten = 0;
+
+            var fileId = await store.CreateFileAsync(fileSize, null, CancellationToken.None);
+
+            var requestStream = new RequestStreamFake(async (RequestStreamFake stream,
+                                                        byte[] bufferToFill,
+                                                        int offset,
+                                                        int count,
+                                                        CancellationToken cancellationToken)
+                                                        =>
+            {
+                var bytesReadFromStream = await stream.ReadBackingStreamAsync(bufferToFill, offset, count, cancellationToken);
+
+                // There should have been a write after the previous read.
+                if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
+                {
+                    // Calculate the amount of data that should have been written to disk so far.
+                    var expectedFileSizeRightNow = (totalNumberOfReads - 1) * READ_BUFFER_SIZE; //CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
+
+                    // Assert that the size on disk is correct.
+                    GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
+
+                    totalNumberOfWrites++;
+
+                    // Set to one as the write happened on the previous write, making this the second read since that write.
+                    numberOfReadsSinceLastWrite = 1;
+                }
+
+                numberOfReadsSinceLastWrite++;
+                totalNumberOfReads++;
+
+                totalBytesWritten += bytesReadFromStream;
+
+                return bytesReadFromStream;
+            }, new byte[fileSize]);
+
+            var pipeReader = PipeReader.Create(requestStream);
+
+            await store.AppendDataAsync(fileId, pipeReader, CancellationToken.None);
+
+            GetLengthFromFileOnDisk().ShouldBe(fileSize);
+
+            totalNumberOfWrites++;
+
+            Assert.Equal(expectedNumberOfWrites, totalNumberOfWrites);
+
+            long GetLengthFromFileOnDisk()
+            {
+                return new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;
+            }
+        }
+
+#endif
 
         [Fact]
         public async Task GetFileAsync_Returns_File_If_The_File_Exist()
