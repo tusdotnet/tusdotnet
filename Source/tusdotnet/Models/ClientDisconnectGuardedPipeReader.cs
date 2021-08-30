@@ -5,6 +5,7 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Models
 {
@@ -22,12 +23,12 @@ namespace tusdotnet.Models
 
         public override void AdvanceTo(SequencePosition consumed)
         {
-            ClientDisconnectGuard(() => _backingReader.AdvanceTo(consumed));
+            ClientDisconnectGuard.Execute(() => _backingReader.AdvanceTo(consumed), _cancellationToken);
         }
 
         public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
         {
-            ClientDisconnectGuard(() => _backingReader.AdvanceTo(consumed, examined));
+            ClientDisconnectGuard.Execute(() => _backingReader.AdvanceTo(consumed, examined), _cancellationToken);
         }
 
         public override void CancelPendingRead()
@@ -37,7 +38,7 @@ namespace tusdotnet.Models
 
         public override void Complete(Exception exception = null)
         {
-            ClientDisconnectGuard(() => _backingReader.Complete(exception));
+            ClientDisconnectGuard.Execute(() => _backingReader.Complete(exception), _cancellationToken);
         }
 
         public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
@@ -46,7 +47,7 @@ namespace tusdotnet.Models
             {
                 return await _backingReader.ReadAsync(_cancellationToken);
             }
-            catch (Exception) when (_cancellationToken.IsCancellationRequested)
+            catch (Exception exc) when (ClientDisconnectGuard.ClientDisconnected(exc, cancellationToken))
             {
                 return new ReadResult(_emptySequence, isCanceled: true, isCompleted: false);
             }
@@ -55,18 +56,6 @@ namespace tusdotnet.Models
         public override bool TryRead(out ReadResult result)
         {
             throw new NotImplementedException();
-        }
-
-        private void ClientDisconnectGuard(Action guardClause)
-        {
-            try
-            {
-                guardClause();
-            }
-            catch (Exception) when (_cancellationToken.IsCancellationRequested)
-            {
-                // Do nothing
-            }
         }
     }
 }
