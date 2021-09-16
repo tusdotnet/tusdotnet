@@ -30,7 +30,7 @@ namespace tusdotnet.Helpers
         }
 
         /// <summary>
-        /// Execute the provided func and return true if the client disconnected during the call to func.
+        /// Execute the provided action and return true if the client disconnected during the call to action.
         /// </summary>
         /// <param name="guardFromClientDisconnect">The action to execute</param>
         /// <param name="requestCancellationToken">The cancellation token of the request to monitor for disconnects</param>
