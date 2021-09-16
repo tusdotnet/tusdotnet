@@ -29,6 +29,25 @@ namespace tusdotnet.Helpers
             }
         }
 
+        /// <summary>
+        /// Execute the provided action and return true if the client disconnected during the call to action.
+        /// </summary>
+        /// <param name="guardFromClientDisconnect">The action to execute</param>
+        /// <param name="requestCancellationToken">The cancellation token of the request to monitor for disconnects</param>
+        /// <returns>True if the client disconnected, otherwise false</returns>
+        public static bool Execute(Action guardFromClientDisconnect, CancellationToken requestCancellationToken)
+        {
+            try
+            {
+                guardFromClientDisconnect();
+                return false;
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, requestCancellationToken))
+            {
+                return true;
+            }
+        }
+
         internal static async Task<ClientDisconnectGuardReadStreamAsyncResult> ReadStreamAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             try
@@ -42,7 +61,13 @@ namespace tusdotnet.Helpers
             }
         }
 
-        private static bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
+        /// <summary>
+        /// Returns true if the client disconnected, otherwise false.
+        /// </summary>
+        /// <param name="exception">The exception retrieved from the operation that might have been caused by a client disconnect</param>
+        /// <param name="cancellationToken">The client's request cancellation token</param>
+        /// <returns>True if the client disconnected, otherwise false</returns>
+        internal static bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
             {

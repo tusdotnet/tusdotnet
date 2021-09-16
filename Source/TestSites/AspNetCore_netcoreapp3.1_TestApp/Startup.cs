@@ -101,6 +101,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 UrlPath = "/files",
                 Store = new TusDiskStore(@"C:\tusfiles\"),
                 MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
+                UsePipelinesIfAvailable = true,
                 Events = new Events
                 {
                     OnAuthorizeAsync = ctx =>

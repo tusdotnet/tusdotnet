@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,6 +25,18 @@ namespace tusdotnet.test.Helpers
         {
             return _onReadAsync(this, buffer, offset, count, cancellationToken);
         }
+
+#if pipelines
+
+        // Method use by PipeReader when the store implements ITusPipelinesStore.
+        public override async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
+        {
+            var size = await _onReadAsync(this, destination.ToArray(), 0, destination.Length, cancellationToken);
+
+            return size;
+        }
+
+#endif
 
         public Task<int> ReadBackingStreamAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {

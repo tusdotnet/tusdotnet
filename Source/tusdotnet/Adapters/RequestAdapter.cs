@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using tusdotnet.Constants;
+#if pipelines
+using System.IO.Pipelines;
+#endif
 
 namespace tusdotnet.Adapters
 {
@@ -15,6 +18,10 @@ namespace tusdotnet.Adapters
         public Uri RequestUri { get; set; }
 
         public Stream Body { get; set; }
+
+#if pipelines
+        public PipeReader BodyReader { get; set; }
+#endif
 
         public Dictionary<string, List<string>> Headers { get; set; }
 

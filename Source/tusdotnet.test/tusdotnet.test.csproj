@@ -74,7 +74,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">
-    <DefineConstants>$(DefineConstants);netstandard;trailingheaders</DefineConstants>
+    <DefineConstants>$(DefineConstants);netstandard;trailingheaders;pipelines</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">

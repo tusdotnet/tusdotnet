@@ -17,8 +17,11 @@ namespace tusdotnet.Stores
     /// <summary>
     /// The built in data store that save files on disk.
     /// </summary>
-    public class TusDiskStore :
+    public partial class TusDiskStore :
         ITusStore,
+#if pipelines
+        ITusPipelineStore,
+#endif
         ITusCreationStore,
         ITusReadableStore,
         ITusTerminationStore,
@@ -92,86 +95,6 @@ namespace tusdotnet.Stores
             _maxReadBufferSize = bufferSize.ReadBufferSizeInBytes;
 
             _fileIdProvider = fileIdProvider;
-        }
-
-        /// <inheritdoc />
-        public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
-        {
-            var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
-
-            var httpReadBuffer = _bufferPool.Rent(_maxReadBufferSize);
-            var fileWriteBuffer = _bufferPool.Rent(Math.Max(_maxWriteBufferSize, _maxReadBufferSize));
-
-            try
-            {
-                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken);
-                using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
-
-                var totalDiskFileLength = diskFileStream.Length;
-                if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
-                {
-                    return 0;
-                }
-
-                var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
-
-                int numberOfbytesReadFromClient;
-                var bytesWrittenThisRequest = 0L;
-                var clientDisconnectedDuringRead = false;
-                var writeBufferNextFreeIndex = 0;
-
-                do
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    numberOfbytesReadFromClient = await stream.ReadAsync(httpReadBuffer, 0, _maxReadBufferSize, cancellationToken);
-                    clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
-
-                    totalDiskFileLength += numberOfbytesReadFromClient;
-
-                    if (totalDiskFileLength > fileUploadLengthProvidedDuringCreate)
-                    {
-                        throw new TusStoreException($"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength}, upload length: {fileUploadLengthProvidedDuringCreate}.");
-                    }
-
-                    // Can we fit the read data into the write buffer? If not flush it now.
-                    if (writeBufferNextFreeIndex + numberOfbytesReadFromClient > _maxWriteBufferSize)
-                    {
-                        await FlushFileToDisk(fileWriteBuffer, diskFileStream, writeBufferNextFreeIndex);
-                        writeBufferNextFreeIndex = 0;
-                    }
-
-                    Array.Copy(
-                        sourceArray: httpReadBuffer,
-                        sourceIndex: 0,
-                        destinationArray: fileWriteBuffer,
-                        destinationIndex: writeBufferNextFreeIndex,
-                        length: numberOfbytesReadFromClient);
-
-                    writeBufferNextFreeIndex += numberOfbytesReadFromClient;
-                    bytesWrittenThisRequest += numberOfbytesReadFromClient;
-
-                } while (numberOfbytesReadFromClient != 0);
-
-                // Flush the remaining buffer to disk.
-                if (writeBufferNextFreeIndex != 0)
-                    await FlushFileToDisk(fileWriteBuffer, diskFileStream, writeBufferNextFreeIndex);
-
-                if (!clientDisconnectedDuringRead)
-                {
-                    MarkChunkComplete(chunkCompleteFile);
-                }
-
-                return bytesWrittenThisRequest;
-            }
-            finally
-            {
-                _bufferPool.Return(httpReadBuffer);
-                _bufferPool.Return(fileWriteBuffer);
-            }
         }
 
         /// <inheritdoc />
@@ -421,12 +344,6 @@ namespace tusdotnet.Stores
         private void MarkChunkComplete(InternalFileRep chunkComplete)
         {
             chunkComplete.Write("1");
-        }
-
-        private static async Task FlushFileToDisk(byte[] fileWriteBuffer, FileStream fileStream, int writeBufferNextFreeIndex)
-        {
-            await fileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex);
-            await fileStream.FlushAsync();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -9,9 +10,13 @@ namespace tusdotnet.performance
 {
     public static class Program
     {
-        private const int NUMBER_OF_CLIENTS = 10;
-        private const int NUMBER_OF_FILES_TO_UPLOAD = 100;
-        private const string SERVER_URL = "https://localhost:5007";
+        private const int NUMBER_OF_TEST_RUNS = 1;
+        private const int NUMBER_OF_CLIENTS = 50;
+        private const int NUMBER_OF_FILES_TO_UPLOAD = 20;
+        private const int TEST_FILE_SIZE_IN_BYTES = 10 * 1024 * 1024;
+        private const string DISK_STORE_PATH_TO_CLEAN_AFTER_EACH_RUN = @"C:\tusfiles";
+        private const string SERVER_URL = "https://localhost:5001";
+
         private static readonly Random _random = new Random();
 
         public static async Task Main()
@@ -22,16 +27,36 @@ namespace tusdotnet.performance
             Console.WriteLine("NOTE: This app will not output anything until completed to not impact performance. See log from server for trace.");
             Console.WriteLine();
 
-            var clients = new List<Task>(NUMBER_OF_CLIENTS);
-            for (int i = 0; i < NUMBER_OF_CLIENTS; i++)
+            for (int testRunIndex = 0; testRunIndex < NUMBER_OF_TEST_RUNS; testRunIndex++)
             {
-                clients.Add(Task.Run(RunPerfTest));
-            }
+                Console.WriteLine($"Starting test run {testRunIndex + 1}");
+                var clients = new List<Task>(NUMBER_OF_CLIENTS);
+                for (int clientIndex = 0; clientIndex < NUMBER_OF_CLIENTS; clientIndex++)
+                {
+                    clients.Add(Task.Run(RunPerfTest));
+                }
 
-            await Task.WhenAll(clients).ConfigureAwait(false);
+                var sw = Stopwatch.StartNew();
+
+                await Task.WhenAll(clients).ConfigureAwait(false);
+
+                sw.Stop();
+
+                Console.WriteLine($"Time taken for run {testRunIndex + 1}: {sw.ElapsedMilliseconds} ms");
+
+                Cleanup();
+            }
 
             Console.WriteLine("Test completed. Press any key to exit.");
             Console.ReadKey(true);
+        }
+
+        private static void Cleanup()
+        {
+            foreach (var fileName in System.IO.Directory.EnumerateFiles(DISK_STORE_PATH_TO_CLEAN_AFTER_EACH_RUN))
+            {
+                System.IO.File.Delete(fileName);
+            }
         }
 
         private static async Task RunPerfTest()
@@ -41,7 +66,7 @@ namespace tusdotnet.performance
                 BaseAddress = new Uri(SERVER_URL)
             };
 
-            var file = new byte[_random.Next(5000, 50000)];
+            var file = new byte[TEST_FILE_SIZE_IN_BYTES];
             _random.NextBytes(file);
 
             var halfFileSize = (int)Math.Floor((decimal)file.Length / 2);

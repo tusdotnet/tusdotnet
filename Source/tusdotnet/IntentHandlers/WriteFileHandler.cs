@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
@@ -62,14 +63,22 @@ namespace tusdotnet.IntentHandlers
         {
             await WriteUploadLengthIfDefered();
 
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
-            var bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
+#if pipelines
+
+            var writeTuple = await HandlePipelineWrite();
+
+#else
+            var writeTuple = await HandleStreamWrite();
+#endif
+
+            var bytesWritten = writeTuple.Item1;
+            var cancellationToken = writeTuple.Item2;
 
             var expires = _expirationHelper.IsSlidingExpiration
-                ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, CancellationToken)
-                : await _expirationHelper.GetExpirationIfSupported(Request.FileId, CancellationToken);
+                ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, cancellationToken)
+                : await _expirationHelper.GetExpirationIfSupported(Request.FileId, cancellationToken);
 
-            var matchChecksumResult = await _checksumHelper.MatchChecksum(guardedStream.CancellationToken.IsCancellationRequested);
+            var matchChecksumResult = await _checksumHelper.MatchChecksum(cancellationToken.IsCancellationRequested);
 
             if (matchChecksumResult.IsFailure())
             {
@@ -77,7 +86,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            if (guardedStream.CancellationToken.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
@@ -101,6 +110,37 @@ namespace tusdotnet.IntentHandlers
                     await EventHelper.NotifyFileComplete(Context);
                 }
             }
+        }
+
+#if pipelines
+
+        private async Task<Tuple<long, CancellationToken>> HandlePipelineWrite()
+        {
+            long bytesWritten;
+            CancellationToken cancellationToken;
+            if (Context.Configuration.UsePipelinesIfAvailable && Store is ITusPipelineStore pipelineStore)
+            {
+                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(Request.BodyReader, CancellationToken);
+                bytesWritten = await pipelineStore.AppendDataAsync(Request.FileId, guardedPipeReader, CancellationToken);
+                cancellationToken = CancellationToken;
+
+                return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
+            }
+            else
+            {
+                return await HandleStreamWrite();
+            }
+        }
+
+#endif
+
+        private async Task<Tuple<long, CancellationToken>> HandleStreamWrite()
+        {
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
+            var bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
+            var cancellationToken = guardedStream.CancellationToken;
+
+            return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
         }
 
         private Task WriteUploadLengthIfDefered()
