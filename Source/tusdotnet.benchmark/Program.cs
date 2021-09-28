@@ -13,6 +13,7 @@ namespace tusdotnet.benchmark
             //var summary = BenchmarkRunner.Run<NoTusResumableHeader>();
             //var summary = BenchmarkRunner.Run<RequestIsNotForTusEndpoint>();
 
+            //new MetadataParser().TestNewWithTextRead();
             //Test().GetAwaiter().GetResult();
         }
 

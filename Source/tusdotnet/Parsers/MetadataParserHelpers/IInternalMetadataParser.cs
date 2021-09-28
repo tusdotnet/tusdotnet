@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace tusdotnet.Parsers
+namespace tusdotnet.Parsers.MetadataParserHelpers
 {
     internal interface IInternalMetadataParser
     {
