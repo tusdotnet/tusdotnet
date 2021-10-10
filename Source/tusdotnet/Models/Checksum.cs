@@ -1,4 +1,5 @@
 ﻿using System;
+using tusdotnet.Parsers;
 
 namespace tusdotnet.Models
 {
@@ -28,38 +29,10 @@ namespace tusdotnet.Models
 		/// <param name="uploadChecksum">The Upload-Checksum header</param>
 		public Checksum(string uploadChecksum)
 		{
-			var temp = uploadChecksum.Split(' ');
-
-			if (temp.Length != 2)
-			{
-				IsValid = false;
-				return;
-			}
-
-			if (string.IsNullOrWhiteSpace(temp[0]))
-			{
-				IsValid = false;
-				return;
-			}
-
-			var algorithm = temp[0].Trim();
-
-			if (string.IsNullOrWhiteSpace(temp[1]))
-			{
-				IsValid = false;
-				return;
-			}
-
-			try
-			{
-				Hash = Convert.FromBase64String(temp[1]);
-				Algorithm = algorithm;
-				IsValid = true;
-			}
-			catch
-			{
-				IsValid = false;
-			}
+			var result = ChecksumParser.ParseAndValidate(uploadChecksum);
+			IsValid = result.Success;
+			Algorithm = result.Algorithm;
+			Hash = result.Hash;
 		}
 
 		/// <summary>
