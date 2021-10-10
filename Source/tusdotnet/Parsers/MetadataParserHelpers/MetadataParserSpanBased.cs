@@ -61,7 +61,7 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
                 if (!value.IsEmpty)
                 {
                     var validBase64 = false;
-                    (validBase64, decodedValue) = IsBase64String(value);
+                    (validBase64, decodedValue) = value.TryDecodeBase64();
                     if (!validBase64)
                     {
                         return MetadataParserResult.FromError(MetadataParserErrorTexts.InvalidBase64Value(keyString));
@@ -74,14 +74,6 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
             }
 
             return MetadataParserResult.FromResult(result);
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static (bool, byte[]) IsBase64String(ReadOnlySpan<char> value)
-            {
-                var byteLength = (3 * (value.Length / 4)) - value.Count('=');
-                var bytes = new byte[byteLength];
-                return (Convert.TryFromBase64Chars(value, bytes, out var written), bytes);
-            }
         }
     }
 }
