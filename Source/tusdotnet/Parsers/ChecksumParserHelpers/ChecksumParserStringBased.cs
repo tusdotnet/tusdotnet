@@ -1,4 +1,4 @@
-﻿//#if !NETCOREAPP3_1_OR_GREATER
+﻿#if !NETCOREAPP3_1_OR_GREATER
 
 using System;
 
@@ -41,4 +41,4 @@ namespace tusdotnet.Parsers.ChecksumParserHelpers
     }
 }
 
-//#endif
+#endif
