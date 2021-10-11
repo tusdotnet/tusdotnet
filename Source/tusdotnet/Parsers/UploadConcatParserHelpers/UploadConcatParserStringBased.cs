@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if !NETCOREAPP3_1_OR_GREATER
+
+using System;
 using System.Collections.Generic;
 using tusdotnet.Models.Concatenation;
 
@@ -61,3 +63,5 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
         }
     }
 }
+
+#endif
