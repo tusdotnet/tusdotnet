@@ -5,7 +5,7 @@
     <Copyright>Copyright Stefan Matsson 2016</Copyright>
     <AssemblyTitle>tusdotnet</AssemblyTitle>
     <Authors>Stefan Matsson</Authors>
-    <TargetFrameworks><!--net452;--><!--netstandard1.3;netstandard2.0;-->netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net452;netstandard1.3;netstandard2.0;netcoreapp3.1</TargetFrameworks>
     <AssemblyName>tusdotnet</AssemblyName>
     <PackageId>tusdotnet</PackageId>
     <PackageTags>Tus;Tus-Resumable;ResumableFileUploads;FileUpload</PackageTags>
