@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
-//using tusdotnet.benchmark.Benchmarks;
+using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark
 {
@@ -12,6 +12,8 @@ namespace tusdotnet.benchmark
             //var summary = BenchmarkRunner.Run<CreateAndWriteFile>();
             //var summary = BenchmarkRunner.Run<NoTusResumableHeader>();
             //var summary = BenchmarkRunner.Run<RequestIsNotForTusEndpoint>();
+
+            var summary = BenchmarkRunner.Run<EventHelperBenchmark>();
 
             //new MetadataParser().TestNewWithTextRead();
             //Test().GetAwaiter().GetResult();
