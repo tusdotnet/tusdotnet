@@ -4,25 +4,21 @@ using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
-using System.Reflection;
-using System.Collections.Generic;
 
 namespace tusdotnet.Helpers
 {
     internal static class EventHelper
     {
-        private static readonly Lazy<Dictionary<Type, PropertyInfo>> _eventHandlers = new Lazy<Dictionary<Type, PropertyInfo>>(GatherEventHandlers);
-
         internal static async Task<ResultType> Validate<T>(ContextAdapter context, Action<T> configure = null) where T : ValidationContext<T>, new()
         {
-            var handler = GetHandler<T>(context);
+            var handler = GetHandlerFromEvents<T>(context.Configuration.Events);
 
             if (handler == null)
                 return ResultType.ContinueExecution;
 
             var eventContext = EventContext<T>.Create(context, configure);
 
-            await handler.Invoke(eventContext);
+            await handler(eventContext);
 
             if (eventContext.HasFailed)
             {
@@ -41,7 +37,7 @@ namespace tusdotnet.Helpers
 
         internal static async Task Notify<T>(ContextAdapter context, Action<T> configure = null) where T : EventContext<T>, new()
         {
-            var handler = GetHandler<T>(context);
+            var handler = GetHandlerFromEvents<T>(context.Configuration.Events);
 
             if (handler == null)
             {
@@ -50,7 +46,34 @@ namespace tusdotnet.Helpers
 
             var eventContext = EventContext<T>.Create(context, configure);
 
-            await handler.Invoke(eventContext);
+            await handler(eventContext);
+        }
+
+        private static Func<T, Task> GetHandlerFromEvents<T>(Events events) where T : EventContext<T>, new()
+        {
+            if (events == null)
+            {
+                return null;
+            }
+
+            var t = typeof(T);
+
+            if (t == typeof(AuthorizeContext))
+                return (Func<T, Task>)events.OnAuthorizeAsync;
+
+            if (t == typeof(BeforeCreateContext))
+                return (Func<T, Task>)events.OnBeforeCreateAsync;
+
+            if (t == typeof(CreateCompleteContext))
+                return (Func<T, Task>)events.OnCreateCompleteAsync;
+
+            if (t == typeof(BeforeDeleteContext))
+                return (Func<T, Task>)events.OnBeforeDeleteAsync;
+
+            if (t == typeof(DeleteCompleteContext))
+                return (Func<T, Task>)events.OnDeleteCompleteAsync;
+
+            return null;
         }
 
         internal static async Task NotifyFileComplete(ContextAdapter context, Action<FileCompleteContext> configure = null)
@@ -65,7 +88,7 @@ namespace tusdotnet.Helpers
 
             if (context.Configuration.OnUploadCompleteAsync != null)
             {
-                await context.Configuration.OnUploadCompleteAsync.Invoke(eventContext.FileId, eventContext.Store, eventContext.CancellationToken);
+                await context.Configuration.OnUploadCompleteAsync(eventContext.FileId, eventContext.Store, eventContext.CancellationToken);
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
@@ -73,32 +96,6 @@ namespace tusdotnet.Helpers
             {
                 await context.Configuration.Events.OnFileCompleteAsync(eventContext);
             }
-        }
-
-        private static Func<T, Task> GetHandler<T>(ContextAdapter context) where T : EventContext<T>, new()
-        {
-            if (context.Configuration.Events == null)
-            {
-                return null;
-            }
-
-            var handlerProperty = _eventHandlers.Value[typeof(T)];
-
-            var handler = handlerProperty.GetValue(context.Configuration.Events) as Func<T, Task>;
-            return handler;
-        }
-
-        private static Dictionary<Type, PropertyInfo> GatherEventHandlers()
-        {
-            var result = new Dictionary<Type, PropertyInfo>();
-            var properties = typeof(Events).GetProperties();
-            foreach (var item in properties)
-            {
-                var types = item.PropertyType.GenericTypeArguments;
-                result.Add(types[0], item);
-            }
-
-            return result;
         }
     }
 }
