@@ -30,7 +30,7 @@ namespace tusdotnet.Validation.Requirements
             }
         }
 
-        private async Task<bool> UploadLengthIsAlreadyPresent(ContextAdapter context)
+        private static async Task<bool> UploadLengthIsAlreadyPresent(ContextAdapter context)
         {
             var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
             return fileUploadLength != null;
