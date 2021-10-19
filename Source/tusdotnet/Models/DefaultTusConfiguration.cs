@@ -82,6 +82,18 @@ namespace tusdotnet.Models
         public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
 
         /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public DefaultTusConfiguration()
+        {
+#if pipelines && NET6_0_OR_GREATER
+
+            UsePipelinesIfAvailable = true;
+
+#endif
+        }
+
+        /// <summary>
         /// Check that the config is valid. Throws a <exception cref="TusConfigurationException">TusConfigurationException</exception> if the config is invalid.
         /// </summary>
         internal void Validate()
