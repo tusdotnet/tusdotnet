@@ -1,0 +1,30 @@
+﻿<html>
+<head>
+    <link rel="stylesheet" href="index.css" />
+</head>
+
+<body>
+    <form>
+        To test the tus protocol, select a file and click on "Upload" to start the upload, then cancel the upload and start it again to resume the upload where it was aborted. You can also reload the tab or restart your browser :)
+        <br /><br />
+        <a href="https://developers.google.com/web/tools/chrome-devtools/network-performance/network-conditions" target="_blank">Throttle your network</a> to make it easier to follow the requests and responses.
+        <br /><br />
+        <a href="#" onclick="resetLocalCache(event)" title="Once an upload has started the file url is cached in browser. Click here to reset this cache so that all files will be uploaded from scratch.">Click here to reset local file cache to restart uploads from scratch</a>
+
+        <div class="uploadControl">
+            <input type="file" name="droppedFile" id="droppedFile" />
+            <input type="button" id="uploadButton" value="Upload" onclick="uploadFile()" />
+            <input type="button" id="cancelUploadButton" value="Cancel" onclick="cancelUpload()" disabled />
+            <progress value="0" max="100" id="uploadProgress" style="display:none"></progress>
+        </div>
+        <br />
+        <span id="downloadLink"></span>
+
+    </form>
+
+    <script src="tus.min.js"></script>
+    <script src="index.js"></script>
+
+</body>
+
+</html>

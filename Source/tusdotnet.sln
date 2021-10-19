@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28407.52
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31808.319
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{22CCF3EF-66E2-4710-8361-EBF5517A3B56}"
 EndProject
@@ -30,6 +30,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCore_netcoreapp3.1_TestApp", "TestSites\AspNetCore_netcoreapp3.1_TestApp\AspNetCore_netcoreapp3.1_TestApp.csproj", "{9C7B1F58-A750-4BBF-BC76-028EA08574A3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tusdotnet.performance", "tusdotnet.performance\tusdotnet.performance.csproj", "{51AA47AB-05CE-48D9-8825-2F24F737589E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCore_net6.0_TestApp", "TestSites\AspNetCore_net6.0_TestApp\AspNetCore_net6.0_TestApp.csproj", "{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,6 +79,10 @@ Global
 		{51AA47AB-05CE-48D9-8825-2F24F737589E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{51AA47AB-05CE-48D9-8825-2F24F737589E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{51AA47AB-05CE-48D9-8825-2F24F737589E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +99,7 @@ Global
 		{C84046AA-0E32-4F69-95AD-63AD0DD59204} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 		{9C7B1F58-A750-4BBF-BC76-028EA08574A3} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 		{51AA47AB-05CE-48D9-8825-2F24F737589E} = {38F739AF-5933-4416-A148-33C126AB9021}
+		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B8AC21C3-0FBB-4B48-AB05-0523CCBAC8EC}
