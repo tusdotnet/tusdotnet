@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;net452</TargetFrameworks>
+    <TargetFrameworks>net452;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;net6.0</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyName>tusdotnet.test</AssemblyName>
     <PackageId>tusdotnet.test</PackageId>
@@ -53,6 +53,11 @@
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
   </ItemGroup>
 
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="6.0.0-rc.2.21480.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
+  </ItemGroup>
+
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <PackageReference Include="Microsoft.Owin.Testing" Version="4.1.1" />
     <PackageReference Include="Owin" Version="1.0.0" />
@@ -74,6 +79,10 @@
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">
+    <DefineConstants>$(DefineConstants);netstandard;trailingheaders;pipelines</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <DefineConstants>$(DefineConstants);netstandard;trailingheaders;pipelines</DefineConstants>
   </PropertyGroup>
 

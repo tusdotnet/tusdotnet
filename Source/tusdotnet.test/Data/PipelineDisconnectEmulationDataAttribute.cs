@@ -38,12 +38,14 @@ namespace tusdotnet.test.Data
     /// .NET Core 2.2 reverse proxy IIS on ASP.NET Core 2.2 -> CT = true, Exception = System.OperationCanceledException
     /// .NET Core 3.0 reverse proxy IIS on ASP.NET Core 3.0 -> CT = true, Exception = System.OperationCanceledException
     /// .NET Core 3.1 reverse proxy IIS on ASP.NET Core 3.1 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET 6 reverse proxy IIS on ASP.NET Core 6 -> CT = true, Exception = System.OperationCanceledException
     /// .NET Core 1.1 direct Kestrel on ASP.NET Core 1.1 -> CT = false, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
     /// .NET Core 2.0 direct Kestrel on ASP.NET Core 2.0 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException
     /// .NET Core 2.1 direct Kestrel on ASP.NET Core 2.1 -> CT = true, Exception = Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException
     /// .NET Core 2.2 direct Kestrel on ASP.NET Core 2.2 -> CT = true, Exception = System.OperationCanceledException
     /// .NET Core 3.0 direct Kestrel on ASP.NET Core 3.0 -> CT = true, Exception = System.OperationCanceledException
     /// .NET Core 3.1 direct Kestrel on ASP.NET Core 3.1 -> CT = true, Exception = System.OperationCanceledException
+    /// .NET 6 direct Kestrel on ASP.NET Core 6 -> CT = true, Exception = System.IO.IOException
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     internal sealed class PipelineDisconnectEmulationDataAttribute : DataAttribute
@@ -107,16 +109,19 @@ namespace tusdotnet.test.Data
 #elif NETCOREAPP2_1
             const bool properlyCancelsCancellationToken = true;
             var badHttpRequestExceptionCtorParams = new object[] { "", -1, RequestRejectionReason.UnexpectedEndOfRequestContent };
-#elif NETCOREAPP2_2 || NETCOREAPP3_0 || NETCOREAPP3_1
+#elif NETCOREAPP2_2_OR_GREATER && !NET6_0
             const bool properlyCancelsCancellationToken = true;
             var exception = new OperationCanceledException();
+#elif NET6_0
+            const bool properlyCancelsCancellationToken = true;
+            var exception = new System.IO.IOException();
 #else
             const bool properlyCancelsCancellationToken = true;
             var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
 #endif
 
             // NETCOREAPP2_2 and later does not create a BadHttpRequestException when a client disconnects
-#if !NETCOREAPP2_2 && !NETCOREAPP3_0 && !NETCOREAPP3_1
+#if !NETCOREAPP2_2_OR_GREATER
             var ctor = typeof(BadHttpRequestException).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)[0];
             var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);
 #endif
@@ -128,7 +133,7 @@ namespace tusdotnet.test.Data
         {
 #if NETCOREAPP2_1
             var exceptionToThrow = new ConnectionResetException("Test");
-#elif NETCOREAPP2_1 || NETCOREAPP2_2 || NETCOREAPP3_0 || NETCOREAPP3_1
+#elif NETCOREAPP2_1_OR_GREATER
             var exceptionToThrow = new OperationCanceledException();
 #else
             var exceptionToThrow = new IOException("Test", new UvException("Test", -4077));

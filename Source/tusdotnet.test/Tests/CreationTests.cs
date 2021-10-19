@@ -46,7 +46,7 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((_, __) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(0);
@@ -85,7 +85,7 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((_, __) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(0);

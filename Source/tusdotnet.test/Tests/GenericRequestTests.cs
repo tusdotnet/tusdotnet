@@ -41,12 +41,12 @@ namespace tusdotnet.test.Tests
                         OnAuthorizeAsync = ctx =>
                         {
                             _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
+                            return Task.FromResult(true);
                         }
                     }
                 });
 
-                app.Use((ctx, next) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);
@@ -83,10 +83,10 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((ctx, next) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
-                    return Task.FromResult(true);
+                    return Task.FromResult(0);
                 });
             });
 
@@ -135,10 +135,10 @@ namespace tusdotnet.test.Tests
             {
                 app.UseTus(_ => default(DefaultTusConfiguration));
 
-                app.Use((ctx, next) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
-                    return Task.FromResult(true);
+                    return Task.FromResult(0);
                 });
             });
 

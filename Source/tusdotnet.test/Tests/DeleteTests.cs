@@ -6,7 +6,6 @@ using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
-using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
@@ -29,56 +28,54 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Termination(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: false));
 
-                app.Use((context, func) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);
                 });
-            }))
-            {
-                await server
-                    .CreateRequest("/files/testfiledelete")
-                    .AddHeader("Tus-Resumable", "1.0.0")
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
+            });
 
-                AssertForwardCall(true);
-            }
+            await server
+                .CreateRequest("/files/testfiledelete")
+                .AddHeader("Tus-Resumable", "1.0.0")
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            AssertForwardCall(true);
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Ignores_Request_If_Url_Does_Not_Match(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(request => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true));
 
-                app.Use((ctx, next) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);
                 });
-            }))
-            {
-                await server.CreateRequest("/files").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
-                AssertForwardCall(true);
+            });
 
-                await server.CreateRequest("/files/testfiledelete").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
-                AssertForwardCall(false);
+            await server.CreateRequest("/files").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
+            AssertForwardCall(true);
 
-                await server.CreateRequest("/otherfiles/testfiledelete").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
-                AssertForwardCall(true);
-            }
+            await server.CreateRequest("/files/testfiledelete").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
+            AssertForwardCall(false);
+
+            await server.CreateRequest("/otherfiles/testfiledelete").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
+            AssertForwardCall(true);
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
                 var store = Substitute.For<ITusStore, ITusTerminationStore>();
                 store.FileExistAsync("testfiledelete", Arg.Any<CancellationToken>()).Returns(true);
@@ -88,23 +85,22 @@ namespace tusdotnet.test.Tests
                     Store = store,
                     UrlPath = "/files"
                 });
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files/testfiledelete")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainTusResumableHeader();
-            }
+            var response = await server
+                .CreateRequest("/files/testfiledelete")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainTusResumableHeader();
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Delete_The_Same_File(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
                 var random = new Random();
                 var store = Substitute.For<ITusStore, ITusTerminationStore>();
@@ -124,31 +120,30 @@ namespace tusdotnet.test.Tests
                     Store = store,
                     UrlPath = "/files"
                 });
-            }))
+            });
+
+            var task1 = server
+                .CreateRequest("/files/testfiledelete")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+            var task2 = server
+                .CreateRequest("/files/testfiledelete")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            await Task.WhenAll(task1, task2);
+
+            if (task1.Result.StatusCode == HttpStatusCode.NoContent)
             {
-                var task1 = server
-                    .CreateRequest("/files/testfiledelete")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
-                var task2 = server
-                    .CreateRequest("/files/testfiledelete")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
-
-                await Task.WhenAll(task1, task2);
-
-                if (task1.Result.StatusCode == HttpStatusCode.NoContent)
-                {
-                    task1.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                    task2.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-                }
-                else
-                {
-                    task1.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-                    task2.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                }
+                task1.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+            }
+            else
+            {
+                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task2.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             }
         }
 
@@ -174,17 +169,16 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using (var server = TestServerFactory.Create(store, events))
-            {
-                var response = await server
-                    .CreateRequest("/files/testfiledelete")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store, events);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                beforeDeleteCalled.ShouldBeTrue();
-            }
+            var response = await server
+                .CreateRequest("/files/testfiledelete")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            beforeDeleteCalled.ShouldBeTrue();
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -205,16 +199,15 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using (var server = TestServerFactory.Create(store, events))
-            {
-                var response = await server
-                    .CreateRequest("/files/testfiledelete")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store, events);
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Cannot delete file");
-            }
+            var response = await server
+                .CreateRequest("/files/testfiledelete")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Cannot delete file");
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -250,51 +243,48 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using (var server = TestServerFactory.Create(store, events))
-            {
-                var response = await server
-                    .CreateRequest($"/files/{fileId}")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store, events);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                deleteFileAsyncCalled.ShouldBeTrue();
-                callbackFileId.ShouldBe(fileId);
-                callbackStore.ShouldBe(store);
-            }
+            var response = await server
+                .CreateRequest($"/files/{fileId}")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            deleteFileAsyncCalled.ShouldBeTrue();
+            callbackFileId.ShouldBe(fileId);
+            callbackStore.ShouldBe(store);
         }
 
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true))))
-            {
-                var response = await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("DELETE");
+            using var server = TestServerFactory.Create(app => app.UseTus(_ => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true)));
 
-                response.ShouldContainTusResumableHeader();
-                _onAuthorizeWasCalled.ShouldBeTrue();
-                _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.DeleteFile);
-            }
+            var response = await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("DELETE");
+
+            response.ShouldContainTusResumableHeader();
+            _onAuthorizeWasCalled.ShouldBeTrue();
+            _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.DeleteFile);
         }
 
         [Fact]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
-            using (var server = TestServerFactory.Create(GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true).Store, new Events
+            using var server = TestServerFactory.Create(GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true).Store, new Events
             {
                 OnAuthorizeAsync = ctx =>
                 {
                     ctx.FailRequest(HttpStatusCode.Unauthorized);
                     return Task.FromResult(0);
                 }
-            }))
-            {
-                var response = await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("DELETE");
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-                response.ShouldNotContainHeaders("Tus-Resumable", "Content-Type");
-            }
+            var response = await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("DELETE");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+            response.ShouldNotContainHeaders("Tus-Resumable", "Content-Type");
         }
 
         private DefaultTusConfiguration GetConfigForEmptyStoreWithOnAuthorize(bool storeSupportsTermination)
