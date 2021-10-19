@@ -32,8 +32,12 @@ Visual Studio
 Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
 ```csharp
+
 app.UseTus(httpContext => new DefaultTusConfiguration
 {
+    // This method is called on each request so different configurations can be returned per user, domain, path etc.
+    // Return null to disable tusdotnet for the current request.
+
     // c:\tusfiles is where to store files
     Store = new TusDiskStore(@"C:\tusfiles\"),
     // On what url should we listen for uploads?
@@ -43,7 +47,10 @@ app.UseTus(httpContext => new DefaultTusConfiguration
         OnFileCompleteAsync = async eventContext =>
         {
             ITusFile file = await eventContext.GetFileAsync();
-            await DoSomeProcessing(file);
+            Dictionary<string, Metadata> metadata = await file.GetMetadataAsync(ctx.CancellationToken);
+            Stream content = await file.GetContentAsync(ctx.CancellationToken);
+
+            await DoSomeProcessing(content, metadata);
         }
     }
 });
@@ -56,6 +63,8 @@ If you just want to play around with tusdotnet/the tus protocol, clone the repo 
 
 Test sites are available for:
 
+* ASP.NET Core 6 (.NET 6.0)
+* ASP.NET Core 3.1 (.NET Core 3.1)
 * ASP.NET Core 3.1 (.NET Core 3.1)
 * ASP.NET Core 3.0 (.NET Core 3.0)
 * ASP.NET Core 2.2 (.NET Core 2.2)
