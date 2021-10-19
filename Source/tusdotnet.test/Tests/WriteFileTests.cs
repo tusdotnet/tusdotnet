@@ -48,7 +48,7 @@ namespace tusdotnet.test.Tests
                     }
                 });
 
-                app.Use((_, __) =>
+                app.Run(ctx =>
                 {
                     _callForwarded = true;
                     return Task.FromResult(true);

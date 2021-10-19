@@ -28,7 +28,7 @@ namespace tusdotnet.test.Tests
 
             var store = Substitute.For<ITusStore, ITusCreationDeferLengthStore>();
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(app =>
             {
                 app.UseTus(context => new DefaultTusConfiguration
                 {
@@ -36,21 +36,20 @@ namespace tusdotnet.test.Tests
                     Store = store
                 });
 
-                app.Use((context, func) =>
+                app.Run(ctx =>
                 {
                     callForwarded = true;
                     return Task.FromResult(true);
                 });
-            }))
-            {
-                await server.CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .AddHeader("Upload-Defer-Length", "1")
-                    .SendAsync(methodToUse);
+            });
 
-                callForwarded.ShouldBeTrue();
-            }
+            await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
+
+            callForwarded.ShouldBeTrue();
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -61,23 +60,22 @@ namespace tusdotnet.test.Tests
             var creationStore = (ITusCreationStore)store;
             creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .AddHeader("Upload-Defer-Length", "1")
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.ShouldContainTusResumableHeader();
-                response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
+            var response = await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
 
-                var createFileAsyncCall = creationStore.GetSingleMethodCall(nameof(creationStore.CreateFileAsync));
-                createFileAsyncCall.ShouldNotBeNull();
-                var uploadLength = (long)createFileAsyncCall.GetArguments()[0];
-                uploadLength.ShouldBe(-1);
-            }
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldContainTusResumableHeader();
+            response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
+
+            var createFileAsyncCall = creationStore.GetSingleMethodCall(nameof(creationStore.CreateFileAsync));
+            createFileAsyncCall.ShouldNotBeNull();
+            var uploadLength = (long)createFileAsyncCall.GetArguments()[0];
+            uploadLength.ShouldBe(-1);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -93,25 +91,24 @@ namespace tusdotnet.test.Tests
             deferLengthStore.SetUploadLengthAsync(null, 0, CancellationToken.None)
                 .ReturnsForAnyArgs(Task.FromResult(true));
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest("/files/filedeferlength")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .AddHeader("Upload-Offset", "0")
-                    .AddHeader("Upload-Length", "3")
-                    .And(message => message.AddBody())
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            var response = await server.CreateRequest("/files/filedeferlength")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .AddHeader("Upload-Offset", "0")
+                .AddHeader("Upload-Length", "3")
+                .And(message => message.AddBody())
+                .SendAsync(methodToUse);
 
-                var setUploadLengthAsyncCall =
-                    deferLengthStore.GetSingleMethodCall(nameof(deferLengthStore.SetUploadLengthAsync));
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-                setUploadLengthAsyncCall.ShouldNotBeNull();
-                var uploadLength = (long)setUploadLengthAsyncCall.GetArguments()[1];
-                uploadLength.ShouldBe(3);
-            }
+            var setUploadLengthAsyncCall =
+                deferLengthStore.GetSingleMethodCall(nameof(deferLengthStore.SetUploadLengthAsync));
+
+            setUploadLengthAsyncCall.ShouldNotBeNull();
+            var uploadLength = (long)setUploadLengthAsyncCall.GetArguments()[1];
+            uploadLength.ShouldBe(3);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -121,19 +118,18 @@ namespace tusdotnet.test.Tests
 
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                foreach (var deferLength in invalidDeferLengthValues)
-                {
-                    var response = await server.CreateRequest("/files")
-                        .AddTusResumableHeader()
-                        .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                        .AddHeader("Upload-Defer-Length", deferLength)
-                        .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                    await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                        "Header Upload-Defer-Length must have the value '1' or be omitted");
-                }
+            foreach (var deferLength in invalidDeferLengthValues)
+            {
+                var response = await server.CreateRequest("/files")
+                    .AddTusResumableHeader()
+                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                    .AddHeader("Upload-Defer-Length", deferLength)
+                    .SendAsync(methodToUse);
+
+                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
+                    "Header Upload-Defer-Length must have the value '1' or be omitted");
             }
         }
 
@@ -142,18 +138,17 @@ namespace tusdotnet.test.Tests
         {
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Defer-Length", "1")
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                    "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request");
-            }
+            var response = await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Length", "1")
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
+                "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request");
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -164,24 +159,23 @@ namespace tusdotnet.test.Tests
             var creationStore = (ITusCreationStore)store;
             creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .AddHeader("Upload-Defer-Length", "1")
-                    .AddHeader("Upload-Concat", "partial")
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.ShouldContainTusResumableHeader();
-                response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
+            var response = await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .AddHeader("Upload-Concat", "partial")
+                .SendAsync(methodToUse);
 
-                var createFileAsyncCall = creationStore.GetSingleMethodCall(nameof(creationStore.CreateFileAsync));
-                createFileAsyncCall.ShouldNotBeNull();
-                var uploadLength = (long)createFileAsyncCall.GetArguments()[0];
-                uploadLength.ShouldBe(-1);
-            }
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldContainTusResumableHeader();
+            response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
+
+            var createFileAsyncCall = creationStore.GetSingleMethodCall(nameof(creationStore.CreateFileAsync));
+            createFileAsyncCall.ShouldNotBeNull();
+            var uploadLength = (long)createFileAsyncCall.GetArguments()[0];
+            uploadLength.ShouldBe(-1);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -191,18 +185,17 @@ namespace tusdotnet.test.Tests
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs((long?)null);
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server
-                    .CreateRequest($"/files/{Guid.NewGuid()}")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("HEAD", methodToUse)
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.OK);
-                response.ShouldContainHeader("Upload-Defer-Length", "1");
-                response.Headers.Contains("Upload-Length").ShouldBeFalse();
-            }
+            var response = await server
+                .CreateRequest($"/files/{Guid.NewGuid()}")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("HEAD", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            response.ShouldContainHeader("Upload-Defer-Length", "1");
+            response.Headers.Contains("Upload-Length").ShouldBeFalse();
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -213,18 +206,17 @@ namespace tusdotnet.test.Tests
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs((long?)null);
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest($"/files{Guid.NewGuid()}")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", "0")
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .And(m => m.AddBody())
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                    "Header Upload-Length must be specified as this file was created using Upload-Defer-Length");
-            }
+            var response = await server.CreateRequest($"/files{Guid.NewGuid()}")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Offset", "0")
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .And(m => m.AddBody())
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
+                "Header Upload-Length must be specified as this file was created using Upload-Defer-Length");
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -234,18 +226,17 @@ namespace tusdotnet.test.Tests
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs(100);
 
-            using (var server = TestServerFactory.Create(store))
-            {
-                var response = await server.CreateRequest($"/files/{Guid.NewGuid()}")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "10")
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .And(m => m.AddBody())
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store);
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                    "Upload-Length cannot be updated once set");
-            }
+            var response = await server.CreateRequest($"/files/{Guid.NewGuid()}")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "10")
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .And(m => m.AddBody())
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
+                "Upload-Length cannot be updated once set");
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -266,17 +257,16 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using (var server = TestServerFactory.Create(store, events))
-            {
-                var response = await server.CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .AddHeader("Upload-Defer-Length", "1")
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store, events);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                uploadIsDeferred.ShouldBeTrue();
-            }
+            var response = await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            uploadIsDeferred.ShouldBeTrue();
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -297,17 +287,16 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using (var server = TestServerFactory.Create(store, events))
-            {
-                var response = await server.CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .AddHeader("Upload-Defer-Length", "1")
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(store, events);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                uploadIsDeferred.ShouldBeTrue();
-            }
+            var response = await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            uploadIsDeferred.ShouldBeTrue();
         }
     }
 }

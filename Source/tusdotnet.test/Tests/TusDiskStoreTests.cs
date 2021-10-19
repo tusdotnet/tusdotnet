@@ -207,10 +207,10 @@ namespace tusdotnet.test.Tests
         public async Task AppendDataAsync_Returns_Zero_If_File_Is_Already_Complete()
         {
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
-            var length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(_fixture.CreateByteArrayWithRandomData(100)), CancellationToken.None);
+            var length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(100)), CancellationToken.None);
             length.ShouldBe(100);
 
-            length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(_fixture.CreateByteArrayWithRandomData(1)), CancellationToken.None);
+            length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(1)), CancellationToken.None);
             length.ShouldBe(0);
         }
 
@@ -249,7 +249,7 @@ namespace tusdotnet.test.Tests
                 if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
                 {
                     // Calculate the amount of data that should have been written to disk so far.
-                    var expectedFileSizeRightNow = CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
+                    var expectedFileSizeRightNow = TusDiskStoreTests.CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
 
                     // Assert that the size on disk is correct.
                     GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
@@ -284,7 +284,7 @@ namespace tusdotnet.test.Tests
             }
         }
 
-        private long CalculateExpectedFileSize(int totalNumberOfReads, int readBufferSize, int writeBufferSize)
+        private static long CalculateExpectedFileSize(int totalNumberOfReads, int readBufferSize, int writeBufferSize)
         {
             var expectedFileSizeRightNow = 0;
             var writeBufferPosition = 0;
@@ -369,10 +369,10 @@ namespace tusdotnet.test.Tests
         public async Task AppendDataAsync_With_PipeReader_Returns_Zero_If_File_Is_Already_Complete()
         {
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
-            var length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(_fixture.CreateByteArrayWithRandomData(100))), CancellationToken.None);
+            var length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(100))), CancellationToken.None);
             length.ShouldBe(100);
 
-            length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(_fixture.CreateByteArrayWithRandomData(1))), CancellationToken.None);
+            length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(1))), CancellationToken.None);
             length.ShouldBe(0);
         }
 
@@ -1051,11 +1051,12 @@ namespace tusdotnet.test.Tests
         public void Dispose()
         {
             _fixture.ClearPath();
+            GC.SuppressFinalize(this);
         }
     }
 
     // ReSharper disable once ClassNeverInstantiated.Global - Instantiated by xUnit.
-    public class TusDiskStoreFixture : IDisposable
+    public sealed class TusDiskStoreFixture : IDisposable
     {
         public string Path { get; }
         public TusDiskStore Store { get; private set; }
@@ -1087,7 +1088,7 @@ namespace tusdotnet.test.Tests
             Directory.CreateDirectory(Path);
         }
 
-        public byte[] CreateByteArrayWithRandomData(int size)
+        public static byte[] CreateByteArrayWithRandomData(int size)
         {
             var bytes = new byte[size];
 
