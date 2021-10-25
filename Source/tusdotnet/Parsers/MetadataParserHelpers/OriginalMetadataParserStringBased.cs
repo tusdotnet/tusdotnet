@@ -5,13 +5,13 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Parsers.MetadataParserHelpers
 {
-    internal class OriginalMetadataParser : IInternalMetadataParser
+    internal class OriginalMetadataParserStringBased : IInternalMetadataParser
     {
-        internal static OriginalMetadataParser Instance { get; } = new OriginalMetadataParser();
+        internal static OriginalMetadataParserStringBased Instance { get; } = new OriginalMetadataParserStringBased();
 
         private const string EMPTY_HEADER_RESULT = $"Header {HeaderConstants.UploadMetadata} must consist of one or more comma-separated key-value pairs";
 
-        private OriginalMetadataParser()
+        private OriginalMetadataParserStringBased()
         {
         }
 

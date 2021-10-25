@@ -27,7 +27,7 @@ namespace tusdotnet.Parsers
         {
             Success = success;
             ErrorMessage = errorMessage;
-            Metadata = metadata ?? new Dictionary<string, Metadata>();
+            Metadata = metadata;
         }
 
         internal static MetadataParserResult FromError(string errorMessage)
