@@ -7,7 +7,7 @@ $coverletActualOutput = "$PSScriptRoot\" + "coverage.{framework}.xml".Replace("{
 Write-Host $coverletWantedOutput;
 Write-Host $coverletActualOutput;
 If (Test-Path $coverletActualOutput) {
-	Remove-Item $output -Force
+	Remove-Item $coverletActualOutput -Force
 }
 
 dotnet test -f $framework /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=$coverletWantedOutput /p:Exclude="[xunit.*]*" ../source/tusdotnet.sln
