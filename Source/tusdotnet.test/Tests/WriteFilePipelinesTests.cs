@@ -248,19 +248,22 @@ namespace tusdotnet.test.Tests
 
             var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
 
-            var requestStream = Substitute.For<Stream>();
-            requestStream.ReadAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-                .ThrowsForAnyArgs(_ =>
+            var bodyReader = Substitute.For<PipeReader>();
+            bodyReader.ReadAsync().ThrowsForAnyArgs(_ =>
+            {
+                if (pipelineDetails.FlagsCancellationTokenAsCancelled)
                 {
-                    if (pipelineDetails.FlagsCancellationTokenAsCancelled)
-                    {
-                        cts.Cancel();
-                    }
-                    throw pipelineDetails.ExceptionThatIsThrown;
-                });
+                    cts.Cancel();
+                }
+                throw pipelineDetails.ExceptionThatIsThrown;
+            });
 
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                .ReturnsForAnyArgs<Task<long>>(async callInfo => await callInfo.Arg<Stream>().ReadAsync(null, 0, 0, callInfo.Arg<CancellationToken>()));
+            store.AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
+                .ReturnsForAnyArgs<Task<long>>(async callInfo =>
+                {
+                    await callInfo.Arg<PipeReader>().ReadAsync(callInfo.Arg<CancellationToken>());
+                    return -1L; // Won't reach here so just return something.
+                });
 
             var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var responseStatus = HttpStatusCode.OK;
@@ -277,7 +280,8 @@ namespace tusdotnet.test.Tests
                 Configuration = new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
-                    Store = store
+                    Store = store,
+                    UsePipelinesIfAvailable = true
                 },
                 Request = new RequestAdapter("/files")
                 {
@@ -288,7 +292,7 @@ namespace tusdotnet.test.Tests
                         {"Upload-Offset", new List<string>(1) {"5"}}
                     },
                     Method = "PATCH",
-                    Body = requestStream,
+                    BodyReader = bodyReader,
                     RequestUri = new Uri("https://localhost:8080/files/testfile")
                 },
                 Response = response
