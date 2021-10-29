@@ -102,10 +102,14 @@ namespace tusdotnet.Models
             return result.ErrorMessage;
         }
 
+#if !NETCOREAPP3_1_OR_GREATER
+
         internal static Metadata FromEmptyValue()
         {
             return new Metadata(decodedValue: null);
         }
+
+#endif
 
         internal static Metadata FromBytes(byte[] decodedValue)
         {

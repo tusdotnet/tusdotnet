@@ -73,7 +73,7 @@ namespace tusdotnet.test.Tests
             var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
 
             // Empty configuration
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration)))
+            using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
             }
@@ -81,7 +81,7 @@ namespace tusdotnet.test.Tests
             // Configuration with only Store specified
             tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration)))
+            using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
             }
@@ -90,7 +90,7 @@ namespace tusdotnet.test.Tests
             tusConfiguration = Substitute.For<DefaultTusConfiguration>();
             tusConfiguration.UrlPath.Returns("/files");
             tusConfiguration.Store.Returns((ITusStore)null);
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration)))
+            using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
             }
@@ -140,7 +140,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task File_Lock_Provider_Is_Called_If_A_Lock_Is_Required()
         {
-            var lockProvider = new FileLockProviderForTest();
+            var lockProvider = new FileLockProviderForConfigurationTests();
             var tusConfiguration = new DefaultTusConfiguration
             {
                 UrlPath = "/files",
@@ -148,7 +148,7 @@ namespace tusdotnet.test.Tests
                 FileLockProvider = lockProvider
             };
 
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => tusConfiguration));
+            using var server = TestServerFactory.Create(tusConfiguration);
 
             const string urlPath = "/files/";
             var fileIdUrl = urlPath + Guid.NewGuid();
@@ -166,7 +166,7 @@ namespace tusdotnet.test.Tests
             lockProvider.ReleaseCount.ShouldBe(2);
         }
 
-        private class FileLockProviderForTest : ITusFileLockProvider
+        private class FileLockProviderForConfigurationTests : ITusFileLockProvider
         {
             public int LockCount { get; set; }
 
@@ -174,15 +174,15 @@ namespace tusdotnet.test.Tests
 
             public Task<ITusFileLock> AquireLock(string fileId)
             {
-                return Task.FromResult<ITusFileLock>(new FileLockForTest(this));
+                return Task.FromResult<ITusFileLock>(new FileLockForConfigurationTests(this));
             }
         }
 
-        private class FileLockForTest : ITusFileLock
+        private class FileLockForConfigurationTests : ITusFileLock
         {
-            private readonly FileLockProviderForTest _provider;
+            private readonly FileLockProviderForConfigurationTests _provider;
 
-            public FileLockForTest(FileLockProviderForTest provider)
+            public FileLockForConfigurationTests(FileLockProviderForConfigurationTests provider)
             {
                 _provider = provider;
             }

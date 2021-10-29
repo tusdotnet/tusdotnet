@@ -1,14 +1,18 @@
-﻿using System;
+﻿#if !NETCOREAPP3_1_OR_GREATER
+
+// We are not using this parser but MetadataParserSpanBased.cs for netcoreapp3.1 and later when MetadataParsingStrategy is AllowEmptyValues.
+
+using System;
 using System.Collections.Generic;
 using tusdotnet.Models;
 
 namespace tusdotnet.Parsers.MetadataParserHelpers
 {
-    internal class AllowEmptyValuesMetadataParser : IInternalMetadataParser
+    internal class AllowEmptyValuesMetadataParserStringBased : IInternalMetadataParser
     {
-        internal static AllowEmptyValuesMetadataParser Instance { get; } = new AllowEmptyValuesMetadataParser();
+        internal static AllowEmptyValuesMetadataParserStringBased Instance { get; } = new AllowEmptyValuesMetadataParserStringBased();
 
-        private AllowEmptyValuesMetadataParser()
+        private AllowEmptyValuesMetadataParserStringBased()
         {
         }
 
@@ -65,3 +69,5 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
         }
     }
 }
+
+#endif

@@ -28,26 +28,39 @@ namespace tusdotnet.Adapters
 #if pipelines
         internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
-            if (!creationContext.Configuration.UsePipelinesIfAvailable)
+            if (creationContext.Configuration.UsePipelinesIfAvailable)
+            {
+                // Check if there is any file content available in the request.
+                bool hasData;
+                try
+                {
+                    System.IO.Pipelines.ReadResult result = await creationContext.Request.BodyReader.ReadAsync();
+                    if (result.Buffer.IsEmpty)
+                    {
+                        hasData = false;
+                    }
+                    else
+                    {
+                        hasData = !result.IsCanceled && result.Buffer.Length > 0;
+                        // Advance to "examined" which will cause the pipe reader to keep the data in its internal buffer.
+                        creationContext.Request.BodyReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
+                    }
+                }
+                catch
+                {
+                    hasData = false;
+                }
+
+                // No need to add the extra byte as the pipe reader already contains the buffered input.
+                return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, null);
+            }
+            else
             {
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
                 var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1) > 0;
 
                 return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
-            }
-            else
-            {
-                // Check if there is any file content available in the request.
-                bool hasData;
-                if (creationContext.Request.BodyReader.TryRead(out var result))
-                {
-                    hasData = !result.IsCanceled && result.Buffer.Length > 0;
-                    creationContext.Request.BodyReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
-                }
-                else hasData = false;
-
-                return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData);
             }
         }
 
@@ -100,7 +113,7 @@ namespace tusdotnet.Adapters
             return GetUploadOffset() ?? (await _context.Configuration.Store.GetUploadOffsetAsync(_fileId, _context.CancellationToken));
         }
 
-        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte? preReadByte = null)
+        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte? preReadByteFromStream)
         {
             _responseHeaders = new Dictionary<string, string>();
             _responseStream = new MemoryStream();
@@ -113,7 +126,7 @@ namespace tusdotnet.Adapters
                 CancellationToken = creationContext.CancellationToken,
                 Configuration = creationContext.Configuration,
                 HttpContext = creationContext.HttpContext,
-                Request = CreateWriteFileRequest(creationContext, fileId, preReadByte),
+                Request = CreateWriteFileRequest(creationContext, fileId, preReadByteFromStream),
                 Response = CreateWriteFileResponse(),
 #if netfull
                 OwinContext = creationContext.OwinContext
@@ -131,35 +144,24 @@ namespace tusdotnet.Adapters
             };
         }
 
-        private RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByte = null)
+        private RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
         {
             var uriBuilder = new UriBuilder(context.Request.RequestUri);
             uriBuilder.Path = uriBuilder.Path + "/" + fileId;
 
-            RequestAdapter writeFileRequest;
-            if (preReadByte.HasValue)
+            var writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
             {
-                writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
-                {
-                    Body = new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByte.Value),
-                    Method = context.Request.Method,
-                    RequestUri = uriBuilder.Uri,
-                    Headers = context.Request.Headers
-                };
-            }
-            else
-            {
-                writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
-                {
-                    Body = context.Request.Body,
+                Method = context.Request.Method,
+                RequestUri = uriBuilder.Uri,
+                Headers = context.Request.Headers,
+                Body = preReadByteFromStream.HasValue
+                    ? new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByteFromStream.Value)
+                    : context.Request.Body
+            };
+
 #if pipelines
-                    BodyReader = context.Request.BodyReader,
+            writeFileRequest.BodyReader = context.Request.BodyReader;
 #endif
-                    Method = context.Request.Method,
-                    RequestUri = uriBuilder.Uri,
-                    Headers = context.Request.Headers
-                };
-            }
 
             writeFileRequest.Headers[HeaderConstants.UploadOffset] = new List<string>(1) { "0" };
             writeFileRequest.Headers.Remove(HeaderConstants.UploadLength);

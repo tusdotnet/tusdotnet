@@ -34,14 +34,16 @@ namespace tusdotnet.Parsers
 
 #if NETCOREAPP3_1_OR_GREATER
 
-            if (strategy == MetadataParsingStrategy.AllowEmptyValues)
-            {
-                return MetadataParserSpanBased.ParseAndValidate(uploadMetadataHeaderValue);
-            }
+            return strategy == MetadataParsingStrategy.AllowEmptyValues
+                ? MetadataParserSpanBased.ParseAndValidate(uploadMetadataHeaderValue)
+                : MetadataParserStringBased.ParseAndValidate(OriginalMetadataParserStringBased.Instance, uploadMetadataHeaderValue);
+
+#else 
+
+            var parser = (IInternalMetadataParser)(strategy == MetadataParsingStrategy.Original ? OriginalMetadataParserStringBased.Instance : AllowEmptyValuesMetadataParserStringBased.Instance);
+            return MetadataParserStringBased.ParseAndValidate(parser, uploadMetadataHeaderValue);
 
 #endif
-
-            return MetadataParserStringBased.ParseAndValidate(strategy, uploadMetadataHeaderValue);
         }
     }
 }

@@ -75,17 +75,10 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_On_Success(string methodToUse)
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore, ITusTerminationStore>();
-                store.FileExistAsync("testfiledelete", Arg.Any<CancellationToken>()).Returns(true);
+            var store = Substitute.For<ITusStore, ITusTerminationStore>();
+            store.FileExistAsync("testfiledelete", Arg.Any<CancellationToken>()).Returns(true);
 
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files"
-                });
-            });
+            using var server = TestServerFactory.Create(store);
 
             var response = await server
                 .CreateRequest("/files/testfiledelete")
@@ -100,27 +93,20 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Delete_The_Same_File(string methodToUse)
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                var random = new Random();
-                var store = Substitute.For<ITusStore, ITusTerminationStore>();
-                var terminationStore = (ITusTerminationStore)store;
-                store.FileExistAsync("testfiledelete", Arg.Any<CancellationToken>()).Returns(true);
-                terminationStore
-                    .DeleteFileAsync("testfiledelete", Arg.Any<CancellationToken>())
-                    .Returns(info =>
-                    {
-                        // Emulate some latency in the request.
-                        Thread.Sleep(random.Next(100, 301));
-                        return Task.FromResult(0);
-                    });
-
-                app.UseTus(request => new DefaultTusConfiguration
+            var random = new Random();
+            var store = Substitute.For<ITusStore, ITusTerminationStore>();
+            var terminationStore = (ITusTerminationStore)store;
+            store.FileExistAsync("testfiledelete", Arg.Any<CancellationToken>()).Returns(true);
+            terminationStore
+                .DeleteFileAsync("testfiledelete", Arg.Any<CancellationToken>())
+                .Returns(info =>
                 {
-                    Store = store,
-                    UrlPath = "/files"
+                    // Emulate some latency in the request.
+                    Thread.Sleep(random.Next(100, 301));
+                    return Task.FromResult(0);
                 });
-            });
+
+            using var server = TestServerFactory.Create(store);
 
             var task1 = server
                 .CreateRequest("/files/testfiledelete")
@@ -260,7 +246,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true)));
+            using var server = TestServerFactory.Create(GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true));
 
             var response = await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("DELETE");
 

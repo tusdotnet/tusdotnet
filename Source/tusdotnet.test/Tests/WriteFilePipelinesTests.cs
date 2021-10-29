@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if pipelines
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -14,16 +16,12 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
-#if netfull
-using Owin;
-#endif
-#if netstandard
+using System.IO.Pipelines;
 using Microsoft.AspNetCore.Builder;
-#endif
 
 namespace tusdotnet.test.Tests
 {
-    public class WriteFileTests
+    public class WriteFilePipelinesTests
     {
         private bool _callForwarded;
         private bool _onAuthorizeWasCalled;
@@ -36,8 +34,9 @@ namespace tusdotnet.test.Tests
             {
                 app.UseTus(_ => new DefaultTusConfiguration
                 {
-                    Store = Substitute.For<ITusStore>(),
+                    Store = Substitute.For<ITusPipelineStore>(),
                     UrlPath = "/files",
+                    UsePipelinesIfAvailable = true,
                     Events = new Events
                     {
                         OnAuthorizeAsync = __ =>
@@ -68,7 +67,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_404_Not_Found_If_File_Was_Not_Found()
         {
-            using var server = TestServerFactory.Create(Substitute.For<ITusStore>());
+            using var server = TestServerFactory.Create(Substitute.For<ITusPipelineStore>(), usePipelinesIfAvailable: true);
             var response = await server
                 .CreateRequest("/files/testfile")
                 .And(m => m.AddBody())
@@ -88,8 +87,8 @@ namespace tusdotnet.test.Tests
         [InlineData("application/json")]
         public async Task Returns_415_Unsupported_Media_Type_If_An_Incorrect_Content_Type_Is_Provided(string contentType)
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile");
-            using var server = TestServerFactory.Create(store);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile");
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var requestBuilder = server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddHeader("Upload-Offset", "0");
@@ -109,9 +108,9 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_For_Missing_Upload_Offset_Header()
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile");
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile");
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddBody()
@@ -128,9 +127,9 @@ namespace tusdotnet.test.Tests
         public async Task Returns_400_Bad_Request_For_Invalid_Upload_Offset_Header(string uploadOffset,
             string expectedServerErrorMessage)
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile");
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile");
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddBody()
@@ -149,9 +148,9 @@ namespace tusdotnet.test.Tests
         [InlineData(100)]
         public async Task Returns_409_Conflict_If_Upload_Offset_Does_Not_Match_File_Offset(int offset)
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 15, uploadOffset: 10);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 15, uploadOffset: 10);
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddHeader("Upload-Offset", offset.ToString())
@@ -165,9 +164,9 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_If_Upload_Is_Already_Complete()
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 10);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 10);
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddHeader("Upload-Offset", "10")
@@ -177,16 +176,17 @@ namespace tusdotnet.test.Tests
             await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Upload is already complete.");
         }
 
+
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_No_Content_On_Success(string methodToUse)
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 0);
+            store.AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>()).Returns(5);
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
-                .AddHeader("Upload-Offset", "5")
+                .AddHeader("Upload-Offset", "0")
                 .AddBody()
                 .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
                 .SendAsync(methodToUse);
@@ -197,10 +197,10 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store.AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>()).Returns(5);
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddHeader("Upload-Offset", "5")
@@ -219,11 +219,11 @@ namespace tusdotnet.test.Tests
             // This test does not work properly using the OWIN TestServer.
             // It will always throw an exception instead of returning the proper error message to the client.
 
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store.AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
                 .Throws(new TusStoreException("Test exception"));
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             var response = await server
                 .CreateTusResumableRequest("/files/testfile")
                 .AddHeader("Upload-Offset", "5")
@@ -245,21 +245,25 @@ namespace tusdotnet.test.Tests
             var pipelineDetails = PipelineDisconnectEmulationDataAttribute.GetInfo(pipeline);
 
             var cts = new CancellationTokenSource();
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
 
-            var requestStream = Substitute.For<Stream>();
-            requestStream.ReadAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-                .ThrowsForAnyArgs(_ =>
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+
+            var bodyReader = Substitute.For<PipeReader>();
+            bodyReader.ReadAsync().ThrowsForAnyArgs(_ =>
+            {
+                if (pipelineDetails.FlagsCancellationTokenAsCancelled)
                 {
-                    if (pipelineDetails.FlagsCancellationTokenAsCancelled)
-                    {
-                        cts.Cancel();
-                    }
-                    throw pipelineDetails.ExceptionThatIsThrown;
-                });
+                    cts.Cancel();
+                }
+                throw pipelineDetails.ExceptionThatIsThrown;
+            });
 
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                .ReturnsForAnyArgs<Task<long>>(async callInfo => await callInfo.Arg<Stream>().ReadAsync(null, 0, 0, callInfo.Arg<CancellationToken>()));
+            store.AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
+                .ReturnsForAnyArgs<Task<long>>(async callInfo =>
+                {
+                    await callInfo.Arg<PipeReader>().ReadAsync(callInfo.Arg<CancellationToken>());
+                    return -1L; // Won't reach here so just return something.
+                });
 
             var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var responseStatus = HttpStatusCode.OK;
@@ -276,7 +280,8 @@ namespace tusdotnet.test.Tests
                 Configuration = new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
-                    Store = store
+                    Store = store,
+                    UsePipelinesIfAvailable = true
                 },
                 Request = new RequestAdapter("/files")
                 {
@@ -287,7 +292,7 @@ namespace tusdotnet.test.Tests
                         {"Upload-Offset", new List<string>(1) {"5"}}
                     },
                     Method = "PATCH",
-                    Body = requestStream,
+                    BodyReader = bodyReader,
                     RequestUri = new Uri("https://localhost:8080/files/testfile")
                 },
                 Response = response
@@ -306,9 +311,9 @@ namespace tusdotnet.test.Tests
         {
             var random = new Random();
             var offset = 5;
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: offset);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: offset);
             store
-                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
                 .Returns(_ =>
                 {
                     // Emulate some latency in the request.
@@ -317,7 +322,7 @@ namespace tusdotnet.test.Tests
                     return 3;
                 });
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true);
             // Duplicated code due to: 
             // "System.InvalidOperationException: The request message was already sent. Cannot send the same request message multiple times."
             var task1 = server
@@ -365,54 +370,54 @@ namespace tusdotnet.test.Tests
 
             var firstOffset = 3;
             var secondOffset = 2;
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>()
+                    .WithExistingFile("file1", uploadLength: _ => 6, _ => firstOffset)
+                    .WithExistingFile("file2", uploadLength: _ => 6, _ => secondOffset);
 
-            using var server = TestServerFactory.Create(app =>
+            store.AppendDataAsync("file1", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
+                .Returns(3)
+                .AndDoes(_ => firstOffset += 3);
+
+            store.AppendDataAsync("file2", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
+                .Returns(3)
+                .AndDoes(_ => secondOffset += 3);
+
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 6, _ => firstOffset);
-                store.AppendDataAsync("file1", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(3)
-                    .AndDoes(_ => firstOffset += 3);
-
-                store = store.WithExistingFile("file2", _ => 6, _ => secondOffset);
-                store.AppendDataAsync("file2", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(3)
-                    .AndDoes(_ => secondOffset += 3);
-
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+                Store = store,
+                UrlPath = "/files",
+                UsePipelinesIfAvailable = true,
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (fileId, cbStore, cancellationToken) =>
+                OnUploadCompleteAsync = (fileId, cbStore, cancellationToken) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    // Check that the store provided is the same as the one in the configuration.
+                    cbStore.ShouldBeSameAs(store);
+                    cancellationToken.ShouldNotBe(default);
+
+                    onUploadCompleteCallCounts.TryGetValue(fileId, out int count);
+
+                    count++;
+                    onUploadCompleteCallCounts[fileId] = count;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = ctx =>
                     {
                         // Check that the store provided is the same as the one in the configuration.
-                        cbStore.ShouldBeSameAs(store);
-                        cancellationToken.ShouldNotBe(default);
+                        ctx.Store.ShouldBeSameAs(store);
+                        ctx.CancellationToken.ShouldNotBe(default);
 
-                        onUploadCompleteCallCounts.TryGetValue(fileId, out int count);
+                        onFileCompleteAsyncCallbackCounts.TryGetValue(ctx.FileId, out int count);
 
                         count++;
-                        onUploadCompleteCallCounts[fileId] = count;
+                        onFileCompleteAsyncCallbackCounts[ctx.FileId] = count;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = ctx =>
-                        {
-                            // Check that the store provided is the same as the one in the configuration.
-                            ctx.Store.ShouldBeSameAs(store);
-                            ctx.CancellationToken.ShouldNotBe(default);
-
-                            onFileCompleteAsyncCallbackCounts.TryGetValue(ctx.FileId, out int count);
-
-                            count++;
-                            onFileCompleteAsyncCallbackCounts[ctx.FileId] = count;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
+
             var response1 = await server
                 .CreateTusResumableRequest("/files/file1")
                 .AddHeader("Upload-Offset", "3")
@@ -453,30 +458,28 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
-            using var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 0, _ => 0);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("file1", _ => 0, _ => 0);
 
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
+            {
+                Store = store,
+                UrlPath = "/files",
+                UsePipelinesIfAvailable = true,
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (__, ___, ____) =>
+                OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    onUploadCompleteCallCounts++;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = __ =>
                     {
-                        onUploadCompleteCallCounts++;
+                        onFileCompleteAsyncCallbackCounts++;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = __ =>
-                        {
-                            onFileCompleteAsyncCallbackCounts++;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
 
             var response = await server
@@ -494,10 +497,10 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
 
-            using var server = TestServerFactory.Create(store, new Events
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true, events: new Events
             {
                 OnAuthorizeAsync = ctx =>
                 {
@@ -521,10 +524,10 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
-            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
-            store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5);
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store.AppendDataAsync("testfile", Arg.Any<PipeReader>(), Arg.Any<CancellationToken>()).Returns(5);
 
-            using var server = TestServerFactory.Create(store, new Events
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: true, events: new Events
             {
                 OnAuthorizeAsync = ctx =>
                 {
@@ -545,12 +548,12 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task A_TusConfigurationException_Is_Thrown_If_File_Was_Created_Using_UploadDeferLength_But_The_Store_Used_For_Writing_Data_Does_Not_Support_UploadDeferLength()
         {
-            var creationStoreWithUploadDeferLength = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var creationStoreWithUploadDeferLength = Substitute.For<ITusPipelineStore, ITusCreationStore, ITusCreationDeferLengthStore>();
             ((ITusCreationStore)creationStoreWithUploadDeferLength).CreateFileAsync(default, default, default).ReturnsForAnyArgs("testfile");
 
-            var storeWithoutUploadDeferLength = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: null, uploadOffset: 0);
+            var storeWithoutUploadDeferLength = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: null, uploadOffset: 0);
 
-            using (var server = TestServerFactory.Create(creationStoreWithUploadDeferLength))
+            using (var server = TestServerFactory.Create(creationStoreWithUploadDeferLength, usePipelinesIfAvailable: true))
             {
                 var response = await server
                     .CreateTusResumableRequest("/files")
@@ -560,7 +563,7 @@ namespace tusdotnet.test.Tests
                 response.StatusCode.ShouldBe(HttpStatusCode.Created);
             }
 
-            using (var server = TestServerFactory.Create(storeWithoutUploadDeferLength))
+            using (var server = TestServerFactory.Create(storeWithoutUploadDeferLength, usePipelinesIfAvailable: true))
             {
                 var exception = await Assert.ThrowsAsync<TusConfigurationException>(
                     async () => await server
@@ -585,3 +588,5 @@ namespace tusdotnet.test.Tests
         }
     }
 }
+
+#endif

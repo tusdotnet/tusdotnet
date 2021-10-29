@@ -6,10 +6,8 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 {
     internal class MetadataParserStringBased
     {
-        internal static MetadataParserResult ParseAndValidate(MetadataParsingStrategy strategy, string uploadMetadataHeaderValue)
+        internal static MetadataParserResult ParseAndValidate(IInternalMetadataParser parser, string uploadMetadataHeaderValue)
         {
-            var parser = GetParser(strategy);
-
             if (string.IsNullOrWhiteSpace(uploadMetadataHeaderValue))
             {
                 return parser.GetResultForEmptyHeader();
@@ -34,13 +32,6 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
             }
 
             return MetadataParserResult.FromResult(parsedMetadata);
-        }
-
-        private static IInternalMetadataParser GetParser(MetadataParsingStrategy strategy)
-        {
-            return strategy == MetadataParsingStrategy.Original
-                ? OriginalMetadataParser.Instance
-                : AllowEmptyValuesMetadataParser.Instance;
         }
     }
 }

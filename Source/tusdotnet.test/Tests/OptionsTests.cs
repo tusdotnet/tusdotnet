@@ -84,7 +84,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Returns_204_NoContent_On_Success(string methodToUse)
         {
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+            using var server = TestServerFactory.Create(_mockTusConfiguration);
 
             var response = await server
                 .CreateRequest("/files")
@@ -97,7 +97,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Response_Contains_The_Correct_Headers_On_Success(string methodToUse)
         {
-            using (var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration)))
+            using (var server = TestServerFactory.Create(_mockTusConfiguration))
             {
                 var response = await server
                     .CreateRequest("/files")
@@ -133,7 +133,7 @@ namespace tusdotnet.test.Tests
         {
             _mockTusConfiguration.MaxAllowedUploadSizeInBytes = 100;
 
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+            using var server = TestServerFactory.Create(_mockTusConfiguration);
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
             response.ShouldContainHeader("Tus-Max-Size", "100");
@@ -145,7 +145,7 @@ namespace tusdotnet.test.Tests
             const long maxSizeLong = (long)int.MaxValue + 1;
             _mockTusConfiguration.MaxAllowedUploadSizeInBytesLong = maxSizeLong;
 
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+            using var server = TestServerFactory.Create(_mockTusConfiguration);
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
             response.ShouldContainHeader("Tus-Max-Size", maxSizeLong.ToString());
@@ -158,7 +158,7 @@ namespace tusdotnet.test.Tests
             _mockTusConfiguration.MaxAllowedUploadSizeInBytes = 100;
             _mockTusConfiguration.MaxAllowedUploadSizeInBytesLong = 50;
 
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+            using var server = TestServerFactory.Create(_mockTusConfiguration);
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
             response.ShouldContainHeader("Tus-Max-Size", "50");
@@ -167,7 +167,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            using var server = TestServerFactory.Create(app => app.UseTus(_ => _mockTusConfiguration));
+            using var server = TestServerFactory.Create(_mockTusConfiguration);
 
             var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
 

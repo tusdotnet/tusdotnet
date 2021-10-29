@@ -173,14 +173,11 @@ namespace tusdotnet.test.Tests
                 store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(1);
             }
 
-            using var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store,
-                    UsePipelinesIfAvailable = usePipelinesInConfig
-                });
+                UrlPath = "/files",
+                Store = store,
+                UsePipelinesIfAvailable = usePipelinesInConfig
             });
 
             var response = await server
