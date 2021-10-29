@@ -346,17 +346,14 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_413_Request_Entity_Too_Large_If_Upload_Length_Exceeds_Tus_Max_Size()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
-                tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
+            var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
+            tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)tusStore,
-                    UrlPath = "/files",
-                    MaxAllowedUploadSizeInBytes = 100
-                });
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
+            {
+                Store = (ITusStore)tusStore,
+                UrlPath = "/files",
+                MaxAllowedUploadSizeInBytes = 100
             });
 
             var response = await server
@@ -556,31 +553,28 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
-            using var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusCreationStore, ITusStore>();
-                store.CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            var store = Substitute.For<ITusCreationStore, ITusStore>();
+            store.CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = (ITusStore)store,
-                    UrlPath = "/files",
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
+            {
+                Store = (ITusStore)store,
+                UrlPath = "/files",
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (__, ___, ____) =>
+                OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    onUploadCompleteCallCounts++;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = __ =>
                     {
-                        onUploadCompleteCallCounts++;
+                        onFileCompleteAsyncCallbackCounts++;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = __ =>
-                        {
-                            onFileCompleteAsyncCallbackCounts++;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
 
             var response = await server.CreateTusResumableRequest("/files/").AddHeader("Upload-Length", "0").SendAsync("POST");

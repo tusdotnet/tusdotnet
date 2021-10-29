@@ -12,6 +12,7 @@ using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Expiration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
+using tusdotnet.test.Helpers;
 using Xunit;
 
 namespace tusdotnet.test.Tests
@@ -28,27 +29,23 @@ namespace tusdotnet.test.Tests
 
             expirationStore.GetExpirationAsync(null, CancellationToken.None).ReturnsForAnyArgs(expires);
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8))
-                });
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files/expirationtestfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", "3")
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .SendAsync(methodToUse);
+                Store = store,
+                UrlPath = "/files",
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8))
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Upload-Expires", expires.ToString("r"));
-            }
+            var response = await server
+                .CreateRequest("/files/expirationtestfile")
+                .And(m => m.AddBody())
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Offset", "3")
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainHeader("Upload-Expires", expires.ToString("r"));
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -64,27 +61,23 @@ namespace tusdotnet.test.Tests
             expirationStore.GetExpirationAsync(null, CancellationToken.None).ReturnsForAnyArgs(expires);
             concatStore.GetUploadConcatAsync(null, CancellationToken.None).ReturnsForAnyArgs(new FileConcatPartial());
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8))
-                });
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files/expirationtestfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", "3")
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .SendAsync(methodToUse);
+                Store = store,
+                UrlPath = "/files",
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8))
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
-            }
+            var response = await server
+                .CreateRequest("/files/expirationtestfile")
+                .And(m => m.AddBody())
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Offset", "3")
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -98,77 +91,59 @@ namespace tusdotnet.test.Tests
                 .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
             var now = DateTimeOffset.Now;
-
-            using (var server = TestServerFactory.Create(app =>
+            var config = new DefaultTusConfiguration
             {
-                var config = new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
-                };
+                Store = store,
+                UrlPath = "/files",
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
+            };
 
-                config.MockSystemTime(now);
+            config.MockSystemTime(now);
 
-                app.UseTus(_ => config);
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "1")
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(config);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.ShouldContainHeader("Upload-Expires", now.Add(TimeSpan.FromMinutes(10)).ToString("r"));
-            }
+            var response = await server
+                .CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "1")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldContainHeader("Upload-Expires", now.Add(TimeSpan.FromMinutes(10)).ToString("r"));
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Post_Requests_Contain_Upload_Expires_Header_For_Partial_Uploads_If_Expiration_Is_Configured(
             string methodToUse)
         {
-            var store = (ITusStore)Substitute.For(new[]
-                {
-                    typeof(ITusStore),
-                    typeof(ITusCreationStore),
-                    typeof(ITusConcatenationStore),
-                    typeof(ITusExpirationStore)
-                },
-                new object[0]
-            );
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusExpirationStore>();
             var concatenationStore = (ITusConcatenationStore)store;
 
             concatenationStore.CreatePartialFileAsync(-1, null, CancellationToken.None).ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
             var now = DateTimeOffset.Now;
-
-            using (var server = TestServerFactory.Create(app =>
+            var config = new DefaultTusConfiguration
             {
-                var config = new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
-                };
+                Store = store,
+                UrlPath = "/files",
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
+            };
 
-                config.MockSystemTime(now);
+            config.MockSystemTime(now);
 
-                app.UseTus(_ => config);
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Concat", "partial")
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .SendAsync(methodToUse);
+            using var server = TestServerFactory.Create(config);
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.ShouldContainHeader("Upload-Expires", now.Add(TimeSpan.FromMinutes(10)).ToString("r"));
-            }
+            var response = await server
+                .CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "1")
+                .AddHeader("Upload-Concat", "partial")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldContainHeader("Upload-Expires", now.Add(TimeSpan.FromMinutes(10)).ToString("r"));
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -201,27 +176,23 @@ namespace tusdotnet.test.Tests
             concatenationStore.CreateFinalFileAsync(null, null, CancellationToken.None)
                 .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
-                });
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files")
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Length", "1")
-                    .AddHeader("Upload-Concat", "final;/files/partial1 /files/partial2")
-                    .OverrideHttpMethodIfNeeded("POST", methodToUse)
-                    .SendAsync(methodToUse);
+                Store = store,
+                UrlPath = "/files",
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.Created);
-                response.Headers.Contains("Upload-Expires").ShouldBeFalse();
-            }
+            var response = await server
+                .CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "1")
+                .AddHeader("Upload-Concat", "final;/files/partial1 /files/partial2")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.Headers.Contains("Upload-Expires").ShouldBeFalse();
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -251,35 +222,31 @@ namespace tusdotnet.test.Tests
                     return Task.FromResult(0);
                 });
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store,
-                    Expiration = new SlidingExpiration(TimeSpan.FromSeconds(5))
-                });
-            }))
+                UrlPath = "/files",
+                Store = store,
+                Expiration = new SlidingExpiration(TimeSpan.FromSeconds(5))
+            });
+
+            for (var i = 0; i < 2; i++)
             {
-                for (var i = 0; i < 2; i++)
-                {
-                    var response = await server
-                        .CreateRequest("/files/expirationtestfile")
-                        .And(m => m.AddBody())
-                        .AddTusResumableHeader()
-                        .AddHeader("Upload-Offset", offset.ToString())
-                        .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                        .SendAsync(methodToUse);
+                var response = await server
+                    .CreateRequest("/files/expirationtestfile")
+                    .And(m => m.AddBody())
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Offset", offset.ToString())
+                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                    .SendAsync(methodToUse);
 
-                    response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                    response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
-                }
-
-                expirationStore
-                    .ReceivedCalls()
-                    .Count(f => f.GetMethodInfo().Name == nameof(expirationStore.SetExpirationAsync))
-                    .ShouldBe(2);
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
             }
+
+            expirationStore
+                .ReceivedCalls()
+                .Count(f => f.GetMethodInfo().Name == nameof(expirationStore.SetExpirationAsync))
+                .ShouldBe(2);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -303,43 +270,39 @@ namespace tusdotnet.test.Tests
             expirationStore.GetExpirationAsync("testexpiration", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(expires);
             await expirationStore.SetExpirationAsync("testexpiration", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store,
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
-                });
-            }))
-            {
-                var response = await server
-                    .CreateRequest("/files/testexpiration")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", offset.ToString())
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .SendAsync(methodToUse);
+                UrlPath = "/files",
+                Store = store,
+                Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
+            });
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
+            var response = await server
+                .CreateRequest("/files/testexpiration")
+                .And(m => m.AddBody())
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Offset", offset.ToString())
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .SendAsync(methodToUse);
 
-                response = await server
-                    .CreateRequest("/files/testexpiration")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", offset.ToString())
-                    .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                    .SendAsync(methodToUse);
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
 
-                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
+            response = await server
+                .CreateRequest("/files/testexpiration")
+                .And(m => m.AddBody())
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Offset", offset.ToString())
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .SendAsync(methodToUse);
 
-                expirationStore
-                    .ReceivedCalls()
-                    .Count(f => f.GetMethodInfo().Name == nameof(expirationStore.SetExpirationAsync))
-                    .ShouldBe(0);
-            }
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldContainHeader("Upload-Expires", expires.ToString("R"));
+
+            expirationStore
+                .ReceivedCalls()
+                .Count(f => f.GetMethodInfo().Name == nameof(expirationStore.SetExpirationAsync))
+                .ShouldBe(0);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -351,27 +314,23 @@ namespace tusdotnet.test.Tests
             expirationStore.GetExpirationAsync(null, CancellationToken.None)
                 .ReturnsForAnyArgs(DateTimeOffset.UtcNow.AddSeconds(-1));
 
-            using (var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store,
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
-                });
-            }))
-            {
-                foreach (var method in new[] { "PUT", "DELETE", "HEAD" })
-                {
-                    var response = await server
-                        .CreateRequest("/files/expirationtestfile")
-                        .And(m => m.AddBody())
-                        .AddTusResumableHeader()
-                        .OverrideHttpMethodIfNeeded(method, methodToUse)
-                        .SendAsync(methodToUse);
+                UrlPath = "/files",
+                Store = store,
+                Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
+            });
 
-                    response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-                }
+            foreach (var method in new[] { "PUT", "DELETE", "HEAD" })
+            {
+                var response = await server
+                    .CreateRequest("/files/expirationtestfile")
+                    .And(m => m.AddBody())
+                    .AddTusResumableHeader()
+                    .OverrideHttpMethodIfNeeded(method, methodToUse)
+                    .SendAsync(methodToUse);
+
+                response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
             }
         }
     }

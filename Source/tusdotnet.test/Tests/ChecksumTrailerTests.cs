@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using tusdotnet.Models;
 using System.Linq;
 using System.Linq.Expressions;
+using tusdotnet.test.Helpers;
 
 namespace tusdotnet.test.Tests
 {
@@ -241,6 +242,7 @@ namespace tusdotnet.test.Tests
                 app.UseTus(_ => new()
                 {
                     Store = store,
+                    FileLockProvider = new TestServerInMemoryFileLockProvider(),
                     UrlPath = "/files"
                 });
             });

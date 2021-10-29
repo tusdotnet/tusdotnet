@@ -330,14 +330,11 @@ namespace tusdotnet.test.Tests
         public async Task Returns_413_Request_Entity_Too_Large_If_Final_File_Size_Exceeds_Tus_Max_Size(string methodToUse)
         {
             var store = CreateStoreForFinalFileConcatenation();
-            using var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    MaxAllowedUploadSizeInBytes = 25
-                });
+                Store = store,
+                UrlPath = "/files",
+                MaxAllowedUploadSizeInBytes = 25
             });
 
             var response = await server
@@ -361,31 +358,29 @@ namespace tusdotnet.test.Tests
             string callbackFileId = null;
             ITusStore callbackStore = null;
 
-            using var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+                Store = store,
+                UrlPath = "/files",
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (fileId, tusStore, ct) =>
+                OnUploadCompleteAsync = (fileId, tusStore, ct) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    oldCallbackFileId = fileId;
+                    oldCallbackStore = tusStore;
+                    return Task.FromResult(0);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = ctx =>
                     {
-                        oldCallbackFileId = fileId;
-                        oldCallbackStore = tusStore;
+                        callbackFileId = ctx.FileId;
+                        callbackStore = ctx.Store;
                         return Task.FromResult(0);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = ctx =>
-                        {
-                            callbackFileId = ctx.FileId;
-                            callbackStore = ctx.Store;
-                            return Task.FromResult(0);
-                        }
                     }
-                });
+                }
             });
+
             var response = await server
                     .CreateTusResumableRequest("/files")
                     .AddHeader("Upload-Concat", "final;/files/partial1 /files/partial2")
@@ -414,28 +409,25 @@ namespace tusdotnet.test.Tests
             var oldCallbackCalled = false;
             var callbackCalled = false;
 
-            using var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+                Store = store,
+                UrlPath = "/files",
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (fileId, tusStore, ct) =>
+                OnUploadCompleteAsync = (fileId, tusStore, ct) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    oldCallbackCalled = true;
+                    return Task.FromResult(0);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = ctx =>
                     {
-                        oldCallbackCalled = true;
+                        callbackCalled = true;
                         return Task.FromResult(0);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = ctx =>
-                        {
-                            callbackCalled = true;
-                            return Task.FromResult(0);
-                        }
                     }
-                });
+                }
             });
 
             // Test that it does not run when creating the partial file.

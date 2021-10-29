@@ -320,35 +320,33 @@ namespace tusdotnet.test.Tests
 
             DateTimeOffset? uploadExpiresAt = null;
 
-            using var server = TestServerFactory.Create(app =>
-             {
-                 var config = new DefaultTusConfiguration
-                 {
-                     Store = tusStore,
-                     UrlPath = "/files",
-                     Expiration = expiration,
-                     UsePipelinesIfAvailable = true
-                 };
+            var config = new DefaultTusConfiguration
+            {
+                Store = tusStore,
+                UrlPath = "/files",
+                Expiration = expiration,
+                UsePipelinesIfAvailable = true
+            };
 
-                 config.Events = new Events
-                 {
-                     OnAuthorizeAsync = ctx =>
-                     {
-                         if (ctx.Intent != IntentType.WriteFile)
-                         {
-                             return Task.FromResult(0);
-                         }
+            config.Events = new Events
+            {
+                OnAuthorizeAsync = ctx =>
+                {
+                    if (ctx.Intent != IntentType.WriteFile)
+                    {
+                        return Task.FromResult(0);
+                    }
 
-                         // Emulate that OnAuthorizeAsync took 10 sec to complete.
-                         var fakeSystemTime = DateTimeOffset.UtcNow.AddSeconds(10);
-                         config.MockSystemTime(fakeSystemTime);
-                         uploadExpiresAt = fakeSystemTime.Add(expiration.Timeout);
-                         return Task.FromResult(0);
-                     }
-                 };
+                    // Emulate that OnAuthorizeAsync took 10 sec to complete.
+                    var fakeSystemTime = DateTimeOffset.UtcNow.AddSeconds(10);
+                    config.MockSystemTime(fakeSystemTime);
+                    uploadExpiresAt = fakeSystemTime.Add(expiration.Timeout);
+                    return Task.FromResult(0);
+                }
+            };
 
-                 app.UseTus(_ => config);
-             });
+            using var server = TestServerFactory.Create(config);
+
             var response = await server
                 .CreateTusResumableRequest("/files")
                 .AddHeader("Upload-Length", "100")
@@ -402,36 +400,31 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
-            ITusStore store = null;
+            var store = Substitute.For<ITusStore, ITusCreationStore>();
+            ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(0);
+            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
 
-            using var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                store = Substitute.For<ITusStore, ITusCreationStore>();
-                ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
-                store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(0);
-                store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
-
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    UsePipelinesIfAvailable = true,
+                Store = store,
+                UrlPath = "/files",
+                UsePipelinesIfAvailable = true,
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (__, ___, ____) =>
+                OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    onUploadCompleteCallCounts++;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = __ =>
                     {
-                        onUploadCompleteCallCounts++;
+                        onFileCompleteAsyncCallbackCounts++;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = __ =>
-                        {
-                            onFileCompleteAsyncCallbackCounts++;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
 
             var response = await server.CreateTusResumableRequest("/files/").AddHeader("Upload-Length", "0").AddBody().SendAsync("POST");
@@ -459,37 +452,32 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
-            ITusStore store = null;
+            ITusStore store = Substitute.For<ITusStore, ITusCreationStore>();
+            ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
+            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
+            store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody);
 
-            using var server = TestServerFactory.Create(app =>
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                store = Substitute.For<ITusStore, ITusCreationStore>();
-                ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
-                store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
-                store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
-                store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody);
-
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                    UsePipelinesIfAvailable = true,
+                Store = store,
+                UrlPath = "/files",
+                UsePipelinesIfAvailable = true,
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (__, ___, ____) =>
+                OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    onUploadCompleteCallCounts++;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = __ =>
                     {
-                        onUploadCompleteCallCounts++;
+                        onFileCompleteAsyncCallbackCounts++;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = __ =>
-                        {
-                            onFileCompleteAsyncCallbackCounts++;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
 
             var response = await server.CreateTusResumableRequest("/files/")

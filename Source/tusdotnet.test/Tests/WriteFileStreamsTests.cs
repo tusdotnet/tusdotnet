@@ -366,53 +366,51 @@ namespace tusdotnet.test.Tests
             var firstOffset = 3;
             var secondOffset = 2;
 
-            using var server = TestServerFactory.Create(app =>
+            var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 6, _ => firstOffset);
+            store.AppendDataAsync("file1", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(3)
+                .AndDoes(_ => firstOffset += 3);
+
+            store = store.WithExistingFile("file2", _ => 6, _ => secondOffset);
+            store.AppendDataAsync("file2", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(3)
+                .AndDoes(_ => secondOffset += 3);
+
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
             {
-                var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 6, _ => firstOffset);
-                store.AppendDataAsync("file1", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(3)
-                    .AndDoes(_ => firstOffset += 3);
-
-                store = store.WithExistingFile("file2", _ => 6, _ => secondOffset);
-                store.AppendDataAsync("file2", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                    .Returns(3)
-                    .AndDoes(_ => secondOffset += 3);
-
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+                Store = store,
+                UrlPath = "/files",
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (fileId, cbStore, cancellationToken) =>
+                OnUploadCompleteAsync = (fileId, cbStore, cancellationToken) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    // Check that the store provided is the same as the one in the configuration.
+                    cbStore.ShouldBeSameAs(store);
+                    cancellationToken.ShouldNotBe(default);
+
+                    onUploadCompleteCallCounts.TryGetValue(fileId, out int count);
+
+                    count++;
+                    onUploadCompleteCallCounts[fileId] = count;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = ctx =>
                     {
                         // Check that the store provided is the same as the one in the configuration.
-                        cbStore.ShouldBeSameAs(store);
-                        cancellationToken.ShouldNotBe(default);
+                        ctx.Store.ShouldBeSameAs(store);
+                        ctx.CancellationToken.ShouldNotBe(default);
 
-                        onUploadCompleteCallCounts.TryGetValue(fileId, out int count);
+                        onFileCompleteAsyncCallbackCounts.TryGetValue(ctx.FileId, out int count);
 
                         count++;
-                        onUploadCompleteCallCounts[fileId] = count;
+                        onFileCompleteAsyncCallbackCounts[ctx.FileId] = count;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = ctx =>
-                        {
-                            // Check that the store provided is the same as the one in the configuration.
-                            ctx.Store.ShouldBeSameAs(store);
-                            ctx.CancellationToken.ShouldNotBe(default);
-
-                            onFileCompleteAsyncCallbackCounts.TryGetValue(ctx.FileId, out int count);
-
-                            count++;
-                            onFileCompleteAsyncCallbackCounts[ctx.FileId] = count;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
+
             var response1 = await server
                 .CreateTusResumableRequest("/files/file1")
                 .AddHeader("Upload-Offset", "3")
@@ -453,30 +451,27 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
-            using var server = TestServerFactory.Create(app =>
-            {
-                var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 0, _ => 0);
+            var store = Substitute.For<ITusStore>().WithExistingFile("file1", _ => 0, _ => 0);
 
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
+            {
+                Store = store,
+                UrlPath = "/files",
 #pragma warning disable CS0618 // Type or member is obsolete
-                    OnUploadCompleteAsync = (__, ___, ____) =>
+                OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
+                {
+                    onUploadCompleteCallCounts++;
+                    return Task.FromResult(true);
+                },
+                Events = new Events
+                {
+                    OnFileCompleteAsync = __ =>
                     {
-                        onUploadCompleteCallCounts++;
+                        onFileCompleteAsyncCallbackCounts++;
                         return Task.FromResult(true);
-                    },
-                    Events = new Events
-                    {
-                        OnFileCompleteAsync = __ =>
-                        {
-                            onFileCompleteAsyncCallbackCounts++;
-                            return Task.FromResult(true);
-                        }
                     }
-                });
+                }
             });
 
             var response = await server
