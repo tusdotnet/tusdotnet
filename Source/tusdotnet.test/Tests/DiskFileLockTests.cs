@@ -72,19 +72,21 @@ namespace tusdotnet.test.Tests
 
         private DiskFileLock GetFileLock(string fileId)
         {
-            return new DiskFileLock(_fixture.DiskPath, fileId);
+            return (DiskFileLock)_fixture.Provider.AquireLock(fileId).Result;
         }
     }
 
-    public class DiskFileLockTestsFixture : IDisposable
+    public sealed class DiskFileLockTestsFixture : IDisposable
     {
-        public string DiskPath { get; }
+        public DiskFileLockProvider Provider { get; set; }
 
         public DiskFileLockTestsFixture()
         {
-            DiskPath = Path.Combine(Path.GetTempPath(), "tempfilelocks");
-            if (!Directory.Exists(DiskPath))
-                Directory.CreateDirectory(DiskPath);
+            var diskPath = Path.Combine(Path.GetTempPath(), "tempfilelocks");
+            if (!Directory.Exists(diskPath))
+                Directory.CreateDirectory(diskPath);
+
+            Provider = new(diskPath);
         }
 
         public void Dispose()
