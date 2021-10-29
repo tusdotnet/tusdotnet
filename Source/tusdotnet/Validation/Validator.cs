@@ -11,9 +11,9 @@ namespace tusdotnet.Validation
 
         private readonly Requirement[] _requirements;
 
-        public Validator(params Requirement[] requirements)
+        public Validator(Requirement[] requirements)
         {
-            _requirements = requirements ?? new Requirement[0];
+            _requirements = requirements;
         }
 
         public async Task Validate(ContextAdapter context)
