@@ -4,6 +4,7 @@ using System.Text;
 using Shouldly;
 using tusdotnet.Models;
 using tusdotnet.Parsers;
+using tusdotnet.Parsers.MetadataParserHelpers;
 using Xunit;
 
 namespace tusdotnet.test.Tests.ModelTests
@@ -11,10 +12,14 @@ namespace tusdotnet.test.Tests.ModelTests
     public class MetadataParsingTests
     {
         private const string UploadMetadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh,utf8key wrbDgMSaxafMsw==";
+        private const string UploadMetadataWithEmptyValue = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh,empty_key";
+        private const string UploadMetadataWithDuplicateKey = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,filename c29tZSBvdGhlciBkYXRh";
+        private const string UploadMetadataWithInvalidBase64 = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg";
+        private const string NoLetterCasingMetadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,FILENAME c29tZSBvdGhlciBkYXRh,FiLEName wrbDgMSaxafMsw==";
 
         [Theory]
         [MemberData(nameof(ParsingStrategies))]
-        public void Parse_Can_Parse_UploadMetadata_Header(MetadataParsingStrategy? strategy)
+        public void Can_Parse_UploadMetadata_Header(MetadataParsingStrategy? strategy)
         {
             var meta = Parse(strategy, UploadMetadata);
 
@@ -35,7 +40,26 @@ namespace tusdotnet.test.Tests.ModelTests
 
         [Theory]
         [MemberData(nameof(ParsingStrategies))]
-        public void Parse_Returns_Empty_Dictionary_If_UploadMetadata_Header_Is_Null_Or_Empty(MetadataParsingStrategy? strategy)
+        public void Can_Parse_UploadMetadata_Header_With_Key_Only(MetadataParsingStrategy? strategy)
+        {
+            // Only supported by "AllowEmptyValues"
+            var expectedToSucceed = strategy == MetadataParsingStrategy.AllowEmptyValues;
+
+            var meta = Parse(strategy, UploadMetadataWithEmptyValue);
+
+            if (!expectedToSucceed)
+            {
+                meta.ShouldBeEmpty();
+                return;
+            }
+
+            meta.TryGetValue("empty_key", out var emptyKey).ShouldBeTrue();
+            emptyKey.HasEmptyValue.ShouldBeTrue();
+        }
+
+        [Theory]
+        [MemberData(nameof(ParsingStrategies))]
+        public void Returns_Empty_Dictionary_If_UploadMetadata_Header_Is_Null_Or_Empty(MetadataParsingStrategy? strategy)
         {
             var meta = Parse(strategy, "");
             meta.Count.ShouldBe(0);
@@ -59,9 +83,6 @@ namespace tusdotnet.test.Tests.ModelTests
         [MemberData(nameof(ParsingStrategies))]
         public void Letter_Casing_Is_Ignored_For_Metadata_Keys(MetadataParsingStrategy? strategy)
         {
-            const string NoLetterCasingMetadata =
-                "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,FILENAME c29tZSBvdGhlciBkYXRh,FiLEName wrbDgMSaxafMsw==";
-
             var meta = Parse(strategy, NoLetterCasingMetadata);
 
             meta.Count.ShouldBe(3);
@@ -71,11 +92,34 @@ namespace tusdotnet.test.Tests.ModelTests
             meta["FiLEName"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
         }
 
+        [Theory]
+        [MemberData(nameof(ParsingStrategies))]
+        public void Returns_Error_If_Duplicate_Key_Is_Found(MetadataParsingStrategy? strategy)
+        {
+            var error = Validate(strategy, UploadMetadataWithDuplicateKey);
+            error.ShouldBe(MetadataParserErrorTexts.DUPLICATE_KEY_FOUND);
+        }
+
+        [Theory]
+        [MemberData(nameof(ParsingStrategies))]
+        public void Returns_Error_If_Base64_Is_Invalid(MetadataParsingStrategy? strategy)
+        {
+            var error = Validate(strategy, UploadMetadataWithInvalidBase64);
+            error.ShouldBe(MetadataParserErrorTexts.InvalidBase64Value("filename"));
+        }
+
         private static Dictionary<string, Metadata> Parse(MetadataParsingStrategy? strategy, string metadataHeader)
         {
             return strategy == null
                 ? Metadata.Parse(metadataHeader)
                 : MetadataParser.ParseAndValidate(strategy.Value, metadataHeader).Metadata;
+        }
+
+        private static string Validate(MetadataParsingStrategy? strategy, string metadataHeader)
+        {
+            return strategy == null
+                ? Metadata.ValidateMetadataHeader(metadataHeader)
+                : MetadataParser.ParseAndValidate(strategy.Value, metadataHeader).ErrorMessage;
         }
 
         public static IEnumerable<object[]> ParsingStrategies => new List<object[]>(3)
