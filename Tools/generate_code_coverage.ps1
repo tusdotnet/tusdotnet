@@ -4,8 +4,6 @@ $framework = "netcoreapp3.1";
 $coverletWantedOutput = "$PSScriptRoot\coverage.xml";
 # ...which will result in the following filename.
 $coverletActualOutput = "$PSScriptRoot\" + "coverage.{framework}.xml".Replace("{framework}", $framework);
-Write-Host $coverletWantedOutput;
-Write-Host $coverletActualOutput;
 If (Test-Path $coverletActualOutput) {
 	Remove-Item $coverletActualOutput -Force
 }
@@ -17,4 +15,4 @@ $key = Read-Host -Prompt 'Input Codecov key'
 if(-not (Test-Path $coverletActualOutput)) {
 	throw "$coverletActualOutput was not found";
 }
-./codecov.sh -f $coverletActualOutput -t $key
+./codecov.sh -t $key
