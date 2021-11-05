@@ -1,5 +1,7 @@
 using System;
+using System.Buffers;
 using System.Net;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using AspNetCore_netcoreapp3._1_TestApp.Authentication;
 using AspNetCore_netcoreapp3._1_TestApp.Endpoints;
@@ -8,11 +10,13 @@ using AspNetCore_netcoreapp3_1_TestApp.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using tusdotnet;
 using tusdotnet.Helpers;
@@ -20,19 +24,20 @@ using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
+using tusdotnet.Tus2;
 
 namespace AspNetCore_netcoreapp3._1_TestApp
 {
     public class Startup
     {
-        public const string DirectoryPath = @"D:\home\site\wwwroot\files\";
-
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
 
-        public IConfiguration Configuration { get; }
+        public static IConfiguration Configuration { get; private set; }
+
+        public static string DirectoryPath => Configuration.GetValue<string>("FolderDiskPath");
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -44,6 +49,9 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             services.AddAuthentication("BasicAuthentication")
                     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+
+            services.AddOptions();
+            services.Configure<Tus2Options>(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -86,7 +94,22 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
             // This is done because the file's metadata is domain specific and thus cannot be handled 
             // in a generic way by tusdotnet.
-            app.UseEndpoints(endpoints => endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute));
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
+                endpoints.Map("/files-tus-2", Tus2Endpoint.Invoke);
+                endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);
+                endpoints.MapGet("/random-file-id", async httpContext =>
+                {
+                    var arr = ArrayPool<byte>.Shared.Rent(32);
+                    var span = arr.AsMemory()[..32];
+                    RandomNumberGenerator.Fill(span.Span);
+
+                    await httpContext.Response.WriteAsync(Convert.ToBase64String(span.Span));
+
+                    ArrayPool<byte>.Shared.Return(arr, clearArray: true);
+                });
+            });
         }
 
         private DefaultTusConfiguration CreateTusConfiguration(IServiceProvider serviceProvider)

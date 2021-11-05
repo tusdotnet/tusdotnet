@@ -29,6 +29,19 @@ namespace tusdotnet.Helpers
             }
         }
 
+        internal static bool Execute(Action guardFromClientDisconnect, CancellationToken requestCancellationToken)
+        {
+            try
+            {
+                guardFromClientDisconnect();
+                return false;
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, requestCancellationToken))
+            {
+                return true;
+            }
+        }
+
         internal static async Task<ClientDisconnectGuardReadStreamAsyncResult> ReadStreamAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             try
@@ -42,7 +55,7 @@ namespace tusdotnet.Helpers
             }
         }
 
-        private static bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
+        internal static bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
             {
