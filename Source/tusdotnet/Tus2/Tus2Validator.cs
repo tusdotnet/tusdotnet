@@ -56,7 +56,7 @@ namespace tusdotnet.Tus2
                     span[i] = '_';
             }
 
-            return span.ToString();
+            return new string(span);
         }
     }
 }

@@ -75,6 +75,17 @@ namespace tusdotnet.Tus2
                 {
                     await httpContext.Error(HttpStatusCode.InternalServerError);
                 }
+
+                //try
+                //{
+                //    //httpContext.Request.
+                //    await httpContext.Response.CompleteAsync();
+                //    //httpContext.Abort();
+                //}
+                //catch
+                //{
+                //    // Ignore
+                //}
             }
         }
 

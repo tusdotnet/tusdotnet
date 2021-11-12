@@ -77,7 +77,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             //app.UseDefaultFiles();
             //app.UseStaticFiles();
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseCors(builder => builder
                .AllowAnyHeader()
@@ -122,7 +122,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 Store = new TusDiskStore(DirectoryPath),
                 MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
                 Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(30)),
-                MaxAllowedUploadSizeInBytesLong = 1024 * 1024,
+                //MaxAllowedUploadSizeInBytesLong = 1024 * 1024,
                 Events = new Events
                 {
                     OnAuthorizeAsync = ctx =>

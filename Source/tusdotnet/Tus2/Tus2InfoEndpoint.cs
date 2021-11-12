@@ -24,12 +24,12 @@ namespace tusdotnet.Tus2
 
             var path = options.DataFilePath(headers.UploadToken);
             var exists = File.Exists(path);
-            var fileSize = exists ? new FileInfo(path).Length : -1;
+            var fileSize = exists ? (long?)new FileInfo(path).Length : null;
             var isComplete = File.Exists(options.CompletedFilePath(headers.UploadToken));
 
             var sb = new StringBuilder();
             sb.AppendFormat("Exists: {0}\n", exists);
-            sb.AppendFormat("Size: {0}\n", fileSize);
+            sb.AppendFormat("Size: {0}\n", fileSize?.ToString() ?? "<null>");
             sb.AppendFormat("IsComplete: {0}\n", isComplete);
 
             httpContext.Response.StatusCode = 200;
