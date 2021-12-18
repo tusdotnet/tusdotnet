@@ -15,7 +15,7 @@ namespace tusdotnet.Tus2
 
             var headers = Tus2Headers.Parse(httpContext);
 
-            headers.UploadToken = Tus2Validator.CleanUploadToken(headers.UploadToken);
+            headers.UploadToken = Tus2DiskStore.CleanUploadToken(headers.UploadToken);
 
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
             {
@@ -26,11 +26,13 @@ namespace tusdotnet.Tus2
             var exists = File.Exists(path);
             var fileSize = exists ? (long?)new FileInfo(path).Length : null;
             var isComplete = File.Exists(options.CompletedFilePath(headers.UploadToken));
+            var metadata = File.Exists(options.MetadataFilePath(headers.UploadToken)) ? File.ReadAllText(options.MetadataFilePath(headers.UploadToken)) : null;
 
             var sb = new StringBuilder();
             sb.AppendFormat("Exists: {0}\n", exists);
             sb.AppendFormat("Size: {0}\n", fileSize?.ToString() ?? "<null>");
             sb.AppendFormat("IsComplete: {0}\n", isComplete);
+            sb.AppendFormat("Metadata: {0}\n", metadata);
 
             httpContext.Response.StatusCode = 200;
             await httpContext.Response.WriteAsync(sb.ToString());

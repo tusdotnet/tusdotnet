@@ -33,8 +33,6 @@ namespace tusdotnet.Tus2
                 return;
             }
 
-            headers.UploadToken = Tus2Validator.CleanUploadToken(headers.UploadToken);
-
             var endpointContext = new EndpointContext(store, headers, httpContext, ongoingUploadService);
 
             Tus2BaseResponse response = null;
@@ -61,6 +59,10 @@ namespace tusdotnet.Tus2
             {
                 caughtException = ex;
             }
+            catch(AbortConnectionException ex)
+            {
+                caughtException = ex;
+            }
             finally
             {
                 if (response != null)
@@ -71,21 +73,14 @@ namespace tusdotnet.Tus2
                 {
                     await httpContext.Error(are.Status, are.ErrorMessage);
                 }
+                else if(caughtException is AbortConnectionException)
+                {
+                    httpContext.Abort();
+                }
                 else
                 {
                     await httpContext.Error(HttpStatusCode.InternalServerError);
                 }
-
-                //try
-                //{
-                //    //httpContext.Request.
-                //    await httpContext.Response.CompleteAsync();
-                //    //httpContext.Abort();
-                //}
-                //catch
-                //{
-                //    // Ignore
-                //}
             }
         }
 
@@ -123,6 +118,8 @@ If the request completes successfully but the file is not complete yet indicated
 
             var (store, headers, httpContext, ongoingUploadService) = endpointContext;
 
+            var metadata = httpContext.RequestServices.GetRequiredService<IMetadataParser>().Parse(httpContext);
+
             var uploadOffset = headers.UploadOffset ?? 0;
 
             var fileExist = await Tus2Validator.AssertFileExist(store, headers.UploadToken, uploadOffset != 0);
@@ -132,7 +129,7 @@ If the request completes successfully but the file is not complete yet indicated
                 // TODO: Adding metadata with some kind of "gatherer" e.g. Func<HttpContext, Metadata> that the dev using tusdotnet can specify (use a default one for getting content type etc)
                 // Must be possible to update if chunked uploads are used.
 
-                await store.CreateFile(headers.UploadToken);
+                await store.CreateFile(headers.UploadToken, new() { Metadata = metadata });
             }
             else
             {
@@ -163,9 +160,10 @@ If the request completes successfully but the file is not complete yet indicated
             var guardedPipeReader = new ClientDisconnectGuardedPipeReader(httpContext.Request.BodyReader, cts.Token);
             try
             {
+
                 // TODO: Move reading of pipe reader to this code and just pass the buffer to AppendData?
                 // This would make it easier to optimize buffers on our end and to add additional events, such as "OnExamineFile" etc. 
-                await store.AppendData(headers.UploadToken, guardedPipeReader, cts.Token);
+                await store.AppendData(headers.UploadToken, guardedPipeReader, cts.Token, new() { Metadata = metadata });
             }
             catch (OperationCanceledException)
             {
@@ -175,11 +173,7 @@ If the request completes successfully but the file is not complete yet indicated
 
             if (ongoingCancellationToken.IsCancellationRequested)
             {
-                return new()
-                {
-                    Status = HttpStatusCode.BadRequest,
-                    ErrorMessage = "Upload was cancelled by other request"
-                };
+                throw new AbortConnectionException();
             }
 
             // TODO: Optimize? Maybe we can return a "Client disconnected" response if the client disconnected

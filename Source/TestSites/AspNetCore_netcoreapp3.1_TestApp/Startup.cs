@@ -51,7 +51,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 
             services.AddOptions();
-            services.Configure<Tus2Options>(Configuration);
+            services.AddTus(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

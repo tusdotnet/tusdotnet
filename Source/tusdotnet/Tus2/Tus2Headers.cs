@@ -1,11 +1,9 @@
 ﻿#nullable enable
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
@@ -24,12 +22,18 @@ namespace tusdotnet.Tus2
             var couldParseUploadOffset = long.TryParse(headers["Upload-Offset"].FirstOrDefault(), out long uploadOffset);
             var uploadIncomplete = headers["Upload-Incomplete"].FirstOrDefault()?.Equals("true", StringComparison.OrdinalIgnoreCase);
 
+            var uploadTokenParser = httpContext.RequestServices.GetRequiredService<IUploadTokenParser>();
+
             return new()
             {
                 UploadOffset = couldParseUploadOffset ? uploadOffset : null,
-                UploadToken = headers["Upload-Token"].FirstOrDefault(),
+                UploadToken = uploadTokenParser.Parse(headers["Upload-Token"].FirstOrDefault()),
                 UploadIncomplete = uploadIncomplete
             };
         }
+
+
+
+
     }
 }

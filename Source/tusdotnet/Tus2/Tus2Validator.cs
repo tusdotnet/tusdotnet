@@ -7,8 +7,6 @@ namespace tusdotnet.Tus2
 {
     internal static class Tus2Validator
     {
-        private static readonly HashSet<char> _invalidFileNameChars = new(Path.GetInvalidFileNameChars());
-
         internal static async Task<bool> AssertFileExist(Tus2DiskStore store, string uploadToken, bool additionalCondition = true)
         {
             var fileExist = await store.FileExist(uploadToken);
@@ -41,22 +39,6 @@ namespace tusdotnet.Tus2
                 // TODO: In this case should we also return the offset in the response headers to prevent a round trip with retrieving the new offset?
                 throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, $"Invalid offset {uploadOffset}. File offset is at {existingOffset}");
             }
-        }
-
-        internal static string CleanUploadToken(string uploadToken)
-        {
-            var result = uploadToken;
-            // TODO: This should not be here but in the disk store
-
-            var span = result.ToCharArray();
-
-            for (int i = 0; i < span.Length; i++)
-            {
-                if (_invalidFileNameChars.Contains(span[i]))
-                    span[i] = '_';
-            }
-
-            return new string(span);
         }
     }
 }

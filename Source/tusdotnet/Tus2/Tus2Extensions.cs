@@ -29,6 +29,11 @@ namespace tusdotnet.Tus2
             return Path.Combine(options.FolderDiskPath, uploadToken);
         }
 
+        internal static string MetadataFilePath(this Tus2Options options, string uploadToken)
+        {
+            return Path.Combine(options.FolderDiskPath, uploadToken) + ".metadata";
+        }
+
         internal static string CompletedFilePath(this Tus2Options options, string uploadToken)
         {
             return Path.Combine(options.FolderDiskPath, uploadToken) + ".completed";
