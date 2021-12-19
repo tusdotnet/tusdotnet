@@ -117,7 +117,7 @@ namespace tusdotnet.IntentHandlers
         {
             if (expires != null)
             {
-                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
+                Response.SetHeader(HeaderConstants.UploadExpires, ExpirationHelper.FormatHeader(expires));
             }
 
             if (uploadOffset != null)

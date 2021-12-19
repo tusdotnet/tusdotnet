@@ -26,5 +26,14 @@ namespace tusdotnet.Adapters
         public IOwinContext OwinContext { get; set; }
 
 #endif
+
+        private StoreAdapter _storeAdapter;
+        public StoreAdapter StoreAdapter
+        {
+            get
+            {
+                return _storeAdapter ??= new StoreAdapter(Configuration.Store, Configuration.AllowedExtensions);
+            }
+        }
     }
 }

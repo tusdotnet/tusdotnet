@@ -85,7 +85,7 @@ namespace tusdotnet
 
         private static IntentHandler DetermineIntentForPost(ContextAdapter context)
         {
-            if (!(context.Configuration.Store is ITusCreationStore creationStore))
+            if (!context.StoreAdapter.Extensions.Creation)
                 return IntentHandler.NotApplicable;
 
             var hasUploadConcatHeader = context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat);

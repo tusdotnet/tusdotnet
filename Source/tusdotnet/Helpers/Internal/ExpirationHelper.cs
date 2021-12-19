@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Adapters;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Expiration;
@@ -9,19 +10,19 @@ namespace tusdotnet.Helpers
 {
     internal class ExpirationHelper
     {
-        private readonly ITusExpirationStore _expirationStore;
+        private readonly StoreAdapter _storeAdapter;
         private readonly ExpirationBase _expiration;
         private readonly bool _isSupported;
         private readonly Func<DateTimeOffset> _getSystemTime;
 
         public bool IsSlidingExpiration => _expiration is SlidingExpiration;
 
-        internal ExpirationHelper(DefaultTusConfiguration configuration)
+        internal ExpirationHelper(ContextAdapter context)
         {
-            _expirationStore = configuration.Store as ITusExpirationStore;
-            _expiration = configuration.Expiration;
-            _isSupported = _expirationStore != null && _expiration != null;
-            _getSystemTime = configuration.GetSystemTime;
+            _storeAdapter = context.StoreAdapter;
+            _expiration = context.Configuration.Expiration;
+            _isSupported = _storeAdapter.Extensions.Expiration && _expiration != null;
+            _getSystemTime = context.Configuration.GetSystemTime;
         }
 
         internal async Task<DateTimeOffset?> SetExpirationIfSupported(string fileId, CancellationToken cancellationToken)
@@ -32,7 +33,7 @@ namespace tusdotnet.Helpers
             }
 
             var expires = _getSystemTime().Add(_expiration.Timeout);
-            await _expirationStore.SetExpirationAsync(fileId, expires, cancellationToken);
+            await _storeAdapter.SetExpirationAsync(fileId, expires, cancellationToken);
 
             return expires;
         }
@@ -44,10 +45,10 @@ namespace tusdotnet.Helpers
                 return Task.FromResult<DateTimeOffset?>(null);
             }
 
-            return _expirationStore.GetExpirationAsync(fileId, cancellationToken);
+            return _storeAdapter.GetExpirationAsync(fileId, cancellationToken);
         }
 
-        internal string FormatHeader(DateTimeOffset? expires)
+        internal static string FormatHeader(DateTimeOffset? expires)
         {
             return expires?.ToString("R");
         }

@@ -31,6 +31,8 @@ namespace tusdotnet.IntentHandlers
 
         protected ITusStore Store { get; }
 
+        protected StoreAdapter StoreAdapter { get; }
+
         internal abstract Task Invoke();
 
         protected IntentHandler(ContextAdapter context, IntentType intent, LockType requiresLock)
@@ -40,6 +42,7 @@ namespace tusdotnet.IntentHandlers
             Response = context.Response;
             CancellationToken = context.CancellationToken;
             Store = context.Configuration.Store;
+            StoreAdapter = context.StoreAdapter;
 
             Intent = intent;
             LockType = requiresLock;

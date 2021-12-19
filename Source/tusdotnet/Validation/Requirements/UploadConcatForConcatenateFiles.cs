@@ -2,21 +2,17 @@
 using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Constants;
-using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Validation.Requirements
 {
     internal sealed class UploadConcatForConcatenateFiles : Requirement
     {
-        private readonly Models.Concatenation.UploadConcat _uploadConcat;
-        private readonly ITusConcatenationStore _concatenationStore;
+        private readonly UploadConcat _uploadConcat;
 
-        public UploadConcatForConcatenateFiles(Models.Concatenation.UploadConcat uploadConcat, ITusConcatenationStore concatenationStore)
+        public UploadConcatForConcatenateFiles(UploadConcat uploadConcat)
         {
             _uploadConcat = uploadConcat;
-            _concatenationStore = concatenationStore;
         }
 
         public override async Task Validate(ContextAdapter context)
@@ -36,7 +32,7 @@ namespace tusdotnet.Validation.Requirements
         private async Task ValidateFinalFileCreation(FileConcatFinal finalConcat, ContextAdapter context)
         {
             var filesExist = await Task.WhenAll(finalConcat.Files.Select(f =>
-                context.Configuration.Store.FileExistAsync(f, context.CancellationToken)));
+                context.StoreAdapter.FileExistAsync(f, context.CancellationToken)));
 
             if (filesExist.Any(f => !f))
             {
@@ -46,7 +42,7 @@ namespace tusdotnet.Validation.Requirements
             }
 
             var filesArePartial = await Task.WhenAll(
-                finalConcat.Files.Select(f => _concatenationStore.GetUploadConcatAsync(f, context.CancellationToken)));
+                finalConcat.Files.Select(f => context.StoreAdapter.GetUploadConcatAsync(f, context.CancellationToken)));
 
             if (filesArePartial.Any(f => !(f is FileConcatPartial)))
             {
@@ -58,8 +54,8 @@ namespace tusdotnet.Validation.Requirements
             var totalSize = 0L;
             foreach (var file in finalConcat.Files)
             {
-                var length = context.Configuration.Store.GetUploadLengthAsync(file, context.CancellationToken);
-                var offset = context.Configuration.Store.GetUploadOffsetAsync(file, context.CancellationToken);
+                var length = context.StoreAdapter.GetUploadLengthAsync(file, context.CancellationToken);
+                var offset = context.StoreAdapter.GetUploadOffsetAsync(file, context.CancellationToken);
                 await Task.WhenAll(length, offset);
 
                 if (length.Result != null)

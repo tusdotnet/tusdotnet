@@ -110,7 +110,7 @@ namespace tusdotnet.Adapters
                 // Left blank
             }
 
-            return GetUploadOffset() ?? (await _context.Configuration.Store.GetUploadOffsetAsync(_fileId, _context.CancellationToken));
+            return GetUploadOffset() ?? (await _context.StoreAdapter.GetUploadOffsetAsync(_fileId, _context.CancellationToken));
         }
 
         private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte? preReadByteFromStream)

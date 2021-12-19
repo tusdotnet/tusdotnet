@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -44,16 +43,14 @@ namespace tusdotnet.IntentHandlers
 
         private Dictionary<string, Metadata> _metadataFromRequirement;
 
-        public ConcatenateFilesHandler(ContextAdapter context, ITusConcatenationStore concatenationStore)
+        public ConcatenateFilesHandler(ContextAdapter context)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
             UploadConcat = ParseUploadConcatHeader();
-            _concatenationStore = concatenationStore;
-            _expirationHelper = new ExpirationHelper(context.Configuration);
+            _expirationHelper = new ExpirationHelper(context);
             _isPartialFile = UploadConcat.Type is FileConcatPartial;
         }
 
-        private readonly ITusConcatenationStore _concatenationStore;
         private readonly ExpirationHelper _expirationHelper;
         private readonly bool _isPartialFile;
 
@@ -160,7 +157,7 @@ namespace tusdotnet.IntentHandlers
 
             if (expires != null)
             {
-                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
+                Response.SetHeader(HeaderConstants.UploadExpires, ExpirationHelper.FormatHeader(expires));
             }
 
             if (uploadOffset != null)

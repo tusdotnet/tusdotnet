@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -21,7 +22,7 @@ namespace tusdotnet.Models
         /// <summary>
         /// The store to use when storing files.
         /// </summary>
-        public virtual ITusStore Store { get; set; }
+        //public virtual ITusStore Store { get; set; }
 
         /// <summary>
         /// Callback ran when a file is completely uploaded.
@@ -81,6 +82,8 @@ namespace tusdotnet.Models
         /// </summary>
         public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
 
+        public TusExtensions AllowedExtensions { get; set; }
+
         /// <summary>
         /// Default constructor.
         /// </summary>
@@ -91,6 +94,9 @@ namespace tusdotnet.Models
             UsePipelinesIfAvailable = true;
 
 #endif
+
+            AllowedExtensions = TusExtensions.All;
+
         }
 
         /// <summary>

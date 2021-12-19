@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net;
 using tusdotnet;
+using tusdotnet.Constants;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -52,6 +53,7 @@ static DefaultTusConfiguration CreateTusConfiguration(IServiceProvider servicePr
         Store = new TusDiskStore(@"C:\tusfiles\"),
         MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
         UsePipelinesIfAvailable = true,
+        AllowedExtensions = TusExtensions.All.Except(ExtensionConstants.Termination, ExtensionConstants.Checksum),
         Events = new Events
         {
             OnAuthorizeAsync = ctx =>
