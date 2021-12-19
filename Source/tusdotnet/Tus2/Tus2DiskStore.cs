@@ -128,6 +128,7 @@ namespace tusdotnet.Tus2
             uploadToken = CleanUploadToken(uploadToken);
             File.Delete(_options.CompletedFilePath(uploadToken));
             File.Delete(_options.DataFilePath(uploadToken));
+            File.Delete(_options.MetadataFilePath(uploadToken));
             return Task.CompletedTask;
         }
 
