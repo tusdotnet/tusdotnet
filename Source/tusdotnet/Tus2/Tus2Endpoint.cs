@@ -2,8 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,7 +47,7 @@ namespace tusdotnet.Tus2
                 }
                 else if (method.Equals("delete", StringComparison.OrdinalIgnoreCase))
                 {
-                    response = await UploadCancellationProcedure(endpointContext);
+                    response = await UploadCancellationProcedure(endpointContext, options.Value.AllowClientToDeleteFile);
                     return;
                 }
 
@@ -59,7 +57,7 @@ namespace tusdotnet.Tus2
             {
                 caughtException = ex;
             }
-            catch(AbortConnectionException ex)
+            catch (AbortConnectionException ex)
             {
                 caughtException = ex;
             }
@@ -73,7 +71,7 @@ namespace tusdotnet.Tus2
                 {
                     await httpContext.Error(are.Status, are.ErrorMessage);
                 }
-                else if(caughtException is AbortConnectionException)
+                else if (caughtException is AbortConnectionException)
                 {
                     httpContext.Abort();
                 }
@@ -87,34 +85,32 @@ namespace tusdotnet.Tus2
         private static async Task<UploadTransferProcedureResponse> UploadTransferProcedure(EndpointContext endpointContext)
         {
             /*
-             * The Upload Transfer Procedure can be used for either starting a new upload, or resuming an existing upload. A limited form of this procedure MAY be used by the client to start a new upload without the knowledge of server support.
+           The Upload Transfer Procedure can be used for either starting a new upload, or resuming an existing upload. A limited form of this procedure MAY be used by the client to start a new upload without the knowledge of server support.
 
-This procedure is designed to be compatible with a regular upload. Therefore all methods are allowed with the exception of GET, HEAD, DELETE, and OPTIONS. And all response status codes are allowed. The client is RECOMMENDED to use POST request if not otherwise specified.
+            This procedure is designed to be compatible with a regular upload. Therefore all methods are allowed with the exception of GET, HEAD, DELETE, and OPTIONS. And all response status codes are allowed. The client is RECOMMENDED to use POST request if not otherwise specified.
 
-The client MUST use the same method throughout an entire upload. The server SHOULD reject the attempt to resume an upload with a different method with 400 (Bad Request) response.
+            The client MUST use the same method throughout an entire upload. The server SHOULD reject the attempt to resume an upload with a different method with 400 (Bad Request) response.
 
-The request MUST include the Upload-Token header which uniquely identifies an upload.
+            The client MUST NOT perform multiple Upload Transfer Procedures ({{upload-transfer}}) for the same file in parallel.
 
-When resuming an upload, the Upload-Offset header MUST be set to the resumption offset. The resumption offset 0 indicates a new upload. The absence of the Upload-Offset header implies the resumption offset of 0.
+            The request MUST include the Upload-Token header field ({{upload-token}}) which uniquely identifies an upload. The client MUST NOT reuse the token for a different upload.
 
-If the end of the request body is not the end of the upload, the Upload-Incomplete header MUST be set to true.
+            When resuming an upload, the Upload-Offset header field ({{upload-offset}}) MUST be set to the resumption offset. The resumption offset 0 indicates a new upload. The absence of the Upload-Offset header field implies the resumption offset of 0.
 
-The client MAY send the metadata of the file using headers such as Content-Type and Content-Disposition when starting a new upload. It is OPTIONAL for the client to repeat the metadata when resuming an upload.
+            If the end of the request body is not the end of the upload, the Upload-Incomplete header field ({{upload-incomplete}}) MUST be set to true.
 
-If the server has no record of the token but the offset is non-zero, it MUST respond with 404 (Not Found) status code.
+            The client MAY send the metadata of the file using headers such as Content-Type (see {{Section 8.3 of HTTP}} and Content-Disposition {{!RFC6266}} when starting a new upload. It is OPTIONAL for the client to repeat the metadata when resuming an upload.
 
-The server MUST terminate any ongoing Upload Transfer Procedure for the same token before processing the request body.
+            If the server has no record of the token but the offset is non-zero, it MUST respond with 404 (Not Found) status code.
 
-If the offset in the Upload-Offset header does not match the existing file size, the server MUST respond with 400 (Bad Request) status code.
+            The server MAY terminate any ongoing Upload Transfer Procedure ({{upload-transfer}}) for the same token. Since the client is not allowed to perform multiple transfers in parallel, the server can assume that the previous attempt has already failed. Therefore, the server MAY abruptly terminate the previous HTTP connection or stream.
 
-If the request completes successfully and the entire file is received, the server MUST acknowledge it by responding with a successful status code between 200 and 299 (inclusive). Server is RECOMMENDED to use 201 (Created) response if not otherwise specified. The response MUST NOT include the Upload-Incomplete header.
+            If the offset in the Upload-Offset header field does not match the value 0, the offset provided by the immediate previous Offset Retrieving Procedure ({{offset-retrieving}}), or the end offset of the immediate previous incomplete transfer, the server MUST respond with 400 (Bad Request) status code.
 
-If the request completes successfully but the file is not complete yet indicated by the Upload-Incomplete header, the server MUST acknowledge it by responding with the 201 (Created) status code with the Upload-Incomplete header set to true.
-             * 
+            If the request completes successfully and the entire file is received, the server MUST acknowledge it by responding with a successful status code between 200 and 299 (inclusive). Server is RECOMMENDED to use 201 (Created) response if not otherwise specified. The response MUST NOT include the Upload-Incomplete header.
+
+            If the request completes successfully but the file is not complete yet indicated by the Upload-Incomplete header, the server MUST acknowledge it by responding with the 201 (Created) status code with the Upload-Incomplete header set to true.
              * */
-
-            // TODO Not implemented: Check the same method was used in all requests.
-            // Do we really need the above? Seems like more trouble than it's worth.
 
             var (store, headers, httpContext, ongoingUploadService) = endpointContext;
 
@@ -126,9 +122,6 @@ If the request completes successfully but the file is not complete yet indicated
 
             if (!fileExist)
             {
-                // TODO: Adding metadata with some kind of "gatherer" e.g. Func<HttpContext, Metadata> that the dev using tusdotnet can specify (use a default one for getting content type etc)
-                // Must be possible to update if chunked uploads are used.
-
                 await store.CreateFile(headers.UploadToken, new() { Metadata = metadata });
             }
             else
@@ -176,9 +169,6 @@ If the request completes successfully but the file is not complete yet indicated
                 throw new AbortConnectionException();
             }
 
-            // TODO: Optimize? Maybe we can return a "Client disconnected" response if the client disconnected
-            // to prevent unnecessary CPU cycles when trying to write the response later.
-
             if (headers.UploadIncomplete == true)
             {
                 return new()
@@ -200,19 +190,24 @@ If the request completes successfully but the file is not complete yet indicated
             };
         }
 
-        private static async Task<UploadCancellationProcedureResponse> UploadCancellationProcedure(EndpointContext endpointContext)
+        private static async Task<UploadCancellationProcedureResponse> UploadCancellationProcedure(EndpointContext endpointContext, bool allowClientToDeleteFile)
         {
             /*
-             * If the client wants to terminate the transfer without the ability to resume, it MAY send a DELETE request to the server along with the Upload-Token which is an indication that the client is no longer interested in uploading this body and the server can release resources associated with this token. The client MUST NOT initiate this procedure without the knowledge of server support.
+            If the client wants to terminate the transfer without the ability to resume, it MAY send a DELETE request to the server along with the Upload-Token which is an indication that the client is no longer interested in uploading this body and the server can release resources associated with this token. The client MUST NOT initiate this procedure without the knowledge of server support.
 
-The request MUST use the DELETE method and include the Upload-Token header. The request MUST NOT include the Upload-Offset header or the Upload-Incomplete header. The server MUST reject the request with the Upload-Offset header or the Upload-Incomplete header by sending a 400 (Bad Request) response.
+            The request MUST use the DELETE method and include the Upload-Token header. The request MUST NOT include the Upload-Offset header or the Upload-Incomplete header. The server MUST reject the request with the Upload-Offset header or the Upload-Incomplete header by sending a 400 (Bad Request) response.
 
-If the server has successfully released the resources allocated for this token, it MUST send back a 204 (No Content) response.
+            If the server has successfully released the resources allocated for this token, it MUST send back a 204 (No Content) response.
 
-The server MUST terminate any ongoing Upload Transfer Procedure for the same token before sending the response.
+            The server MAY terminate any ongoing Upload Transfer Procedure ({{upload-transfer}}) for the same token before sending the response by abruptly terminating the HTTP connection or stream.
 
-If the server has no record of the token in Upload-Token, it MUST respond with 404 (Not Found) status code.
+            If the server has no record of the token in Upload-Token, it MUST respond with 404 (Not Found) status code.
+
+            If the server does not support cancellation, it MUST respond with 405 (Method Not Allowed) status code.
              * */
+
+            if (!allowClientToDeleteFile)
+                throw new Tus2AssertRequestException(HttpStatusCode.MethodNotAllowed);
 
             var (store, headers, _, ongoingUploadService) = endpointContext;
 
@@ -232,18 +227,21 @@ If the server has no record of the token in Upload-Token, it MUST respond with 4
         private static async Task<UploadRetrievingProcedureResponse> OffsetRetrivingProcedure(EndpointContext endpointContext)
         {
             /*
-             * If an upload is interrupted, the client MAY attempt to fetch the offset of the incomplete upload by sending a HEAD request to the server with the same Upload-Token. The client MUST NOT initiate this procedure without the knowledge of server support.
+            If an upload is interrupted, the client MAY attempt to fetch the offset of the incomplete upload by sending a HEAD request to the server with the same Upload-Token header field ({{upload-token}}). The client MUST NOT initiate this procedure without the knowledge of server support.
 
-The request MUST use the HEAD method and include the Upload-Token header. The request MUST NOT include the Upload-Offset header or the Upload-Incomplete header. The server MUST reject the request with the Upload-Offset header or the Upload-Incomplete header by sending a 400 (Bad Request) response.
+            The request MUST use the HEAD method and include the Upload-Token header. The request MUST NOT include the Upload-Offset header or the Upload-Incomplete header. The server MUST reject the request with the Upload-Offset header or the Upload-Incomplete header by sending a 400 (Bad Request) response.
 
-If the server has resources allocated for this token, it MUST send back a 204 (No Content) response with a header Upload-Offset which indicates the resumption offset for the client.
+            The client MUST NOT perform the Offset Retrieving Procedure ({{offset-retrieving}}) while the Upload Transfer Procedures ({{upload-transfer}}) is in progress.
 
-The server MUST terminate any ongoing Upload Transfer Procedure for the same token before sending the response.
+            If the server has resources allocated for this token, it MUST send back a 204 (No Content) response with a header Upload-Offset which indicates the resumption offset for the client.
 
-The response SHOULD include Cache-Control: no-store header to prevent HTTP caching.
+            The offset MUST be accepted by a subsequent Upload Transfer Procedure ({{upload-transfer}}). Due to network delay and reordering, the server might still be receiving data from an ongoing transfer for the same token, which in the client perspective has failed. The server MAY terminate any transfers for the same token before sending the response by abruptly terminating the HTTP connection or stream. Alternatively, the server MAY keep the ongoing transfer alive but ignore further bytes received past the offset.
 
-If the server has no record of this token, it MUST respond with 404 (Not Found) status code.
-             * 
+            The response SHOULD include Cache-Control: no-store header to prevent HTTP caching.
+
+            If the server has no record of this token, it MUST respond with 404 (Not Found) status code.
+
+            The client MUST NOT start more than one Upload Transfer Procedures ({{upload-transfer}}) based on the resumption offset from a single Offset Retrieving Procedure ({{offset-retrieving}}).
              * */
 
             var (store, headers, _, ongoingUploadService) = endpointContext;
