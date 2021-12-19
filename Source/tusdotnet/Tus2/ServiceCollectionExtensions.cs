@@ -1,21 +1,33 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddTus(this IServiceCollection services, IConfiguration configuration)
+        public static TusServiceBuilder AddTus(this IServiceCollection services)
         {
-            services.Configure<Tus2Options>(configuration);
             services.AddSingleton<IUploadTokenParser, UploadTokenParser>();
             services.AddSingleton<IMetadataParser, MetadataParser>();
-            return services;
+
+            return new(services);
+        }
+    }
+
+    public class TusServiceBuilder
+    {
+        private readonly IServiceCollection _services;
+
+        public TusServiceBuilder(IServiceCollection services)
+        {
+            _services = services;
+        }
+
+        public TusServiceBuilder Configure(Action<Tus2Options> options)
+        {
+            _services.Configure(options);
+
+            return this;
         }
     }
 }

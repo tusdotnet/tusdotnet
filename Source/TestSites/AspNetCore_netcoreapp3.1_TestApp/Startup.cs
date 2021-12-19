@@ -51,7 +51,11 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 
             services.AddOptions();
-            services.AddTus(Configuration);
+
+            services.AddTus().Configure(options =>
+            {
+                Configuration.Bind(options);
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -105,7 +109,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                     var span = arr.AsMemory()[..32];
                     RandomNumberGenerator.Fill(span.Span);
 
-                    await httpContext.Response.WriteAsync(Convert.ToBase64String(span.Span));
+                    await httpContext.Response.WriteAsync(":" + Convert.ToBase64String(span.Span) + ":");
 
                     ArrayPool<byte>.Shared.Return(arr, clearArray: true);
                 });
