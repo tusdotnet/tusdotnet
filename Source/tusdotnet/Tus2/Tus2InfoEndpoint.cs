@@ -15,12 +15,12 @@ namespace tusdotnet.Tus2
 
             var headers = Tus2Headers.Parse(httpContext);
 
-            headers.UploadToken = Tus2DiskStore.CleanUploadToken(headers.UploadToken);
-
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
             {
                 await httpContext.Error(System.Net.HttpStatusCode.BadRequest, "Missing Upload-Token header");
             }
+
+            headers.UploadToken = Tus2DiskStore.CleanUploadToken(headers.UploadToken);
 
             var path = options.DataFilePath(headers.UploadToken);
             var exists = File.Exists(path);
