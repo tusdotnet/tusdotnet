@@ -11,7 +11,7 @@ namespace tusdotnet.Tus2
         {
             if (UploadIncomplete)
             {
-                context.SetHeader("Upload-Incomplete", "true");
+                context.SetHeader("Upload-Incomplete", "?1");
             }
 
             return Task.CompletedTask;

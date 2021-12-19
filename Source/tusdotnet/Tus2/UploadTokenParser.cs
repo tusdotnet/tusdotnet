@@ -16,9 +16,10 @@ namespace tusdotnet.Tus2
             if (string.IsNullOrWhiteSpace(uploadTokenHeader))
                 return null;
 
-            return IsSfBinary(uploadTokenHeader)
-                ? ParseSfBinary(uploadTokenHeader)
-                : uploadTokenHeader;
+            if (!IsSfBinary(uploadTokenHeader))
+                return null;
+
+            return ParseSfBinary(uploadTokenHeader);
         }
 
         private static bool IsSfBinary(string uploadToken)
@@ -41,7 +42,7 @@ namespace tusdotnet.Tus2
 
         private static bool IsBase64Char(char c)
         {
-            return !Char.IsWhiteSpace(c) || Char.IsDigit(c) || c == '+' || c == '/' || c == '=';
+            return !char.IsWhiteSpace(c) || char.IsAscii(c) || char.IsDigit(c) || c == '+' || c == '/' || c == '=';
         }
     }
 }
