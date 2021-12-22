@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace tusdotnet.Tus2
 {
-    internal class Tus2Headers
+    public class Tus2Headers
     {
         public long? UploadOffset { get; set; }
 

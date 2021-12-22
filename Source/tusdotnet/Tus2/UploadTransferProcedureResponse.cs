@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    internal class UploadTransferProcedureResponse : Tus2BaseResponse
+    public class UploadTransferProcedureResponse : Tus2BaseResponse
     {
         public bool UploadIncomplete { get; set; }
 

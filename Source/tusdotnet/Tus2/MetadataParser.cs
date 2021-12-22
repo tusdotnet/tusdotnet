@@ -10,7 +10,7 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Tus2
 {
-    internal interface IMetadataParser
+    public interface IMetadataParser
     {
         Dictionary<string, Metadata>? Parse(HttpContext httpContext);
     }

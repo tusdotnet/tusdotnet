@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    internal class UploadRetrievingProcedureResponse : Tus2BaseResponse
+    public class UploadRetrievingProcedureResponse : Tus2BaseResponse
     {
         public long UploadOffset { get; set; }
 

@@ -4,15 +4,15 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    internal abstract class Tus2BaseResponse
+    public abstract class Tus2BaseResponse
     {
         public HttpStatusCode Status { get; set; }
 
-        public int StatusInt => (int)Status;
-
         public string ErrorMessage { get; set; }
 
-        protected bool IsError
+        public bool DisconnectClient { get; set; }
+
+        public bool IsError
         {
             get
             {
@@ -25,6 +25,12 @@ namespace tusdotnet.Tus2
 
         internal async Task WriteTo(HttpContext httpContext)
         {
+            if (DisconnectClient)
+            {
+                httpContext.Abort();
+                return;
+            }
+
             if (NoCache)
             {
                 httpContext.SetHeader("cache-control", "no-cache");

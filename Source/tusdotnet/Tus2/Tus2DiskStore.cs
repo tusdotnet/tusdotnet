@@ -12,7 +12,7 @@ namespace tusdotnet.Tus2
 {
     // TODO: Use RandomAccess if possible
     // TODO: Support for partitioning
-    internal class Tus2DiskStore
+    public class Tus2DiskStore
     {
 
         private static readonly HashSet<char> _invalidFileNameChars = new(Path.GetInvalidFileNameChars());

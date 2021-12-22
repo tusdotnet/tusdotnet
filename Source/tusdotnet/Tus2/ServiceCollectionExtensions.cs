@@ -29,5 +29,12 @@ namespace tusdotnet.Tus2
 
             return this;
         }
+
+        public TusServiceBuilder WithController<T>() where T : TusBaseController
+        {
+            _services.AddTransient<T>();
+
+            return this;
+        }
     }
 }
