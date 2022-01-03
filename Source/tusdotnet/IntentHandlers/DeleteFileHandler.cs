@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Validation;
@@ -18,12 +17,9 @@ namespace tusdotnet.IntentHandlers
 
     internal class DeleteFileHandler : IntentHandler
     {
-        private readonly ITusTerminationStore _terminationStore;
-
-        public DeleteFileHandler(ContextAdapter context, ITusTerminationStore terminationStore) 
+        public DeleteFileHandler(ContextAdapter context) 
             : base(context, IntentType.DeleteFile, LockType.RequiresLock)
         {
-            _terminationStore = terminationStore;
         }
 
         internal override Requirement[] Requires => new Requirement[] 
@@ -39,7 +35,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            await _terminationStore.DeleteFileAsync(Request.FileId, CancellationToken);
+            await StoreAdapter.DeleteFileAsync(Request.FileId, CancellationToken);
 
             await EventHelper.Notify<DeleteCompleteContext>(Context);
 

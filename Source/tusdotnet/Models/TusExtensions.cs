@@ -1,15 +1,25 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using tusdotnet.Constants;
-using tusdotnet.Interfaces;
 
 namespace tusdotnet.Models
 {
     public class TusExtensions
     {
         private readonly ISet<string> _extensionNames;
+        private static readonly HashSet<string> _all = new()
+        {
+            ExtensionConstants.Creation,
+            ExtensionConstants.CreationDeferLength,
+            ExtensionConstants.CreationWithUpload,
+            ExtensionConstants.Termination,
+            ExtensionConstants.Checksum,
+            ExtensionConstants.ChecksumTrailer,
+            ExtensionConstants.Concatenation,
+            ExtensionConstants.Expiration
+        };
 
-        public IEnumerable<string> Disallowed => All._extensionNames.Except(_extensionNames);
+    public IEnumerable<string> Disallowed => All._extensionNames.Except(_extensionNames);
 
         public TusExtensions(ISet<string> extensionNames)
         {
@@ -25,19 +35,7 @@ namespace tusdotnet.Models
         {
             get
             {
-                var set = new HashSet<string>
-                {
-                    ExtensionConstants.Creation,
-                    ExtensionConstants.CreationDeferLength,
-                    ExtensionConstants.CreationWithUpload,
-                    ExtensionConstants.Termination,
-                    ExtensionConstants.Checksum,
-                    ExtensionConstants.ChecksumTrailer,
-                    ExtensionConstants.Concatenation,
-                    ExtensionConstants.Expiration
-                };
-
-                return new TusExtensions(set);
+                return new TusExtensions(_all);
             }
         }
 

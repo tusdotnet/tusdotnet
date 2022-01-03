@@ -22,7 +22,7 @@ namespace tusdotnet.Models
         /// <summary>
         /// The store to use when storing files.
         /// </summary>
-        //public virtual ITusStore Store { get; set; }
+        public virtual ITusStore Store { get; set; }
 
         /// <summary>
         /// Callback ran when a file is completely uploaded.

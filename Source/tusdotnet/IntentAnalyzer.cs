@@ -62,15 +62,11 @@ namespace tusdotnet
 
         private static bool MethodRequiresFileIdUrl(string httpMethod)
         {
-            switch (httpMethod)
+            return httpMethod switch
             {
-                case "head":
-                case "patch":
-                case "delete":
-                    return true;
-                default:
-                    return false;
-            }
+                "head" or "patch" or "delete" => true,
+                _ => false,
+            };
         }
 
         private static IntentHandler DetermineIntentForOptions(ContextAdapter context)
@@ -90,13 +86,12 @@ namespace tusdotnet
 
             var hasUploadConcatHeader = context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat);
 
-            if (context.Configuration.Store is ITusConcatenationStore tusConcatenationStore
-                && hasUploadConcatHeader)
+            if (context.StoreAdapter.Extensions.Concatenation && hasUploadConcatHeader)
             {
-                return new ConcatenateFilesHandler(context, tusConcatenationStore);
+                return new ConcatenateFilesHandler(context);
             }
 
-            return new CreateFileHandler(context, creationStore);
+            return new CreateFileHandler(context);
         }
 
         private static IntentHandler DetermineIntentForPatch(ContextAdapter context)
@@ -106,10 +101,10 @@ namespace tusdotnet
 
         private static IntentHandler DetermineIntentForDelete(ContextAdapter context)
         {
-            if (!(context.Configuration.Store is ITusTerminationStore terminationStore))
+            if (!context.StoreAdapter.Extensions.Termination)
                 return IntentHandler.NotApplicable;
 
-            return new DeleteFileHandler(context, terminationStore);
+            return new DeleteFileHandler(context);
         }
 
         private static bool RequestRequiresTusResumableHeader(string httpMethod)

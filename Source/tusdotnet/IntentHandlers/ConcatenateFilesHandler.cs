@@ -97,7 +97,7 @@ namespace tusdotnet.IntentHandlers
         {
             var requirements = new List<Requirement>(3)
             {
-                new Validation.Requirements.UploadConcatForConcatenateFiles(UploadConcat, _concatenationStore)
+                new Validation.Requirements.UploadConcatForConcatenateFiles(UploadConcat)
             };
 
             // Only validate upload length for partial files as the length of a final file is implicit.
@@ -122,7 +122,7 @@ namespace tusdotnet.IntentHandlers
 
             if (UploadConcat.Type is FileConcatFinal finalConcat)
             {
-                createdFileId = await _concatenationStore.CreateFinalFileAsync(finalConcat.Files, metadataString, CancellationToken);
+                createdFileId = await StoreAdapter.CreateFinalFileAsync(finalConcat.Files, metadataString, CancellationToken);
 
                 await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
                 {
@@ -136,7 +136,7 @@ namespace tusdotnet.IntentHandlers
             }
             else
             {
-                createdFileId = await _concatenationStore.CreatePartialFileAsync(uploadLength, metadataString, CancellationToken);
+                createdFileId = await StoreAdapter.CreatePartialFileAsync(uploadLength, metadataString, CancellationToken);
 
                 await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
                 {
