@@ -53,7 +53,6 @@ static DefaultTusConfiguration CreateTusConfiguration(IServiceProvider servicePr
         Store = new TusDiskStore(@"C:\tusfiles\"),
         MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
         UsePipelinesIfAvailable = true,
-        AllowedExtensions = TusExtensions.All.Except(ExtensionConstants.Termination, ExtensionConstants.Checksum),
         Events = new Events
         {
             OnAuthorizeAsync = ctx =>
