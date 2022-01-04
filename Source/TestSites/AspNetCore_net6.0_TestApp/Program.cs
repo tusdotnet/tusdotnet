@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net;
 using tusdotnet;
-using tusdotnet.Constants;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
