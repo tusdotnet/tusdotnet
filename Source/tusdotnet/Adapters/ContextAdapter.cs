@@ -34,6 +34,11 @@ namespace tusdotnet.Adapters
             {
                 return _storeAdapter ??= new StoreAdapter(Configuration.Store, Configuration.AllowedExtensions);
             }
+            set
+            {
+                // Used from creation-with-upload to not have to allocate a new object.
+                _storeAdapter = value;
+            }
         }
     }
 }

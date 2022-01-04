@@ -106,7 +106,7 @@ namespace tusdotnet.Models
         private static void EnsureStoreNotNull<TStore>(TStore store)
         {
             if (store == null)
-                throw new InvalidOperationException($"The store {store.GetType().FullName} does not implement {typeof(TStore).FullName}");
+                throw new InvalidOperationException($"The store does not implement {typeof(TStore).FullName}");
         }
 
         /// <summary>

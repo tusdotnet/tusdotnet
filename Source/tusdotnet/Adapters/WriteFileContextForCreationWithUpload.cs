@@ -28,6 +28,9 @@ namespace tusdotnet.Adapters
 #if pipelines
         internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
+            if (!creationContext.StoreAdapter.Extensions.CreationWithUpload)
+                return new WriteFileContextForCreationWithUpload(creationContext, fileId, false, null);
+
             if (creationContext.Configuration.UsePipelinesIfAvailable)
             {
                 // Check if there is any file content available in the request.
@@ -67,6 +70,9 @@ namespace tusdotnet.Adapters
 #else
         internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
         {
+            if (!creationContext.StoreAdapter.Extensions.CreationWithUpload)
+                return new WriteFileContextForCreationWithUpload(creationContext, fileId, false, null);
+
             // Check if there is any file content available in the request.
             var buffer = new byte[1];
             var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1) > 0;
@@ -128,6 +134,7 @@ namespace tusdotnet.Adapters
                 HttpContext = creationContext.HttpContext,
                 Request = CreateWriteFileRequest(creationContext, fileId, preReadByteFromStream),
                 Response = CreateWriteFileResponse(),
+                StoreAdapter = creationContext.StoreAdapter,
 #if netfull
                 OwinContext = creationContext.OwinContext
 #endif

@@ -80,6 +80,9 @@ namespace tusdotnet.Helpers
             if (_checksum != null)
                 return;
 
+            if (!_context.StoreAdapter.Extensions.ChecksumTrailer)
+                return;
+
             var checksumHeader = _context.GetTrailingUploadChecksumHeader();
 
             if (string.IsNullOrEmpty(checksumHeader))
