@@ -91,6 +91,7 @@ namespace tusdotnet.Models
                 return _readableStore;
             }
         }
+
 #if pipelines
         private ITusPipelineStore PipelineStore
         {

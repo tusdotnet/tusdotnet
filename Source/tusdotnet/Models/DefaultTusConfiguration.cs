@@ -82,6 +82,10 @@ namespace tusdotnet.Models
         /// </summary>
         public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
 
+        /// <summary>
+        /// Tus extensions allowed to use by the client. Defaults to <see cref="TusExtensions.All" />.
+        /// In addition to being in this list the extension must also be supported by the store provided in <see cref="DefaultTusConfiguration.Store"/> to be accessible for the client.
+        /// </summary>
         public TusExtensions AllowedExtensions { get; set; }
 
         /// <summary>
@@ -96,7 +100,6 @@ namespace tusdotnet.Models
 #endif
 
             AllowedExtensions = TusExtensions.All;
-
         }
 
         /// <summary>
