@@ -9,44 +9,68 @@ namespace tusdotnet.Models
     /// </summary>
     public class TusExtensions
     {
-        private readonly ISet<string> _extensionNamesInUse;
-
-        private static readonly TusExtensions _all = new(
-            ExtensionConstants.Creation,
-            ExtensionConstants.CreationDeferLength,
-            ExtensionConstants.CreationWithUpload,
-            ExtensionConstants.Termination,
-            ExtensionConstants.Checksum,
-            ExtensionConstants.ChecksumTrailer,
-            ExtensionConstants.Concatenation,
-            ExtensionConstants.Expiration
-        );
-
-        private static readonly TusExtensions _none = new();
+        private readonly HashSet<string> _extensionNamesInUse;
 
         /// <summary>
         /// Default constructor
         /// </summary>
-        /// <param name="extensionNames">The names of the extensions (see <from cref="ExtensionConstants"/>) to allow</param>
-        public TusExtensions(params string[] extensionNames)
+        /// <param name="extensions">The extensions to allow. All extensions are available as static properties on the <see cref="TusExtensions"/> class</param>
+        public TusExtensions(params TusExtensions[] extensions)
         {
-            _extensionNamesInUse = new HashSet<string>(extensionNames);
+            _extensionNamesInUse = new HashSet<string>(extensions.SelectMany(x => x._extensionNamesInUse));
         }
 
-        private TusExtensions(ISet<string> extensionNames)
+        private TusExtensions(HashSet<string> extensionNames)
         {
             _extensionNamesInUse = extensionNames;
         }
 
+        private TusExtensions(string extensionName)
+        {
+            _extensionNamesInUse = new HashSet<string>
+            {
+                extensionName
+            };
+        }
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
+        public static TusExtensions Checksum { get; } = new TusExtensions(ExtensionConstants.Checksum);
+
+        public static TusExtensions ChecksumTrailer { get; } = new TusExtensions(ExtensionConstants.ChecksumTrailer);
+
+        public static TusExtensions Concatenation { get; } = new TusExtensions(ExtensionConstants.Concatenation);
+
+        public static TusExtensions Creation { get; } = new TusExtensions(ExtensionConstants.Creation);
+
+        public static TusExtensions CreationDeferLength { get; } = new TusExtensions(ExtensionConstants.CreationDeferLength);
+
+        public static TusExtensions CreationWithUpload { get; } = new TusExtensions(ExtensionConstants.CreationWithUpload);
+
+        public static TusExtensions Expiration { get; } = new TusExtensions(ExtensionConstants.Expiration);
+
+        public static TusExtensions Termination { get; } = new TusExtensions(ExtensionConstants.Termination);
+
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+
         /// <summary>
         /// All extensions allowed.
         /// </summary>
-        public static TusExtensions All => _all;
+        public static TusExtensions All { get; } = new(
+            Creation,
+            CreationDeferLength,
+            CreationWithUpload,
+            Termination,
+            Checksum,
+            ChecksumTrailer,
+            Concatenation,
+            Expiration
+        );
 
         /// <summary>
         /// No extensions allowed.
         /// </summary>
-        public static TusExtensions None => _none;
+        public static TusExtensions None { get; } = new();
 
         /// <summary>
         /// Returns a list of extension names that are disabled.
@@ -56,12 +80,12 @@ namespace tusdotnet.Models
         /// <summary>
         /// Disable extensions based on the extension's name (use <see cref="ExtensionConstants"/> as source of names).
         /// </summary>
-        /// <param name="extensionNames">The names to disable</param>
+        /// <param name="extensions">The extensions to disable</param>
         /// <returns>A new <see cref="TusExtensions"/> object with the provided extension names disabled</returns>
-        public TusExtensions Except(params string[] extensionNames)
+        public TusExtensions Except(params TusExtensions[] extensions)
         {
             var copy = new HashSet<string>(_extensionNamesInUse);
-            foreach (var item in extensionNames)
+            foreach (var item in extensions.SelectMany(x => x._extensionNamesInUse))
             {
                 copy.Remove(item);
             }

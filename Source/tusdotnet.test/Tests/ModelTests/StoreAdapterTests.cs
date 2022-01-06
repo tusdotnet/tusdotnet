@@ -6,7 +6,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using tusdotnet.Constants;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Stores;
@@ -116,10 +115,10 @@ namespace tusdotnet.test.Tests.ModelTests
 
             AssertAllProperties(extensionProperties, storeAdapter.Extensions, true);
 
-            storeAdapter = new(store, TusExtensions.All.Except(ExtensionConstants.Expiration, ExtensionConstants.CreationWithUpload, ExtensionConstants.ChecksumTrailer));
+            storeAdapter = new(store, TusExtensions.All.Except(TusExtensions.Expiration, TusExtensions.CreationWithUpload, TusExtensions.ChecksumTrailer));
             extensionProperties = storeAdapter.Extensions.GetType().GetProperties();
 
-            var disabled = extensionProperties.Where(x => x.Name is nameof(ExtensionConstants.Expiration) or nameof(ExtensionConstants.CreationWithUpload) or nameof(ExtensionConstants.ChecksumTrailer));
+            var disabled = extensionProperties.Where(x => x.Name is nameof(TusExtensions.Expiration) or nameof(TusExtensions.CreationWithUpload) or nameof(TusExtensions.ChecksumTrailer));
             var allOthers = extensionProperties.Except(disabled);
 
             AssertAllProperties(disabled, storeAdapter.Extensions, false);
