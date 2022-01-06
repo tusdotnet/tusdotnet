@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.Builder;
 
 namespace tusdotnet.test.Tests
 {
-    public class DeleteTests
+    public class TerminationTests
     {
         private bool _callForwarded;
         private bool _onAuthorizeWasCalled;
@@ -42,6 +42,33 @@ namespace tusdotnet.test.Tests
             await server
                 .CreateRequest("/files/testfiledelete")
                 .AddHeader("Tus-Resumable", "1.0.0")
+                .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
+                .SendAsync(methodToUse);
+
+            AssertForwardCall(true);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Forwards_Calls_If_Termination_Extension_Is_Disabled(string methodToUse)
+        {
+            using var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ =>
+                {
+                    var config = GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: false);
+                    config.AllowedExtensions = TusExtensions.All.Except(TusExtensions.Termination);
+                    return config;
+                });
+
+                app.Run(ctx =>
+                {
+                    _callForwarded = true;
+                    return Task.FromResult(true);
+                });
+            });
+
+            await server
+                .CreateTusResumableRequest("/files/testfiledelete")
                 .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
                 .SendAsync(methodToUse);
 

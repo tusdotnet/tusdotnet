@@ -97,6 +97,37 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
+        public async Task Forwards_Calls_If_Creation_Extension_Is_Disabled()
+        {
+            using var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ => new DefaultTusConfiguration
+                {
+                    Store = Substitute.For<ITusStore, ITusCreationStore>(),
+                    UrlPath = "/files",
+                    AllowedExtensions = TusExtensions.All.Except(TusExtensions.Creation),
+                    Events = new Events
+                    {
+                        OnAuthorizeAsync = __ =>
+                        {
+                            _onAuthorizeWasCalled = true;
+                            return Task.FromResult(0);
+                        }
+                    }
+                });
+
+                app.Run(ctx =>
+                {
+                    _callForwarded = true;
+                    return Task.FromResult(0);
+                });
+            });
+
+            await server.CreateRequest("/files").PostAsync();
+            AssertForwardCall(true);
+        }
+
+        [Fact]
         public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Not_Specified()
         {
             using var server = TestServerFactory.Create(Substitute.For<ITusStore, ITusCreationStore>());

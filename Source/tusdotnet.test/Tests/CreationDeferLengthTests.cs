@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.Builder;
 
 namespace tusdotnet.test.Tests
 {
-    public class UploadDeferLengthTests
+    public class CreationDeferLengthTests
     {
         [Theory, XHttpMethodOverrideData]
         public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Creation(string methodToUse)
@@ -109,6 +109,36 @@ namespace tusdotnet.test.Tests
             setUploadLengthAsyncCall.ShouldNotBeNull();
             var uploadLength = (long)setUploadLengthAsyncCall.GetArguments()[1];
             uploadLength.ShouldBe(3);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Returns_400_BadRequest_If_UploadDeferLength_Extension_Is_Disabled(string methodToUse)
+        {
+            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+
+            using var server = TestServerFactory.Create(store, allowedExtensions: TusExtensions.All.Except(TusExtensions.CreationDeferLength));
+
+            var response = await server.CreateTusResumableRequest("/files")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Header Upload-Defer-Length is not supported");
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Returns_400_BadRequest_If_Store_Does_Not_Support_UploadDeferLength(string methodToUse)
+        {
+            var store = Substitute.For<ITusStore, ITusCreationStore>();
+
+            using var server = TestServerFactory.Create(store);
+
+            var response = await server.CreateTusResumableRequest("/files")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .AddHeader("Upload-Defer-Length", "1")
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Header Upload-Defer-Length is not supported");
         }
 
         [Theory, XHttpMethodOverrideData]

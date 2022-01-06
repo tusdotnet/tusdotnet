@@ -24,6 +24,76 @@ namespace tusdotnet.test.Tests
     public class ConcatenationTests
     {
         [Theory, XHttpMethodOverrideData]
+        public async Task Creates_A_Normal_File_Instead_Of_A_Partial_One_If_Store_Does_Not_Support_Concatenation(string methodToUse)
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore>();
+
+            using var server = TestServerFactory.Create(store);
+
+            // Create final file
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Concat", "partial")
+                .AddHeader("Upload-Length", "100")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Creates_A_Normal_File_Instead_Of_A_Partial_One_If_Concatenation_Is_Disabled(string methodToUse)
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore>();
+
+            using var server = TestServerFactory.Create(store, allowedExtensions: TusExtensions.All.Except(TusExtensions.Concatenation));
+
+            // Create final file
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Concat", "partial")
+                .AddHeader("Upload-Length", "100")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Returns_400_Bad_Request_When_Creating_A_Final_File_If_Store_Does_Not_Support_Concatenation(string methodToUse)
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore>();
+
+            using var server = TestServerFactory.Create(store);
+
+            // Create final file
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Concat", $"final;/files/partial1 {server.BaseAddress.ToString().TrimEnd('/')}/files/partial2")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Missing Upload-Length header");
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Returns_400_Bad_Request_When_Creating_A_Final_File_If_Concatenation_Is_Not_Supported(string methodToUse)
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore>();
+
+            using var server = TestServerFactory.Create(store);
+
+            // Create final file
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Concat", $"final;/files/partial1 {server.BaseAddress.ToString().TrimEnd('/')}/files/partial2")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Missing Upload-Length header");
+        }
+
+        [Theory, XHttpMethodOverrideData]
         public async Task Partial_Files_Can_Be_Concatenated(string methodToUse)
         {
             var store = CreateStoreForFinalFileConcatenation();

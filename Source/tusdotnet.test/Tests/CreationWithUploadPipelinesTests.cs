@@ -58,6 +58,36 @@ namespace tusdotnet.test.Tests
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_If_CreationWithUpload_Extension_Is_Disabled(string uploadConcatHeader)
+        {
+            var fileId = Guid.NewGuid().ToString("n");
+            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+
+            var tusCreationStore = (ITusCreationStore)tusStore;
+            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+
+            var tusConcatenationStore = (ITusConcatenationStore)tusStore;
+            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+
+            using var server = TestServerFactory.Create(
+                tusStore, 
+                allowedExtensions: TusExtensions.All.Except(TusExtensions.CreationWithUpload), 
+                usePipelinesIfAvailable: true);
+
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Length", "100")
+                .AddHeaderIfNotEmpty("Upload-Concat", uploadConcatHeader)
+                .PostAsync();
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldNotContainHeaders("Upload-Offset");
+
+            await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(default, default, default);
+        }
+
+        [Theory]
+        [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
         public async Task No_Data_Is_Written_And_201_Created_Is_Returned_If_Request_Body_Is_Empty(string uploadConcatHeader)
         {
             var fileId = Guid.NewGuid().ToString("n");
