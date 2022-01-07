@@ -41,7 +41,8 @@
   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.2' ">
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
-    <PackageReference Include="Shouldly" Version="4.0.3" />
+    <!-- Shoudly 4.0.3 fails to find a method on netcoreapp2.2 so just keep the older version -->
+    <PackageReference Include="Shouldly" Version="3.0.2" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.0' ">
