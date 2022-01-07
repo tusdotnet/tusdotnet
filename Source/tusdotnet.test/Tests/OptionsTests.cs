@@ -10,6 +10,7 @@ using tusdotnet.test.Extensions;
 using Xunit;
 using tusdotnet.Models.Configuration;
 using System;
+using System.Linq;
 #if netfull
 using Owin;
 #endif
@@ -71,13 +72,16 @@ namespace tusdotnet.test.Tests
                 });
             });
 
-            await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            await server.CreateTusResumableRequest("/files").SendAsync("OPTIONS");
             AssertForwardCall(false);
 
-            await server.CreateRequest("/otherfiles").AddTusResumableHeader().SendAsync("OPTIONS");
+            await server.CreateRequest("/files").SendAsync("OPTIONS");
+            AssertForwardCall(false);
+
+            await server.CreateTusResumableRequest("/otherfiles").SendAsync("OPTIONS");
             AssertForwardCall(true);
 
-            await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("OPTIONS");
+            await server.CreateTusResumableRequest("/files/testfile").SendAsync("OPTIONS");
             AssertForwardCall(true);
         }
 
@@ -169,7 +173,7 @@ namespace tusdotnet.test.Tests
         {
             using var server = TestServerFactory.Create(_mockTusConfiguration);
 
-            var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 
             AssertContainsDefaultSuccessfulHeaders(response);
 
@@ -189,7 +193,7 @@ namespace tusdotnet.test.Tests
                 }
             });
 
-            var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 
             response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
             response.ShouldNotContainHeaders(
@@ -217,10 +221,40 @@ namespace tusdotnet.test.Tests
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS");
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 
             response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             response.ShouldContainHeader("Tus-Extension", expectedExtensions);
+        }
+
+        [Theory]
+        [InlineData(nameof(TusExtensions.CreationWithUpload), "creation,creation-defer-length", typeof(ITusCreationStore), typeof(ITusCreationDeferLengthStore))]
+        [InlineData(nameof(TusExtensions.CreationDeferLength), "creation,creation-with-upload", typeof(ITusCreationStore), typeof(ITusCreationDeferLengthStore))]
+        [InlineData(nameof(TusExtensions.Termination), "creation,creation-with-upload", typeof(ITusCreationStore), typeof(ITusTerminationStore))]
+        [InlineData(nameof(TusExtensions.Termination), null, typeof(ITusTerminationStore))]
+        [InlineData(nameof(TusExtensions.Checksum), null, typeof(ITusChecksumStore))]
+#if trailingheaders
+        [InlineData(nameof(TusExtensions.ChecksumTrailer), "checksum", typeof(ITusChecksumStore))]
+#endif
+        [InlineData(nameof(TusExtensions.Concatenation), "termination", typeof(ITusTerminationStore), typeof(ITusConcatenationStore))]
+        [InlineData(nameof(TusExtensions.Expiration), "termination", typeof(ITusTerminationStore), typeof(ITusExpirationStore))]
+        [InlineData(nameof(TusExtensions.All), null, typeof(ITusCreationStore), typeof(ITusTerminationStore), typeof(ITusChecksumStore), typeof(ITusConcatenationStore), typeof(ITusExpirationStore), typeof(ITusCreationDeferLengthStore))]
+        public async Task Extensions_Depend_On_What_Extension_Are_Enabled(string disabledExtension, string expectedExtensions, params Type[] storeInterfaceTypes)
+        {
+            var interfaces = new[] { typeof(ITusStore) }.Concat(storeInterfaceTypes).ToArray();
+            var store = (ITusStore)Substitute.For(interfaces, null);
+            var disabledExtensionType = (TusExtensions)typeof(TusExtensions).GetProperty(disabledExtension).GetValue(null);
+
+            using var server = TestServerFactory.Create(store, allowedExtensions: TusExtensions.All.Except(disabledExtensionType));
+
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+            if (expectedExtensions != null)
+                response.ShouldContainHeader("Tus-Extension", expectedExtensions);
+            else
+                response.ShouldNotContainHeaders("Tus-Extension");
         }
 
         private static void AssertContainsDefaultSuccessfulHeaders(System.Net.Http.HttpResponseMessage response)
