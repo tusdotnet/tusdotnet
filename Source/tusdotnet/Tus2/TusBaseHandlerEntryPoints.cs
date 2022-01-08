@@ -5,7 +5,7 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Tus2
 {
-    public abstract class TusBaseControllerEntryPoints
+    public abstract class TusBaseHandlerEntryPoints
     {
         public virtual IMetadataParser MetadataParser { get; set; }
 
@@ -13,7 +13,7 @@ namespace tusdotnet.Tus2
 
         public virtual EndpointContext TusContext { get; set; }
 
-        internal OngoingUploadTransferServiceDiskBased OngoingUploadTransferService { get; set; }
+        internal UploadManagerDiskBased UploadManager { get; set; }
 
         internal async Task<UploadRetrievingProcedureResponse> RetrieveOffsetEntryPoint()
         {
@@ -40,9 +40,10 @@ namespace tusdotnet.Tus2
                 var (store, headers, _) = TusContext;
 
                 Tus2Validator.AssertNoInvalidHeaders(headers);
-                await Tus2Validator.AssertFileExist(store, headers.UploadToken);
 
-                await OngoingUploadTransferService.CancelOngoingUploads(headers.UploadToken);
+                await UploadManager.CancelOtherUploads(headers.UploadToken);
+
+                await Tus2Validator.AssertFileExist(store, headers.UploadToken);
 
                 return await RetrieveOffset();
 
@@ -84,9 +85,10 @@ namespace tusdotnet.Tus2
                 var (store, headers, _) = TusContext;
 
                 Tus2Validator.AssertNoInvalidHeaders(headers);
-                await Tus2Validator.AssertFileExist(store, headers.UploadToken);
 
-                await OngoingUploadTransferService.CancelOngoingUploads(headers.UploadToken);
+                await UploadManager.CancelOtherUploads(headers.UploadToken);
+
+                await Tus2Validator.AssertFileExist(store, headers.UploadToken);
 
                 return await Delete();
 
@@ -135,6 +137,11 @@ namespace tusdotnet.Tus2
             {
                 var (store, headers, httpContext) = TusContext;
 
+                await UploadManager.CancelOtherUploads(headers.UploadToken);
+
+                var ongoingCancellationToken = await UploadManager.StartUpload(headers.UploadToken);
+                await using var finishOngoing = Deferrer.Defer(() => UploadManager.FinishUpload(headers.UploadToken));
+
                 var metadata = MetadataParser?.Parse(httpContext);
 
                 var uploadOffset = headers.UploadOffset ?? 0;
@@ -166,11 +173,6 @@ namespace tusdotnet.Tus2
                     }
                 }
 
-                await OngoingUploadTransferService.CancelOngoingUploads(headers.UploadToken);
-
-                var ongoingCancellationToken = await OngoingUploadTransferService.StartOngoing(headers.UploadToken);
-                await using var finishOngoing = Deferrer.Defer(() => OngoingUploadTransferService.FinishOngoing(headers.UploadToken));
-
                 // TODO: "before processing the request body" seems a bit strange here
                 // "The server MUST terminate any ongoing Upload Transfer Procedure for the same token before processing the request body."
                 // as we will end up with mismatches in upload-offset?
@@ -188,7 +190,15 @@ namespace tusdotnet.Tus2
                     Metadata = metadata
                 };
 
-                return await WriteData(writeDataContext);
+                var writeDataResponse = await WriteData(writeDataContext);
+
+                if (ongoingCancellationToken.IsCancellationRequested)
+                {
+                    await UploadManager.NotifyCancelComplete(headers.UploadToken);
+                }
+
+                return writeDataResponse;
+
             }
             catch (Tus2AssertRequestException exc)
             {

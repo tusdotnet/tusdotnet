@@ -5,13 +5,13 @@ using tusdotnet.Tus2;
 
 namespace AspNetCore_netcoreapp3._1_TestApp
 {
-    public class MyController : TusBaseController
+    public class MyTusHandler : TusBaseHandler
     {
         private readonly ILogger _logger;
 
-        public MyController(ILoggerFactory loggerFactory)
+        public MyTusHandler(ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger(nameof(MyController));
+            _logger = loggerFactory.CreateLogger(nameof(MyTusHandler));
         }
 
         public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext createFileContext)

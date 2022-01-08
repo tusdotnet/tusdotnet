@@ -10,7 +10,7 @@ namespace tusdotnet.Tus2
 {
     public static class EndpointRouteBuilderExtensions
     {
-        public static IEndpointRouteBuilder MapTus2<T>(this IEndpointRouteBuilder endpoints, string route) where T : TusBaseController
+        public static IEndpointRouteBuilder MapTus2<T>(this IEndpointRouteBuilder endpoints, string route) where T : TusBaseHandler
         {
             endpoints.Map(route, Tus2Endpoint.Invoke<T>);
 

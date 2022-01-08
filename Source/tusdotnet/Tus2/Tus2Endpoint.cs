@@ -9,7 +9,7 @@ namespace tusdotnet.Tus2
 {
     internal static class Tus2Endpoint
     {
-        internal static async Task Invoke<T>(HttpContext httpContext) where T : TusBaseController
+        internal static async Task Invoke<T>(HttpContext httpContext) where T : TusBaseHandler
         {
             if (httpContext.Request.Method.Equals("get", StringComparison.OrdinalIgnoreCase))
             {
@@ -19,7 +19,7 @@ namespace tusdotnet.Tus2
 
             var options = httpContext.RequestServices.GetRequiredService<IOptions<Tus2Options>>();
             var store = new Tus2DiskStore(options.Value);
-            var ongoingUploadService = new OngoingUploadTransferServiceDiskBased(options.Value);
+            var ongoingUploadService = new UploadManagerDiskBased(options.Value);
             var headers = Tus2Headers.Parse(httpContext);
 
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
@@ -50,7 +50,7 @@ namespace tusdotnet.Tus2
             }
         }
 
-        private static async Task<Tus2BaseResponse> InvokeController(HttpContext httpContext, TusBaseControllerEntryPoints controller)
+        private static async Task<Tus2BaseResponse> InvokeController(HttpContext httpContext, TusBaseHandlerEntryPoints controller)
         {
             var method = httpContext.Request.Method;
 
@@ -66,14 +66,14 @@ namespace tusdotnet.Tus2
             return await controller.WriteDataEntryPoint();
         }
 
-        private static T CreateController<T>(HttpContext httpContext, IOptions<Tus2Options> options, OngoingUploadTransferServiceDiskBased ongoingUploadService, EndpointContext tusContext) where T : TusBaseController
+        private static T CreateController<T>(HttpContext httpContext, IOptions<Tus2Options> options, UploadManagerDiskBased ongoingUploadService, EndpointContext tusContext) where T : TusBaseHandler
         {
             var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
 
             var controller = httpContext.RequestServices.GetRequiredService<T>();
             controller.TusContext = tusContext;
             controller.MetadataParser = metadataParser;
-            controller.OngoingUploadTransferService = ongoingUploadService;
+            controller.UploadManager = ongoingUploadService;
             controller.AllowClientToDeleteFile = options.Value.AllowClientToDeleteFile;
             return controller;
         }

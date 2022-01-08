@@ -7,7 +7,7 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Tus2
 {
-    internal class AppendFileOptions
+    internal class WriteFileOptions
     {
         public IDictionary<string, Metadata> Metadata { get; set; }
     }

@@ -63,7 +63,7 @@ namespace tusdotnet.Tus2
             return Task.CompletedTask;
         }
 
-        internal async Task AppendData(string uploadToken, PipeReader reader, CancellationToken cancellationToken, AppendFileOptions options = null)
+        internal async Task AppendData(string uploadToken, PipeReader reader, CancellationToken cancellationToken, WriteFileOptions options = null)
         {
             uploadToken = CleanUploadToken(uploadToken);
             const int JUST_BELOW_LOH_BYTE_LIMIT = 84 * 1024;

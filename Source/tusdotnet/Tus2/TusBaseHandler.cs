@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    public class TusBaseController : TusBaseControllerEntryPoints
+    public class TusBaseHandler : TusBaseHandlerEntryPoints
     {
         public override async Task<UploadRetrievingProcedureResponse> RetrieveOffset()
         {
@@ -38,7 +38,7 @@ namespace tusdotnet.Tus2
         {
             try
             {
-                var options = new AppendFileOptions()
+                var options = new WriteFileOptions()
                 {
                     Metadata = writeDataContext.Metadata
                 };

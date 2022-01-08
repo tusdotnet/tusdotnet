@@ -55,7 +55,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             services
                 .AddTus()
                 .Configure(options => { Configuration.Bind(options); })
-                .WithController<MyController>();
+                .WithController<MyTusHandler>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -100,7 +100,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             // in a generic way by tusdotnet.
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapTus2<MyController>("/files-tus-2");
+                endpoints.MapTus2<MyTusHandler>("/files-tus-2");
 
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
                 endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);
