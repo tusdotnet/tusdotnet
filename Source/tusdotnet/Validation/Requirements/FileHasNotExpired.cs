@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
-using tusdotnet.Interfaces;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
@@ -9,17 +9,17 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            if (!(context.Configuration.Store is ITusExpirationStore expirationStore))
+            if (!context.StoreAdapter.Extensions.Expiration)
             {
-                return Task.FromResult(0);
+                return TaskHelper.Completed;
             }
 
-            return ValidateInternal(context, expirationStore);
+            return ValidateInternal(context);
         }
 
-        private async Task ValidateInternal(ContextAdapter context, ITusExpirationStore expirationStore)
+        private async Task ValidateInternal(ContextAdapter context)
         {
-            var expires = await expirationStore.GetExpirationAsync(context.Request.FileId, context.CancellationToken);
+            var expires = await context.StoreAdapter.GetExpirationAsync(context.Request.FileId, context.CancellationToken);
             if (expires?.HasPassed() == true)
             {
                 await NotFound();

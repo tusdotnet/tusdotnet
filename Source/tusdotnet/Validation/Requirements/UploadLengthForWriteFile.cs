@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
 namespace tusdotnet.Validation.Requirements
@@ -11,7 +10,7 @@ namespace tusdotnet.Validation.Requirements
         public override async Task Validate(ContextAdapter context)
         {
             var uploadLengthIsSet = await UploadLengthIsAlreadyPresent(context);
-            var supportsUploadDeferLength = context.Configuration.Store is ITusCreationDeferLengthStore;
+            var supportsUploadDeferLength = context.StoreAdapter.Extensions.CreationDeferLength;
 
             if (!supportsUploadDeferLength && !uploadLengthIsSet)
             {
@@ -32,7 +31,7 @@ namespace tusdotnet.Validation.Requirements
 
         private static async Task<bool> UploadLengthIsAlreadyPresent(ContextAdapter context)
         {
-            var fileUploadLength = await context.Configuration.Store.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
+            var fileUploadLength = await context.StoreAdapter.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
             return fileUploadLength != null;
         }
 

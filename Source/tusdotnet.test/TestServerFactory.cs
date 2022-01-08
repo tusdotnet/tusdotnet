@@ -38,7 +38,7 @@ namespace tusdotnet.test
             return Create(app => app.UseTus(_ => config));
         }
 
-        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues, bool usePipelinesIfAvailable = false)
+        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues, TusExtensions allowedExtensions = null, bool usePipelinesIfAvailable = false)
         {
             return Create(new DefaultTusConfiguration
             {
@@ -50,6 +50,7 @@ namespace tusdotnet.test
                 ,
                 UsePipelinesIfAvailable = usePipelinesIfAvailable
 #endif
+                ,AllowedExtensions = allowedExtensions ?? TusExtensions.All
             });
         }
 
@@ -68,14 +69,15 @@ namespace tusdotnet.test
             return Create(app => app.UseTus(_ => config));
         }
 
-        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues)
+        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues, TusExtensions allowedExtensions = null)
         {
             return Create(new DefaultTusConfiguration
             {
                 UrlPath = "/files",
                 Store = store,
                 Events = events,
-                MetadataParsingStrategy = metadataParsingStrategy
+                MetadataParsingStrategy = metadataParsingStrategy,
+                AllowedExtensions = allowedExtensions ?? TusExtensions.All
             });
         }
 

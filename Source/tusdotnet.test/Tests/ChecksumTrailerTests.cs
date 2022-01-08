@@ -26,6 +26,25 @@ namespace tusdotnet.test.Tests
     public class ChecksumTrailerTests
     {
         [Fact]
+        public async Task Returns_204_No_Content_If_ChecksumTrailer_Extension_Is_Disabled()
+        {
+            var store = CreateStore<ITusChecksumStore>();
+
+            using var server = CreateTestServerWithChecksumTrailer(store, "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=", allowedExtensions: TusExtensions.All.Except(TusExtensions.ChecksumTrailer));
+
+            var response = await server
+                .CreateTusResumableRequest("/files/checksum")
+                .AddHeader("Upload-Offset", "5")
+                .DeclareTrailingChecksumHeader()
+                .AddBody()
+                .SendAsync("patch");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+            await store.DidNotReceiveWithAnyArgs().VerifyChecksumAsync(default, default, default, default);
+        }
+
+        [Fact]
         public async Task Returns_204_No_Content_If_Checksum_Matches_Using_Trailing_Header()
         {
             var store = CreateStore<ITusChecksumStore>();
@@ -200,7 +219,7 @@ namespace tusdotnet.test.Tests
             await store.Received().AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>());
 
             // Note: Verify that store was still called with sha1 as algoritm and an empty checksum to force the store to trigger a discard of data.
-            await ((ITusChecksumStore)store).Received().VerifyChecksumAsync("checksum", "sha1", Arg.Is<byte[]>(GetFallbackChecksumPredicate()), Arg.Any<CancellationToken>());
+            await ((ITusChecksumStore)store).Received().VerifyChecksumAsync("checksum", "sha1", Arg.Is(GetFallbackChecksumPredicate()), Arg.Any<CancellationToken>());
 
             byte[] checksumArgument = (byte[])((ITusChecksumStore)store).ReceivedCalls().First(x => x.GetMethodInfo().Name == nameof(ITusChecksumStore.VerifyChecksumAsync)).GetArguments()[2];
 
@@ -214,12 +233,7 @@ namespace tusdotnet.test.Tests
             streamReader.ReadToEnd().ShouldBe("Header Upload-Checksum does not match the checksum of the file");
         }
 
-        private static TestServer CreateTestServerWithChecksumTrailer(ITusChecksumStore store, string trailingUploadChecksumValue)
-        {
-            return CreateTestServerWithChecksumTrailer((ITusStore)store, trailingUploadChecksumValue);
-        }
-
-        private static TestServer CreateTestServerWithChecksumTrailer(ITusStore store, string trailingUploadChecksumValue)
+        private static TestServer CreateTestServerWithChecksumTrailer(ITusChecksumStore store, string trailingUploadChecksumValue, TusExtensions allowedExtensions = null)
         {
             return TestServerFactory.Create(app =>
             {
@@ -241,14 +255,15 @@ namespace tusdotnet.test.Tests
 
                 app.UseTus(_ => new()
                 {
-                    Store = store,
+                    Store = (ITusStore)store,
                     FileLockProvider = new TestServerInMemoryFileLockProvider(),
-                    UrlPath = "/files"
+                    UrlPath = "/files",
+                    AllowedExtensions = allowedExtensions ?? TusExtensions.All
                 });
             });
         }
 
-        private T CreateStore<T>(string supportedAlgorithm = "sha1", bool verifyChecksumAsyncReturnValue = true)
+        private static T CreateStore<T>(string supportedAlgorithm = "sha1", bool verifyChecksumAsyncReturnValue = true)
         {
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusChecksumStore>();
             store = store.WithExistingFile("checksum", 10, 5);
@@ -261,7 +276,7 @@ namespace tusdotnet.test.Tests
             return (T)store;
         }
 
-        private Expression<Predicate<byte[]>> GetFallbackChecksumPredicate()
+        private static Expression<Predicate<byte[]>> GetFallbackChecksumPredicate()
         {
             return b => b.Length == 20 && b.All(x => x == 0);
         }

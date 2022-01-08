@@ -6,15 +6,10 @@ using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
-
-#if trailingheaders
-using tusdotnet.Extensions.Internal;
-#endif
 
 namespace tusdotnet.IntentHandlers
 {
@@ -55,7 +50,7 @@ namespace tusdotnet.IntentHandlers
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
             _checksumHelper = new ChecksumHelper(Context);
-            _expirationHelper = new ExpirationHelper(Context.Configuration);
+            _expirationHelper = new ExpirationHelper(Context);
             _initiatedFromCreationWithUpload = initiatedFromCreationWithUpload;
         }
 
@@ -98,7 +93,7 @@ namespace tusdotnet.IntentHandlers
 
             if (expires.HasValue)
             {
-                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
+                Response.SetHeader(HeaderConstants.UploadExpires, ExpirationHelper.FormatHeader(expires));
             }
 
             Response.SetStatus(HttpStatusCode.NoContent);
@@ -118,10 +113,11 @@ namespace tusdotnet.IntentHandlers
         {
             long bytesWritten;
             CancellationToken cancellationToken;
-            if (Context.Configuration.UsePipelinesIfAvailable && Store is ITusPipelineStore pipelineStore)
+            var isSupported = Context.Configuration.UsePipelinesIfAvailable && StoreAdapter.Features.Pipelines;
+            if (isSupported)
             {
                 var guardedPipeReader = new ClientDisconnectGuardedPipeReader(Request.BodyReader, CancellationToken);
-                bytesWritten = await pipelineStore.AppendDataAsync(Request.FileId, guardedPipeReader, CancellationToken);
+                bytesWritten = await StoreAdapter.AppendDataAsync(Request.FileId, guardedPipeReader, CancellationToken);
                 cancellationToken = CancellationToken;
 
                 return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
@@ -146,9 +142,9 @@ namespace tusdotnet.IntentHandlers
         private Task WriteUploadLengthIfDefered()
         {
             var uploadLenghtHeader = Request.GetHeader(HeaderConstants.UploadLength);
-            if (uploadLenghtHeader != null && Store is ITusCreationDeferLengthStore creationDeferLengthStore)
+            if (uploadLenghtHeader != null && StoreAdapter.Extensions.CreationDeferLength)
             {
-                return creationDeferLengthStore.SetUploadLengthAsync(Request.FileId, long.Parse(uploadLenghtHeader), Context.CancellationToken);
+                return StoreAdapter.SetUploadLengthAsync(Request.FileId, long.Parse(uploadLenghtHeader), Context.CancellationToken);
             }
 
             return TaskHelper.Completed;
@@ -156,7 +152,7 @@ namespace tusdotnet.IntentHandlers
 
         private Task<bool> IsPartialUpload()
         {
-            if (Store is not ITusConcatenationStore concatenationStore)
+            if (!StoreAdapter.Extensions.Concatenation)
             {
                 return Task.FromResult(false);
             }
@@ -165,7 +161,7 @@ namespace tusdotnet.IntentHandlers
 
             async Task<bool> IsPartialUploadLocal()
             {
-                var concat = await concatenationStore.GetUploadConcatAsync(Request.FileId, CancellationToken);
+                var concat = await StoreAdapter.GetUploadConcatAsync(Request.FileId, CancellationToken);
 
                 return concat is FileConcatPartial;
             }

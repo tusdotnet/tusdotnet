@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Helpers;
-using tusdotnet.Interfaces;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Validation.Requirements
@@ -10,17 +9,17 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            if (!(context.Configuration.Store is ITusConcatenationStore concatStore))
+            if (!context.StoreAdapter.Extensions.Concatenation)
             {
                 return TaskHelper.Completed;
             }
 
-            return ValidateForPatch(context, concatStore);
+            return ValidateForPatch(context);
         }
 
-        private async Task ValidateForPatch(ContextAdapter context, ITusConcatenationStore concatStore)
+        private async Task ValidateForPatch(ContextAdapter context)
         {
-            var uploadConcat = await concatStore.GetUploadConcatAsync(context.Request.FileId, context.CancellationToken);
+            var uploadConcat = await context.StoreAdapter.GetUploadConcatAsync(context.Request.FileId, context.CancellationToken);
 
             if (uploadConcat is FileConcatFinal)
             {

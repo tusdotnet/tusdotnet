@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Validation;
@@ -44,17 +43,14 @@ namespace tusdotnet.IntentHandlers
             new UploadMetadata(metadata => _metadataFromRequirement = metadata)
         };
 
-        private readonly ITusCreationStore _creationStore;
-
         private readonly ExpirationHelper _expirationHelper;
 
         private Dictionary<string, Metadata> _metadataFromRequirement;
 
-        public CreateFileHandler(ContextAdapter context, ITusCreationStore creationStore)
+        public CreateFileHandler(ContextAdapter context)
             : base(context, IntentType.CreateFile, LockType.NoLock)
         {
-            _creationStore = creationStore;
-            _expirationHelper = new ExpirationHelper(context.Configuration);
+            _expirationHelper = new ExpirationHelper(context);
         }
 
         internal override async Task Invoke()
@@ -72,7 +68,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileId = await _creationStore.CreateFileAsync(Request.UploadLength, metadata, CancellationToken);
+            var fileId = await Context.StoreAdapter.CreateFileAsync(Request.UploadLength, metadata, CancellationToken);
 
             await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
             {
@@ -117,7 +113,7 @@ namespace tusdotnet.IntentHandlers
         {
             if (expires != null)
             {
-                Response.SetHeader(HeaderConstants.UploadExpires, _expirationHelper.FormatHeader(expires));
+                Response.SetHeader(HeaderConstants.UploadExpires, ExpirationHelper.FormatHeader(expires));
             }
 
             if (uploadOffset != null)

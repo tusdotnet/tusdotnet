@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
@@ -61,9 +60,9 @@ namespace tusdotnet.IntentHandlers
 
             FileConcat uploadConcat = null;
             var addUploadOffset = true;
-            if (Context.Configuration.Store is ITusConcatenationStore tusConcatStore)
+            if (StoreAdapter.Extensions.Concatenation)
             {
-                uploadConcat = await tusConcatStore.GetUploadConcatAsync(Request.FileId, CancellationToken);
+                uploadConcat = await StoreAdapter.GetUploadConcatAsync(Request.FileId, CancellationToken);
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -86,8 +85,8 @@ namespace tusdotnet.IntentHandlers
 
         private Task<string> GetMetadata(ContextAdapter context)
         {
-            if (context.Configuration.Store is ITusCreationStore tusCreationStore)
-                return tusCreationStore.GetUploadMetadataAsync(Request.FileId, context.CancellationToken);
+            if (StoreAdapter.Extensions.Creation)
+                return StoreAdapter.GetUploadMetadataAsync(Request.FileId, context.CancellationToken);
 
             return Task.FromResult<string>(null);
         }
@@ -98,7 +97,7 @@ namespace tusdotnet.IntentHandlers
             {
                 context.Response.SetHeader(HeaderConstants.UploadLength, uploadLength.Value.ToString());
             }
-            else if (context.Configuration.Store is ITusCreationDeferLengthStore)
+            else if (context.StoreAdapter.Extensions.CreationDeferLength)
             {
                 context.Response.SetHeader(HeaderConstants.UploadDeferLength, "1");
             }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -82,6 +83,12 @@ namespace tusdotnet.Models
         public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
 
         /// <summary>
+        /// Tus extensions allowed to use by the client. Defaults to <see cref="TusExtensions.All" />.
+        /// In addition to being in this list the extension must also be supported by the store provided in <see cref="DefaultTusConfiguration.Store"/> to be accessible for the client.
+        /// </summary>
+        public TusExtensions AllowedExtensions { get; set; }
+
+        /// <summary>
         /// Default constructor.
         /// </summary>
         public DefaultTusConfiguration()
@@ -91,6 +98,8 @@ namespace tusdotnet.Models
             UsePipelinesIfAvailable = true;
 
 #endif
+
+            AllowedExtensions = TusExtensions.All;
         }
 
         /// <summary>

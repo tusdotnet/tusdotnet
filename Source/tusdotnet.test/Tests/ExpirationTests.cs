@@ -150,15 +150,7 @@ namespace tusdotnet.test.Tests
         public async Task Post_Requests_Does_Not_Contain_Upload_Expires_Header_For_Final_Uploads_If_Expiration_Is_Configured(
             string methodToUse)
         {
-            var store = (ITusStore)Substitute.For(new[]
-                    {
-                    typeof(ITusStore),
-                    typeof(ITusCreationStore),
-                    typeof(ITusConcatenationStore),
-                    typeof(ITusExpirationStore)
-                },
-                    new object[0]
-                );
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusExpirationStore>();
             var concatenationStore = (ITusConcatenationStore)store;
 
             concatenationStore.GetUploadConcatAsync("partial1", Arg.Any<CancellationToken>())
@@ -332,6 +324,67 @@ namespace tusdotnet.test.Tests
 
                 response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
             }
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Upload_Expires_Header_Is_Not_Set_If_Expiration_Extension_Is_Disabled(string methodToUse)
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusExpirationStore>();
+            var expirationStore = (ITusExpirationStore)store;
+
+            expirationStore.GetExpirationAsync(null, CancellationToken.None)
+                .ReturnsForAnyArgs(DateTimeOffset.UtcNow.AddSeconds(-1));
+
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
+            {
+                UrlPath = "/files",
+                Store = store,
+                Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5)),
+                AllowedExtensions = TusExtensions.All.Except(TusExtensions.Expiration)
+            });
+
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Length", "100")
+                .OverrideHttpMethodIfNeeded("POST", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldNotContainHeaders("Upload-Expires");
+
+            await expirationStore.DidNotReceiveWithAnyArgs().SetExpirationAsync(default, default, default);
+            await expirationStore.DidNotReceiveWithAnyArgs().GetExpirationAsync(default, default);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Upload_Expires_Header_Is_Not_Updated_On_Patch_If_Expiration_Extension_Is_Disabled(string methodToUse)
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusExpirationStore>().WithExistingFile("file", 100, 0);
+            var expirationStore = (ITusExpirationStore)store;
+
+            expirationStore.GetExpirationAsync(null, CancellationToken.None)
+                .ReturnsForAnyArgs(DateTimeOffset.UtcNow.AddSeconds(-1));
+
+            using var server = TestServerFactory.Create(new DefaultTusConfiguration
+            {
+                UrlPath = "/files",
+                Store = store,
+                Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5)),
+                AllowedExtensions = TusExtensions.All.Except(TusExtensions.Expiration)
+            });
+
+            var response = await server
+                .CreateTusResumableRequest("/files/file")
+                .AddHeader("Upload-Offset", "0")
+                .AddBody()
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldNotContainHeaders("Upload-Expires");
+
+            await expirationStore.DidNotReceiveWithAnyArgs().SetExpirationAsync(default, default, default);
+            await expirationStore.DidNotReceiveWithAnyArgs().GetExpirationAsync(default, default);
         }
     }
 }

@@ -22,7 +22,6 @@ namespace tusdotnet.Helpers
         private ChecksumHelperResult Ok { get; } = new(HttpStatusCode.OK, null);
 
         private readonly ContextAdapter _context;
-        private readonly ITusChecksumStore _checksumStore;
         public Lazy<Task<List<string>>> _supportedAlgorithms;
 
 #if trailingheaders
@@ -41,9 +40,7 @@ namespace tusdotnet.Helpers
         {
             _context = context;
 
-            _checksumStore = _context.Configuration.Store as ITusChecksumStore;
-
-            if (_checksumStore == null)
+            if (!_context.StoreAdapter.Extensions.Checksum)
                 return;
 
             _supportedAlgorithms = new Lazy<Task<List<string>>>(LoadSupportAlgorithms);
@@ -56,9 +53,9 @@ namespace tusdotnet.Helpers
             }
         }
 
-        private async Task<List<string>> LoadSupportAlgorithms() => (await _checksumStore.GetSupportedAlgorithmsAsync(_context.CancellationToken)).ToList();
+        private async Task<List<string>> LoadSupportAlgorithms() => (await _context.StoreAdapter.GetSupportedAlgorithmsAsync(_context.CancellationToken)).ToList();
 
-        internal bool IsSupported() => _checksumStore != null;
+        internal bool IsSupported() => _context.StoreAdapter.Extensions.Checksum;
 
 #if trailingheaders
 
@@ -81,6 +78,9 @@ namespace tusdotnet.Helpers
         private async Task SetChecksumFromTrailingHeader(bool clientDisconnected)
         {
             if (_checksum != null)
+                return;
+
+            if (!_context.StoreAdapter.Extensions.ChecksumTrailer)
                 return;
 
             var checksumHeader = _context.GetTrailingUploadChecksumHeader();
@@ -124,7 +124,7 @@ namespace tusdotnet.Helpers
 
         internal async Task<ChecksumHelperResult> MatchChecksum(bool clientDisconnected)
         {
-            if (_checksumStore == null)
+            if (!_context.StoreAdapter.Extensions.Checksum)
             {
                 return Ok;
             }
@@ -146,7 +146,7 @@ namespace tusdotnet.Helpers
                 return Ok;
             }
 
-            var result = await _checksumStore.VerifyChecksumAsync(_context.Request.FileId, _checksum.Algorithm, _checksum.Hash, _context.CancellationToken);
+            var result = await _context.StoreAdapter.VerifyChecksumAsync(_context.Request.FileId, _checksum.Algorithm, _checksum.Hash, _context.CancellationToken);
 
             if (!result)
             {
