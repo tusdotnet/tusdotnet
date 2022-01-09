@@ -52,10 +52,18 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             services.AddOptions();
 
+            var options = new Tus2Options();
+            Configuration.Bind(options);
+
             services
-                .AddTus()
-                .Configure(options => { Configuration.Bind(options); })
-                .WithController<MyTusHandler>();
+                // Configure default options that can be overriden. Not sure if needed?
+                .AddTus2(options => options.AllowClientToDeleteFile = true)
+                .AddDiskStorage("DefaultStorage", options.FolderDiskPath)
+                .AddDiskStorage("TempStorage", System.IO.Path.GetTempPath())
+                // AddDiskStorage is short for the following two and will add disk implementations for both with the same key.
+                // .AddStorage(name, implementation)
+                // .AddUploadManager(possibly some other name, implementation)
+                .AddHandler<MyTusHandler>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -100,7 +108,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             // in a generic way by tusdotnet.
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapTus2<MyTusHandler>("/files-tus-2");
+                endpoints.MapTus2<MyTusHandler>("/files-tus-2", new EndpointConfiguration("DefaultStorage"));
+                // endpoints.MapTus2<MyTusHandler>("/files-tus-2", new EndpointConfiguration("DefaultStorage", "CustomUploadManagerName"));
 
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
                 endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);

@@ -9,7 +9,7 @@ namespace tusdotnet.Tus2
 {
     internal static class Tus2Endpoint
     {
-        internal static async Task Invoke<T>(HttpContext httpContext) where T : TusBaseHandler
+        internal static async Task Invoke<T>(HttpContext httpContext, EndpointConfiguration configuration) where T : TusHandler
         {
             if (httpContext.Request.Method.Equals("get", StringComparison.OrdinalIgnoreCase))
             {
@@ -17,9 +17,6 @@ namespace tusdotnet.Tus2
                 return;
             }
 
-            var options = httpContext.RequestServices.GetRequiredService<IOptions<Tus2Options>>();
-            var store = new Tus2DiskStore(options.Value);
-            var ongoingUploadService = new UploadManagerDiskBased(options.Value);
             var headers = Tus2Headers.Parse(httpContext);
 
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
@@ -28,14 +25,19 @@ namespace tusdotnet.Tus2
                 return;
             }
 
-            var tusContext = new EndpointContext(store, headers, httpContext);
-            var controller = CreateController<T>(httpContext, options, ongoingUploadService, tusContext);
+            var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
+            var configurationManager = httpContext.RequestServices.GetService<ITus2ConfigurationManager>();
+            var store = await configurationManager.GetStore(configuration.StorageConfigurationName);
+            var uploadManager = await configurationManager.GetUploadManager(configuration.UploadManagerConfigurationName);
+            var options = GetOptions(httpContext, configuration);
+
+            var handler = CreateHandler<T>(uploadManager, new TusHandlerContext(store, metadataParser, options.AllowClientToDeleteFile, headers, httpContext));
 
             Tus2BaseResponse response = null;
 
             try
             {
-                response = await InvokeController(httpContext, controller);
+                response = await InvokeHandler(handler);
             }
             finally
             {
@@ -50,32 +52,36 @@ namespace tusdotnet.Tus2
             }
         }
 
-        private static async Task<Tus2BaseResponse> InvokeController(HttpContext httpContext, TusBaseHandlerEntryPoints controller)
+        private static Tus2Options GetOptions(HttpContext httpContext, EndpointConfiguration configuration)
         {
-            var method = httpContext.Request.Method;
+            if (configuration.AllowClientToDeleteFile != null)
+                return new() { AllowClientToDeleteFile = configuration.AllowClientToDeleteFile.Value };
+
+            return httpContext.RequestServices.GetRequiredService<IOptions<Tus2Options>>().Value;
+        }
+
+        private static async Task<Tus2BaseResponse> InvokeHandler(TusBaseHandlerEntryPoints handler)
+        {
+            var method = handler.TusContext.HttpContext.Request.Method;
 
             if (method.Equals("head", StringComparison.OrdinalIgnoreCase))
             {
-                return await controller.RetrieveOffsetEntryPoint();
+                return await handler.RetrieveOffsetEntryPoint();
             }
             else if (method.Equals("delete", StringComparison.OrdinalIgnoreCase))
             {
-                return await controller.DeleteEntryPoint();
+                return await handler.DeleteEntryPoint();
             }
 
-            return await controller.WriteDataEntryPoint();
+            return await handler.WriteDataEntryPoint();
         }
 
-        private static T CreateController<T>(HttpContext httpContext, IOptions<Tus2Options> options, UploadManagerDiskBased ongoingUploadService, EndpointContext tusContext) where T : TusBaseHandler
+        private static T CreateHandler<T>(IUploadManager uploadManager, TusHandlerContext tusContext) where T : TusHandler
         {
-            var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
-
-            var controller = httpContext.RequestServices.GetRequiredService<T>();
-            controller.TusContext = tusContext;
-            controller.MetadataParser = metadataParser;
-            controller.UploadManager = ongoingUploadService;
-            controller.AllowClientToDeleteFile = options.Value.AllowClientToDeleteFile;
-            return controller;
+            var handler = tusContext.HttpContext.RequestServices.GetRequiredService<T>();
+            handler.UploadManager = uploadManager;
+            handler.TusContext = tusContext;
+            return handler;
         }
     }
 }

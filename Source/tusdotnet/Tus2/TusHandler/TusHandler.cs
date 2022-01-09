@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    public class TusBaseHandler : TusBaseHandlerEntryPoints
+    public class TusHandler : TusBaseHandlerEntryPoints
     {
-        public override async Task<UploadRetrievingProcedureResponse> RetrieveOffset()
+        public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
         {
             var offset = await TusContext.Store.GetOffset(TusContext.Headers.UploadToken);
 
@@ -17,7 +17,7 @@ namespace tusdotnet.Tus2
         }
 
        
-        public override async Task<UploadCancellationProcedureResponse> Delete()
+        public override async Task<UploadCancellationProcedureResponse> OnDelete()
         {
             await TusContext.Store.Delete(TusContext.Headers.UploadToken);
 
@@ -27,23 +27,18 @@ namespace tusdotnet.Tus2
             };
         }
 
-        public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext createFileContext)
+        public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
         {
-            await TusContext.Store.CreateFile(TusContext.Headers.UploadToken, new() { Metadata = createFileContext.Metadata });
+            await TusContext.Store.CreateFile(TusContext.Headers.UploadToken, createFileContext);
 
             return new() { Status = HttpStatusCode.Created };
         }
 
-        public override async Task<UploadTransferProcedureResponse> WriteData(WriteDataContext writeDataContext)
+        public override async Task<UploadTransferProcedureResponse> OnWriteData(WriteDataContext writeDataContext)
         {
             try
             {
-                var options = new WriteFileOptions()
-                {
-                    Metadata = writeDataContext.Metadata
-                };
-
-                await TusContext.Store.AppendData(TusContext.Headers.UploadToken, writeDataContext.BodyReader, writeDataContext.CancellationToken, options);
+                await TusContext.Store.WriteData(TusContext.Headers.UploadToken, writeDataContext);
             }
             catch (OperationCanceledException)
             {
@@ -68,7 +63,7 @@ namespace tusdotnet.Tus2
             }
 
             await TusContext.Store.MarkComplete(TusContext.Headers.UploadToken);
-            await FileComplete();
+            await OnFileComplete();
 
             return new()
             {
@@ -77,8 +72,7 @@ namespace tusdotnet.Tus2
             };
         }
 
-        // Possibly we don't need this as the tus2 handling is much simpler.
-        public override Task FileComplete()
+        public override Task OnFileComplete()
         {
             return Task.CompletedTask;
         }

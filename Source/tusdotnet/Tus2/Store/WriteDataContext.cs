@@ -11,6 +11,6 @@ namespace tusdotnet.Tus2
 
         public PipeReader BodyReader { get; set; }
 
-        public Dictionary<string, Metadata> Metadata { get; set; }
+        public IDictionary<string, Metadata> Metadata { get; set; }
     }
 }

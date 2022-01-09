@@ -5,7 +5,7 @@ using tusdotnet.Tus2;
 
 namespace AspNetCore_netcoreapp3._1_TestApp
 {
-    public class MyTusHandler : TusBaseHandler
+    public class MyTusHandler : TusHandler
     {
         private readonly ILogger _logger;
 
@@ -14,33 +14,33 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             _logger = loggerFactory.CreateLogger(nameof(MyTusHandler));
         }
 
-        public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext createFileContext)
+        public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
         {
             _logger.LogInformation("Creating file {UploadToken}", TusContext.Headers.UploadToken);
 
-            var response = await base.CreateFile(createFileContext);
+            var response = await base.OnCreateFile(createFileContext);
 
             _logger.LogInformation("File created? {Success}", response.Status == System.Net.HttpStatusCode.Created);
 
             return response;
         }
 
-        public override async Task<UploadTransferProcedureResponse> WriteData(WriteDataContext writeDataContext)
+        public override async Task<UploadTransferProcedureResponse> OnWriteData(WriteDataContext writeDataContext)
         {
             _logger.LogInformation("Receiving upload, starting at {UploadOffset}", TusContext.Headers.UploadOffset);
 
-            var response = await base.WriteData(writeDataContext);
+            var response = await base.OnWriteData(writeDataContext);
 
             _logger.LogInformation("Was success? {Success}", response.Status == System.Net.HttpStatusCode.Created);
 
             return response;
         }
 
-        public override async Task<UploadRetrievingProcedureResponse> RetrieveOffset()
+        public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
         {
             _logger.LogInformation("Retrieving offset for {UploadToken}", TusContext.Headers.UploadToken);
 
-            var response = await base.RetrieveOffset();
+            var response = await base.OnRetrieveOffset();
 
             _logger.LogInformation("Offset is {UploadOffset}", response.UploadOffset);
 

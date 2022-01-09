@@ -22,11 +22,12 @@ namespace tusdotnet.Tus2
 
             headers.UploadToken = Tus2DiskStore.CleanUploadToken(headers.UploadToken);
 
-            var path = options.DataFilePath(headers.UploadToken);
+            var pathHelper = new DiskPathHelper(options.FolderDiskPath);
+            var path = pathHelper.DataFilePath(headers.UploadToken);
             var exists = File.Exists(path);
             var fileSize = exists ? (long?)new FileInfo(path).Length : null;
-            var isComplete = File.Exists(options.CompletedFilePath(headers.UploadToken));
-            var metadata = File.Exists(options.MetadataFilePath(headers.UploadToken)) ? File.ReadAllText(options.MetadataFilePath(headers.UploadToken)) : null;
+            var isComplete = File.Exists(pathHelper.CompletedFilePath(headers.UploadToken));
+            var metadata = File.Exists(pathHelper.MetadataFilePath(headers.UploadToken)) ? File.ReadAllText(pathHelper.MetadataFilePath(headers.UploadToken)) : null;
 
             var sb = new StringBuilder();
             sb.AppendFormat("Exists: {0}\n", exists);
