@@ -9,7 +9,7 @@ namespace tusdotnet.Tus2
         public static TusServiceBuilder AddTus2(this IServiceCollection services, Action<Tus2Options> configure = null)
         {
             services.AddSingleton<IUploadTokenParser, UploadTokenParser>();
-            services.AddSingleton<IMetadataParser, MetadataParser>();
+            services.AddSingleton<IMetadataParser, DefaultMetadataParser>();
 
             services.AddHttpContextAccessor();
             services.AddSingleton<ITus2ConfigurationManager, Tus2ConfigurationManager>();

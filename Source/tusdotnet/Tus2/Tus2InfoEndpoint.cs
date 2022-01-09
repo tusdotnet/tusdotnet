@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using tusdotnet.Tus2.Parsers;
 
 namespace tusdotnet.Tus2
 {
@@ -13,7 +14,7 @@ namespace tusdotnet.Tus2
         {
             var options = httpContext.RequestServices.GetRequiredService<IOptions<Tus2Options>>().Value;
 
-            var headers = Tus2Headers.Parse(httpContext);
+            var headers = Tus2HeadersParser.Parse(httpContext);
 
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
             {

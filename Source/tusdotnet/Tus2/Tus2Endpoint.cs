@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Net;
 using System.Threading.Tasks;
+using tusdotnet.Tus2.Parsers;
 
 namespace tusdotnet.Tus2
 {
@@ -11,13 +12,14 @@ namespace tusdotnet.Tus2
     {
         internal static async Task Invoke<T>(HttpContext httpContext, EndpointConfiguration configuration) where T : TusHandler
         {
+            // TODO Remove this and just use the MapX methods on the endpoint builder one step up.
             if (httpContext.Request.Method.Equals("get", StringComparison.OrdinalIgnoreCase))
             {
                 await httpContext.Error(HttpStatusCode.MethodNotAllowed);
                 return;
             }
 
-            var headers = Tus2Headers.Parse(httpContext);
+            var headers = Tus2HeadersParser.Parse(httpContext);
 
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
             {
@@ -25,18 +27,12 @@ namespace tusdotnet.Tus2
                 return;
             }
 
-            var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
-            var configurationManager = httpContext.RequestServices.GetService<ITus2ConfigurationManager>();
-            var store = await configurationManager.GetStore(configuration.StorageConfigurationName);
-            var uploadManager = await configurationManager.GetUploadManager(configuration.UploadManagerConfigurationName);
-            var options = GetOptions(httpContext, configuration);
-
-            var handler = CreateHandler<T>(uploadManager, new TusHandlerContext(store, metadataParser, options.AllowClientToDeleteFile, headers, httpContext));
 
             Tus2BaseResponse response = null;
-
+            
             try
             {
+                var handler = await CreateHandler<T>(httpContext, configuration, headers);
                 response = await InvokeHandler(handler);
             }
             finally
@@ -76,8 +72,15 @@ namespace tusdotnet.Tus2
             return await handler.WriteDataEntryPoint();
         }
 
-        private static T CreateHandler<T>(IUploadManager uploadManager, TusHandlerContext tusContext) where T : TusHandler
+        private static async Task<T> CreateHandler<T>(HttpContext httpContext, EndpointConfiguration configuration, Tus2Headers headers) where T : TusHandler
         {
+            var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
+            var configurationManager = httpContext.RequestServices.GetService<ITus2ConfigurationManager>();
+            var store = await configurationManager.GetStore(configuration.StorageConfigurationName);
+            var uploadManager = await configurationManager.GetUploadManager(configuration.UploadManagerConfigurationName);
+            var options = GetOptions(httpContext, configuration);
+
+            var tusContext = new TusHandlerContext(store, metadataParser, options.AllowClientToDeleteFile, headers, httpContext);
             var handler = tusContext.HttpContext.RequestServices.GetRequiredService<T>();
             handler.UploadManager = uploadManager;
             handler.TusContext = tusContext;

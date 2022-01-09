@@ -4,11 +4,6 @@ using System.Linq;
 
 namespace tusdotnet.Tus2
 {
-    internal interface IUploadTokenParser
-    {
-        string? Parse(string? uploadTokenHeader);
-    }
-
     internal class UploadTokenParser : IUploadTokenParser
     {
         public string? Parse(string? uploadTokenHeader)

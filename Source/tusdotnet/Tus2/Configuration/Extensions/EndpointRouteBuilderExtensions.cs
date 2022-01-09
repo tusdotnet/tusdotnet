@@ -19,6 +19,5 @@ namespace tusdotnet.Tus2
 
             return endpoints;
         }
-
     }
 }

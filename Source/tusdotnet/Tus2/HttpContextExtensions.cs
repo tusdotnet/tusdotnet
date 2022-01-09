@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    internal static class Tus2Extensions
+    internal static class HttpContextExtensions
     {
         internal static async Task Error(this HttpContext httpContext, HttpStatusCode statusCode, string message = null)
         {

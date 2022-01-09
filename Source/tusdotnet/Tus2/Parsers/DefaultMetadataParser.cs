@@ -10,23 +10,20 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Tus2
 {
-    public interface IMetadataParser
-    {
-        Dictionary<string, Metadata>? Parse(HttpContext httpContext);
-    }
-
-    internal class MetadataParser : IMetadataParser
+    internal class DefaultMetadataParser : IMetadataParser
     {
         public Dictionary<string, Metadata>? Parse(HttpContext httpContext)
         {
+            // Try to parse tus1 Upload-Metadata header.
             if (httpContext.Request.Headers.TryGetValue("Upload-Metadata", out var data))
             {
-                var meta = Parsers.MetadataParser.ParseAndValidate(MetadataParsingStrategy.AllowEmptyValues, data.FirstOrDefault());
+                var meta = tusdotnet.Parsers.MetadataParser.ParseAndValidate(MetadataParsingStrategy.AllowEmptyValues, data.FirstOrDefault());
                 if (meta.Success)
                     return meta.Metadata;
                 return null;
             }
 
+            // If Upload-Metadata is not present, try to parse Content-Disposition and Content-Type to get file name and file type.
             var contentType = httpContext.Request.ContentType;
             string? fileName = null;
 
