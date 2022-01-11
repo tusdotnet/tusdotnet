@@ -1,135 +1,119 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
     public static class ServiceCollectionExtensions
     {
-        public static TusServiceBuilder AddTus2(this IServiceCollection services, Action<Tus2Options> configure = null)
+        public static IServiceCollection AddTus2(this IServiceCollection services, Action<TusServiceBuilder> configure = null)
         {
+            services.AddHttpContextAccessor();
             services.AddSingleton<IUploadTokenParser, UploadTokenParser>();
             services.AddSingleton<IMetadataParser, DefaultMetadataParser>();
 
-            services.AddHttpContextAccessor();
-            services.AddSingleton<ITus2ConfigurationManager, Tus2ConfigurationManager>();
-
-            configure ??= DefaultConfig();
-
-            services.Configure(configure);
-
-            return new(services);
-        }
-
-        private static Action<Tus2Options> DefaultConfig()
-        {
-            return options =>
+            if (configure != null)
             {
-                options.AllowClientToDeleteFile = true;
-            };
+                var builder = new TusServiceBuilder();
+                configure(builder);
+
+                if (builder.UploadManager != null)
+                    services.AddSingleton(builder.UploadManager);
+
+                if (builder.UploadManagerFactory != null)
+                    services.AddScoped(_ => builder.UploadManagerFactory);
+
+                if (builder.Storage != null)
+                    services.AddScoped(_ => builder.Storage);
+
+                if (builder.StorageFactory != null)
+                    services.AddScoped(_ => builder.StorageFactory);
+
+                foreach (var handler in builder.Handlers)
+                {
+                    services.AddTransient(handler);
+                }
+
+                services.AddScoped<ITus2ConfigurationManager>(provider =>
+                {
+                    return new Tus2ConfigurationManager(builder, provider, provider.GetRequiredService<IHttpContextAccessor>());
+                });
+            }
+
+            return services;
         }
     }
 
     public class TusServiceBuilder
     {
-        public IServiceCollection Services { get; set; }
+        public Dictionary<string, Func<HttpContext, Task<ITus2Storage>>> NamedStorage { get; }
 
-        public TusServiceBuilder(IServiceCollection services)
+        public Dictionary<string, Func<HttpContext, Task<IUploadManager>>> NamedUploadManager { get; }
+
+        public ITus2Storage Storage { get; private set; }
+
+        public Func<HttpContext, Task<ITus2Storage>> StorageFactory { get; private set; }
+
+        public IUploadManager UploadManager { get; private set; }
+
+        public Func<HttpContext, Task<IUploadManager>> UploadManagerFactory { get; private set; }
+
+        public LinkedList<Type> Handlers { get; private set; }
+
+        public TusServiceBuilder()
         {
-            Services = services;
+            NamedStorage = new();
+            NamedUploadManager = new();
+            Handlers = new();
         }
 
-        // Possibly use? 
-        /*
-         * services.AddTransient<ServiceA>();
-services.AddTransient<ServiceB>();
-services.AddTransient<ServiceC>();
-
-services.AddTransient<ServiceResolver>(serviceProvider => key =>
-{
-    switch (key)
-    {
-        case "A":
-            return serviceProvider.GetService<ServiceA>();
-        case "B":
-            return serviceProvider.GetService<ServiceB>();
-        case "C":
-            return serviceProvider.GetService<ServiceC>();
-        default:
-            throw new KeyNotFoundException(); // or maybe return null, up to you
-    }
-});
-         * 
-         * 
-         * */
-
-        // TODO: Factories should probably be singleton.
-        // TODO: Add support for using the service provider, e.g. serviceProvder => store|storeFactory
-
-        public TusServiceBuilder AddStorage(ITus2Store store)
+        public TusServiceBuilder AddStorage(ITus2Storage storageInstance)
         {
-            Services.AddScoped(_ => store);
-
+            Storage = storageInstance;
             return this;
         }
 
-        public TusServiceBuilder AddStorage(ITus2StoreFactory factory)
+        public TusServiceBuilder AddStorage(Func<HttpContext, Task<ITus2Storage>> storageFactory)
         {
-            Services.AddScoped(_ => factory);
-
+            StorageFactory = storageFactory;
             return this;
         }
 
-        public TusServiceBuilder AddStorage(string name, ITus2Store store)
+        public TusServiceBuilder AddStorage(string name, ITus2Storage storageInstance)
         {
-            return AddStorage(name, new SingleStoreFactory(store));
-        }
-
-        public TusServiceBuilder AddStorage(string name, ITus2StoreFactory factory)
-        {
-            Services.AddSingleton(new NamedFactory<ITus2StoreFactory>
-            {
-                Name = name,
-                Factory = factory
-            });
-
+            NamedStorage.Add(name, _ => Task.FromResult(storageInstance));
             return this;
         }
 
         public TusServiceBuilder AddUploadManager(IUploadManager uploadManager)
         {
-            Services.AddScoped(_ => uploadManager);
-
+            UploadManager = uploadManager;
             return this;
         }
 
-        public TusServiceBuilder AddUploadManagerFactory(IUploadManagerFactory uploadManagerFactory)
+        public TusServiceBuilder AddUploadManager(Func<HttpContext, Task<IUploadManager>> uploadManagerFactory)
         {
-            Services.AddScoped(_ => uploadManagerFactory);
-
+            UploadManagerFactory = uploadManagerFactory;
             return this;
         }
 
         public TusServiceBuilder AddUploadManager(string name, IUploadManager uploadManager)
         {
-            return AddUploadManager(name, new SingleUploadManagerFactory(uploadManager));
+            NamedUploadManager.Add(name, _ => Task.FromResult(uploadManager));
+            return this;
         }
 
-        public TusServiceBuilder AddUploadManager(string name, IUploadManagerFactory uploadManagerFactory)
+        public TusServiceBuilder AddUploadManager(string name, Func<HttpContext, Task<IUploadManager>> uploadManagerFactory)
         {
-            Services.AddSingleton(new NamedFactory<IUploadManagerFactory>
-            {
-                Name = name,
-                Factory = uploadManagerFactory
-            });
-
+            NamedUploadManager.Add(name, uploadManagerFactory);
             return this;
         }
 
         public TusServiceBuilder AddHandler<T>() where T : TusHandler
         {
-            Services.AddTransient<T>();
-
+            Handlers.AddLast(typeof(T));
             return this;
         }
     }

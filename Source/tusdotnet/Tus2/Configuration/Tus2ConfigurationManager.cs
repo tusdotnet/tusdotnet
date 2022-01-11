@@ -2,51 +2,92 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    internal class Tus2ConfigurationManager : ITus2ConfigurationManager
+    internal class Tus2ConfigurationManager : ITus2ConfigurationManager, IAsyncDisposable
     {
+        private readonly TusServiceBuilder _builder;
         private readonly IServiceProvider _serviceProvider;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public Tus2ConfigurationManager(IServiceProvider serviceProvider, IHttpContextAccessor httpContextAccessor)
+        private readonly LinkedList<IDisposable> _disposables;
+        private readonly LinkedList<IAsyncDisposable> _asyncDisposables;
+
+        public Tus2ConfigurationManager(TusServiceBuilder builder, IServiceProvider serviceProvider, IHttpContextAccessor httpContextAccessor)
         {
+            _builder = builder;
             _serviceProvider = serviceProvider;
             _httpContextAccessor = httpContextAccessor;
+            _disposables = new();
+            _asyncDisposables = new();
         }
 
-        public Task<ITus2Store> GetStore()
+        public async Task<ITus2Storage> GetDefaultStorage()
         {
-            return GetStore(null);
+            var storageFactory = _serviceProvider.GetService<Func<HttpContext, Task<ITus2Storage>>>();
+            if (storageFactory != null)
+            {
+                var store = await storageFactory(_httpContextAccessor.HttpContext);
+                AddDisposable(store);
+                return store;
+            }
+
+            return _serviceProvider.GetRequiredService<ITus2Storage>();
         }
 
-        public async Task<ITus2Store> GetStore(string name)
+        public async Task<ITus2Storage> GetNamedStorage(string name)
         {
-            if (name == null)
-                return _serviceProvider.GetService<ITus2Store>();
+            var storeFactory = _builder.NamedStorage[name];
 
-            var stores = _serviceProvider.GetServices<NamedFactory<ITus2StoreFactory>>();
-
-            return await stores.First(s => s.Name == name).Factory.Create(_httpContextAccessor.HttpContext);
+            var store = await storeFactory(_httpContextAccessor.HttpContext);
+            AddDisposable(store);
+            return store;
         }
 
-        public Task<IUploadManager> GetUploadManager()
+        public async Task<IUploadManager> GetDefaultUploadManager()
         {
-            return GetUploadManager(null);
+            var factory = _serviceProvider.GetService<Func<HttpContext, Task<IUploadManager>>>();
+            if (factory != null)
+            {
+                var uploadManager = await factory(_httpContextAccessor.HttpContext);
+                AddDisposable(uploadManager);
+                return uploadManager;
+            }
+
+            return _serviceProvider.GetRequiredService<IUploadManager>();
         }
 
-        public async Task<IUploadManager> GetUploadManager(string name)
+        public async Task<IUploadManager> GetNamedUploadManager(string name)
         {
-            if (name == null)
-                return _serviceProvider.GetService<IUploadManager>();
+            var uploadManagerFactory = _builder.NamedUploadManager[name];
+            AddDisposable(uploadManagerFactory);
+            return await uploadManagerFactory(_httpContextAccessor.HttpContext);
+        }
 
-            var managers = _serviceProvider.GetServices<NamedFactory<IUploadManagerFactory>>();
+        private void AddDisposable(object obj)
+        {
+            if (obj is IDisposable disposable)
+                _disposables.AddLast(disposable);
 
-            return await managers.First(m => m.Name == name).Factory.Create(_httpContextAccessor.HttpContext);
+            if (obj is IAsyncDisposable asyncDisposable)
+                _asyncDisposables.AddLast(asyncDisposable);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            while (_asyncDisposables.First != null)
+            {
+                await _asyncDisposables.First.Value.DisposeAsync();
+                _asyncDisposables.RemoveFirst();
+            }
+
+            while (_disposables.First != null)
+            {
+                _disposables.First.Value.Dispose();
+                _disposables.RemoveFirst();
+            }
         }
     }
 }

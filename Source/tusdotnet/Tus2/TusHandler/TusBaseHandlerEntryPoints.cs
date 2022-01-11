@@ -12,6 +12,8 @@ namespace tusdotnet.Tus2
 
         internal IUploadManager UploadManager { get; set; }
 
+        public virtual bool IsAllowedToDeleteFile { get; }
+
         internal async Task<UploadRetrievingProcedureResponse> RetrieveOffsetEntryPoint()
         {
             /*

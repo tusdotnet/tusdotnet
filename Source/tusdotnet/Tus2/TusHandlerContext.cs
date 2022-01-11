@@ -3,7 +3,7 @@
 namespace tusdotnet.Tus2
 {
     public record TusHandlerContext(
-        ITus2Store Store,
+        ITus2Storage Store,
         IMetadataParser MetadataParser,
         bool AllowClientToDeleteFile,
         Tus2Headers Headers, 

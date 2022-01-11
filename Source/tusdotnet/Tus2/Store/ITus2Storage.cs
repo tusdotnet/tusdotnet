@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    public interface ITus2Store
+    public interface ITus2Storage
     {
         Task WriteData(string uploadToken, WriteDataContext context);
 

@@ -63,12 +63,12 @@ namespace tusdotnet.Tus2
             }
 
             await TusContext.Store.MarkComplete(TusContext.Headers.UploadToken);
-            await OnFileComplete();
 
             return new()
             {
                 Status = HttpStatusCode.Created,
-                UploadIncomplete = false
+                UploadIncomplete = false,
+                UploadCompleted = true
             };
         }
 

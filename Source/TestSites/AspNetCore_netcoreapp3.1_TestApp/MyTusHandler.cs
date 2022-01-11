@@ -46,5 +46,23 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             return response;
         }
+
+        public override async Task<UploadCancellationProcedureResponse> OnDelete()
+        {
+            _logger.LogInformation("Deleting file {UploadToken}", TusContext.Headers.UploadToken);
+
+            var response = await base.OnDelete();
+
+            _logger.LogInformation("File deleted? {Deleted}", response.Status == System.Net.HttpStatusCode.NoContent);
+
+            return response;
+        }
+
+        public override Task OnFileComplete()
+        {
+            _logger.LogInformation("File {UploadToken} is complete", TusContext.Headers.UploadToken);
+
+            return base.OnFileComplete();
+        }
     }
 }

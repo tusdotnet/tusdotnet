@@ -7,6 +7,8 @@ namespace tusdotnet.Tus2
     {
         public bool UploadIncomplete { get; set; }
 
+        public bool UploadCompleted { get; set; }
+
         protected override Task WriteResponse(HttpContext context)
         {
             if (UploadIncomplete)

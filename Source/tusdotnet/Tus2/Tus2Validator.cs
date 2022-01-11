@@ -7,7 +7,7 @@ namespace tusdotnet.Tus2
 {
     internal static class Tus2Validator
     {
-        internal static async Task<bool> AssertFileExist(ITus2Store store, string uploadToken, bool additionalCondition = true)
+        internal static async Task<bool> AssertFileExist(ITus2Storage store, string uploadToken, bool additionalCondition = true)
         {
             var fileExist = await store.FileExist(uploadToken);
             if (!fileExist && additionalCondition)
@@ -31,7 +31,7 @@ namespace tusdotnet.Tus2
             }
         }
 
-        internal static async Task AssertValidOffset(ITus2Store store, string uploadToken, long? uploadOffset)
+        internal static async Task AssertValidOffset(ITus2Storage store, string uploadToken, long? uploadOffset)
         {
             var existingOffset = await store.GetOffset(uploadToken);
             if (existingOffset != uploadOffset)

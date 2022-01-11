@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    internal class UploadManagerDiskBased : IUploadManager
+    public class UploadManagerDiskBased : IUploadManager
     {
         private readonly Tus2Options _options;
         private readonly Dictionary<string, Task> _cancelChecks;

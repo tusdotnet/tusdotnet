@@ -4,9 +4,12 @@ namespace tusdotnet.Tus2
 {
     internal interface ITus2ConfigurationManager
     {
-        Task<ITus2Store> GetStore();
-        Task<ITus2Store> GetStore(string name);
-        Task<IUploadManager> GetUploadManager();
-        Task<IUploadManager> GetUploadManager(string name);
+        Task<ITus2Storage> GetDefaultStorage();
+        
+        Task<IUploadManager> GetDefaultUploadManager();
+        
+        Task<ITus2Storage> GetNamedStorage(string name);
+
+        Task<IUploadManager> GetNamedUploadManager(string name);
     }
 }

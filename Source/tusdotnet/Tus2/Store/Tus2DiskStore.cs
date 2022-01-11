@@ -12,7 +12,7 @@ namespace tusdotnet.Tus2
 {
     // TODO: Use RandomAccess if possible
     // TODO: Support for partitioning
-    public class Tus2DiskStore : ITus2Store
+    public class Tus2DiskStore : ITus2Storage
     {
 
         private static readonly HashSet<char> _invalidFileNameChars = new(Path.GetInvalidFileNameChars());
@@ -52,33 +52,33 @@ namespace tusdotnet.Tus2
             return Task.FromResult(new FileInfo(_diskPathHelper.DataFilePath(uploadToken)).Length);
         }
 
-        public Task CreateFile(string uploadToken, CreateFileContext options = null)
+        public Task CreateFile(string uploadToken, CreateFileContext context)
         {
             uploadToken = CleanUploadToken(uploadToken);
 
-            if (options?.Metadata != null)
-                File.WriteAllText(_diskPathHelper.MetadataFilePath(uploadToken), GetMetadataString(options.Metadata));
+            if (context.Metadata != null)
+                File.WriteAllText(_diskPathHelper.MetadataFilePath(uploadToken), GetMetadataString(context.Metadata));
 
             File.Create(_diskPathHelper.DataFilePath(uploadToken)).Dispose();
             return Task.CompletedTask;
         }
 
-        public async Task WriteData(string uploadToken, WriteDataContext options)
+        public async Task WriteData(string uploadToken, WriteDataContext context)
         {
             uploadToken = CleanUploadToken(uploadToken);
             const int JUST_BELOW_LOH_BYTE_LIMIT = 84 * 1024;
 
             var dataFilePath = _diskPathHelper.DataFilePath(uploadToken);
 
-            if (options?.Metadata != null)
-                File.WriteAllText(_diskPathHelper.MetadataFilePath(uploadToken), GetMetadataString(options.Metadata));
+            if (context?.Metadata != null)
+                File.WriteAllText(_diskPathHelper.MetadataFilePath(uploadToken), GetMetadataString(context.Metadata));
 
 
             using var diskFileStream = new FileStream(dataFilePath, FileMode.Append, FileAccess.Write, FileShare.None, bufferSize: JUST_BELOW_LOH_BYTE_LIMIT);
 
             ReadResult result = default;
-            var cancellationToken = options.CancellationToken;
-            var reader = options.BodyReader;
+            var cancellationToken = context.CancellationToken;
+            var reader = context.BodyReader;
 
             try
             {
