@@ -51,7 +51,7 @@ namespace tusdotnet.Tus2
 
         private static async Task<Tus2BaseResponse> InvokeHandler(TusBaseHandlerEntryPoints handler)
         {
-            var method = handler.TusContext.HttpContext.Request.Method;
+            var method = handler.HttpContext.Request.Method;
 
             if (method.Equals("head", StringComparison.OrdinalIgnoreCase))
             {
@@ -83,9 +83,13 @@ namespace tusdotnet.Tus2
             var store = await GetStore(configurationManager, configuration.StorageConfigurationName);
             var uploadManager = await GetUploadManager(configurationManager, configuration.UploadManagerConfigurationName);
 
-            var tusContext = new TusHandlerContext(store, metadataParser, configuration.AllowClientToDeleteFile ?? false, headers, httpContext);
             handler.UploadManager = uploadManager;
-            handler.TusContext = tusContext;
+            handler.Store = store; ;
+            handler.MetadataParser = metadataParser;
+            handler.AllowClientToDeleteFile = configuration.AllowClientToDeleteFile ?? false;
+            handler.Headers = headers;
+            handler.HttpContext = httpContext;
+
             return handler;
 
             static async Task<ITus2Storage> GetStore(ITus2ConfigurationManager manager, string configurationName)

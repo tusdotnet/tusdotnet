@@ -20,16 +20,10 @@ namespace tusdotnet.Tus2
                 configure(builder);
 
                 if (builder.UploadManager != null)
-                    services.AddSingleton(builder.UploadManager);
-
-                if (builder.UploadManagerFactory != null)
-                    services.AddScoped(_ => builder.UploadManagerFactory);
+                    services.AddScoped(_ => builder.UploadManager);
 
                 if (builder.Storage != null)
                     services.AddScoped(_ => builder.Storage);
-
-                if (builder.StorageFactory != null)
-                    services.AddScoped(_ => builder.StorageFactory);
 
                 foreach (var handler in builder.Handlers)
                 {
@@ -84,6 +78,12 @@ namespace tusdotnet.Tus2
         public TusServiceBuilder AddStorage(string name, ITus2Storage storageInstance)
         {
             NamedStorage.Add(name, _ => Task.FromResult(storageInstance));
+            return this;
+        }
+
+        public TusServiceBuilder AddStorage(string name, Func<HttpContext, Task<ITus2Storage>> storageFactory)
+        {
+            NamedStorage.Add(name, storageFactory);
             return this;
         }
 

@@ -19,9 +19,9 @@ namespace tusdotnet.Tus2
 
         private readonly DiskPathHelper _diskPathHelper;
 
-        public Tus2DiskStore(string diskPath)
+        public Tus2DiskStore(Tus2DiskStoreOptions options)
         {
-            _diskPathHelper = new DiskPathHelper(diskPath);
+            _diskPathHelper = new DiskPathHelper(options.DiskPath);
         }
 
         public static string CleanUploadToken(string uploadToken)

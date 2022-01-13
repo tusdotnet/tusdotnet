@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using Microsoft.AspNetCore.Http;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Models;
@@ -7,8 +8,15 @@ namespace tusdotnet.Tus2
 {
     public abstract class TusBaseHandlerEntryPoints
     {
-        // Split into several properties?
-        public virtual TusHandlerContext TusContext { get; set; }
+        public ITus2Storage Store{ get; set; }
+
+        public IMetadataParser MetadataParser { get; set; }
+
+        public bool AllowClientToDeleteFile { get; set; }
+
+        public Tus2Headers Headers { get; set; }
+        
+        public HttpContext HttpContext { get; set; }
 
         internal IUploadManager UploadManager { get; set; }
 
@@ -36,11 +44,11 @@ namespace tusdotnet.Tus2
 
             try
             {
-                Tus2Validator.AssertNoInvalidHeaders(TusContext.Headers);
+                Tus2Validator.AssertNoInvalidHeaders(Headers);
 
-                await UploadManager.CancelOtherUploads(TusContext.Headers.UploadToken);
+                await UploadManager.CancelOtherUploads(Headers.UploadToken);
 
-                await Tus2Validator.AssertFileExist(TusContext.Store, TusContext.Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(Store, Headers.UploadToken);
 
                 return await OnRetrieveOffset();
 
@@ -71,7 +79,7 @@ namespace tusdotnet.Tus2
              * */
             try
             {
-                if (!TusContext.AllowClientToDeleteFile)
+                if (!AllowClientToDeleteFile)
                 {
                     return new UploadCancellationProcedureResponse
                     {
@@ -79,11 +87,11 @@ namespace tusdotnet.Tus2
                     };
                 }
 
-                Tus2Validator.AssertNoInvalidHeaders(TusContext.Headers);
+                Tus2Validator.AssertNoInvalidHeaders(Headers);
 
-                await UploadManager.CancelOtherUploads(TusContext.Headers.UploadToken);
+                await UploadManager.CancelOtherUploads(Headers.UploadToken);
 
-                await Tus2Validator.AssertFileExist(TusContext.Store, TusContext.Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(Store, Headers.UploadToken);
 
                 return await OnDelete();
 
@@ -130,18 +138,16 @@ namespace tusdotnet.Tus2
 
             try
             {
-                var (store, metadataParser, _, headers, httpContext) = TusContext;
+                await UploadManager.CancelOtherUploads(Headers.UploadToken);
 
-                await UploadManager.CancelOtherUploads(headers.UploadToken);
+                var ongoingCancellationToken = await UploadManager.StartUpload(Headers.UploadToken);
+                await using var finishOngoing = Deferrer.Defer(() => UploadManager.FinishUpload(Headers.UploadToken));
 
-                var ongoingCancellationToken = await UploadManager.StartUpload(headers.UploadToken);
-                await using var finishOngoing = Deferrer.Defer(() => UploadManager.FinishUpload(headers.UploadToken));
+                var metadata = MetadataParser?.Parse(HttpContext);
 
-                var metadata = metadataParser?.Parse(httpContext);
+                Headers.UploadOffset ??= 0;
 
-                headers.UploadOffset ??= 0;
-
-                var fileExist = await Tus2Validator.AssertFileExist(store, headers.UploadToken, headers.UploadOffset != 0);
+                var fileExist = await Tus2Validator.AssertFileExist(Store, Headers.UploadToken, Headers.UploadOffset != 0);
 
                 if (!fileExist)
                 {
@@ -157,7 +163,7 @@ namespace tusdotnet.Tus2
                 }
                 else
                 {
-                    var fileIsComplete = await store.IsComplete(headers.UploadToken);
+                    var fileIsComplete = await Store.IsComplete(Headers.UploadToken);
                     if (fileIsComplete)
                     {
                         return new()
@@ -173,10 +179,10 @@ namespace tusdotnet.Tus2
                 // as we will end up with mismatches in upload-offset?
                 // Should we cancel ongoing uploads directly or just before processing the body?
 
-                await Tus2Validator.AssertValidOffset(store, headers.UploadToken, headers.UploadOffset);
+                await Tus2Validator.AssertValidOffset(Store, Headers.UploadToken, Headers.UploadOffset);
 
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(httpContext.RequestAborted, ongoingCancellationToken);
-                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(httpContext.Request.BodyReader, cts.Token);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, ongoingCancellationToken);
+                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(HttpContext.Request.BodyReader, cts.Token);
 
                 var writeDataContext = new WriteDataContext()
                 {
@@ -189,7 +195,7 @@ namespace tusdotnet.Tus2
 
                 if (ongoingCancellationToken.IsCancellationRequested)
                 {
-                    await UploadManager.NotifyCancelComplete(headers.UploadToken);
+                    await UploadManager.NotifyCancelComplete(Headers.UploadToken);
                 }
 
                 return writeDataResponse;

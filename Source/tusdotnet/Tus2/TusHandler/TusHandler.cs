@@ -8,7 +8,7 @@ namespace tusdotnet.Tus2
     {
         public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
         {
-            var offset = await TusContext.Store.GetOffset(TusContext.Headers.UploadToken);
+            var offset = await Store.GetOffset(Headers.UploadToken);
 
             return new()
             {
@@ -19,7 +19,7 @@ namespace tusdotnet.Tus2
        
         public override async Task<UploadCancellationProcedureResponse> OnDelete()
         {
-            await TusContext.Store.Delete(TusContext.Headers.UploadToken);
+            await Store.Delete(Headers.UploadToken);
 
             return new()
             {
@@ -29,7 +29,7 @@ namespace tusdotnet.Tus2
 
         public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
         {
-            await TusContext.Store.CreateFile(TusContext.Headers.UploadToken, createFileContext);
+            await Store.CreateFile(Headers.UploadToken, createFileContext);
 
             return new() { Status = HttpStatusCode.Created };
         }
@@ -38,7 +38,7 @@ namespace tusdotnet.Tus2
         {
             try
             {
-                await TusContext.Store.WriteData(TusContext.Headers.UploadToken, writeDataContext);
+                await Store.WriteData(Headers.UploadToken, writeDataContext);
             }
             catch (OperationCanceledException)
             {
@@ -53,7 +53,7 @@ namespace tusdotnet.Tus2
                 };
             }
 
-            if (TusContext.Headers.UploadIncomplete == true)
+            if (Headers.UploadIncomplete == true)
             {
                 return new()
                 {
@@ -62,7 +62,7 @@ namespace tusdotnet.Tus2
                 };
             }
 
-            await TusContext.Store.MarkComplete(TusContext.Headers.UploadToken);
+            await Store.MarkComplete(Headers.UploadToken);
 
             return new()
             {

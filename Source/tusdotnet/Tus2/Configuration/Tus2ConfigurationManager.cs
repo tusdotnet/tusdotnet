@@ -2,36 +2,39 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
     internal class Tus2ConfigurationManager : ITus2ConfigurationManager, IAsyncDisposable
     {
-        private readonly TusServiceBuilder _builder;
         private readonly IServiceProvider _serviceProvider;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        private readonly LinkedList<IDisposable> _disposables;
-        private readonly LinkedList<IAsyncDisposable> _asyncDisposables;
+        private readonly CreateOnceFactory<ITus2Storage> _storageFactory;
+        private readonly CreateOnceFactory<IUploadManager> _uploadManagerFactory;
+
+        private readonly Dictionary<string, CreateOnceFactory<ITus2Storage>> _namedStorage;
+        private readonly Dictionary<string, CreateOnceFactory<IUploadManager>> _namedUploadManager;
 
         public Tus2ConfigurationManager(TusServiceBuilder builder, IServiceProvider serviceProvider, IHttpContextAccessor httpContextAccessor)
         {
-            _builder = builder;
             _serviceProvider = serviceProvider;
             _httpContextAccessor = httpContextAccessor;
-            _disposables = new();
-            _asyncDisposables = new();
+
+            _storageFactory = new(builder.StorageFactory);
+            _uploadManagerFactory = new(builder.UploadManagerFactory);
+
+            _namedStorage = builder.NamedStorage.ToDictionary(k => k.Key, v => new CreateOnceFactory<ITus2Storage>(v.Value));
+            _namedUploadManager = builder.NamedUploadManager.ToDictionary(k => k.Key, v => new CreateOnceFactory<IUploadManager>(v.Value));
         }
 
         public async Task<ITus2Storage> GetDefaultStorage()
         {
-            var storageFactory = _serviceProvider.GetService<Func<HttpContext, Task<ITus2Storage>>>();
-            if (storageFactory != null)
+            if (_storageFactory != null)
             {
-                var store = await storageFactory(_httpContextAccessor.HttpContext);
-                AddDisposable(store);
-                return store;
+                return await _storageFactory.Create(_httpContextAccessor.HttpContext);
             }
 
             return _serviceProvider.GetRequiredService<ITus2Storage>();
@@ -39,21 +42,15 @@ namespace tusdotnet.Tus2
 
         public async Task<ITus2Storage> GetNamedStorage(string name)
         {
-            var storeFactory = _builder.NamedStorage[name];
-
-            var store = await storeFactory(_httpContextAccessor.HttpContext);
-            AddDisposable(store);
-            return store;
+            var storeFactory = _namedStorage[name];
+            return await storeFactory.Create(_httpContextAccessor.HttpContext);
         }
 
         public async Task<IUploadManager> GetDefaultUploadManager()
         {
-            var factory = _serviceProvider.GetService<Func<HttpContext, Task<IUploadManager>>>();
-            if (factory != null)
+            if (_uploadManagerFactory != null)
             {
-                var uploadManager = await factory(_httpContextAccessor.HttpContext);
-                AddDisposable(uploadManager);
-                return uploadManager;
+                return await _uploadManagerFactory.Create(_httpContextAccessor.HttpContext);
             }
 
             return _serviceProvider.GetRequiredService<IUploadManager>();
@@ -61,32 +58,20 @@ namespace tusdotnet.Tus2
 
         public async Task<IUploadManager> GetNamedUploadManager(string name)
         {
-            var uploadManagerFactory = _builder.NamedUploadManager[name];
-            AddDisposable(uploadManagerFactory);
-            return await uploadManagerFactory(_httpContextAccessor.HttpContext);
-        }
-
-        private void AddDisposable(object obj)
-        {
-            if (obj is IDisposable disposable)
-                _disposables.AddLast(disposable);
-
-            if (obj is IAsyncDisposable asyncDisposable)
-                _asyncDisposables.AddLast(asyncDisposable);
+            var uploadManagerFactory = _namedUploadManager[name];
+            return await uploadManagerFactory.Create(_httpContextAccessor.HttpContext);
         }
 
         public async ValueTask DisposeAsync()
         {
-            while (_asyncDisposables.First != null)
+            foreach (var item in _namedStorage)
             {
-                await _asyncDisposables.First.Value.DisposeAsync();
-                _asyncDisposables.RemoveFirst();
+                await item.Value.DisposeAsync();
             }
 
-            while (_disposables.First != null)
+            foreach (var item in _namedUploadManager)
             {
-                _disposables.First.Value.Dispose();
-                _disposables.RemoveFirst();
+                await item.Value.DisposeAsync();
             }
         }
     }

@@ -8,17 +8,16 @@ namespace tusdotnet.Tus2
 {
     public class UploadManagerDiskBased : IUploadManager
     {
-        private readonly Tus2Options _options;
         private readonly Dictionary<string, Task> _cancelChecks;
         private readonly Dictionary<string, CancellationTokenSource> _finishFile;
         private readonly DiskPathHelper _diskPathHelper;
         private const int FILE_CHECK_INTERVAL_IN_MS = 500;
 
-        public UploadManagerDiskBased(string diskPath)
+        public UploadManagerDiskBased(UploadManagerDiskBasedOptions options)
         {
             _cancelChecks = new Dictionary<string, Task>();
             _finishFile = new Dictionary<string, CancellationTokenSource>();
-            _diskPathHelper = new DiskPathHelper(diskPath);
+            _diskPathHelper = new DiskPathHelper(options.SharedDiskPath);
         }
 
         public Task<CancellationToken> StartUpload(string uploadToken)

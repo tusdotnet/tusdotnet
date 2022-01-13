@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
 using System.Threading.Tasks;
 using tusdotnet.Tus2;
 
@@ -16,7 +15,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
         {
-            _logger.LogInformation("Creating file {UploadToken}", TusContext.Headers.UploadToken);
+            _logger.LogInformation("Creating file {UploadToken}", Headers.UploadToken);
 
             var response = await base.OnCreateFile(createFileContext);
 
@@ -27,7 +26,11 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<UploadTransferProcedureResponse> OnWriteData(WriteDataContext writeDataContext)
         {
-            _logger.LogInformation("Receiving upload, starting at {UploadOffset}", TusContext.Headers.UploadOffset);
+            _logger.LogInformation("Receiving upload, starting at {UploadOffset}", Headers.UploadOffset);
+            
+            var dataResult = await writeDataContext.BodyReader.ReadAsync();
+            // TODO: Analyze data result
+            writeDataContext.BodyReader.AdvanceTo(dataResult.Buffer.Start, dataResult.Buffer.End);
 
             var response = await base.OnWriteData(writeDataContext);
 
@@ -38,7 +41,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
         {
-            _logger.LogInformation("Retrieving offset for {UploadToken}", TusContext.Headers.UploadToken);
+            _logger.LogInformation("Retrieving offset for {UploadToken}", Headers.UploadToken);
 
             var response = await base.OnRetrieveOffset();
 
@@ -49,7 +52,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<UploadCancellationProcedureResponse> OnDelete()
         {
-            _logger.LogInformation("Deleting file {UploadToken}", TusContext.Headers.UploadToken);
+            _logger.LogInformation("Deleting file {UploadToken}", Headers.UploadToken);
 
             var response = await base.OnDelete();
 
@@ -60,7 +63,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override Task OnFileComplete()
         {
-            _logger.LogInformation("File {UploadToken} is complete", TusContext.Headers.UploadToken);
+            _logger.LogInformation("File {UploadToken} is complete", Headers.UploadToken);
 
             return base.OnFileComplete();
         }
