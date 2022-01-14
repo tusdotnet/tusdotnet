@@ -18,7 +18,7 @@ namespace tusdotnet.Tus2
         
         public HttpContext HttpContext { get; set; }
 
-        internal IUploadManager UploadManager { get; set; }
+        internal IOngoingUploadManager UploadManager { get; set; }
 
         public virtual bool IsAllowedToDeleteFile { get; }
 

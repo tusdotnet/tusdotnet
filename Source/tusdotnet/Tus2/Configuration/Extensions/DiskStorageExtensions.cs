@@ -16,13 +16,13 @@
 
         public static TusServiceBuilder AddDiskBasedUploadManager(this TusServiceBuilder builder, string diskPath)
         {
-            builder.AddUploadManager(new UploadManagerDiskBased(new() { SharedDiskPath = diskPath }));
+            builder.AddUploadManager(new OngoingUploadManagerDiskBased(new() { SharedDiskPath = diskPath }));
             return builder;
         }
 
         public static TusServiceBuilder AddDiskBasedUploadManager(this TusServiceBuilder builder, string name, string sharedDiskPath)
         {
-            builder.AddUploadManager(name, new UploadManagerDiskBased(new() { SharedDiskPath = sharedDiskPath }));
+            builder.AddUploadManager(name, new OngoingUploadManagerDiskBased(new() { SharedDiskPath = sharedDiskPath }));
             return builder;
         }
     }

@@ -99,7 +99,7 @@ namespace tusdotnet.Tus2
                     : await manager.GetNamedStorage(configurationName);
             }
 
-            static async Task<IUploadManager> GetUploadManager(ITus2ConfigurationManager manager, string configurationName)
+            static async Task<IOngoingUploadManager> GetUploadManager(ITus2ConfigurationManager manager, string configurationName)
             {
                 return configurationName == null
                     ? await manager.GetDefaultUploadManager()

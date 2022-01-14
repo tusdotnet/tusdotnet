@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    public interface IUploadManager
+    public interface IOngoingUploadManager
     {
         Task CancelOtherUploads(string uploadToken);
 

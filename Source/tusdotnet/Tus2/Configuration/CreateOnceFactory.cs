@@ -9,7 +9,12 @@ namespace tusdotnet.Tus2
         private readonly Func<HttpContext, Task<T>> _factory;
         private T _instance;
 
-        public CreateOnceFactory(Func<HttpContext, Task<T>> factory)
+        public static CreateOnceFactory<T> Create(Func<HttpContext, Task<T>> factory)
+        {
+            return factory == null ? null : new(factory);
+        }
+
+        private CreateOnceFactory(Func<HttpContext, Task<T>> factory)
         {
             _factory = factory;
         }
@@ -21,9 +26,6 @@ namespace tusdotnet.Tus2
 
         public async ValueTask DisposeAsync()
         {
-            if (_instance == null)
-                return;
-
             if (_instance is IDisposable disposable)
                 disposable.Dispose();
             else if (_instance is IAsyncDisposable asyncDisposable)

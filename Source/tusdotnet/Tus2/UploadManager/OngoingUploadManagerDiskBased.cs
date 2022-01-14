@@ -6,14 +6,15 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    public class UploadManagerDiskBased : IUploadManager
+    public class OngoingUploadManagerDiskBased : IOngoingUploadManager
     {
         private readonly Dictionary<string, Task> _cancelChecks;
         private readonly Dictionary<string, CancellationTokenSource> _finishFile;
         private readonly DiskPathHelper _diskPathHelper;
         private const int FILE_CHECK_INTERVAL_IN_MS = 500;
+        private const int CANCEL_WAIT_TIMEOUT_IN_MS = 30_000;
 
-        public UploadManagerDiskBased(UploadManagerDiskBasedOptions options)
+        public OngoingUploadManagerDiskBased(UploadManagerDiskBasedOptions options)
         {
             _cancelChecks = new Dictionary<string, Task>();
             _finishFile = new Dictionary<string, CancellationTokenSource>();
@@ -59,19 +60,17 @@ namespace tusdotnet.Tus2
 
             File.WriteAllBytes(cancelIndicationFile, Array.Empty<byte>());
 
-            // Wait for indication file to be deleted but don't wait more than 30 seconds.
-            const int TIMEOUT_IN_MS = 30_000;
+            // Wait for indication file to be deleted but don't wait more than CANCEL_WAIT_TIMEOUT_IN_MS seconds.
             var elapsed = 0;
-
             do
             {
                 await Task.Delay(FILE_CHECK_INTERVAL_IN_MS); // Chosen by fair dice roll
                 elapsed += FILE_CHECK_INTERVAL_IN_MS;
 
-            } while (File.Exists(cancelIndicationFile) && elapsed < TIMEOUT_IN_MS);
+            } while (File.Exists(cancelIndicationFile) && elapsed < CANCEL_WAIT_TIMEOUT_IN_MS);
 
             if (File.Exists(cancelIndicationFile))
-                throw new TimeoutException("Timeout when trying to cancel other uploads");
+                UploadManagerThrowHelper.ThrowTimeoutException();
         }
 
         public Task NotifyCancelComplete(string uploadToken)

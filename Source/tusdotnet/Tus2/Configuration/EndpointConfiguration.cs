@@ -14,8 +14,13 @@ namespace tusdotnet.Tus2
 
         public bool? AllowClientToDeleteFile { get; set; }
 
-        public EndpointConfiguration(string configurationName)
-            : this(configurationName, configurationName)
+        public EndpointConfiguration()
+            : this(null, null)
+        {
+        }
+
+        public EndpointConfiguration(string storageConfigurationName)
+            : this(storageConfigurationName, null)
         {
         }
 

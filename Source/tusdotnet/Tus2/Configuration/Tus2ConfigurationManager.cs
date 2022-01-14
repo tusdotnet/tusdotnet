@@ -13,21 +13,21 @@ namespace tusdotnet.Tus2
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         private readonly CreateOnceFactory<ITus2Storage> _storageFactory;
-        private readonly CreateOnceFactory<IUploadManager> _uploadManagerFactory;
+        private readonly CreateOnceFactory<IOngoingUploadManager> _uploadManagerFactory;
 
         private readonly Dictionary<string, CreateOnceFactory<ITus2Storage>> _namedStorage;
-        private readonly Dictionary<string, CreateOnceFactory<IUploadManager>> _namedUploadManager;
+        private readonly Dictionary<string, CreateOnceFactory<IOngoingUploadManager>> _namedUploadManager;
 
         public Tus2ConfigurationManager(TusServiceBuilder builder, IServiceProvider serviceProvider, IHttpContextAccessor httpContextAccessor)
         {
             _serviceProvider = serviceProvider;
             _httpContextAccessor = httpContextAccessor;
 
-            _storageFactory = new(builder.StorageFactory);
-            _uploadManagerFactory = new(builder.UploadManagerFactory);
+            _storageFactory = CreateOnceFactory<ITus2Storage>.Create(builder.StorageFactory);
+            _uploadManagerFactory = CreateOnceFactory<IOngoingUploadManager>.Create(builder.UploadManagerFactory);
 
-            _namedStorage = builder.NamedStorage.ToDictionary(k => k.Key, v => new CreateOnceFactory<ITus2Storage>(v.Value));
-            _namedUploadManager = builder.NamedUploadManager.ToDictionary(k => k.Key, v => new CreateOnceFactory<IUploadManager>(v.Value));
+            _namedStorage = builder.NamedStorage.ToDictionary(k => k.Key, v => CreateOnceFactory<ITus2Storage>.Create(v.Value));
+            _namedUploadManager = builder.NamedUploadManager.ToDictionary(k => k.Key, v => CreateOnceFactory<IOngoingUploadManager>.Create(v.Value));
         }
 
         public async Task<ITus2Storage> GetDefaultStorage()
@@ -46,17 +46,17 @@ namespace tusdotnet.Tus2
             return await storeFactory.Create(_httpContextAccessor.HttpContext);
         }
 
-        public async Task<IUploadManager> GetDefaultUploadManager()
+        public async Task<IOngoingUploadManager> GetDefaultUploadManager()
         {
             if (_uploadManagerFactory != null)
             {
                 return await _uploadManagerFactory.Create(_httpContextAccessor.HttpContext);
             }
 
-            return _serviceProvider.GetRequiredService<IUploadManager>();
+            return _serviceProvider.GetRequiredService<IOngoingUploadManager>();
         }
 
-        public async Task<IUploadManager> GetNamedUploadManager(string name)
+        public async Task<IOngoingUploadManager> GetNamedUploadManager(string name)
         {
             var uploadManagerFactory = _namedUploadManager[name];
             return await uploadManagerFactory.Create(_httpContextAccessor.HttpContext);

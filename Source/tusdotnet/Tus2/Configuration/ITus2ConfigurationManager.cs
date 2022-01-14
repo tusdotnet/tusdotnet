@@ -6,10 +6,10 @@ namespace tusdotnet.Tus2
     {
         Task<ITus2Storage> GetDefaultStorage();
         
-        Task<IUploadManager> GetDefaultUploadManager();
+        Task<IOngoingUploadManager> GetDefaultUploadManager();
         
         Task<ITus2Storage> GetNamedStorage(string name);
 
-        Task<IUploadManager> GetNamedUploadManager(string name);
+        Task<IOngoingUploadManager> GetNamedUploadManager(string name);
     }
 }
