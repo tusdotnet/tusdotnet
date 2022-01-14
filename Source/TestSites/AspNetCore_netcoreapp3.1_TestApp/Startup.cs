@@ -49,14 +49,17 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             services.AddOptions();
 
-            var options = new Tus2Options();
-            Configuration.Bind(options);
+            var tus2Configuration = new Tus2Options();
+            Configuration.Bind(tus2Configuration);
 
             services.AddTus2(options =>
             {
-                options.AddDiskStorage("MyProfile", @"C:\tusfiles");
+                options.AddDiskStorage("MyProfile", tus2Configuration.FolderDiskPath);
                 //options.AddDiskBasedUploadManager("MyProfile", @"C:\tusfiles");
-                options.AddStorage(async httpContext => new Tus2DiskStore(new() { DiskPath = @"C:\tusfiles\default\" + httpContext.User.Identity.Name }));
+                options.AddStorage(async httpContext => new Tus2DiskStore(new()
+                {
+                    DiskPath = System.IO.Path.Combine(tus2Configuration.FolderDiskPath, httpContext.User.Identity.Name)
+                }));
                 //options.AddUploadManager(new OngoingUploadManagerDiskBased(new() { SharedDiskPath = System.IO.Path.GetTempPath() }));
                 options.AddHandler<MyTusHandler>();
             });
@@ -110,7 +113,6 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 };
 
                 endpoints.MapTus2<MyTusHandler>("/files-tus-2", filesTus2Config);
-                endpoints.MapTus2<MyTusHandler>("/files-tus-default");
 
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
                 endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);

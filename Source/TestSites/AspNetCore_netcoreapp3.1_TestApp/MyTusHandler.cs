@@ -28,10 +28,6 @@ namespace AspNetCore_netcoreapp3._1_TestApp
         {
             _logger.LogInformation("Receiving upload, starting at {UploadOffset}", Headers.UploadOffset);
             
-            var dataResult = await writeDataContext.BodyReader.ReadAsync();
-            // TODO: Analyze data result
-            writeDataContext.BodyReader.AdvanceTo(dataResult.Buffer.Start, dataResult.Buffer.End);
-
             var response = await base.OnWriteData(writeDataContext);
 
             _logger.LogInformation("Was success? {Success}", response.Status == System.Net.HttpStatusCode.Created);
