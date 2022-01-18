@@ -13,7 +13,7 @@ namespace tusdotnet.Tus2
         {
             if (UploadIncomplete)
             {
-                context.SetHeader("Upload-Incomplete", "?1");
+                context.SetHeader("Upload-Incomplete", UploadIncomplete.ToSfBool());
             }
 
             return Task.CompletedTask;

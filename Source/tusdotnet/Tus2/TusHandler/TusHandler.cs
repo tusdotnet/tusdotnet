@@ -8,11 +8,18 @@ namespace tusdotnet.Tus2
     {
         public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
         {
-            var offset = await Store.GetOffset(Headers.UploadToken);
+            var offsetTask = Store.GetOffset(Headers.UploadToken);
+            var isCompleteTask = Store.IsComplete(Headers.UploadToken);
+
+            await Task.WhenAll(offsetTask, isCompleteTask);
+
+            var offset = offsetTask.Result;
+            var isComplete = isCompleteTask.Result;
 
             return new()
             {
-                UploadOffset = offset
+                UploadOffset = offset,
+                UploadIncomplete = !isComplete,
             };
         }
 

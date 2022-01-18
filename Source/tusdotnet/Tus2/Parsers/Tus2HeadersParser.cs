@@ -11,26 +11,18 @@ namespace tusdotnet.Tus2.Parsers
         {
             var headers = httpContext.Request.Headers;
 
-            var couldParseUploadOffset = long.TryParse(headers["Upload-Offset"].FirstOrDefault(), out long uploadOffset);
-
-            var uploadIncomplete = ParseUploadIncomplete(headers["Upload-Incomplete"].FirstOrDefault());
+            var uploadOffset = headers["Upload-Offset"].FirstOrDefault().FromSfInteger();
+            var uploadIncomplete = headers["Upload-Incomplete"].FirstOrDefault().FromSfBool();
+            var uploadToken = headers["Upload-Token"].FirstOrDefault();
 
             var uploadTokenParser = httpContext.RequestServices.GetRequiredService<IUploadTokenParser>();
 
             return new()
             {
-                UploadOffset = couldParseUploadOffset ? uploadOffset : null,
-                UploadToken = uploadTokenParser.Parse(headers["Upload-Token"].FirstOrDefault()),
+                UploadOffset = uploadOffset,
+                UploadToken = uploadTokenParser.Parse(uploadToken),
                 UploadIncomplete = uploadIncomplete
             };
-        }
-
-        private static bool? ParseUploadIncomplete(string? uploadIncomplete)
-        {
-            if (uploadIncomplete == null)
-                return null;
-
-            return uploadIncomplete == "?1";
         }
     }
 }

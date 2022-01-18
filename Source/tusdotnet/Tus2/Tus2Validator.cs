@@ -37,7 +37,7 @@ namespace tusdotnet.Tus2
             if (existingOffset != uploadOffset)
             {
                 // TODO: In this case should we also return the offset in the response headers to prevent a round trip with retrieving the new offset?
-                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, $"Invalid offset {uploadOffset}. File offset is at {existingOffset}");
+                throw new Tus2AssertRequestException(HttpStatusCode.Conflict, $"Invalid offset {uploadOffset}. File offset is at {existingOffset}");
             }
         }
     }

@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -9,6 +8,8 @@ namespace tusdotnet.Tus2
     {
         public long UploadOffset { get; set; }
 
+        public bool UploadIncomplete { get; set; }
+
         public UploadRetrievingProcedureResponse()
         {
             NoCache = true;
@@ -16,7 +17,9 @@ namespace tusdotnet.Tus2
 
         protected override Task WriteResponse(HttpContext context)
         {
-            context.Response.Headers["Upload-Offset"] = new StringValues(UploadOffset.ToString());
+            context.SetHeader("Upload-Offset", UploadOffset.ToString());
+            context.SetHeader("Upload-Incomplete", UploadIncomplete.ToSfBool());
+
             context.Response.StatusCode = (int)HttpStatusCode.NoContent;
             return Task.CompletedTask;
         }
