@@ -15,6 +15,7 @@ namespace tusdotnet.Tus2
             // TODO Remove this and just use the MapX methods on the endpoint builder one step up.
             if (httpContext.Request.Method.Equals("get", StringComparison.OrdinalIgnoreCase))
             {
+                httpContext.Response.Headers.Add("Allow", "PUT, PATCH, POST, HEAD, DELETE");
                 await httpContext.Error(HttpStatusCode.MethodNotAllowed);
                 return;
             }

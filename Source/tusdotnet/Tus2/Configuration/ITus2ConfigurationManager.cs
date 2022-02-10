@@ -2,7 +2,7 @@
 
 namespace tusdotnet.Tus2
 {
-    internal interface ITus2ConfigurationManager
+    public interface ITus2ConfigurationManager
     {
         Task<ITus2Storage> GetDefaultStorage();
         

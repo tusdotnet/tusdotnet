@@ -9,11 +9,14 @@ namespace tusdotnet.Tus2
 
         public bool UploadCompleted { get; set; }
 
+        public long UploadOffset { get; set; }
+
         protected override Task WriteResponse(HttpContext context)
         {
             if (UploadIncomplete)
             {
                 context.SetHeader("Upload-Incomplete", UploadIncomplete.ToSfBool());
+                context.SetHeader("Upload-Offset", UploadOffset.ToString());
             }
 
             return Task.CompletedTask;

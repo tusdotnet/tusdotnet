@@ -65,7 +65,8 @@ namespace tusdotnet.Tus2
                 return new()
                 {
                     Status = HttpStatusCode.Created,
-                    UploadIncomplete = true
+                    UploadIncomplete = true,
+                    UploadOffset = await Store.GetOffset(Headers.UploadToken)
                 };
             }
 
