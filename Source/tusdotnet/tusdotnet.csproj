@@ -23,7 +23,6 @@
     <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <LangVersion>latest</LangVersion>
-    <EnablePackageValidation>true</EnablePackageValidation>
   </PropertyGroup>
 
   <!-- SourceLink -->
