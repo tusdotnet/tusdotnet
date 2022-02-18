@@ -37,8 +37,8 @@ namespace tusdotnet.Adapters
 
         public RequestAdapter(string configUrlPath)
         {
-            _fileId = new Lazy<string>(ParseFileId);
-            _uploadLength = new Lazy<long>(ParseUploadLength);
+            _fileId = new Lazy<string>(() => ParseFileId());
+            _uploadLength = new Lazy<long>(() => ParseUploadLength());
             _configUrlPath = configUrlPath;
         }
 
@@ -46,12 +46,17 @@ namespace tusdotnet.Adapters
         {
             return Headers?.ContainsKey(name) == true ? Headers[name][0] : null;
         }
-
         private string ParseFileId()
         {
             var startIndex = RequestUri.LocalPath.IndexOf(_configUrlPath, StringComparison.OrdinalIgnoreCase) + _configUrlPath.Length;
 
+#if NETCOREAPP3_1_OR_GREATER
+
+            return RequestUri.LocalPath.AsSpan()[startIndex..].Trim('/').ToString();
+#else
+
             return RequestUri.LocalPath.Substring(startIndex).Trim('/');
+#endif
         }
 
         private long ParseUploadLength()

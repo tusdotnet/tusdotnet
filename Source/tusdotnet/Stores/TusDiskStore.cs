@@ -35,14 +35,16 @@ namespace tusdotnet.Stores
         private readonly InternalFileRep.FileRepFactory _fileRepFactory;
         private readonly ITusFileIdProvider _fileIdProvider;
 
-        // These are the read and write buffers, they will get the value of TusDiskBufferSize.Default if not set in the constructor.
+        // These are the read and write buffer sizes, they will get the value of TusDiskBufferSize.Default if not set in the constructor.
         private readonly int _maxReadBufferSize;
         private readonly int _maxWriteBufferSize;
 
         // Use our own array pool to not leak data to other parts of the running app.
         private static readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Create();
 
-        private static readonly GuidFileIdProvider DefaultFileIdProvider = new();
+        private static readonly GuidFileIdProvider _defaultFileIdProvider = new();
+
+        private static readonly IEnumerable<string> _supportedAlgorithms = new[] { "sha1" };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -59,7 +61,8 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) : this(directoryPath, deletePartialFilesOnConcat, TusDiskBufferSize.Default)
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) 
+            : this(directoryPath, deletePartialFilesOnConcat, TusDiskBufferSize.Default)
         {
             // Left blank.
         }
@@ -70,7 +73,8 @@ namespace tusdotnet.Stores
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
         /// <param name="bufferSize">The buffer size to use when reading and writing. If unsure use <see cref="TusDiskBufferSize.Default"/>.</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize) : this(directoryPath, deletePartialFilesOnConcat, bufferSize, DefaultFileIdProvider)
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize) 
+            : this(directoryPath, deletePartialFilesOnConcat, bufferSize, _defaultFileIdProvider)
         {
             // Left blank.
         }
@@ -165,10 +169,11 @@ namespace tusdotnet.Stores
             });
         }
 
+        
         /// <inheritdoc />
         public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken _)
         {
-            return Task.FromResult<IEnumerable<string>>(new[] { "sha1" });
+            return Task.FromResult(_supportedAlgorithms);
         }
 
         /// <inheritdoc />
@@ -269,7 +274,7 @@ namespace tusdotnet.Stores
             var expiration = _fileRepFactory.Expiration(await InternalFileId.Parse(_fileIdProvider, fileId)).ReadFirstLine(true);
 
             return expiration == null
-                ? (DateTimeOffset?)null
+                ? null
                 : DateTimeOffset.ParseExact(expiration, "O", null);
         }
 
@@ -280,7 +285,7 @@ namespace tusdotnet.Stores
             foreach (var file in Directory.EnumerateFiles(_directoryPath, "*.expiration"))
             {
                 var f = await InternalFileId.Parse(_fileIdProvider, Path.GetFileNameWithoutExtension(file));
-                if (FileHasExpired(f) && FileIsIncomplete(f))
+                if (FileHasExpired(f, _fileRepFactory) && FileIsIncomplete(f, _fileRepFactory))
                 {
                     expiredFiles.Add(f);
                 }
@@ -288,23 +293,23 @@ namespace tusdotnet.Stores
 
             return expiredFiles;
 
-            bool FileHasExpired(InternalFileId fileId)
+            static bool FileHasExpired(InternalFileId fileId, InternalFileRep.FileRepFactory fileRepFactory)
             {
-                var firstLine = _fileRepFactory.Expiration(fileId).ReadFirstLine();
+                var firstLine = fileRepFactory.Expiration(fileId).ReadFirstLine();
                 return !string.IsNullOrWhiteSpace(firstLine)
                        && DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
             }
 
-            bool FileIsIncomplete(InternalFileId fileId)
+            static bool FileIsIncomplete(InternalFileId fileId, InternalFileRep.FileRepFactory fileRepFactory)
             {
-                var uploadLength = _fileRepFactory.UploadLength(fileId).ReadFirstLineAsLong(fileIsOptional: true, defaultValue: long.MinValue);
+                var uploadLength = fileRepFactory.UploadLength(fileId).ReadFirstLineAsLong(fileIsOptional: true, defaultValue: long.MinValue);
 
                 if (uploadLength == long.MinValue)
                 {
                     return true;
                 }
 
-                var dataFile = _fileRepFactory.Data(fileId);
+                var dataFile = fileRepFactory.Data(fileId);
 
                 if (!dataFile.Exist())
                 {
@@ -341,7 +346,7 @@ namespace tusdotnet.Stores
             return chunkComplete;
         }
 
-        private void MarkChunkComplete(InternalFileRep chunkComplete)
+        private static void MarkChunkComplete(InternalFileRep chunkComplete)
         {
             chunkComplete.Write("1");
         }
