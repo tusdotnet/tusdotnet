@@ -14,13 +14,19 @@ using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(kestrel =>
+{
+    kestrel.Limits.MaxRequestBodySize = null;
+});
 
 builder.Services.AddSingleton(CreateTusConfiguration);
 builder.Services.AddHostedService<ExpiredFilesCleanupService>();
 
+
 AddAuthorization(builder);
 
 var app = builder.Build();
+
 
 app.UseAuthentication();
 app.UseDefaultFiles();
