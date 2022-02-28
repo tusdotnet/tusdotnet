@@ -8,8 +8,8 @@ namespace tusdotnet.Tus2
     {
         public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
         {
-            var offsetTask = Store.GetOffset(Headers.UploadToken);
-            var isCompleteTask = Store.IsComplete(Headers.UploadToken);
+            var offsetTask = Storage.GetOffset(Headers.UploadToken);
+            var isCompleteTask = Storage.IsComplete(Headers.UploadToken);
 
             await Task.WhenAll(offsetTask, isCompleteTask);
 
@@ -26,7 +26,7 @@ namespace tusdotnet.Tus2
        
         public override async Task<UploadCancellationProcedureResponse> OnDelete()
         {
-            await Store.Delete(Headers.UploadToken);
+            await Storage.Delete(Headers.UploadToken);
 
             return new()
             {
@@ -36,7 +36,7 @@ namespace tusdotnet.Tus2
 
         public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
         {
-            await Store.CreateFile(Headers.UploadToken, createFileContext);
+            await Storage.CreateFile(Headers.UploadToken, createFileContext);
 
             return new() { Status = HttpStatusCode.Created };
         }
@@ -45,12 +45,14 @@ namespace tusdotnet.Tus2
         {
             try
             {
-                await Store.WriteData(Headers.UploadToken, writeDataContext);
+                await Storage.WriteData(Headers.UploadToken, writeDataContext);
             }
             catch (OperationCanceledException)
             {
                 // Left blank. This is the case when the store does throws on cancellation instead of returning.
             }
+
+            var uploadOffset = await Storage.GetOffset(Headers.UploadToken);
 
             if (writeDataContext.CancellationToken.IsCancellationRequested)
             {
@@ -64,19 +66,17 @@ namespace tusdotnet.Tus2
             {
                 return new()
                 {
-                    Status = HttpStatusCode.Created,
                     UploadIncomplete = true,
-                    UploadOffset = await Store.GetOffset(Headers.UploadToken)
+                    UploadOffset = uploadOffset
                 };
             }
 
-            await Store.MarkComplete(Headers.UploadToken);
+            await Storage.MarkComplete(Headers.UploadToken);
 
             return new()
             {
-                Status = HttpStatusCode.Created,
+                UploadOffset = uploadOffset,
                 UploadIncomplete = false,
-                UploadCompleted = true
             };
         }
 

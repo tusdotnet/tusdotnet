@@ -8,7 +8,7 @@ namespace tusdotnet.Tus2
 {
     public abstract class TusBaseHandlerEntryPoints
     {
-        public ITus2Storage Store{ get; set; }
+        public Tus2Storage Storage{ get; set; }
 
         public IMetadataParser MetadataParser { get; set; }
 
@@ -19,8 +19,6 @@ namespace tusdotnet.Tus2
         public HttpContext HttpContext { get; set; }
 
         internal IOngoingUploadManager UploadManager { get; set; }
-
-        public virtual bool IsAllowedToDeleteFile { get; }
 
         internal async Task<UploadRetrievingProcedureResponse> RetrieveOffsetEntryPoint()
         {
@@ -51,7 +49,7 @@ namespace tusdotnet.Tus2
 
                 await UploadManager.CancelOtherUploads(Headers.UploadToken);
 
-                await Tus2Validator.AssertFileExist(Store, Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(Storage, Headers.UploadToken);
 
                 return await OnRetrieveOffset();
 
@@ -61,7 +59,8 @@ namespace tusdotnet.Tus2
                 return new()
                 {
                     Status = ex.Status,
-                    ErrorMessage = ex.ErrorMessage
+                    ErrorMessage = ex.ErrorMessage,
+                    UploadOffset = await Storage.TryGetOffset(Headers.UploadToken)
                 };
             }
         }
@@ -94,7 +93,7 @@ namespace tusdotnet.Tus2
 
                 await UploadManager.CancelOtherUploads(Headers.UploadToken);
 
-                await Tus2Validator.AssertFileExist(Store, Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(Storage, Headers.UploadToken);
 
                 return await OnDelete();
 
@@ -104,7 +103,8 @@ namespace tusdotnet.Tus2
                 return new()
                 {
                     Status = ex.Status,
-                    ErrorMessage = ex.ErrorMessage
+                    ErrorMessage = ex.ErrorMessage,
+                    UploadOffset = await Storage.TryGetOffset(Headers.UploadToken)
                 };
             }
         }
@@ -137,6 +137,7 @@ namespace tusdotnet.Tus2
             If the request completes successfully but the entire upload is not yet complete indicated by the Upload-Incomplete header, the server MUST acknowledge it by responding with the 201 (Created) status code and the Upload-Incomplete header set to true.
               * */
 
+            long? uploadOffsetFromStorage = null;
             try
             {
                 await UploadManager.CancelOtherUploads(Headers.UploadToken);
@@ -148,7 +149,7 @@ namespace tusdotnet.Tus2
 
                 Headers.UploadOffset ??= 0;
 
-                var fileExist = await Tus2Validator.AssertFileExist(Store, Headers.UploadToken, Headers.UploadOffset != 0);
+                var fileExist = await Tus2Validator.AssertFileExist(Storage, Headers.UploadToken, Headers.UploadOffset != 0);
 
                 if (!fileExist)
                 {
@@ -164,7 +165,7 @@ namespace tusdotnet.Tus2
                 }
                 else
                 {
-                    var fileIsComplete = await Store.IsComplete(Headers.UploadToken);
+                    var fileIsComplete = await Storage.IsComplete(Headers.UploadToken);
                     if (fileIsComplete)
                     {
                         return new()
@@ -175,12 +176,12 @@ namespace tusdotnet.Tus2
                     }
                 }
 
-                // TODO: "before processing the request body" seems a bit strange here
-                // "The server MUST terminate any ongoing Upload Transfer Procedure for the same token before processing the request body."
-                // as we will end up with mismatches in upload-offset?
-                // Should we cancel ongoing uploads directly or just before processing the body?
+                // TODO: See if we can implement some kind of updatable "request cache" for data that
+                // could change during the request but were we do not wish to read the data multiple times,
+                // e.g. Upload-Offset for the file retrieved from storage.
 
-                await Tus2Validator.AssertValidOffset(Store, Headers.UploadToken, Headers.UploadOffset);
+                uploadOffsetFromStorage = await Storage.GetOffset(Headers.UploadToken);
+                await Tus2Validator.AssertValidOffset(uploadOffsetFromStorage.Value, Headers.UploadOffset);
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, ongoingCancellationToken);
                 var guardedPipeReader = new ClientDisconnectGuardedPipeReader(HttpContext.Request.BodyReader, cts.Token);
@@ -188,8 +189,7 @@ namespace tusdotnet.Tus2
                 var writeDataContext = new WriteDataContext()
                 {
                     BodyReader = guardedPipeReader,
-                    CancellationToken = cts.Token,
-                    Metadata = metadata
+                    CancellationToken = cts.Token
                 };
 
                 var writeDataResponse = await OnWriteData(writeDataContext);
@@ -207,7 +207,8 @@ namespace tusdotnet.Tus2
                 return new()
                 {
                     Status = exc.Status,
-                    ErrorMessage = exc.ErrorMessage
+                    ErrorMessage = exc.ErrorMessage,
+                    UploadOffset = uploadOffsetFromStorage
                 };
             }
         }

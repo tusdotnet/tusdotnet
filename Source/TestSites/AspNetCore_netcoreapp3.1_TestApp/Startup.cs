@@ -56,7 +56,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             {
                 options.AddDiskStorage("MyProfile", tus2Configuration.FolderDiskPath);
                 //options.AddDiskBasedUploadManager("MyProfile", @"C:\tusfiles");
-                options.AddStorage(async httpContext => new Tus2DiskStore(new()
+                options.AddStorage(async httpContext => new Tus2DiskStorage(new()
                 {
                     DiskPath = System.IO.Path.Combine(tus2Configuration.FolderDiskPath, httpContext.User.Identity.Name)
                 }));

@@ -4,13 +4,13 @@
     {
         public static TusServiceBuilder AddDiskStorage(this TusServiceBuilder builder, string diskPath)
         {
-            builder.AddStorage(new Tus2DiskStore(new() { DiskPath = diskPath }));
+            builder.AddStorage(new Tus2DiskStorage(new() { DiskPath = diskPath }));
             return builder;
         }
 
         public static TusServiceBuilder AddDiskStorage(this TusServiceBuilder builder, string name, string diskPath)
         {
-            builder.AddStorage(name, new Tus2DiskStore(new() { DiskPath = diskPath }));
+            builder.AddStorage(name, new Tus2DiskStorage(new() { DiskPath = diskPath }));
             return builder;
         }
 

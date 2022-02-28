@@ -8,6 +8,7 @@ namespace tusdotnet.Tus2
     {
         protected override Task WriteResponse(HttpContext context)
         {
+            // Never actually sent to the client. Just used internally between methods.
             throw new NotImplementedException();
         }
     }

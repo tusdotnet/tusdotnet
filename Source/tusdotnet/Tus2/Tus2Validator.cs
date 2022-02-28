@@ -7,7 +7,7 @@ namespace tusdotnet.Tus2
 {
     internal static class Tus2Validator
     {
-        internal static async Task<bool> AssertFileExist(ITus2Storage store, string uploadToken, bool additionalCondition = true)
+        internal static async Task<bool> AssertFileExist(Tus2Storage store, string uploadToken, bool additionalCondition = true)
         {
             var fileExist = await store.FileExist(uploadToken);
             if (!fileExist && additionalCondition)
@@ -31,13 +31,11 @@ namespace tusdotnet.Tus2
             }
         }
 
-        internal static async Task AssertValidOffset(ITus2Storage store, string uploadToken, long? uploadOffset)
+        internal static async Task AssertValidOffset(long uploadOffsetFromStorage, long? uploadOffsetFromClient)
         {
-            var existingOffset = await store.GetOffset(uploadToken);
-            if (existingOffset != uploadOffset)
+            if (uploadOffsetFromStorage != uploadOffsetFromClient)
             {
-                // TODO: In this case should we also return the offset in the response headers to prevent a round trip with retrieving the new offset?
-                throw new Tus2AssertRequestException(HttpStatusCode.Conflict, $"Invalid offset {uploadOffset}. File offset is at {existingOffset}");
+                throw new Tus2AssertRequestException(HttpStatusCode.Conflict);
             }
         }
     }

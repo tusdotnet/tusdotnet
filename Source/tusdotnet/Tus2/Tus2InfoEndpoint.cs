@@ -21,7 +21,7 @@ namespace tusdotnet.Tus2
                 await httpContext.Error(System.Net.HttpStatusCode.BadRequest, "Missing Upload-Token header");
             }
 
-            headers.UploadToken = Tus2DiskStore.CleanUploadToken(headers.UploadToken);
+            headers.UploadToken = Tus2DiskStorage.CleanUploadToken(headers.UploadToken);
 
             var pathHelper = new DiskPathHelper(options.FolderDiskPath);
             var path = pathHelper.DataFilePath(headers.UploadToken);

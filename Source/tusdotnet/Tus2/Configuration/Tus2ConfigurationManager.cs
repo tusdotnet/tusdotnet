@@ -12,10 +12,10 @@ namespace tusdotnet.Tus2
         private readonly IServiceProvider _serviceProvider;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        private readonly CreateOnceFactory<ITus2Storage> _storageFactory;
+        private readonly CreateOnceFactory<Tus2Storage> _storageFactory;
         private readonly CreateOnceFactory<IOngoingUploadManager> _uploadManagerFactory;
 
-        private readonly Dictionary<string, CreateOnceFactory<ITus2Storage>> _namedStorage;
+        private readonly Dictionary<string, CreateOnceFactory<Tus2Storage>> _namedStorage;
         private readonly Dictionary<string, CreateOnceFactory<IOngoingUploadManager>> _namedUploadManager;
 
         public Tus2ConfigurationManager(TusServiceBuilder builder, IServiceProvider serviceProvider, IHttpContextAccessor httpContextAccessor)
@@ -23,24 +23,24 @@ namespace tusdotnet.Tus2
             _serviceProvider = serviceProvider;
             _httpContextAccessor = httpContextAccessor;
 
-            _storageFactory = CreateOnceFactory<ITus2Storage>.Create(builder.StorageFactory);
+            _storageFactory = CreateOnceFactory<Tus2Storage>.Create(builder.StorageFactory);
             _uploadManagerFactory = CreateOnceFactory<IOngoingUploadManager>.Create(builder.UploadManagerFactory);
 
-            _namedStorage = builder.NamedStorage.ToDictionary(k => k.Key, v => CreateOnceFactory<ITus2Storage>.Create(v.Value));
+            _namedStorage = builder.NamedStorage.ToDictionary(k => k.Key, v => CreateOnceFactory<Tus2Storage>.Create(v.Value));
             _namedUploadManager = builder.NamedUploadManager.ToDictionary(k => k.Key, v => CreateOnceFactory<IOngoingUploadManager>.Create(v.Value));
         }
 
-        public async Task<ITus2Storage> GetDefaultStorage()
+        public async Task<Tus2Storage> GetDefaultStorage()
         {
             if (_storageFactory != null)
             {
                 return await _storageFactory.Create(_httpContextAccessor.HttpContext);
             }
 
-            return _serviceProvider.GetRequiredService<ITus2Storage>();
+            return _serviceProvider.GetRequiredService<Tus2Storage>();
         }
 
-        public async Task<ITus2Storage> GetNamedStorage(string name)
+        public async Task<Tus2Storage> GetNamedStorage(string name)
         {
             var storeFactory = _namedStorage[name];
             return await storeFactory.Create(_httpContextAccessor.HttpContext);

@@ -12,7 +12,7 @@ namespace tusdotnet.Tus2
 {
     internal static class HttpContextExtensions
     {
-        internal static async Task Error(this HttpContext httpContext, HttpStatusCode statusCode, string message = null)
+        internal static async Task Error(this HttpContext httpContext, HttpStatusCode statusCode, string message = null )
         {
             httpContext.Response.StatusCode = (int)statusCode;
             if (message != null)

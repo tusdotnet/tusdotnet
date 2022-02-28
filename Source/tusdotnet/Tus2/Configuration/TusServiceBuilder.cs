@@ -7,13 +7,13 @@ namespace tusdotnet.Tus2
 {
     public class TusServiceBuilder
     {
-        public Dictionary<string, Func<HttpContext, Task<ITus2Storage>>> NamedStorage { get; }
+        public Dictionary<string, Func<HttpContext, Task<Tus2Storage>>> NamedStorage { get; }
 
         public Dictionary<string, Func<HttpContext, Task<IOngoingUploadManager>>> NamedUploadManager { get; }
 
-        public ITus2Storage Storage { get; private set; }
+        public Tus2Storage Storage { get; private set; }
 
-        public Func<HttpContext, Task<ITus2Storage>> StorageFactory { get; private set; }
+        public Func<HttpContext, Task<Tus2Storage>> StorageFactory { get; private set; }
 
         public IOngoingUploadManager UploadManager { get; private set; }
 
@@ -28,25 +28,25 @@ namespace tusdotnet.Tus2
             Handlers = new();
         }
 
-        public TusServiceBuilder AddStorage(ITus2Storage storageInstance)
+        public TusServiceBuilder AddStorage(Tus2Storage storageInstance)
         {
             Storage = storageInstance;
             return this;
         }
 
-        public TusServiceBuilder AddStorage(Func<HttpContext, Task<ITus2Storage>> storageFactory)
+        public TusServiceBuilder AddStorage(Func<HttpContext, Task<Tus2Storage>> storageFactory)
         {
             StorageFactory = storageFactory;
             return this;
         }
 
-        public TusServiceBuilder AddStorage(string name, ITus2Storage storageInstance)
+        public TusServiceBuilder AddStorage(string name, Tus2Storage storageInstance)
         {
             NamedStorage.Add(name, _ => Task.FromResult(storageInstance));
             return this;
         }
 
-        public TusServiceBuilder AddStorage(string name, Func<HttpContext, Task<ITus2Storage>> storageFactory)
+        public TusServiceBuilder AddStorage(string name, Func<HttpContext, Task<Tus2Storage>> storageFactory)
         {
             NamedStorage.Add(name, storageFactory);
             return this;

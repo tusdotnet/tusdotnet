@@ -12,6 +12,8 @@ namespace tusdotnet.Tus2
 
         public bool DisconnectClient { get; set; }
 
+        public long? UploadOffset { get; set; }
+
         public bool IsError
         {
             get
@@ -33,7 +35,12 @@ namespace tusdotnet.Tus2
 
             if (NoCache)
             {
-                httpContext.SetHeader("cache-control", "no-cache");
+                httpContext.SetHeader("Cache-Control", "no-cache");
+            }
+
+            if (UploadOffset != null)
+            {
+                httpContext.SetHeader("Upload-Offset", UploadOffset.ToString());
             }
 
             if (IsError)
@@ -41,6 +48,8 @@ namespace tusdotnet.Tus2
                 await httpContext.Error(Status, ErrorMessage);
                 return;
             }
+
+            httpContext.Response.StatusCode = (int)Status;
 
             await WriteResponse(httpContext);
         }

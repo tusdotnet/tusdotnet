@@ -65,7 +65,7 @@ namespace tusdotnet.Tus2
 
             var writeResponse = await handler.WriteDataEntryPoint();
 
-            if (!writeResponse.IsError && writeResponse.UploadCompleted)
+            if (!writeResponse.IsError && !writeResponse.UploadIncomplete)
             {
                 await handler.OnFileComplete();
             }
@@ -77,15 +77,14 @@ namespace tusdotnet.Tus2
         {
             var handler = httpContext.RequestServices.GetRequiredService<T>();
 
-            // MetadataParser might not be required?
             var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
             var configurationManager = httpContext.RequestServices.GetRequiredService<ITus2ConfigurationManager>();
 
-            var store = await GetStore(configurationManager, configuration.StorageConfigurationName);
+            var storage = await GetStorage(configurationManager, configuration.StorageConfigurationName);
             var uploadManager = await GetUploadManager(configurationManager, configuration.UploadManagerConfigurationName);
 
             handler.UploadManager = uploadManager;
-            handler.Store = store; ;
+            handler.Storage = storage;
             handler.MetadataParser = metadataParser;
             handler.AllowClientToDeleteFile = configuration.AllowClientToDeleteFile ?? false;
             handler.Headers = headers;
@@ -93,7 +92,7 @@ namespace tusdotnet.Tus2
 
             return handler;
 
-            static async Task<ITus2Storage> GetStore(ITus2ConfigurationManager manager, string configurationName)
+            static async Task<Tus2Storage> GetStorage(ITus2ConfigurationManager manager, string configurationName)
             {
                 return configurationName == null
                     ? await manager.GetDefaultStorage()

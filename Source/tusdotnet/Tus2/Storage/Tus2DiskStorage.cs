@@ -12,14 +12,14 @@ namespace tusdotnet.Tus2
 {
     // TODO: Use RandomAccess if possible
     // TODO: Support for partitioning
-    public class Tus2DiskStore : ITus2Storage
+    public class Tus2DiskStorage : Tus2Storage
     {
 
         private static readonly HashSet<char> _invalidFileNameChars = new(Path.GetInvalidFileNameChars());
 
         private readonly DiskPathHelper _diskPathHelper;
 
-        public Tus2DiskStore(Tus2DiskStoreOptions options)
+        public Tus2DiskStorage(Tus2DiskStorageOptions options)
         {
             _diskPathHelper = new DiskPathHelper(options.DiskPath);
         }
@@ -27,7 +27,6 @@ namespace tusdotnet.Tus2
         public static string CleanUploadToken(string uploadToken)
         {
             var result = uploadToken;
-            // TODO: This should not be here but in the disk store
 
             var span = result.ToCharArray();
 
@@ -40,19 +39,19 @@ namespace tusdotnet.Tus2
             return new string(span);
         }
 
-        public Task<bool> FileExist(string uploadToken)
+        public override Task<bool> FileExist(string uploadToken)
         {
             uploadToken = CleanUploadToken(uploadToken);
             return Task.FromResult(File.Exists(_diskPathHelper.DataFilePath(uploadToken)));
         }
 
-        public Task<long> GetOffset(string uploadToken)
+        public override Task<long> GetOffset(string uploadToken)
         {
             uploadToken = CleanUploadToken(uploadToken);
             return Task.FromResult(new FileInfo(_diskPathHelper.DataFilePath(uploadToken)).Length);
         }
 
-        public Task CreateFile(string uploadToken, CreateFileContext context)
+        public override Task CreateFile(string uploadToken, CreateFileContext context)
         {
             uploadToken = CleanUploadToken(uploadToken);
 
@@ -63,15 +62,12 @@ namespace tusdotnet.Tus2
             return Task.CompletedTask;
         }
 
-        public async Task WriteData(string uploadToken, WriteDataContext context)
+        public override async Task WriteData(string uploadToken, WriteDataContext context)
         {
             uploadToken = CleanUploadToken(uploadToken);
             const int JUST_BELOW_LOH_BYTE_LIMIT = 84 * 1024;
 
             var dataFilePath = _diskPathHelper.DataFilePath(uploadToken);
-
-            if (context?.Metadata != null)
-                File.WriteAllText(_diskPathHelper.MetadataFilePath(uploadToken), GetMetadataString(context.Metadata));
 
 
             using var diskFileStream = new FileStream(dataFilePath, FileMode.Append, FileAccess.Write, FileShare.None, bufferSize: JUST_BELOW_LOH_BYTE_LIMIT);
@@ -112,20 +108,20 @@ namespace tusdotnet.Tus2
             return cancellationToken.IsCancellationRequested || result.IsCanceled || result.IsCompleted;
         }
 
-        public Task MarkComplete(string uploadToken)
+        public override Task MarkComplete(string uploadToken)
         {
             uploadToken = CleanUploadToken(uploadToken);
             File.Create(_diskPathHelper.CompletedFilePath(uploadToken)).Dispose();
             return Task.CompletedTask;
         }
 
-        public Task<bool> IsComplete(string uploadToken)
+        public override Task<bool> IsComplete(string uploadToken)
         {
             uploadToken = CleanUploadToken(uploadToken);
             return Task.FromResult(File.Exists(_diskPathHelper.CompletedFilePath(uploadToken)));
         }
 
-        public Task Delete(string uploadToken)
+        public override Task Delete(string uploadToken)
         {
             uploadToken = CleanUploadToken(uploadToken);
             File.Delete(_diskPathHelper.CompletedFilePath(uploadToken));
