@@ -3,8 +3,6 @@ using tusdotnet.Tus2.Store;
 
 namespace tusdotnet.Tus2
 {
-    // Replace with abstract class to support future extensions.
-    // Kind of like the storage proxy in tus1.
     public abstract class Tus2Storage
     {
         public virtual Task WriteData(string uploadToken, WriteDataContext context)

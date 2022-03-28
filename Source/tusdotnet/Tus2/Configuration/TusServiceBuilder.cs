@@ -1,30 +1,22 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
     public class TusServiceBuilder
     {
-        public Dictionary<string, Func<HttpContext, Task<Tus2Storage>>> NamedStorage { get; }
-
-        public Dictionary<string, Func<HttpContext, Task<IOngoingUploadManager>>> NamedUploadManager { get; }
-
         public Tus2Storage Storage { get; private set; }
 
-        public Func<HttpContext, Task<Tus2Storage>> StorageFactory { get; private set; }
+        public ITus2StorageFactory StorageFactory { get; private set; }
 
-        public IOngoingUploadManager UploadManager { get; private set; }
+        public IOngoingUploadManager OngoingUploadManager { get; private set; }
 
-        public Func<HttpContext, Task<IOngoingUploadManager>> UploadManagerFactory { get; private set; }
+        public IOngoingUploadManagerFactory OngoingUploadManagerFactory { get; private set; }
 
         public LinkedList<Type> Handlers { get; private set; }
 
         public TusServiceBuilder()
         {
-            NamedStorage = new();
-            NamedUploadManager = new();
             Handlers = new();
         }
 
@@ -34,45 +26,21 @@ namespace tusdotnet.Tus2
             return this;
         }
 
-        public TusServiceBuilder AddStorage(Func<HttpContext, Task<Tus2Storage>> storageFactory)
+        public TusServiceBuilder AddStorageFactory(ITus2StorageFactory factory)
         {
-            StorageFactory = storageFactory;
-            return this;
-        }
-
-        public TusServiceBuilder AddStorage(string name, Tus2Storage storageInstance)
-        {
-            NamedStorage.Add(name, _ => Task.FromResult(storageInstance));
-            return this;
-        }
-
-        public TusServiceBuilder AddStorage(string name, Func<HttpContext, Task<Tus2Storage>> storageFactory)
-        {
-            NamedStorage.Add(name, storageFactory);
+            StorageFactory = factory;
             return this;
         }
 
         public TusServiceBuilder AddUploadManager(IOngoingUploadManager uploadManager)
         {
-            UploadManager = uploadManager;
+            OngoingUploadManager = uploadManager;
             return this;
         }
 
-        public TusServiceBuilder AddUploadManager(Func<HttpContext, Task<IOngoingUploadManager>> uploadManagerFactory)
+        public TusServiceBuilder AddUploadManagerFactory(IOngoingUploadManagerFactory factory)
         {
-            UploadManagerFactory = uploadManagerFactory;
-            return this;
-        }
-
-        public TusServiceBuilder AddUploadManager(string name, IOngoingUploadManager uploadManager)
-        {
-            NamedUploadManager.Add(name, _ => Task.FromResult(uploadManager));
-            return this;
-        }
-
-        public TusServiceBuilder AddUploadManager(string name, Func<HttpContext, Task<IOngoingUploadManager>> uploadManagerFactory)
-        {
-            NamedUploadManager.Add(name, uploadManagerFactory);
+            OngoingUploadManagerFactory = factory;
             return this;
         }
 

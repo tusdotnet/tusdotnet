@@ -8,15 +8,16 @@ namespace AspNetCore_netcoreapp3._1_TestApp
     {
         private readonly ILogger<OnlyCompleteTusHandler> _logger;
 
-        public OnlyCompleteTusHandler(ILoggerFactory loggerFactory)
+        public OnlyCompleteTusHandler(ILoggerFactory loggerFactory, ITus2ConfigurationManager config)
+            : base(config, "MyStorage")
         {
             _logger = loggerFactory.CreateLogger<OnlyCompleteTusHandler>();
         }
 
-        public override Task OnFileComplete()
+        public override Task FileComplete(FileCompleteContext context)
         {
-            _logger.LogInformation("File completed: {FileName}", Headers.UploadToken);
-            return base.OnFileComplete();
+            _logger.LogInformation("File completed: {FileName}", context.Headers.UploadToken);
+            return base.FileComplete(context);
         }
     }
 }

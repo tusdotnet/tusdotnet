@@ -8,11 +8,6 @@ namespace tusdotnet.Tus2
     {
         public bool UploadIncomplete { get; set; }
 
-        public UploadTransferProcedureResponse()
-        {
-            Status = HttpStatusCode.Created;
-        }
-
         protected override Task WriteResponse(HttpContext context)
         {
             if (UploadIncomplete)

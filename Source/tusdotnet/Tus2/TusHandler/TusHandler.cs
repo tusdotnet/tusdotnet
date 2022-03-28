@@ -1,88 +1,72 @@
-﻿using System;
-using System.Net;
+﻿#nullable enable
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
-    public class TusHandler : TusBaseHandlerEntryPoints
+    public class TusHandler
     {
-        public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
+        private Tus2StorageFacade _storageFacade;
+        private readonly ITus2ConfigurationManager _configurationManager;
+        private readonly string? _storageConfigurationName;
+
+        public TusHandler(Tus2StorageFacade storageFacade)
         {
-            var offsetTask = Storage.GetOffset(Headers.UploadToken);
-            var isCompleteTask = Storage.IsComplete(Headers.UploadToken);
-
-            await Task.WhenAll(offsetTask, isCompleteTask);
-
-            var offset = offsetTask.Result;
-            var isComplete = isCompleteTask.Result;
-
-            return new()
-            {
-                UploadOffset = offset,
-                UploadIncomplete = !isComplete,
-            };
+            _storageFacade = storageFacade;
         }
 
-       
-        public override async Task<UploadCancellationProcedureResponse> OnDelete()
+        public TusHandler(ITus2ConfigurationManager configurationManager, string? storageConfigurationName)
         {
-            await Storage.Delete(Headers.UploadToken);
-
-            return new()
-            {
-                Status = HttpStatusCode.NoContent
-            };
+            _configurationManager = configurationManager;
+            _storageConfigurationName = storageConfigurationName;
         }
 
-        public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
-        {
-            await Storage.CreateFile(Headers.UploadToken, createFileContext);
+        public virtual bool AllowClientToDeleteFile { get; }
 
-            return new() { Status = HttpStatusCode.Created };
+        public virtual async Task<UploadRetrievingProcedureResponse> RetrieveOffset(RetrieveOffsetContext context)
+        {
+            var storage = await GetStorageFacade();
+
+            return await storage.RetrieveOffset(context);
         }
 
-        public override async Task<UploadTransferProcedureResponse> OnWriteData(WriteDataContext writeDataContext)
+        public virtual async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext context)
         {
-            try
-            {
-                await Storage.WriteData(Headers.UploadToken, writeDataContext);
-            }
-            catch (OperationCanceledException)
-            {
-                // Left blank. This is the case when the store does throws on cancellation instead of returning.
-            }
+            var storage = await GetStorageFacade();
 
-            var uploadOffset = await Storage.GetOffset(Headers.UploadToken);
-
-            if (writeDataContext.CancellationToken.IsCancellationRequested)
-            {
-                return new()
-                {
-                    DisconnectClient = true
-                };
-            }
-
-            if (Headers.UploadIncomplete == true)
-            {
-                return new()
-                {
-                    UploadIncomplete = true,
-                    UploadOffset = uploadOffset
-                };
-            }
-
-            await Storage.MarkComplete(Headers.UploadToken);
-
-            return new()
-            {
-                UploadOffset = uploadOffset,
-                UploadIncomplete = false,
-            };
+            return await storage.CreateFile(context);
         }
 
-        public override Task OnFileComplete()
+        public virtual async Task<UploadTransferProcedureResponse> WriteData(WriteDataContext context)
+        {
+            var storage = await GetStorageFacade();
+
+            return await storage.WriteData(context);
+        }
+
+        public virtual async Task<UploadCancellationProcedureResponse> Delete(DeleteContext context)
+        {
+            var storage = await GetStorageFacade();
+
+            return await storage.Delete(context);
+        }
+
+        public virtual Task FileComplete(FileCompleteContext context)
         {
             return Task.CompletedTask;
+        }
+
+        internal async Task<Tus2StorageFacade> GetStorageFacade()
+        {
+            return _storageFacade ?? await CreateStorage();
+        }
+
+        private async Task<Tus2StorageFacade> CreateStorage()
+        {
+            var storage = !string.IsNullOrEmpty(_storageConfigurationName)
+                ? (await _configurationManager.GetNamedStorage(_storageConfigurationName))
+                : (await _configurationManager.GetDefaultStorage());
+
+            return (_storageFacade = storage);
         }
     }
 }

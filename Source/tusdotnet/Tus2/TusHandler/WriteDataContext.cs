@@ -1,12 +1,9 @@
 ﻿using System.IO.Pipelines;
-using System.Threading;
 
 namespace tusdotnet.Tus2
 {
-    public class WriteDataContext
+    public class WriteDataContext : Tus2Context
     {
-        public CancellationToken CancellationToken { get; set; }
-
         public PipeReader BodyReader { get; set; }
     }
 }

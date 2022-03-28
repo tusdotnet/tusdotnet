@@ -4,13 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Net;
 using System.Threading.Tasks;
-using tusdotnet.Tus2.Parsers;
 
 namespace tusdotnet.Tus2
 {
     internal static class Tus2Endpoint
     {
-        internal static async Task Invoke<T>(HttpContext httpContext, EndpointConfiguration? configuration = null) where T : TusHandler
+        internal static async Task Invoke<T>(HttpContext httpContext) where T : TusHandler
         {
             // TODO Remove this and just use the MapX methods on the endpoint builder one step up.
             if (httpContext.Request.Method.Equals("get", StringComparison.OrdinalIgnoreCase))
@@ -20,7 +19,9 @@ namespace tusdotnet.Tus2
                 return;
             }
 
-            var headers = Tus2HeadersParser.Parse(httpContext);
+            var headerParser = httpContext.RequestServices.GetRequiredService<IHeaderParser>();
+
+            var headers = headerParser.Parse(httpContext);
 
             if (string.IsNullOrWhiteSpace(headers.UploadToken))
             {
@@ -28,14 +29,12 @@ namespace tusdotnet.Tus2
                 return;
             }
 
-
             Tus2BaseResponse? response = null;
-            configuration ??= new EndpointConfiguration(null);
 
             try
             {
-                var handler = await CreateHandler<T>(httpContext, configuration, headers);
-                response = await InvokeHandler(handler);
+                var handler = httpContext.RequestServices.GetRequiredService<T>();
+                response = await InvokeHandler(handler, httpContext, headers);
             }
             finally
             {
@@ -50,61 +49,55 @@ namespace tusdotnet.Tus2
             }
         }
 
-        private static async Task<Tus2BaseResponse> InvokeHandler(TusBaseHandlerEntryPoints handler)
+        private static async Task<Tus2BaseResponse> InvokeHandler(TusHandler handler, HttpContext httpContext, Tus2Headers headers)
         {
-            var method = handler.HttpContext.Request.Method;
+            var method = httpContext.Request.Method;
+
+            var uploadManager = await GetOngoingUploadManager(httpContext);
 
             if (method.Equals("head", StringComparison.OrdinalIgnoreCase))
             {
-                return await handler.RetrieveOffsetEntryPoint();
+                var retrieveOffsetContext = CreateContext<RetrieveOffsetContext>(httpContext, headers);
+                return await Tus2HandlerInvoker.RetrieveOffsetEntryPoint(handler, retrieveOffsetContext, uploadManager);
             }
             else if (method.Equals("delete", StringComparison.OrdinalIgnoreCase))
             {
-                return await handler.DeleteEntryPoint();
+                var deleteContext = CreateContext<DeleteContext>(httpContext, headers);
+                return await Tus2HandlerInvoker.DeleteEntryPoint(handler, deleteContext, uploadManager);
             }
 
-            var writeResponse = await handler.WriteDataEntryPoint();
+            var writeFileContext = CreateContext<WriteDataContext>(httpContext, headers);
+            var writeResponse = await Tus2HandlerInvoker.WriteDataEntryPoint(handler, writeFileContext, uploadManager);
 
             if (!writeResponse.IsError && !writeResponse.UploadIncomplete)
             {
-                await handler.OnFileComplete();
+                // TODO: Might want to pass the uploadmanager combined CT to this context
+                // instead of the one from the request.
+                var fileCompleteContext = CreateContext<FileCompleteContext>(httpContext, headers);
+                await handler.FileComplete(fileCompleteContext);
             }
 
             return writeResponse;
         }
 
-        private static async Task<T> CreateHandler<T>(HttpContext httpContext, EndpointConfiguration configuration, Tus2Headers headers) where T : TusHandler
+        private static T CreateContext<T>(HttpContext httpContext, Tus2Headers headers) where T : Tus2Context, new()
         {
-            var handler = httpContext.RequestServices.GetRequiredService<T>();
-
-            var metadataParser = httpContext.RequestServices.GetRequiredService<IMetadataParser>();
-            var configurationManager = httpContext.RequestServices.GetRequiredService<ITus2ConfigurationManager>();
-
-            var storage = await GetStorage(configurationManager, configuration.StorageConfigurationName);
-            var uploadManager = await GetUploadManager(configurationManager, configuration.UploadManagerConfigurationName);
-
-            handler.UploadManager = uploadManager;
-            handler.Storage = storage;
-            handler.MetadataParser = metadataParser;
-            handler.AllowClientToDeleteFile = configuration.AllowClientToDeleteFile ?? false;
-            handler.Headers = headers;
-            handler.HttpContext = httpContext;
-
-            return handler;
-
-            static async Task<Tus2Storage> GetStorage(ITus2ConfigurationManager manager, string configurationName)
+            return new T
             {
-                return configurationName == null
-                    ? await manager.GetDefaultStorage()
-                    : await manager.GetNamedStorage(configurationName);
-            }
+                HttpContext = httpContext,
+                CancellationToken = httpContext.RequestAborted,
+                Headers = headers
+            };
+        }
 
-            static async Task<IOngoingUploadManager> GetUploadManager(ITus2ConfigurationManager manager, string configurationName)
-            {
-                return configurationName == null
-                    ? await manager.GetDefaultUploadManager()
-                    : await manager.GetNamedUploadManager(configurationName);
-            }
+        private static Task<IOngoingUploadManager> GetOngoingUploadManager(HttpContext context)
+        {
+            var factory = context.RequestServices.GetService<IOngoingUploadManagerFactory>();
+
+            if (factory != null)
+                return factory.CreateOngoingUploadManager();
+
+            return Task.FromResult(context.RequestServices.GetRequiredService<IOngoingUploadManager>());
         }
     }
 }

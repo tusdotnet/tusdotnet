@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,21 +6,12 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Tus2
 {
-    public abstract class TusBaseHandlerEntryPoints
+    internal class Tus2HandlerInvoker
     {
-        public Tus2Storage Storage{ get; set; }
-
-        public IMetadataParser MetadataParser { get; set; }
-
-        public bool AllowClientToDeleteFile { get; set; }
-
-        public Tus2Headers Headers { get; set; }
-        
-        public HttpContext HttpContext { get; set; }
-
-        internal IOngoingUploadManager UploadManager { get; set; }
-
-        internal async Task<UploadRetrievingProcedureResponse> RetrieveOffsetEntryPoint()
+        internal static async Task<UploadRetrievingProcedureResponse> RetrieveOffsetEntryPoint(
+           TusHandler handler,
+           RetrieveOffsetContext context,
+           IOngoingUploadManager uploadManager)
         {
             /*
             If an upload is interrupted, the client MAY attempt to fetch the offset of the incomplete upload by sending a HEAD request to the server with the same Upload-Token header field ({{upload-token}}). The client MUST NOT initiate this procedure without the knowledge of server support.
@@ -43,15 +34,17 @@ namespace tusdotnet.Tus2
 
             * */
 
+            var storageFacade = await handler.GetStorageFacade();
+
             try
             {
-                Tus2Validator.AssertNoInvalidHeaders(Headers);
+                Tus2Validator.AssertNoInvalidHeaders(context.Headers);
 
-                await UploadManager.CancelOtherUploads(Headers.UploadToken);
+                await uploadManager.CancelOtherUploads(context.Headers.UploadToken);
 
-                await Tus2Validator.AssertFileExist(Storage, Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.UploadToken);
 
-                return await OnRetrieveOffset();
+                return await handler.RetrieveOffset(context);
 
             }
             catch (Tus2AssertRequestException ex)
@@ -60,11 +53,17 @@ namespace tusdotnet.Tus2
                 {
                     Status = ex.Status,
                     ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await Storage.TryGetOffset(Headers.UploadToken)
+                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.UploadToken!)
                 };
             }
         }
-        internal async Task<UploadCancellationProcedureResponse> DeleteEntryPoint()
+
+
+        internal static async Task<UploadCancellationProcedureResponse> DeleteEntryPoint(
+            TusHandler handler,
+            DeleteContext context,
+            IOngoingUploadManager uploadManager
+            )
         {
             /*
             If the client wants to terminate the transfer without the ability to resume, it MAY send a DELETE request to the server along with the Upload-Token which is an indication that the client is no longer interested in uploading this body and the server can release resources associated with this token. The client MUST NOT initiate this procedure without the knowledge of server support.
@@ -79,9 +78,13 @@ namespace tusdotnet.Tus2
 
             If the server does not support cancellation, it MUST respond with 405 (Method Not Allowed) status code.
              * */
+
+
+            var storageFacade = await handler.GetStorageFacade();
+
             try
             {
-                if (!AllowClientToDeleteFile)
+                if (!handler.AllowClientToDeleteFile)
                 {
                     return new UploadCancellationProcedureResponse
                     {
@@ -89,13 +92,13 @@ namespace tusdotnet.Tus2
                     };
                 }
 
-                Tus2Validator.AssertNoInvalidHeaders(Headers);
+                Tus2Validator.AssertNoInvalidHeaders(context.Headers);
 
-                await UploadManager.CancelOtherUploads(Headers.UploadToken);
+                await uploadManager.CancelOtherUploads(context.Headers.UploadToken);
 
-                await Tus2Validator.AssertFileExist(Storage, Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.UploadToken);
 
-                return await OnDelete();
+                return await handler.Delete(context);
 
             }
             catch (Tus2AssertRequestException ex)
@@ -104,12 +107,16 @@ namespace tusdotnet.Tus2
                 {
                     Status = ex.Status,
                     ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await Storage.TryGetOffset(Headers.UploadToken)
+                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.UploadToken!)
                 };
             }
         }
 
-        internal async Task<UploadTransferProcedureResponse> WriteDataEntryPoint()
+
+        public static async Task<UploadTransferProcedureResponse> WriteDataEntryPoint(
+            TusHandler handler,
+            WriteDataContext context,
+            IOngoingUploadManager uploadManager)
         {
             /*
             The Upload Transfer Procedure is intended for transferring the data chunk. As such, it can be used for either resuming an existing upload, or starting a new upload. A limited form of this procedure MAY be used by the client to start a new upload without the knowledge of server support.
@@ -140,20 +147,30 @@ namespace tusdotnet.Tus2
             long? uploadOffsetFromStorage = null;
             try
             {
-                await UploadManager.CancelOtherUploads(Headers.UploadToken);
+                var metadataParser = context.HttpContext.RequestServices.GetRequiredService<IMetadataParser>();
 
-                var ongoingCancellationToken = await UploadManager.StartUpload(Headers.UploadToken);
-                await using var finishOngoing = Deferrer.Defer(() => UploadManager.FinishUpload(Headers.UploadToken));
+                await uploadManager.CancelOtherUploads(context.Headers.UploadToken);
 
-                var metadata = MetadataParser?.Parse(HttpContext);
+                var ongoingCancellationToken = await uploadManager.StartUpload(context.Headers.UploadToken);
+                await using var finishOngoing = Deferrer.Defer(() => uploadManager.FinishUpload(context.Headers.UploadToken));
 
-                Headers.UploadOffset ??= 0;
+                var metadata = metadataParser?.Parse(context.HttpContext);
 
-                var fileExist = await Tus2Validator.AssertFileExist(Storage, Headers.UploadToken, Headers.UploadOffset != 0);
+                var storageFacade = await handler.GetStorageFacade();
+
+                context.Headers.UploadOffset ??= 0;
+
+                var fileExist = await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.UploadToken, context.Headers.UploadOffset != 0);
 
                 if (!fileExist)
                 {
-                    var createFileResponse = await OnCreateFile(new() { Metadata = metadata });
+                    var createFileResponse = await handler.CreateFile(new()
+                    {
+                        Headers = context.Headers,
+                        HttpContext = context.HttpContext,
+                        CancellationToken = context.CancellationToken,
+                        Metadata = metadata
+                    });
                     if (createFileResponse.IsError)
                     {
                         return new()
@@ -165,7 +182,7 @@ namespace tusdotnet.Tus2
                 }
                 else
                 {
-                    var fileIsComplete = await Storage.IsComplete(Headers.UploadToken);
+                    var fileIsComplete = await storageFacade.Storage.IsComplete(context.Headers.UploadToken);
                     if (fileIsComplete)
                     {
                         return new()
@@ -180,23 +197,25 @@ namespace tusdotnet.Tus2
                 // could change during the request but were we do not wish to read the data multiple times,
                 // e.g. Upload-Offset for the file retrieved from storage.
 
-                uploadOffsetFromStorage = await Storage.GetOffset(Headers.UploadToken);
-                await Tus2Validator.AssertValidOffset(uploadOffsetFromStorage.Value, Headers.UploadOffset);
+                uploadOffsetFromStorage = await storageFacade.Storage.GetOffset(context.Headers.UploadToken);
+                await Tus2Validator.AssertValidOffset(uploadOffsetFromStorage.Value, context.Headers.UploadOffset);
 
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, ongoingCancellationToken);
-                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(HttpContext.Request.BodyReader, cts.Token);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.HttpContext.RequestAborted, ongoingCancellationToken);
+                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.HttpContext.Request.BodyReader, cts.Token);
 
-                var writeDataContext = new WriteDataContext()
+                var writeDataContext = new WriteDataContext
                 {
                     BodyReader = guardedPipeReader,
-                    CancellationToken = cts.Token
+                    CancellationToken = cts.Token,
+                    Headers = context.Headers,
+                    HttpContext = context.HttpContext
                 };
 
-                var writeDataResponse = await OnWriteData(writeDataContext);
+                var writeDataResponse = await handler.WriteData(writeDataContext);
 
                 if (ongoingCancellationToken.IsCancellationRequested)
                 {
-                    await UploadManager.NotifyCancelComplete(Headers.UploadToken);
+                    await uploadManager.NotifyCancelComplete(context.Headers.UploadToken);
                 }
 
                 return writeDataResponse;
@@ -213,14 +232,16 @@ namespace tusdotnet.Tus2
             }
         }
 
-        public abstract Task<UploadRetrievingProcedureResponse> OnRetrieveOffset();
-
-        public abstract Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext);
-
-        public abstract Task<UploadTransferProcedureResponse> OnWriteData(WriteDataContext writeDataContext);
-
-        public abstract Task<UploadCancellationProcedureResponse> OnDelete();
-
-        public abstract Task OnFileComplete();
+        private static async Task<long?> TryGetOffset(Tus2Storage storage, string uploadToken)
+        {
+            try
+            {
+                return await storage.GetOffset(uploadToken);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }

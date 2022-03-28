@@ -4,10 +4,8 @@ using tusdotnet.Models;
 
 namespace tusdotnet.Tus2
 {
-    public class CreateFileContext
+    public class CreateFileContext : Tus2Context
     {
-        public CancellationToken CancellationToken { get; set; }
-
         public Dictionary<string, Metadata> Metadata { get; set; }
     }
 }

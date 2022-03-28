@@ -49,19 +49,15 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             services.AddOptions();
 
-            var tus2Configuration = new Tus2Options();
-            Configuration.Bind(tus2Configuration);
+            services.Configure<Tus2Options>(Configuration);
 
             services.AddTus2(options =>
             {
-                options.AddDiskStorage("MyProfile", tus2Configuration.FolderDiskPath);
-                //options.AddDiskBasedUploadManager("MyProfile", @"C:\tusfiles");
-                options.AddStorage(async httpContext => new Tus2DiskStorage(new()
-                {
-                    DiskPath = System.IO.Path.Combine(tus2Configuration.FolderDiskPath, httpContext.User.Identity.Name)
-                }));
-                //options.AddUploadManager(new OngoingUploadManagerDiskBased(new() { SharedDiskPath = System.IO.Path.GetTempPath() }));
+                options.AddStorageFactory(new SimpleTus2StorageFactory());
+                options.AddDiskStorage(@"C:\tusfiles");
+                //options.AddDiskBasedUploadManager(@"C:\tusfiles");
                 options.AddHandler<MyTusHandler>();
+                options.AddHandler<OnlyCompleteTusHandler>();
             });
         }
 
@@ -107,13 +103,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             // in a generic way by tusdotnet.
             app.UseEndpoints(endpoints =>
             {
-                var filesTus2Config = new EndpointConfiguration("MyProfile")
-                {
-                    AllowClientToDeleteFile = true
-                };
-
-                endpoints.MapTus2<MyTusHandler>("/files-tus-2", filesTus2Config);
-
+                endpoints.MapTus2<MyTusHandler>("/files-tus-2");
+                endpoints.MapTus2<OnlyCompleteTusHandler>("/files-tus-2-only-complete");
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
                 endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);
                 endpoints.MapGet("/random-file-id", async httpContext =>

@@ -3,12 +3,17 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 
-namespace tusdotnet.Tus2.Parsers
+namespace tusdotnet.Tus2
 {
-    internal class Tus2HeadersParser
+    internal class Tus2HeadersParser : IHeaderParser
     {
-        internal static Tus2Headers Parse(HttpContext httpContext)
+        private Tus2Headers _headers = null!;
+
+        public Tus2Headers Parse(HttpContext httpContext)
         {
+            if (_headers != null)
+                return _headers;
+
             var headers = httpContext.Request.Headers;
 
             var uploadOffset = headers["Upload-Offset"].FirstOrDefault().FromSfInteger();
@@ -17,7 +22,7 @@ namespace tusdotnet.Tus2.Parsers
 
             var uploadTokenParser = httpContext.RequestServices.GetRequiredService<IUploadTokenParser>();
 
-            return new()
+            return _headers = new()
             {
                 UploadOffset = uploadOffset,
                 UploadToken = uploadTokenParser.Parse(uploadToken),
