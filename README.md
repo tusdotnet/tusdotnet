@@ -22,13 +22,10 @@ In Startup.cs add the following:
 
 public void ConfigureServices(IServiceCollection services)
 {
-    var tus2Configuration = new Tus2Options();
-    Configuration.Bind(tus2Configuration);
-
     services.AddTus2(options =>
     {
         // Shorthand for adding a scoped implementation of Tus2DiskStorage to the DI container
-        options.AddDiskStorage(tus2Configuration.FolderDiskPath);
+        options.AddDiskStorage(@"C:\path\to\save\files");
 
         // Adds MyTusHandler as transient
         options.AddHandler<MyTusHandler>();
@@ -46,152 +43,124 @@ public void Configure(IApplicationBuilder app)
 
 ```
 
-Define a class called `MyTusHandler` that inherits from `tusdotnet.Tus2.TusHandler` and override the methods you would like to handle. The `TusHandler` base class will handle communication with storage so remember to call the base implementation in your override.
+Define a class called `MyTusHandler` that inherits from `tusdotnet.Tus2.TusHandler` and override the methods you would like to handle. The `TusHandler` base class will handle communication with the storage so remember to call the base implementation in your override. Note that one does not need to override all methods, just the ones one wishes to handle differently than the default behavior. In most cases it is enough to override the `FileComplete` method which is called when the upload is complete.
 
 ```csharp
 public class MyTusHandler : TusHandler
 {
     private readonly ILogger _logger;
+    private readonly Tus2StorageFacade _storage;
 
-    public MyTusHandler(ILoggerFactory loggerFactory)
+    public MyTusHandler(ILoggerFactory loggerFactory, Tus2StorageFacade storage)
+        : base(storage)
     {
         _logger = loggerFactory.CreateLogger(nameof(MyTusHandler));
+        _storage = storage;
     }
 
-    public override async Task<CreateFileProcedureResponse> OnCreateFile(CreateFileContext createFileContext)
-    {
-        _logger.LogInformation("Creating file {UploadToken}", Headers.UploadToken);
+    public override bool AllowClientToDeleteFile => true;
 
-        var response = await base.OnCreateFile(createFileContext);
+    public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext context)
+    {
+        _logger.LogInformation("Creating file {UploadToken}", context.Headers.UploadToken);
+
+        var response = await _storage.CreateFile(context);
 
         _logger.LogInformation("File created? {Success}", response.Status == System.Net.HttpStatusCode.Created);
 
         return response;
     }
 
-    public override async Task<UploadTransferProcedureResponse> OnWriteData(WriteDataContext writeDataContext)
+    public override async Task<UploadTransferProcedureResponse> WriteData(WriteDataContext context)
     {
-        _logger.LogInformation("Receiving upload, starting at {UploadOffset}", Headers.UploadOffset);
-        
-        var response = await base.OnWriteData(writeDataContext);
+        _logger.LogInformation("Receiving upload, starting at {UploadOffset}", context.Headers.UploadOffset);
+
+        var response = await base.WriteData(context);
 
         _logger.LogInformation("Was success? {Success}", response.Status == System.Net.HttpStatusCode.Created);
 
         return response;
     }
 
-    public override async Task<UploadRetrievingProcedureResponse> OnRetrieveOffset()
+    public override async Task<UploadRetrievingProcedureResponse> RetrieveOffset(RetrieveOffsetContext context)
     {
-        _logger.LogInformation("Retrieving offset for {UploadToken}", Headers.UploadToken);
+        _logger.LogInformation("Retrieving offset for {UploadToken}", context.Headers.UploadToken);
 
-        var response = await base.OnRetrieveOffset();
+        var response = await base.RetrieveOffset(context);
 
         _logger.LogInformation("Offset is {UploadOffset}", response.UploadOffset);
 
         return response;
     }
 
-    public override async Task<UploadCancellationProcedureResponse> OnDelete()
+    public override async Task<UploadCancellationProcedureResponse> Delete(DeleteContext context)
     {
-        _logger.LogInformation("Deleting file {UploadToken}", Headers.UploadToken);
+        _logger.LogInformation("Deleting file {UploadToken}", context.Headers.UploadToken);
 
-        var response = await base.OnDelete();
+        var response = await base.Delete(context);
 
         _logger.LogInformation("File deleted? {Deleted}", response.Status == System.Net.HttpStatusCode.NoContent);
 
         return response;
     }
 
-    public override Task OnFileComplete()
+    public override Task FileComplete(FileCompleteContext context)
     {
-        _logger.LogInformation("File {UploadToken} is complete", Headers.UploadToken);
+        _logger.LogInformation("File {UploadToken} is complete", context.Headers.UploadToken);
 
-        return base.OnFileComplete();
+        return base.FileComplete(context);
     }
 }
 ```
 
-## Configure (more complex)
+## Configure storage (more complex)
 
-The tus2 implementation supports the concept of "named configurations". These are configured as below.
+The tus2 implementation also supports creating storage instances using a factory. The factory supports creating "named storage" which allows to separate different storage options into different instances similar to HttpClientFactory.
 
 ```csharp
 services.AddTus2(options =>
 {
-    options.AddDiskStorage("MyProfile", tus2Configuration.FolderDiskPath);
+    // SimpleTus2StorageFactory being a class implementing ITus2StorageFactory. 
+    // Same as adding a scoped instance of <ITus2StorageFactory, SimpleTus2StorageFactory()>
+    options.AddStorageFactory(new SimpleTus2StorageFactory());
     options.AddHandler<MyTusHandler>();
 });
 
 app.UseEndpoints(endpoints =>
 {
-    var filesTus2Config = new EndpointConfiguration("MyProfile")
-    {
-        AllowClientToDeleteFile = true
-    };
-
-    endpoints.MapTus2<MyTusHandler>("/files-tus-2", filesTus2Config);
+    endpoints.MapTus2<MyTusHandler>("/files-tus-2");
 });
 
-```
-
-## Configure storage (more complex)
-
-tus2, just as tus1, supports multiple different storage implementations ("stores" in tus1).
-
-```csharp
-services.AddTus2(options =>
+// Handler constructor needs to be updated to use the storage factory and a possible name of the storage.
+public class MyTusHandler : TusHandler
 {
-    // Default configuration
-    // Equivalent of options.AddDiskStorage(tus2Configuration.FolderDiskPath);
-    options.AddStorage(new Tus2DiskStore(new()
+    public MyTusHandler(ITus2ConfigurationManager config)
+        : base(config, "MyStorage") // "MyStorage" is optional and will provide the string "MyStorage" to the factory.
     {
-        DiskPath = tus2Configuration.FolderDiskPath
-    }));
+    }
 
-    // Named configuration
-    // Equivalent of options.AddDiskStorage(tus2Configuration.FolderDiskPath);
-    options.AddStorage("MyProfile", new Tus2DiskStore(new()
-    {
-        DiskPath = tus2Configuration.FolderDiskPath
-    }));
-});
-
-```
-
-And supports creating the storage implementation on the fly based on the current http context.
-
-```csharp
-
-// Default configuration
-options.AddStorage(httpContext => new Tus2DiskStore(new()
-{
-    DiskPath = System.IO.Path.Combine(tus2Configuration.FolderDiskPath, httpContext.User.Identity.Name)
-}));
-
-// Named configuration
-options.AddStorage("MyProfile", httpContext => new Tus2DiskStore(new()
-{
-    DiskPath = System.IO.Path.Combine(tus2Configuration.FolderDiskPath, "MyProfile", httpContext.User.Identity.Name)
-}));
-
+    ...
+}
 ```
 
 ## Configure ongoing upload manager (more complex)
 
-In tus2 locks are not used. Instead all previous upload requests for a single `Upload-Token` must be terminated when a new request for the same `Upload-Token` is received. In tusdotnet this is handled by the `IOngoingUploadManager`. It can be configured in much the same way as the storage. By default, an `OngoingUploadManagerInMemory` instance will be used. If you run your setup in a cluster you will need to switch to either `OngoingUploadManagerDiskBased` and point it to a shared disk or implement your own.
+In tus2 locks are not used. Instead all previous upload requests for a single `Upload-Token` must be terminated when a new request for the same `Upload-Token` is received. In tusdotnet this is handled by the `IOngoingUploadManager`. By default, an `OngoingUploadManagerInMemory` instance will be used. If you run your setup in a cluster you will need to switch to either `OngoingUploadManagerDiskBased` and point it to a shared disk or implement your own.
 
 ```csharp
 services.AddTus2(options =>
 {
-    // Default configuration
+    // Add disk based ongoing upload manager as a scoped instance.
     options.AddDiskBasedUploadManager(@"C:\tusfiles");
-    // OR
+    // The above is the same as calling:
     options.AddUploadManager(new OngoingUploadManagerDiskBased(new() { SharedDiskPath = @"C:\tusfiles" }));
 
-    // Named configuration
-    options.AddDiskBasedUploadManager("MyProfile", @"C:\tusfiles");
-    // OR
-    options.AddUploadManager("MyProfile", new OngoingUploadManagerDiskBased(new() { SharedDiskPath = @"C:\tusfiles" }));
+    // OR use your own:
+
+    // Add an instance as a scoped instance...
+    options.AddUploadManager(new RedisOngoingUploadManager("connection string"));
+    // ... or add ongoing upload manager factory as a scoped instance.
+    builder.AddUploadManagerFactory(new RedisOngoingUploadManagerFactory());
 });
 
 ```
@@ -199,57 +168,67 @@ services.AddTus2(options =>
 ## How do I...? 
 
 ### Run the tus2 implementation in a cluster/on multiple machines?
-Register the `OngoingUploadManagerDiskBased` in your DI and tusdotnet will automatically solve the new locking behavior. You can also implement your own implementation of `IOngoingUploadManager` and use that
+Register the `OngoingUploadManagerDiskBased` in your DI and tusdotnet will automatically solve the new locking behavior. You can also implement your own implementation of `IOngoingUploadManager` and use that.
 
 ### How do I access the storage outside my tus handler?
 
-Default configurations that does not use the "create using the current http context" featured are registered directly in the DI container as scoped instances. Other configurations are accessed through `ITus2ConfigurationManager` which also supports getting the default implementation.
+When adding tus2 to your DI container the following is added:
+* Tus2Storage instance (if `builder.AddStorage` is used)
+* Tus2StorageFacade instance (if `builder.AddStorage` is used)
+* Any factories registered (both for storage and ongoing upload manager)
+* ITus2ConfigurationManager instance which can grab the storage and ongoing upload manager
+
+Tus2StorageFacade is a wrapper around Tus2Storage which makes is easier to work with the entire tus2 flow instead of just calling methods directly on the storage.
 
 ```csharp
 
 services.AddTus2(options =>
 {
     // Defaults
-    options.AddStorage(async httpContext => new Tus2DiskStore(new()
-    {
-        DiskPath = System.IO.Path.Combine(tus2Configuration.FolderDiskPath, httpContext.User.Identity.Name)
-    }));
+    options.AddDiskStorage(@"C:\tusfiles");
     options.AddUploadManager(new OngoingUploadManagerDiskBased(new() { SharedDiskPath = System.IO.Path.GetTempPath() }));
 
-    // Named
-    options.AddDiskStorage("MyProfile", tus2Configuration.FolderDiskPath);
-    options.AddDiskBasedUploadManager("MyUploadProfile", @"C:\tusfiles");
+    // Storage factory
+    options.AddStorageFactory(new SimpleTus2StorageFactory());
 });
 
 public class MyService
 {
     private readonly ITus2ConfigurationManager _config;
-    private readonly ITus2Storage _defaultStorage;
+    private readonly Tus2Storage _defaultStorage;
+    private readonly Tus2StorageFacade _defaultStorageFacade;
     private readonly IOngoingUploadManager _defaultUploadManager;
 
-    // Note that ITus2Storage cannot be injected here as the default storage registered in the DI container uses the storage factory pattern.
     public MyService(
         ITus2ConfigurationManager config,
-        IOngoingUploadManager defaultUploadManager)
+        IOngoingUploadManager defaultUploadManager,
+        Tus2StorageFacade facade,
+        TUs2Storage storage)
     {
         _config = config;
         _defaultUploadManager = defaultUploadManager;
+        _defaultStorageFacade = facade;
+        _defaultStorage = storage;
     }
 
     public async Task MyMethod()
     {
         var defaultStorage = await _config.GetDefaultStorage();
         var defaultStorage2 = await _config.GetDefaultStorage();
+
+        // Calls SimpleTus2StorageFactory.CreateNamedStorage with name "MyProfile".
         var myProfileStorage = await _config.GetNamedStorage("MyProfile");
 
         var defaultUploadManager = await _config.GetDefaultUploadManager();
-        var myUploadProfile = await _config.GetNamedUploadManager("MyUploadProfile");
 
         // True, the storage factory is only called once per scope.
         Assert.AreEqual(defaultStorage, defaultStorage2);
 
         // True
         Assert.AreEqual(defaultUploadManager, _defaultUploadManager);
+
+        // True, the facade is just a wrapper around the storage
+        Assert.AreEqual(_defaultStorageFacade.Storage, _defaultStorage);
     }
 }
 ```
