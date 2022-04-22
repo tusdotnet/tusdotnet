@@ -47,8 +47,8 @@ app.UseTus(httpContext => new DefaultTusConfiguration
         OnFileCompleteAsync = async eventContext =>
         {
             ITusFile file = await eventContext.GetFileAsync();
-            Dictionary<string, Metadata> metadata = await file.GetMetadataAsync(ctx.CancellationToken);
-            Stream content = await file.GetContentAsync(ctx.CancellationToken);
+            Dictionary<string, Metadata> metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
+            Stream content = await file.GetContentAsync(eventContext.CancellationToken);
 
             await DoSomeProcessing(content, metadata);
         }
