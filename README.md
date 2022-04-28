@@ -25,7 +25,7 @@ Visual Studio
 
 .NET CLI
 
-``> dotnet add tusdotnet``
+``> dotnet add package tusdotnet``
 
 ## Configure
 
