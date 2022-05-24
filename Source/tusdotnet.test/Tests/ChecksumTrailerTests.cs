@@ -253,13 +253,23 @@ namespace tusdotnet.test.Tests
                     return next();
                 });
 
-                app.UseTus(_ => new()
+                var config = new DefaultTusConfiguration()
                 {
                     Store = (ITusStore)store,
                     FileLockProvider = new TestServerInMemoryFileLockProvider(),
                     UrlPath = "/files",
                     AllowedExtensions = allowedExtensions ?? TusExtensions.All
-                });
+                };
+
+#if NET6_0_OR_GREATER
+
+                app.UseRouting();
+                app.UseEndpoints(e => e.MapTus(config.UrlPath, config));
+#else
+
+                app.UseTus(_ => config);
+
+#endif
             });
         }
 

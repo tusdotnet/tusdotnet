@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Extensions
@@ -62,7 +63,7 @@ namespace tusdotnet.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static async Task FlushFileToDisk(this FileStream fileStream, byte[] fileWriteBuffer, int writeBufferNextFreeIndex)
         {
-            await fileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex);
+            await fileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex, CancellationToken.None);
             await fileStream.FlushAsync();
         }
 

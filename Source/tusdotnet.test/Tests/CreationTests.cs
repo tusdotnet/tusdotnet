@@ -30,101 +30,39 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore, ITusCreationStore>(),
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = __ =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(0);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore, ITusCreationStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST");
 
-            AssertForwardCall(false);
+            AssertAndResetForwardCall(false);
 
             await server.CreateRequest("/otherfiles").AddHeader("Tus-Resumable", "1.0.0").SendAsync("POST");
 
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
 
             await server.CreateRequest("/files/testfile").AddHeader("Tus-Resumable", "1.0.0").SendAsync("POST");
 
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Fact]
         public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Creation()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = __ =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(0);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").PostAsync();
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Fact]
         public async Task Forwards_Calls_If_Creation_Extension_Is_Disabled()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore, ITusCreationStore>(),
-                    UrlPath = "/files",
-                    AllowedExtensions = TusExtensions.All.Except(TusExtensions.Creation),
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = __ =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(0);
-                });
-            });
+            var store = Substitute.For<ITusStore, ITusCreationStore>();
+            var allowedExtensions = TusExtensions.All.Except(TusExtensions.Creation);
+            using var server = TestServerFactory.CreateWithForwarding(store, () => _onAuthorizeWasCalled = true, () => _callForwarded = true, allowedExtensions);
 
             await server.CreateRequest("/files").PostAsync();
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Fact]
@@ -616,7 +554,7 @@ namespace tusdotnet.test.Tests
             onFileCompleteAsyncCallbackCounts.ShouldBe(1);
         }
 
-        private void AssertForwardCall(bool expectedCallForwarded)
+        private void AssertAndResetForwardCall(bool expectedCallForwarded)
         {
             _callForwarded.ShouldBe(expectedCallForwarded);
             _onAuthorizeWasCalled.ShouldBe(!expectedCallForwarded);

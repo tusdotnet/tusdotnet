@@ -48,7 +48,7 @@ namespace tusdotnet.test.Tests.ModelTests
             await Should.ThrowAsync(async () => await context.GetFileAsync(), typeof(InvalidCastException));
         }
 
-        private ITusStore CreateReadableStoreWithExistingFile()
+        private static ITusStore CreateReadableStoreWithExistingFile()
         {
             var store = Substitute.For<ITusStore, ITusReadableStore>();
             var readableStore = (ITusReadableStore)store;

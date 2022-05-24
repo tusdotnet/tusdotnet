@@ -8,6 +8,7 @@ using AspNetCore_netcoreapp3_1_TestApp.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,8 +39,9 @@ namespace AspNetCore_netcoreapp3._1_TestApp
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddCors();
-            services.AddSingleton(CreateTusConfiguration);
+            services.AddSingleton(CreateTusConfigurationForCleanupService());
             services.AddHostedService<ExpiredFilesCleanupService>();
+            services.AddSingleton(GetTusConfigurationFactory());
 
             services.AddAuthentication("BasicAuthentication")
                     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
@@ -76,29 +78,63 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                .AllowAnyOrigin()
                .WithExposedHeaders(CorsHelper.GetExposedHeaders()));
 
-            // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
-            // In this case we just return the same configuration for everyone.
-            app.UseTus(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
-
             app.UseRouting();
 
-            // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
-            // This is done because the file's metadata is domain specific and thus cannot be handled 
-            // in a generic way by tusdotnet.
-            app.UseEndpoints(endpoints => endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute));
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
+
+                // This will run tus on the /files endpoint and look for the configuration in the IOC container.
+                // Load order from IOC:
+                // 1. Func<HttpContext, Task<DefaultTusConfiguration>>
+                // 2. DefaultTusConfiguration
+                endpoints.MapTus("/files");
+
+                /* Alternatively you can provide the configuration for this specific endpoint:
+
+                    endpoints.MapTus("/files/", new DefaultTusConfiguration
+                    {
+                        // Omitted
+                    });
+
+                */
+
+                /* Or use a factory:
+
+                    app.MapTus("/files/", async httpContext => new DefaultTusConfiguration
+                    {
+                        // ...
+                    });
+
+                */
+            });
         }
 
-        private DefaultTusConfiguration CreateTusConfiguration(IServiceProvider serviceProvider)
+        private static DefaultTusConfiguration CreateTusConfigurationForCleanupService()
         {
-            var logger = serviceProvider.GetService<ILoggerFactory>().CreateLogger<Startup>();
+            // Simplified configuration just for the ExpiredFilesCleanupService to show load order of configs.
+            return new DefaultTusConfiguration
+            {
+                Store = new TusDiskStore(@"C:\tusfiles\"),
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+            };
+        }
+
+        private Func<HttpContext, Task<DefaultTusConfiguration>> GetTusConfigurationFactory()
+        {
+            return TusConfigurationFactory;
+        }
+
+        private Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpContext)
+        {
+            var logger = httpContext.RequestServices.GetService<ILoggerFactory>().CreateLogger<Startup>();
 
             // Change the value of EnableOnAuthorize in appsettings.json to enable or disable
             // the new authorization event.
             var enableAuthorize = Configuration.GetValue<bool>("EnableOnAuthorize");
 
-            return new DefaultTusConfiguration
+            var config = new DefaultTusConfiguration
             {
-                UrlPath = "/files",
                 Store = new TusDiskStore(@"C:\tusfiles\"),
                 MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
                 UsePipelinesIfAvailable = true,
@@ -201,6 +237,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 // Sliding expiration will be saved per file on create and updated on each patch/update.
                 Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
             };
+
+            return Task.FromResult(config);
         }
     }
 }
