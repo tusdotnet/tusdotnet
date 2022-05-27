@@ -35,7 +35,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            await StoreAdapter.DeleteFileAsync(Request.FileId, CancellationToken);
+            await StoreAdapter.DeleteFileAsync(Context.FileId, CancellationToken);
 
             await EventHelper.Notify<DeleteCompleteContext>(Context);
 

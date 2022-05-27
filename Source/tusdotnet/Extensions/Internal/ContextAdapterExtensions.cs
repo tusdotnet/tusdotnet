@@ -18,7 +18,7 @@ namespace tusdotnet.Extensions.Internal
         internal static Task<ITusFileLock> GetFileLock(this ContextAdapter context)
         {
             var lockProvider = GetLockProvider(context);
-            return lockProvider.AquireLock(context.Request.FileId);
+            return lockProvider.AquireLock(context.FileId);
         }
 
 #if trailingheaders

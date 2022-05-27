@@ -249,7 +249,7 @@ namespace tusdotnet.test.Tests
                 SetStatus = status => responseStatus = status
             };
 
-            var context = new ContextAdapter
+            var context = new ContextAdapter("/files")
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
@@ -257,14 +257,14 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     Store = store
                 },
-                Request = new RequestAdapter("/files")
+                Request = new RequestAdapter()
                 {
-                    Headers = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
-                        {"Content-Type", new List<string>(1) {"application/offset+octet-stream"}},
-                        {"Tus-Resumable", new List<string>(1) {"1.0.0"}},
-                        {"Upload-Offset", new List<string>(1) {"5"}}
-                    },
+                        {"Content-Type", "application/offset+octet-stream"},
+                        {"Tus-Resumable", "1.0.0"},
+                        {"Upload-Offset", "5"}
+                    }),
                     Method = "PATCH",
                     Body = requestStream,
                     RequestUri = new Uri("https://localhost:8080/files/testfile")

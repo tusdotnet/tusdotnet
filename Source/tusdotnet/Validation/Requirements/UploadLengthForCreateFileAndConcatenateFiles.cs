@@ -10,8 +10,8 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            var uploadDeferLengthHeader = context.Request.GetHeader(HeaderConstants.UploadDeferLength);
-            var uploadLengthHeader = context.Request.GetHeader(HeaderConstants.UploadLength);
+            var uploadDeferLengthHeader = context.Request.Headers.UploadDeferLength;
+            var uploadLengthHeader = context.Request.Headers[HeaderConstants.UploadLength];
 
             if (uploadLengthHeader != null && uploadDeferLengthHeader != null)
             {
@@ -49,7 +49,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest($"Missing {HeaderConstants.UploadLength} header");
             }
 
-            if (!long.TryParse(request.Headers[HeaderConstants.UploadLength][0], out long uploadLength))
+            if (!long.TryParse(request.Headers[HeaderConstants.UploadLength], out long uploadLength))
             {
                 return BadRequest($"Could not parse {HeaderConstants.UploadLength}");
             }

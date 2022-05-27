@@ -51,10 +51,10 @@ namespace tusdotnet
                 return;
             }
 
-            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, config.UrlPath, requestUri);
+            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, requestUri);
             var response = DotnetCoreAdapterFactory.CreateResponseAdapter(context);
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath)
             {
                 Request = request,
                 Response = response,

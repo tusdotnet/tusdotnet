@@ -48,9 +48,9 @@ namespace tusdotnet
                 return;
             }
 
-            var request = new RequestAdapter(config.UrlPath)
+            var request = new RequestAdapter()
             {
-                Headers = context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.ToList(), StringComparer.OrdinalIgnoreCase),
+                Headers = RequestHeaders.FromDictionary(context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.FirstOrDefault(), StringComparer.OrdinalIgnoreCase)),
                 Body = context.Request.Body,
                 Method = context.Request.Method,
                 RequestUri = context.Request.Uri
@@ -63,7 +63,7 @@ namespace tusdotnet
                 SetStatus = status => context.Response.StatusCode = (int)status
             };
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath)
             {
                 Request = request,
                 Response = response,

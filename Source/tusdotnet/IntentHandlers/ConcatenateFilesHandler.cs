@@ -56,7 +56,7 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            var metadataString = Request.GetHeader(HeaderConstants.UploadMetadata);
+            var metadataString = Request.Headers.UploadMetadata;
 
             string fileId;
             DateTimeOffset? expires = null;
@@ -65,7 +65,7 @@ namespace tusdotnet.IntentHandlers
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
                 ctx.Metadata = _metadataFromRequirement;
-                ctx.UploadLength = Request.UploadLength;
+                ctx.UploadLength = Request.Headers.UploadLength;
                 ctx.FileConcatenation = UploadConcat.Type;
             });
 
@@ -74,7 +74,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            fileId = await HandleCreationOfConcatFiles(Request.UploadLength, metadataString, _metadataFromRequirement);
+            fileId = await HandleCreationOfConcatFiles(Request.Headers.UploadLength, metadataString, _metadataFromRequirement);
 
             if (_isPartialFile)
             {
@@ -113,7 +113,7 @@ namespace tusdotnet.IntentHandlers
 
         private UploadConcat ParseUploadConcatHeader()
         {
-            return new UploadConcat(Request.GetHeader(HeaderConstants.UploadConcat), Context.Request.ConfigUrlPath);
+            return new UploadConcat(Request.Headers.UploadConcat, Context.ConfigUrlPath);
         }
 
         private async Task<string> HandleCreationOfConcatFiles(long uploadLength, string metadataString, Dictionary<string, Metadata> metadata)

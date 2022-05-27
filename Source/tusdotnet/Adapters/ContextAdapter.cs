@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using Microsoft.AspNetCore.Http;
 using tusdotnet.Models;
 #if netfull
@@ -41,9 +42,40 @@ namespace tusdotnet.Adapters
             }
         }
 
+        private readonly Lazy<string> _fileId;
+        public string FileId => _fileId.Value;
+
+        /// <summary>
+        /// Value specified in DefaultTusConfiguration.UrlPath or the one determined by endpoint routing to be the equivalent of the UrlPath property.
+        /// </summary>
+        public string ConfigUrlPath => _configUrlPath;
+        private readonly string _configUrlPath;
+        
+
+        public ContextAdapter(string configUrlPath)
+        {
+            _configUrlPath = configUrlPath;
+            _fileId = new Lazy<string>(() => ParseFileId());
+        }
+
+        private string ParseFileId()
+        {
+            var startIndex = Request.RequestUri.LocalPath.IndexOf(_configUrlPath, StringComparison.OrdinalIgnoreCase) + _configUrlPath.Length;
+
+            // TODO: Add support for endpoint routing
+
+#if NETCOREAPP3_1_OR_GREATER
+
+            return Request.RequestUri.LocalPath.AsSpan()[startIndex..].Trim('/').ToString();
+#else
+
+            return Request.RequestUri.LocalPath.Substring(startIndex).Trim('/');
+#endif
+        }
+
         public string CreateFileLocation(string fileId)
         {
-            return $"{Request.ConfigUrlPath.TrimEnd('/')}/{fileId}";
+            return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
         }
     }
 }

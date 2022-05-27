@@ -14,7 +14,7 @@ namespace tusdotnet
 
             if (RequestRequiresTusResumableHeader(httpMethod))
             {
-                if (context.Request.GetHeader(HeaderConstants.TusResumable) == null)
+                if (context.Request.Headers.TusResumable == null)
                 {
                     return IntentHandler.NotApplicable;
                 }
@@ -23,12 +23,12 @@ namespace tusdotnet
             // TODO: Optimize for endpoint routing
             if (MethodRequiresFileIdUrl(httpMethod))
             {
-                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Request.ConfigUrlPath))
+                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.ConfigUrlPath))
                 {
                     return IntentHandler.NotApplicable;
                 }
             }
-            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.Request.ConfigUrlPath))
+            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.ConfigUrlPath))
             {
                 return IntentHandler.NotApplicable;
             }
@@ -51,7 +51,7 @@ namespace tusdotnet
         /// <returns>The request method</returns>
         private static string GetHttpMethod(RequestAdapter request)
         {
-            var method = request.GetHeader(HeaderConstants.XHttpMethodOveride);
+            var method = request.Headers.XHttpMethodOveride;
 
             if (string.IsNullOrWhiteSpace(method))
             {

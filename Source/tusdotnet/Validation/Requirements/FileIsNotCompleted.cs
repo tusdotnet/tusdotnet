@@ -7,7 +7,7 @@ namespace tusdotnet.Validation.Requirements
     {
         public override async Task Validate(ContextAdapter context)
         {
-            var fileId = context.Request.FileId;
+            var fileId = context.FileId;
 
             var fileUploadLength = context.StoreAdapter.GetUploadLengthAsync(fileId, context.CancellationToken);
             var fileOffset = context.StoreAdapter.Store.GetUploadOffsetAsync(fileId, context.CancellationToken);

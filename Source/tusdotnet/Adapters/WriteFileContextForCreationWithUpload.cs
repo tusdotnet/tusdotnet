@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
@@ -61,7 +62,7 @@ namespace tusdotnet.Adapters
             {
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
-                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1) > 0;
+                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1, CancellationToken.None) > 0;
 
                 return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
             }
@@ -127,7 +128,7 @@ namespace tusdotnet.Adapters
 
             FileContentIsAvailable = hasData;
 
-            _context = new ContextAdapter
+            _context = new ContextAdapter(creationContext.ConfigUrlPath)
             {
                 CancellationToken = creationContext.CancellationToken,
                 Configuration = creationContext.Configuration,
@@ -151,12 +152,12 @@ namespace tusdotnet.Adapters
             };
         }
 
-        private RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
+        private static RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
         {
             var uriBuilder = new UriBuilder(context.Request.RequestUri);
             uriBuilder.Path = uriBuilder.Path + "/" + fileId;
 
-            var writeFileRequest = new RequestAdapter(context.Request.ConfigUrlPath)
+            var writeFileRequest = new RequestAdapter()
             {
                 Method = context.Request.Method,
                 RequestUri = uriBuilder.Uri,
@@ -170,7 +171,7 @@ namespace tusdotnet.Adapters
             writeFileRequest.BodyReader = context.Request.BodyReader;
 #endif
 
-            writeFileRequest.Headers[HeaderConstants.UploadOffset] = new List<string>(1) { "0" };
+            writeFileRequest.Headers[HeaderConstants.UploadOffset] = "0";
             writeFileRequest.Headers.Remove(HeaderConstants.UploadLength);
 
             return writeFileRequest;

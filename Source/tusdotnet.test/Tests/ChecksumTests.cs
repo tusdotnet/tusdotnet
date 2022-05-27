@@ -97,7 +97,7 @@ namespace tusdotnet.test.Tests
             var responseStatusCode = HttpStatusCode.OK;
             var responseStream = new MemoryStream();
 
-            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter("/files")
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
@@ -105,18 +105,18 @@ namespace tusdotnet.test.Tests
                     Store = store,
                     UrlPath = "/files",
                 },
-                Request = new RequestAdapter("/files")
+                Request = new RequestAdapter()
                 {
                     Body = new MemoryStream(),
                     RequestUri = new Uri("https://localhost/files/" + fileId),
-                    Headers = new Dictionary<string, List<string>>
+                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>
                     {
-                        { Constants.HeaderConstants.TusResumable, new List<string> { Constants.HeaderConstants.TusResumableValue } },
+                        { Constants.HeaderConstants.TusResumable, Constants.HeaderConstants.TusResumableValue },
                         // Just random gibberish as checksum
-                        { Constants.HeaderConstants.UploadChecksum, new List<string> { "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=" } },
-                        { Constants.HeaderConstants.UploadOffset, new List<string> { "5" } },
-                        { Constants.HeaderConstants.ContentType, new List<string> { "application/offset+octet-stream" } },
-                    },
+                        { Constants.HeaderConstants.UploadChecksum, "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0=" },
+                        { Constants.HeaderConstants.UploadOffset, "5" },
+                        { Constants.HeaderConstants.ContentType, "application/offset+octet-stream" },
+                    }),
                     Method = "PATCH"
                 },
                 Response = new ResponseAdapter

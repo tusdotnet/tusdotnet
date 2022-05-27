@@ -31,9 +31,10 @@ namespace tusdotnet
 
             EndpointConfigurationValidator.Instance.Validate(config);
 
+            var urlPath = GetUrlPath(context);
             var (request, response) = CreateRequestAndResponseAdapters(context);
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(urlPath)
             {
                 Request = request,
                 Response = response,
@@ -50,7 +51,7 @@ namespace tusdotnet
 
         private static (RequestAdapter Request, ResponseAdapter Response) CreateRequestAndResponseAdapters(HttpContext context)
         {
-            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, GetUrlPath(context), DotnetCoreAdapterFactory.GetRequestUri(context));
+            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, DotnetCoreAdapterFactory.GetRequestUri(context));
             var response = DotnetCoreAdapterFactory.CreateResponseAdapter(context);
 
             return (request, response);

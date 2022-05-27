@@ -73,8 +73,8 @@ namespace tusdotnet.IntentHandlers
             var cancellationToken = writeTuple.Item2;
 
             var expires = _expirationHelper.IsSlidingExpiration
-                ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, cancellationToken)
-                : await _expirationHelper.GetExpirationIfSupported(Request.FileId, cancellationToken);
+                ? await _expirationHelper.SetExpirationIfSupported(Context.FileId, cancellationToken)
+                : await _expirationHelper.GetExpirationIfSupported(Context.FileId, cancellationToken);
 
             var matchChecksumResult = await _checksumHelper.MatchChecksum(cancellationToken.IsCancellationRequested);
 
@@ -89,7 +89,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileOffset = Request.UploadOffset;
+            var fileOffset = Request.Headers.UploadOffset;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             Response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
@@ -101,7 +101,7 @@ namespace tusdotnet.IntentHandlers
 
             Response.SetStatus(HttpStatusCode.NoContent);
 
-            if (await FileIsComplete(Request.FileId, fileOffset, bytesWritten))
+            if (await FileIsComplete(Context.FileId, fileOffset, bytesWritten))
             {
                 if (!await IsPartialUpload())
                 {
@@ -143,10 +143,10 @@ namespace tusdotnet.IntentHandlers
 
         private Task WriteUploadLengthIfDefered()
         {
-            var uploadLenghtHeader = Request.GetHeader(HeaderConstants.UploadLength);
-            if (uploadLenghtHeader != null && StoreAdapter.Extensions.CreationDeferLength)
+            var uploadLengthHeader = Request.Headers[HeaderConstants.UploadLength];
+            if (uploadLengthHeader != null && StoreAdapter.Extensions.CreationDeferLength)
             {
-                return StoreAdapter.SetUploadLengthAsync(Request.FileId, long.Parse(uploadLenghtHeader), Context.CancellationToken);
+                return StoreAdapter.SetUploadLengthAsync(Context.FileId, long.Parse(uploadLengthHeader), Context.CancellationToken);
             }
 
             return TaskHelper.Completed;
@@ -163,7 +163,7 @@ namespace tusdotnet.IntentHandlers
 
             async Task<bool> IsPartialUploadLocal()
             {
-                var concat = await StoreAdapter.GetUploadConcatAsync(Request.FileId, CancellationToken);
+                var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
 
                 return concat is FileConcatPartial;
             }

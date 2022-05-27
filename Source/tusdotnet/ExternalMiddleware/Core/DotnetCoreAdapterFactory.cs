@@ -7,15 +7,14 @@ namespace tusdotnet
 {
     internal static class DotnetCoreAdapterFactory
     {
-        internal static RequestAdapter CreateRequestAdapter(HttpContext context, string urlPath, Uri requestUri)
+        internal static RequestAdapter CreateRequestAdapter(HttpContext context, Uri requestUri)
         {
-            return new RequestAdapter(urlPath)
+            return new RequestAdapter()
             {
-                Headers =
-                    context.Request.Headers.ToDictionary(
+                Headers = RequestHeaders.FromDictionary(context.Request.Headers.ToDictionary(
                         f => f.Key,
-                        f => f.Value.ToList(),
-                        StringComparer.OrdinalIgnoreCase),
+                        f => f.Value.FirstOrDefault(),
+                        StringComparer.OrdinalIgnoreCase)),
                 Body = context.Request.Body,
 #if pipelines
                 BodyReader = context.Request.BodyReader,

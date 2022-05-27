@@ -14,7 +14,7 @@ namespace tusdotnet.Validation.Requirements
 
             if (!supportsUploadDeferLength && !uploadLengthIsSet)
             {
-                throw new TusConfigurationException($"File {context.Request.FileId} does not have an upload length and the current store ({context.Configuration.Store.GetType().FullName}) does not support Upload-Defer-Length so no new upload length can be set");
+                throw new TusConfigurationException($"File {context.FileId} does not have an upload length and the current store ({context.Configuration.Store.GetType().FullName}) does not support Upload-Defer-Length so no new upload length can be set");
             }
 
             if (UploadLengthIsProvidedInRequest(context.Request) && uploadLengthIsSet)
@@ -25,7 +25,7 @@ namespace tusdotnet.Validation.Requirements
 
         private static async Task<bool> UploadLengthIsAlreadyPresent(ContextAdapter context)
         {
-            var fileUploadLength = await context.StoreAdapter.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
+            var fileUploadLength = await context.StoreAdapter.GetUploadLengthAsync(context.FileId, context.CancellationToken);
             return fileUploadLength != null;
         }
 

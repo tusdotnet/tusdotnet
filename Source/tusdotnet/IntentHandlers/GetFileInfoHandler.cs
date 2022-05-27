@@ -53,16 +53,16 @@ namespace tusdotnet.IntentHandlers
                 Response.SetHeader(HeaderConstants.UploadMetadata, uploadMetadata);
             }
 
-            var uploadLength = await Store.GetUploadLengthAsync(Request.FileId, CancellationToken);
+            var uploadLength = await Store.GetUploadLengthAsync(Context.FileId, CancellationToken);
             SetUploadLengthHeader(Context, uploadLength);
 
-            var uploadOffset = await Store.GetUploadOffsetAsync(Request.FileId, CancellationToken);
+            var uploadOffset = await Store.GetUploadOffsetAsync(Context.FileId, CancellationToken);
 
             FileConcat uploadConcat = null;
             var addUploadOffset = true;
             if (StoreAdapter.Extensions.Concatenation)
             {
-                uploadConcat = await StoreAdapter.GetUploadConcatAsync(Request.FileId, CancellationToken);
+                uploadConcat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -78,7 +78,7 @@ namespace tusdotnet.IntentHandlers
 
             if (uploadConcat != null)
             {
-                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Request.ConfigUrlPath);
+                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.ConfigUrlPath);
                 Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
         }
@@ -86,7 +86,7 @@ namespace tusdotnet.IntentHandlers
         private Task<string> GetMetadata(ContextAdapter context)
         {
             if (StoreAdapter.Extensions.Creation)
-                return StoreAdapter.GetUploadMetadataAsync(Request.FileId, context.CancellationToken);
+                return StoreAdapter.GetUploadMetadataAsync(Context.FileId, context.CancellationToken);
 
             return Task.FromResult<string>(null);
         }
