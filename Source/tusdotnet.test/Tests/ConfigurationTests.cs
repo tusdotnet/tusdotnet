@@ -36,6 +36,10 @@ namespace tusdotnet.test.Tests
             var configFunc = Substitute.For<Func<IOwinRequest, Task<DefaultTusConfiguration>>>();
             configFunc.Invoke(Arg.Any<IOwinRequest>()).Returns(tusConfiguration);
 #else
+
+#if NET6_0_OR_GREATER
+            tusConfiguration.UrlPath = null;
+#endif
             var configFunc = Substitute.For<Func<HttpContext, Task<DefaultTusConfiguration>>>();
             configFunc.Invoke(Arg.Any<HttpContext>()).Returns(tusConfiguration);
 #endif
@@ -135,12 +139,17 @@ namespace tusdotnet.test.Tests
                 Store = Substitute.For<ITusStore>()
             };
 
+#if NET6_0_OR_GREATER
+            // Not supported for endpoint routing.
+            tusConfiguration.UrlPath = null;
+#endif
+
             // Empty configuration
             using var server = TestServerFactory.CreateWithFactory(async httpContext =>
             {
                 await Task.Delay(10);
                 return tusConfiguration;
-            }, tusConfiguration.UrlPath);
+            }, urlPath);
 
             var response = await server.CreateRequest(urlPath).SendAsync("OPTIONS");
             response.StatusCode.ShouldBe(HttpStatusCode.NoContent);

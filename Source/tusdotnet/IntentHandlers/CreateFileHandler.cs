@@ -122,7 +122,7 @@ namespace tusdotnet.IntentHandlers
             }
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            Response.SetHeader(HeaderConstants.Location, Context.CreateFileLocation(fileId));
         }
     }
 }

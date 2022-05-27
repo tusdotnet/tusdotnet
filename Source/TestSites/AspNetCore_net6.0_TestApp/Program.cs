@@ -86,7 +86,6 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
 
     var config = new DefaultTusConfiguration
     {
-        UrlPath = "/files",
         Store = new TusDiskStore(@"C:\tusfiles\"),
         MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
         UsePipelinesIfAvailable = true,

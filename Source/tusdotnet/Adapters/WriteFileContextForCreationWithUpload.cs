@@ -156,7 +156,7 @@ namespace tusdotnet.Adapters
             var uriBuilder = new UriBuilder(context.Request.RequestUri);
             uriBuilder.Path = uriBuilder.Path + "/" + fileId;
 
-            var writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
+            var writeFileRequest = new RequestAdapter(context.Request.ConfigUrlPath)
             {
                 Method = context.Request.Method,
                 RequestUri = uriBuilder.Uri,

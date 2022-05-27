@@ -264,7 +264,12 @@ namespace tusdotnet.test.Tests
 #if NET6_0_OR_GREATER
 
                 app.UseRouting();
-                app.UseEndpoints(e => e.MapTus(config.UrlPath, config));
+                app.UseEndpoints(e =>
+                {
+                    var urlPath = config.UrlPath;
+                    config.UrlPath = null;
+                    e.MapTus(urlPath, config);
+                });
 #else
 
                 app.UseTus(_ => config);

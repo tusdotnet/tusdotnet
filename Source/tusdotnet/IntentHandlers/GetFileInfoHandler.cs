@@ -78,7 +78,7 @@ namespace tusdotnet.IntentHandlers
 
             if (uploadConcat != null)
             {
-                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Configuration.UrlPath);
+                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.Request.ConfigUrlPath);
                 Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
         }

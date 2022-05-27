@@ -41,6 +41,8 @@ namespace tusdotnet
                 return;
             }
 
+            MiddlewareConfigurationValidator.Instance.Validate(config);
+
             var requestUri = DotnetCoreAdapterFactory.GetRequestUri(context);
 
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(requestUri, config))
@@ -65,6 +67,6 @@ namespace tusdotnet
             {
                 await _next(context);
             }
-        }       
+        }
     }
 }

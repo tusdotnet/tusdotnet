@@ -29,6 +29,8 @@ namespace tusdotnet.Adapters
 
         public string FileId => _fileId.Value;
 
+        public string ConfigUrlPath => _configUrlPath;
+
         public long UploadLength => _uploadLength.Value;
 
         public long UploadOffset => _uploadOffset.Value;

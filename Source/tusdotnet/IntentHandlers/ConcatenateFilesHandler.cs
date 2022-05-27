@@ -113,7 +113,7 @@ namespace tusdotnet.IntentHandlers
 
         private UploadConcat ParseUploadConcatHeader()
         {
-            return new UploadConcat(Request.GetHeader(HeaderConstants.UploadConcat), Context.Configuration.UrlPath);
+            return new UploadConcat(Request.GetHeader(HeaderConstants.UploadConcat), Context.Request.ConfigUrlPath);
         }
 
         private async Task<string> HandleCreationOfConcatFiles(long uploadLength, string metadataString, Dictionary<string, Metadata> metadata)
@@ -153,7 +153,7 @@ namespace tusdotnet.IntentHandlers
         private void SetResponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
         {
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            Response.SetHeader(HeaderConstants.Location, Context.CreateFileLocation(fileId));
 
             if (expires != null)
             {

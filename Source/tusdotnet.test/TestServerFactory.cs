@@ -90,8 +90,11 @@ namespace tusdotnet.test
 
         public static TestServer Create(DefaultTusConfiguration config)
         {
+            // Clear UrlPath as it's not used by endpoint routing.
+            var urlPath = config.UrlPath;
+            config.UrlPath = null;
             config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
-            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(config.UrlPath, config)));
+            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, config)));
         }
 
 #else

@@ -29,6 +29,8 @@ namespace tusdotnet
                 return;
             }
 
+            EndpointConfigurationValidator.Instance.Validate(config);
+
             var (request, response) = CreateRequestAndResponseAdapters(context);
 
             var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter

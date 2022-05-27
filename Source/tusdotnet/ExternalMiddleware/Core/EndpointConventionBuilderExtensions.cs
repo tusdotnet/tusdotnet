@@ -62,7 +62,12 @@ namespace tusdotnet
             var routePatternWithFileId = GetRoutePatternWithTusFileId(pattern);
             var invoker = new TusEndpointInvoker(configFactory);
 
-            return endpoints.Map(routePatternWithFileId, invoker.Invoke).WithMetadata(new EndpointNameMetadata("tus: " + pattern));
+            var name = "tus: " + routePatternWithFileId;
+
+            return endpoints
+                .Map(routePatternWithFileId, invoker.Invoke)
+                .WithMetadata(new EndpointNameMetadata(name))
+                .WithDisplayName(name);
         }
 
         private static string GetRoutePatternWithTusFileId(string pattern)

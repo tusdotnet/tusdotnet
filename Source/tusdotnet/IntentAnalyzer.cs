@@ -20,14 +20,15 @@ namespace tusdotnet
                 }
             }
 
+            // TODO: Optimize for endpoint routing
             if (MethodRequiresFileIdUrl(httpMethod))
             {
-                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Configuration.UrlPath))
+                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Request.ConfigUrlPath))
                 {
                     return IntentHandler.NotApplicable;
                 }
             }
-            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.Configuration.UrlPath))
+            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.Request.ConfigUrlPath))
             {
                 return IntentHandler.NotApplicable;
             }

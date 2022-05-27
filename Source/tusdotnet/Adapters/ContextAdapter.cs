@@ -40,5 +40,10 @@ namespace tusdotnet.Adapters
                 _storeAdapter = value;
             }
         }
+
+        public string CreateFileLocation(string fileId)
+        {
+            return $"{Request.ConfigUrlPath.TrimEnd('/')}/{fileId}";
+        }
     }
 }
