@@ -20,15 +20,14 @@ namespace tusdotnet
                 }
             }
 
-            // TODO: Optimize for endpoint routing
             if (MethodRequiresFileIdUrl(httpMethod))
             {
-                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.ConfigUrlPath))
+                if (!context.UrlHelper.UrlMatchesFileIdUrl(context))
                 {
                     return IntentHandler.NotApplicable;
                 }
             }
-            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.ConfigUrlPath))
+            else if (!context.UrlHelper.UrlMatchesUrlPath(context))
             {
                 return IntentHandler.NotApplicable;
             }
@@ -111,17 +110,6 @@ namespace tusdotnet
         private static bool RequestRequiresTusResumableHeader(string httpMethod)
         {
             return httpMethod != "options";
-        }
-
-        private static bool UrlMatchesUrlPath(Uri requestUri, string configUrlPath)
-        {
-            return requestUri.LocalPath.TrimEnd('/').Equals(configUrlPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool UrlMatchesFileIdUrl(Uri requestUri, string configUrlPath)
-        {
-            return !UrlMatchesUrlPath(requestUri, configUrlPath)
-                   && requestUri.LocalPath.StartsWith(configUrlPath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

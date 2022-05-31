@@ -34,7 +34,7 @@ namespace tusdotnet
             var urlPath = GetUrlPath(context);
             var (request, response) = CreateRequestAndResponseAdapters(context);
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(urlPath)
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(urlPath, EndpointUrlHelper.Instance)
             {
                 Request = request,
                 Response = response,

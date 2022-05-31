@@ -42,35 +42,34 @@ namespace tusdotnet.Adapters
             }
         }
 
-        private readonly Lazy<string> _fileId;
-        public string FileId => _fileId.Value;
+        /// <summary>
+        /// Get the current file id from the URL. If the setter is used it will override what is currently in the URL. This scenario is used from creation-with-upload when data should be written to a newly created file.
+        /// </summary>
+        public string FileId
+        {
+            get
+            {
+                return _fileId ??= UrlHelper.ParseFileId(this);
+            }
+            set
+            {
+                _fileId = value;
+            }
+        }
+        private string _fileId;
 
         /// <summary>
         /// Value specified in DefaultTusConfiguration.UrlPath or the one determined by endpoint routing to be the equivalent of the UrlPath property.
         /// </summary>
         public string ConfigUrlPath => _configUrlPath;
         private readonly string _configUrlPath;
-        
 
-        public ContextAdapter(string configUrlPath)
+        public IUrlHelper UrlHelper { get; }
+
+        public ContextAdapter(string configUrlPath, IUrlHelper urlHelper)
         {
             _configUrlPath = configUrlPath;
-            _fileId = new Lazy<string>(() => ParseFileId());
-        }
-
-        private string ParseFileId()
-        {
-            var startIndex = Request.RequestUri.LocalPath.IndexOf(_configUrlPath, StringComparison.OrdinalIgnoreCase) + _configUrlPath.Length;
-
-            // TODO: Add support for endpoint routing
-
-#if NETCOREAPP3_1_OR_GREATER
-
-            return Request.RequestUri.LocalPath.AsSpan()[startIndex..].Trim('/').ToString();
-#else
-
-            return Request.RequestUri.LocalPath.Substring(startIndex).Trim('/');
-#endif
+            UrlHelper = urlHelper;
         }
 
         public string CreateFileLocation(string fileId)

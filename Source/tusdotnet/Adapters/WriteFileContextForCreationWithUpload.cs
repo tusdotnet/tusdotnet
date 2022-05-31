@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
@@ -62,7 +61,7 @@ namespace tusdotnet.Adapters
             {
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
-                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1, CancellationToken.None) > 0;
+                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1, System.Threading.CancellationToken.None) > 0;
 
                 return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
             }
@@ -128,8 +127,9 @@ namespace tusdotnet.Adapters
 
             FileContentIsAvailable = hasData;
 
-            _context = new ContextAdapter(creationContext.ConfigUrlPath)
+            _context = new ContextAdapter(creationContext.ConfigUrlPath, creationContext.UrlHelper)
             {
+                FileId = _fileId,
                 CancellationToken = creationContext.CancellationToken,
                 Configuration = creationContext.Configuration,
                 HttpContext = creationContext.HttpContext,
@@ -154,13 +154,10 @@ namespace tusdotnet.Adapters
 
         private static RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
         {
-            var uriBuilder = new UriBuilder(context.Request.RequestUri);
-            uriBuilder.Path = uriBuilder.Path + "/" + fileId;
-
             var writeFileRequest = new RequestAdapter()
             {
                 Method = context.Request.Method,
-                RequestUri = uriBuilder.Uri,
+                RequestUri = context.Request.RequestUri,
                 Headers = context.Request.Headers,
                 Body = preReadByteFromStream.HasValue
                     ? new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByteFromStream.Value)

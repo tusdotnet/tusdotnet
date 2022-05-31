@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -83,7 +82,7 @@ namespace tusdotnet.test.Tests.ModelTests
 
         private static ContextAdapter GetContext()
         {
-            return new ContextAdapter("/files")
+            return new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = CancellationToken.None,
                 Configuration = new DefaultTusConfiguration

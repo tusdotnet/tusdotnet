@@ -97,7 +97,7 @@ namespace tusdotnet.test.Tests
             var responseStatusCode = HttpStatusCode.OK;
             var responseStream = new MemoryStream();
 
-            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter("/files")
+            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration

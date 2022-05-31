@@ -63,7 +63,7 @@ namespace tusdotnet
                 SetStatus = status => context.Response.StatusCode = (int)status
             };
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath)
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
                 Response = response,

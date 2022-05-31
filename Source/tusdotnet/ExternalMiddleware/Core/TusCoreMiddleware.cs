@@ -54,7 +54,7 @@ namespace tusdotnet
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, requestUri);
             var response = DotnetCoreAdapterFactory.CreateResponseAdapter(context);
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath)
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
                 Response = response,

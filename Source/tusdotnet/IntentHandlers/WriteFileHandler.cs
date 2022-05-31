@@ -180,7 +180,7 @@ namespace tusdotnet.IntentHandlers
             var contentTypeRequirement = new ContentType();
             var uploadLengthRequirement = new UploadLengthForWriteFile();
             var uploadChecksumRequirement = new UploadChecksum(_checksumHelper);
-            var fileHasExpired = new FileHasNotExpired();
+            var fileHasNotExpired = new FileHasNotExpired();
 
             // Initiated using creation-with-upload meaning that we can guarantee that the file already exist, the offset is correct etc.
             if (_initiatedFromCreationWithUpload)
@@ -190,7 +190,7 @@ namespace tusdotnet.IntentHandlers
                     contentTypeRequirement,
                     uploadLengthRequirement,
                     uploadChecksumRequirement,
-                    fileHasExpired
+                    fileHasNotExpired
                 };
             }
 
@@ -202,7 +202,7 @@ namespace tusdotnet.IntentHandlers
                 new UploadOffset(),
                 new UploadConcatForWriteFile(),
                 uploadChecksumRequirement,
-                fileHasExpired,
+                fileHasNotExpired,
                 new RequestOffsetMatchesFileOffset(),
                 new FileIsNotCompleted()
             };

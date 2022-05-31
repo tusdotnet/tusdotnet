@@ -252,7 +252,7 @@ namespace tusdotnet.test.Tests
                 SetStatus = status => responseStatus = status
             };
 
-            var context = new ContextAdapter("/files")
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
