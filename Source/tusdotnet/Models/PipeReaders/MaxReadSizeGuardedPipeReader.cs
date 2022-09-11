@@ -10,7 +10,8 @@ namespace tusdotnet.Models.PipeReaders
     internal class MaxReadSizeGuardedPipeReader : PipeReader
     {
         private readonly PipeReader _backingReader;
-        private long _totalBytesRead;
+        private long _totalCommittedBytes;
+        private long _bytesReadSinceLastAdvance;
         private readonly long _maxSizeToRead;
         private readonly MaxReadSizeExceededException.SizeSourceType _sizeSource;
 
@@ -21,13 +22,15 @@ namespace tusdotnet.Models.PipeReaders
             MaxReadSizeExceededException.SizeSourceType sizeSource)
         {
             _backingReader = backingReader;
-            _totalBytesRead = startCountingFrom;
+            _totalCommittedBytes = startCountingFrom;
             _maxSizeToRead = maxSizeToRead;
             _sizeSource = sizeSource;
         }
 
         public override void AdvanceTo(SequencePosition consumed)
         {
+            // Save previously read bytes to total amount.
+            _totalCommittedBytes += _bytesReadSinceLastAdvance;
             _backingReader.AdvanceTo(consumed);
         }
 
@@ -49,9 +52,12 @@ namespace tusdotnet.Models.PipeReaders
         public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
         {
             var result = await _backingReader.ReadAsync(cancellationToken);
-            _totalBytesRead += result.Buffer.Length;
 
-            if (_totalBytesRead > _maxSizeToRead)
+            // Before a call to AdvanceTo(SequencePosition consumed) have been made
+            // the buffer contains _all_ data over several reads.
+            _bytesReadSinceLastAdvance = result.Buffer.Length;
+
+            if (_totalCommittedBytes + _bytesReadSinceLastAdvance > _maxSizeToRead)
             {
                 throw new MaxReadSizeExceededException(_sizeSource);
             }
