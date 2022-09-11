@@ -40,6 +40,8 @@ namespace tusdotnet
                 return;
             }
 
+            config.Validate();
+
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(context.Request.Uri, config))
             {
                 await Next.Invoke(context);

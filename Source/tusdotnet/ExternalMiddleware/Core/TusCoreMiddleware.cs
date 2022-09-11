@@ -41,6 +41,8 @@ namespace tusdotnet
                 return;
             }
 
+            config.Validate();
+
             var requestUri = GetRequestUri(context);
 
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(requestUri, config))

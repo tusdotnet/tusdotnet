@@ -22,8 +22,6 @@ namespace tusdotnet
 
         public static async Task<ResultType> Invoke(ContextAdapter context)
         {
-            context.Configuration.Validate();
-
             var intentHandler = IntentAnalyzer.DetermineIntent(context);
 
             if (intentHandler == IntentHandler.NotApplicable)

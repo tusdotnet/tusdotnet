@@ -26,9 +26,11 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Creates_A_Configuration_Instance_Per_Request()
         {
-            var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
-            tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
-            tusConfiguration.UrlPath.Returns("/files");
+            var tusConfiguration = new DefaultTusConfiguration
+            {
+                Store = Substitute.For<ITusStore>(),
+                UrlPath = "/files"
+            };
 
 #if netfull
             var configFunc = Substitute.For<Func<IOwinRequest, DefaultTusConfiguration>>();
@@ -70,7 +72,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Configuration_Is_Validated_On_Each_Request()
         {
-            var tusConfiguration = Substitute.For<DefaultTusConfiguration>();
+            var tusConfiguration = new DefaultTusConfiguration();
 
             // Empty configuration
             using (var server = TestServerFactory.Create(tusConfiguration))
@@ -79,17 +81,21 @@ namespace tusdotnet.test.Tests
             }
 
             // Configuration with only Store specified
-            tusConfiguration = Substitute.For<DefaultTusConfiguration>();
-            tusConfiguration.Store.Returns(Substitute.For<ITusStore>());
+            tusConfiguration = new DefaultTusConfiguration
+            {
+                Store = Substitute.For<ITusStore>()
+            };
             using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
             }
 
             // Configuration with only url path specified
-            tusConfiguration = Substitute.For<DefaultTusConfiguration>();
-            tusConfiguration.UrlPath.Returns("/files");
-            tusConfiguration.Store.Returns((ITusStore)null);
+            tusConfiguration = new DefaultTusConfiguration
+            {
+                UrlPath = "/files",
+                Store = null
+            };
             using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
