@@ -272,34 +272,6 @@ namespace tusdotnet.test.Tests
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_UploadDeferLength_Is_Used_Without_ContentLength(string uploadConcatHeader)
-        {
-            var fileId = Guid.NewGuid().ToString("n");
-
-            var tusStore = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusCreationDeferLengthStore>();
-
-            var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
-
-            var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
-
-            using var server = TestServerFactory.Create(tusStore);
-            var response = await server
-                .CreateTusResumableRequest("/files")
-                .AddHeader("Upload-Defer-Length", "1")
-                .AddHeaderIfNotEmpty("Upload-Concat", uploadConcatHeader)
-                .AddBody()
-                .PostAsync();
-
-            response.StatusCode.ShouldBe(HttpStatusCode.Created, response.StatusCode.ToString());
-            response.ShouldContainHeader("Upload-Offset", "0");
-
-            await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
-        }
-
-        [Theory]
-        [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
         public async Task No_Data_Is_Written_And_400_Bad_Request_Is_Returned_Without_Upload_Offset_If_UploadDeferLength_Is_Used_With_UploadLength(string uploadConcatHeader)
         {
             var fileId = Guid.NewGuid().ToString("n");

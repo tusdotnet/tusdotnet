@@ -10,6 +10,9 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+using tusdotnet.test.Helpers;
+using System.Linq;
+using System.IO;
 #if netfull
 using Owin;
 #endif
@@ -228,25 +231,227 @@ namespace tusdotnet.test.Tests
             response.Headers.Contains("Upload-Length").ShouldBeFalse();
         }
 
-        [Theory, XHttpMethodOverrideData]
-        public async Task UploadLength_Must_Be_Included_In_Patch_Request_If_UploadDeferLength_Has_Been_Set(
-            string methodToUse)
+        [Fact]
+        public async Task Multiple_Patch_Requests_Can_Be_Sent_Before_Including_UploadLength()
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
-            store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
-            store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs((long?)null);
+            var fileId = Guid.NewGuid().ToString();
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+            store
+                .WithExistingFile(fileId, null)
+                .WithAppendDataCallback(fileId, _ => Task.FromResult(1L)); // Each request writes one byte.
 
+            // Update upload offset and upload length when set.
+            var uploadOffset = 0;
+            long? uploadLength = null;
+            store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadOffset);
+            store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadLength);
+            ((ITusCreationDeferLengthStore)store)
+                .SetUploadLengthAsync(fileId, Arg.Any<long>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(0))
+                .AndDoes(ci => uploadLength = ci.Arg<long>());
+
+            var onFileCompleteAsyncCallCount = 0;
+            var events = new Events
+            {
+                OnFileCompleteAsync = _ =>
+                {
+                    onFileCompleteAsyncCallCount++;
+                    return Task.FromResult(0);
+                }
+            };
+
+            using var server = TestServerFactory.Create(store, events);
+
+            for (int i = 0; i < 7; i++)
+            {
+                var request = server
+                    .CreateTusResumableRequest($"/files/{fileId}")
+                    .AddBody(1)
+                    .AddHeader("Upload-Offset", uploadOffset.ToString());
+
+                var response = await request.SendAsync("PATCH");
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                uploadOffset++;
+            }
+
+            // Event should not have been called as we do not know the completed length yet
+            onFileCompleteAsyncCallCount.ShouldBe(0);
+
+            // Include Upload-Length here to finish the upload.
+            var requestWithUploadLength = server
+                    .CreateTusResumableRequest($"/files/{fileId}")
+                    .AddBody(1)
+                    .AddHeader("Upload-Offset", uploadOffset.ToString())
+                    .AddHeader("Upload-Length", "8");
+
+            var responseWithUploadLength = await requestWithUploadLength.SendAsync("PATCH");
+
+            responseWithUploadLength.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+            onFileCompleteAsyncCallCount.ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_And_Body_Is_A_Stream()
+        {
+            await Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_Internal(false);
+        }
+
+#if pipelines
+
+        [Fact]
+        public async Task Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_And_Body_Is_A_PipeReader()
+        {
+            await Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_Internal(true);
+        }
+
+#endif
+
+        private async Task Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_Internal(bool usePipelinesIfAvailable)
+        {
+            var fileId = Guid.NewGuid().ToString();
+
+#if pipelines
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore, ITusPipelineStore>();
+#else
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+#endif
+            store.WithExistingFile(fileId, null)
+                 .WithAppendDataDrainingTheRequestBody(fileId);
+
+            var uploadOffset = 0;
+            store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadOffset);
+
+            var onFileCompleteAsyncCallCount = 0;
+            var events = new Events
+            {
+                OnFileCompleteAsync = _ =>
+                {
+                    onFileCompleteAsyncCallCount++;
+                    return Task.FromResult(0);
+                }
+            };
+
+            using var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ => new()
+                {
+                    MaxAllowedUploadSizeInBytesLong = 5,
+                    Events = events,
+                    Store = store,
+                    UrlPath = "/files",
+#if pipelines
+                    UsePipelinesIfAvailable = usePipelinesIfAvailable
+#endif
+                });
+            });
+
+            for (int i = 0; i < 6; i++)
+            {
+                var request = server
+                    .CreateTusResumableRequest($"/files/{fileId}")
+                    .AddBody(1)
+                    .AddHeader("Upload-Offset", uploadOffset.ToString());
+
+                var response = await request.SendAsync("PATCH");
+
+                // Last request should fail as there is to much data.
+                var expectedStatus = i == 5 ? HttpStatusCode.RequestEntityTooLarge : HttpStatusCode.NoContent;
+
+                response.StatusCode.ShouldBe(expectedStatus);
+                uploadOffset++;
+            }
+
+            // OnFileComplete should not have been called as the file contains to much data.
+            onFileCompleteAsyncCallCount.ShouldBe(0);
+        }
+
+        [Fact]
+        public async Task UploadLength_Is_Respected_When_Using_UploadDeferLength_And_Body_Is_A_Stream()
+        {
+            await UploadLength_Is_Respected_When_Using_UploadDeferLength_Internal(false);
+        }
+
+#if pipelines
+        [Fact]
+        public async Task UploadLength_Is_Respected_When_Using_UploadDeferLength_And_Body_Is_A_PipeReader()
+        {
+            await UploadLength_Is_Respected_When_Using_UploadDeferLength_Internal(true);
+        }
+#endif
+
+        private static async Task UploadLength_Is_Respected_When_Using_UploadDeferLength_Internal(bool usePipelinesIfAvailable)
+        {
+            var fileId = Guid.NewGuid().ToString();
+
+            long? uploadLength = null;
+            var currentUploadOffset = 0;
+            var currentRequestOffset = 0;
+
+#if pipelines
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore, ITusPipelineStore>();
+#else
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+#endif
+            store.WithExistingFile(
+                    fileId,
+                    uploadLength: _ => uploadLength,
+                    uploadOffset: _ => currentUploadOffset)
+                 .WithAppendDataDrainingTheRequestBody(fileId)
+                 .WithSetUploadLengthCallback(fileId, size => uploadLength = size);
+
+            var onFileCompleteAsyncCallCount = 0;
+            var events = new Events
+            {
+                OnFileCompleteAsync = _ =>
+                {
+                    onFileCompleteAsyncCallCount++;
+                    return Task.FromResult(0);
+                }
+            };
+
+#if pipelines
+            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: usePipelinesIfAvailable);
+#else
             using var server = TestServerFactory.Create(store);
+#endif
 
-            var response = await server.CreateRequest($"/files{Guid.NewGuid()}")
-                .AddTusResumableHeader()
-                .AddHeader("Upload-Offset", "0")
-                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
-                .And(m => m.AddBody())
-                .SendAsync(methodToUse);
+            for (int i = 0; i < 7; i++)
+            {
+                var request = server
+                    .CreateTusResumableRequest($"/files/{fileId}")
+                    .AddBody(2)
+                    .AddHeader("Upload-Offset", currentRequestOffset.ToString());
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                "Header Upload-Length must be specified as this file was created using Upload-Defer-Length");
+                // Let's simulate that the client now knows the length.
+                if (i == 1)
+                {
+                    // Set the upload length to a smaller value than the rest of the data.
+                    request = request.AddHeader("Upload-Length", "5");
+                }
+
+                var response = await request.SendAsync("PATCH");
+
+                // Request number 2 should fail due to the file being to large from the specified Upload-Length.
+                if (i == 2)
+                {
+                    await response.ShouldBeErrorResponse(HttpStatusCode.RequestEntityTooLarge, "Request contains more data than the file's upload length");
+                }
+                // The rest should fail for invalid offset
+                else if (i > 2)
+                {
+                    await response.ShouldBeErrorResponse(HttpStatusCode.Conflict, $"Offset does not match file. File offset: {currentUploadOffset}. Request offset: {currentRequestOffset}");
+                }
+                else
+                {
+                    response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                    currentUploadOffset += 2;
+                }
+
+                currentRequestOffset += 2;
+            }
+
+            onFileCompleteAsyncCallCount.ShouldBe(0);
         }
 
         [Theory, XHttpMethodOverrideData]

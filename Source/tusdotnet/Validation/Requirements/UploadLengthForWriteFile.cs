@@ -17,12 +17,6 @@ namespace tusdotnet.Validation.Requirements
                 throw new TusConfigurationException($"File {context.Request.FileId} does not have an upload length and the current store ({context.Configuration.Store.GetType().FullName}) does not support Upload-Defer-Length so no new upload length can be set");
             }
 
-            if (!UploadLengthIsProvidedInRequest(context.Request) && !uploadLengthIsSet)
-            {
-                await BadRequest($"Header {HeaderConstants.UploadLength} must be specified as this file was created using Upload-Defer-Length");
-                return;
-            }
-
             if (UploadLengthIsProvidedInRequest(context.Request) && uploadLengthIsSet)
             {
                 await BadRequest($"{HeaderConstants.UploadLength} cannot be updated once set");

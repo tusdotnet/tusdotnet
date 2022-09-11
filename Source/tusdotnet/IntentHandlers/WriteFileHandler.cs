@@ -10,6 +10,9 @@ using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
+#if pipelines
+using tusdotnet.Models.PipeReaders;
+#endif
 
 namespace tusdotnet.IntentHandlers
 {
@@ -86,7 +89,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileOffset = long.Parse(Request.GetHeader(HeaderConstants.UploadOffset));
+            var fileOffset = Request.UploadOffset;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             Response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
@@ -112,15 +115,13 @@ namespace tusdotnet.IntentHandlers
         private async Task<Tuple<long, CancellationToken>> HandlePipelineWrite()
         {
             long bytesWritten;
-            CancellationToken cancellationToken;
             var isSupported = Context.Configuration.UsePipelinesIfAvailable && StoreAdapter.Features.Pipelines;
             if (isSupported)
             {
-                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(Request.BodyReader, CancellationToken);
-                bytesWritten = await StoreAdapter.AppendDataAsync(Request.FileId, guardedPipeReader, CancellationToken);
-                cancellationToken = CancellationToken;
+                var pipeReader = await GuardedPipeReaderFactory.Create(Context);
+                bytesWritten = await StoreAdapter.AppendDataAsync(Request.FileId, pipeReader, CancellationToken);
 
-                return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
+                return new Tuple<long, CancellationToken>(bytesWritten, CancellationToken);
             }
             else
             {
@@ -132,10 +133,11 @@ namespace tusdotnet.IntentHandlers
 
         private async Task<Tuple<long, CancellationToken>> HandleStreamWrite()
         {
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(Request.Body, CancellationTokenSource.CreateLinkedTokenSource(CancellationToken));
-            var bytesWritten = await Store.AppendDataAsync(Request.FileId, guardedStream, guardedStream.CancellationToken);
-            var cancellationToken = guardedStream.CancellationToken;
+            var tuple = await GuardedStreamFactory.Create(Context);
+            var stream = tuple.Item1;
+            var cancellationToken = tuple.Item2;
 
+            var bytesWritten = await Store.AppendDataAsync(Request.FileId, stream, cancellationToken);
             return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
         }
 

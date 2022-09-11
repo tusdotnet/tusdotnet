@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.FileLocks;
 using tusdotnet.Interfaces;
+using tusdotnet.Models;
 #if trailingheaders
 using Microsoft.AspNetCore.Http;
 using tusdotnet.Constants;
@@ -45,6 +46,36 @@ namespace tusdotnet.Extensions.Internal
         private static ITusFileLockProvider GetLockProvider(ContextAdapter context)
         {
             return context.Configuration.FileLockProvider ?? InMemoryFileLockProvider.Instance;
+        }
+
+        internal static async Task<MaxReadSizeInfo> GetMaxReadSizeInfo(this ContextAdapter context)
+        {
+            // We can use the upload offset in the request here as this has been verified earlier in the pipeline.
+            var previouslyRead = context.Request.UploadOffset;
+            var sizeSource = MaxReadSizeExceededException.SizeSourceType.UploadLength;
+
+            var maxLength = await context.StoreAdapter.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
+            if (maxLength == null)
+            {
+                maxLength = context.Configuration.GetMaxAllowedUploadSizeInBytes();
+                sizeSource = MaxReadSizeExceededException.SizeSourceType.TusMaxSize;
+            }
+
+            return new MaxReadSizeInfo
+            {
+                MaxReadSize = maxLength,
+                PreviouslyRead = previouslyRead,
+                SizeSource = sizeSource
+            };
+        }
+
+        internal struct MaxReadSizeInfo
+        {
+            public long PreviouslyRead { get; set; }
+
+            public long? MaxReadSize { get; set; }
+
+            public MaxReadSizeExceededException.SizeSourceType SizeSource { get; set; }
         }
     }
 }

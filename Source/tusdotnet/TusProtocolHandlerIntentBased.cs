@@ -71,6 +71,11 @@ namespace tusdotnet
                 await intentHandler.Invoke();
                 return ResultType.StopExecution;
             }
+            catch (MaxReadSizeExceededException readSizeException)
+            {
+                await context.Response.Error(HttpStatusCode.RequestEntityTooLarge, readSizeException.Message);
+                return ResultType.StopExecution;
+            }
             catch (TusStoreException storeException)
             {
                 await context.Response.Error(HttpStatusCode.BadRequest, storeException.Message);

@@ -31,14 +31,18 @@ namespace tusdotnet.Adapters
 
         public long UploadLength => _uploadLength.Value;
 
+        public long UploadOffset => _uploadOffset.Value;
+
         private readonly Lazy<string> _fileId;
         private readonly Lazy<long> _uploadLength;
+        private readonly Lazy<long> _uploadOffset;
         private readonly string _configUrlPath;
 
         public RequestAdapter(string configUrlPath)
         {
             _fileId = new Lazy<string>(() => ParseFileId());
             _uploadLength = new Lazy<long>(() => ParseUploadLength());
+            _uploadOffset = new Lazy<long>(() => ParseUploadOffset());
             _configUrlPath = configUrlPath;
         }
 
@@ -64,6 +68,11 @@ namespace tusdotnet.Adapters
             return Headers.ContainsKey(HeaderConstants.UploadDeferLength)
                 ? -1
                 : long.Parse(GetHeader(HeaderConstants.UploadLength) ?? "-1");
+        }
+
+        private long ParseUploadOffset()
+        {
+            return long.Parse(GetHeader(HeaderConstants.UploadOffset));
         }
     }
 }
