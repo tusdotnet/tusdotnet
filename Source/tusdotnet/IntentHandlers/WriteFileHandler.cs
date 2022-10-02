@@ -119,7 +119,7 @@ namespace tusdotnet.IntentHandlers
             if (isSupported)
             {
                 var pipeReader = await GuardedPipeReaderFactory.Create(Context);
-                bytesWritten = await StoreAdapter.AppendDataAsync(Request.FileId, pipeReader, CancellationToken);
+                bytesWritten = await StoreAdapter.AppendDataAsync(Context.FileId, pipeReader, CancellationToken);
 
                 return new Tuple<long, CancellationToken>(bytesWritten, CancellationToken);
             }
@@ -137,7 +137,7 @@ namespace tusdotnet.IntentHandlers
             var stream = tuple.Item1;
             var cancellationToken = tuple.Item2;
 
-            var bytesWritten = await Store.AppendDataAsync(Request.FileId, stream, cancellationToken);
+            var bytesWritten = await Store.AppendDataAsync(Context.FileId, stream, cancellationToken);
             return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
         }
 

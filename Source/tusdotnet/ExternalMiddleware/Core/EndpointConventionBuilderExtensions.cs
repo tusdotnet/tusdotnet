@@ -72,7 +72,7 @@ namespace tusdotnet
 
         private static string GetRoutePatternWithTusFileId(string pattern)
         {
-            if (pattern.Length == 0)
+            if (string.IsNullOrWhiteSpace(pattern) || pattern.Length == 0)
                 return _tusFileIdRoutePartWithPrefixForwardSlash;
 
             return pattern[^1] == '/'
@@ -82,6 +82,9 @@ namespace tusdotnet
 
         private static void ThrowIfPatternContainsTusFileId(string pattern)
         {
+            if (string.IsNullOrWhiteSpace(pattern))
+                return;
+
             var parsedPattern = RoutePatternFactory.Parse(pattern);
             if (parsedPattern.Parameters.Any(x => x.Name.Equals(EndpointRouteConstants.FileId, StringComparison.OrdinalIgnoreCase)))
             {
