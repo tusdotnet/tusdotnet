@@ -4,14 +4,14 @@
 
 >"Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network." - https://tus.io
 
-tusdotnet is a .NET server implementation of the tus.io protocol that runs on both .NET 4.x and .NET Core!
+tusdotnet is a .NET server implementation of the tus.io protocol that runs on both .NET 4.x, .NET Core and .NET6+!
 
 Comments, ideas, questions and PRs are welcome :)
 
 ## Features
 
-* Runs on OWIN and ASP.NET Core (on both .NET Framework and .NET Core)
-* Full support for tus 1.0.0 including all major extensions (checksum, concatenation, creation, upload-defer-length, expiration and termination)
+* Runs on OWIN and ASP.NET Core (on both .NET Framework, .NET Core and .NET6+)
+* Full support for tus 1.0.0 including all major extensions (checksum, checksum-trailers, concatenation, creation, creation-with-upload, upload-defer-length, expiration and termination)
 * Fast and reliable
 * Easy to configure
 * Customizable data storage
@@ -48,7 +48,7 @@ app.UseTus(httpContext => new DefaultTusConfiguration
         {
             ITusFile file = await eventContext.GetFileAsync();
             Dictionary<string, Metadata> metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
-            Stream content = await file.GetContentAsync(eventContext.CancellationToken);
+            using Stream content = await file.GetContentAsync(eventContext.CancellationToken);
 
             await DoSomeProcessing(content, metadata);
         }
@@ -64,7 +64,6 @@ If you just want to play around with tusdotnet/the tus protocol, clone the repo 
 Test sites are available for:
 
 * ASP.NET Core 6 (.NET 6.0)
-* ASP.NET Core 3.1 (.NET Core 3.1)
 * ASP.NET Core 3.1 (.NET Core 3.1)
 * ASP.NET Core 3.0 (.NET Core 3.0)
 * ASP.NET Core 2.2 (.NET Core 2.2)
