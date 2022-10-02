@@ -28,7 +28,7 @@ namespace tusdotnet.test.Tests
         [InlineData("/files/a/b/c")]
         public void TusFileId_Is_Automatically_Included_In_Route_Pattern_As_Optional_Parameter(string pattern)
         {
-            using var server = CreateTestServer(endpoints => endpoints.MapTus(pattern));
+            using var server = CreateTestServer(endpoints => endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig())));
 
             var expectedPatternWithTusFileId = pattern.TrimEnd('/') + "/{TusFileId?}";
             var endpoint = (RouteEndpoint)server.Services.GetService<EndpointDataSource>().Endpoints[0];
@@ -46,101 +46,18 @@ namespace tusdotnet.test.Tests
         {
             Should.Throw<ArgumentException>(() =>
             {
-                using var server = CreateTestServer(endpoints => endpoints.MapTus(pattern));
+                using var server = CreateTestServer(endpoints => endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig())));
             });
         }
 
         [Fact]
-        public async Task The_Endpoint_Configuration_Factory_Is_Used_If_Specified()
+        public async Task The_Endpoint_Configuration_Factory_Is_Used()
         {
-            var iocFactoryUsed = false;
-
-            Func<HttpContext, Task<DefaultTusConfiguration>> iocFactory = _ => Task.FromResult(CreateConfig(() => iocFactoryUsed = true));
-
-            var iocConfigUsed = false;
-            DefaultTusConfiguration iocConfig = CreateConfig(() => iocConfigUsed = true);
-
             var endpointFactoryUsed = false;
             Func<HttpContext, Task<DefaultTusConfiguration>> endpointFactory = _ => Task.FromResult(CreateConfig(() => endpointFactoryUsed = true));
 
-            using var server = await CreateTestServerAndSendOptionsRequest(app => app.MapTus("/", endpointFactory), configureServices);
-            FirstShouldBeTrue(endpointFactoryUsed, iocFactoryUsed, iocConfigUsed);
-
-            // Register factory + config in ioc
-            void configureServices(IServiceCollection services)
-            {
-                services.AddSingleton(_ => iocFactory);
-                services.AddSingleton(_ => iocConfig);
-            }
-        }
-
-        [Fact]
-        public async Task The_Endpoint_Configuration_Is_Used_If_Specified()
-        {
-            var iocFactoryUsed = false;
-            Func<HttpContext, Task<DefaultTusConfiguration>> iocFactory = _ => Task.FromResult(CreateConfig(() => iocFactoryUsed = true));
-
-            var iocConfigUsed = false;
-            DefaultTusConfiguration iocConfig = CreateConfig(() => iocConfigUsed = true);
-
-            var endpointConfigUsed = false;
-            var endpointConfig = CreateConfig(() => endpointConfigUsed = true);
-
-            using var server = await CreateTestServerAndSendOptionsRequest(app => app.MapTus("/", endpointConfig), configureServices);
-            FirstShouldBeTrue(endpointConfigUsed, iocFactoryUsed, iocConfigUsed);
-
-            // Register factory + config in ioc
-            void configureServices(IServiceCollection services)
-            {
-                services.AddSingleton(_ => iocFactory);
-                services.AddSingleton(_ => iocConfig);
-            }
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task The_Configuration_Is_Resolved_From_IOC_Container_If_No_Endpoint_Specific_Config_Have_Been_Specified(bool registerIocFactory)
-        {
-            var iocFactoryUsed = false;
-            Func<HttpContext, Task<DefaultTusConfiguration>> iocFactory = _ => Task.FromResult(CreateConfig(() => iocFactoryUsed = true));
-
-            var iocConfigUsed = false;
-            DefaultTusConfiguration iocConfig = CreateConfig(() => iocConfigUsed = true);
-
-            using var server = await CreateTestServerAndSendOptionsRequest(app => app.MapTus("/"), configureServices);
-
-            if (registerIocFactory)
-            {
-                FirstShouldBeTrue(iocFactoryUsed, iocConfigUsed);
-            }
-            else
-            {
-                FirstShouldBeTrue(iocConfigUsed, iocFactoryUsed);
-            }
-
-            void configureServices(IServiceCollection services)
-            {
-                if (registerIocFactory)
-                {
-                    services.AddSingleton(_ => iocFactory);
-                }
-                else
-                {
-                    services.AddSingleton(_ => iocConfig);
-                }
-            }
-        }
-
-        [Fact]
-        public async Task A_TusConfigurationException_Is_Thrown_If_No_Config_Was_Found_In_The_IOC_Container()
-        {
-            using var server = CreateTestServer(app => app.MapTus("/"), configureServices);
-
-            var exception = await Should.ThrowAsync<TusConfigurationException>(async () => await SendOptionsRequest(server));
-            exception.Message.ShouldBe("No configuration found. Searched the configuration factory provided when running MapTus and IoC container for Func<HttpContext, Task<DefaultTusConfiguration>> and DefaultTusConfiguration.");
-
-            static void configureServices(IServiceCollection _) { }
+            using var server = await CreateTestServerAndSendOptionsRequest(app => app.MapTus("/", endpointFactory));
+            endpointFactoryUsed.ShouldBeTrue();
         }
 
         private static TestServer CreateTestServer(Action<IEndpointRouteBuilder> endpoints, Action<IServiceCollection> configureServices = null)
@@ -162,7 +79,7 @@ namespace tusdotnet.test.Tests
             return server;
         }
 
-        private static DefaultTusConfiguration CreateConfig(Action onAuthorizeCalled)
+        private static DefaultTusConfiguration CreateConfig(Action onAuthorizeCalled = null)
         {
             return new DefaultTusConfiguration
             {
@@ -171,17 +88,11 @@ namespace tusdotnet.test.Tests
                 {
                     OnAuthorizeAsync = _ =>
                     {
-                        onAuthorizeCalled();
+                        onAuthorizeCalled?.Invoke();
                         return Task.CompletedTask;
                     }
                 }
             };
-        }
-
-        private static void FirstShouldBeTrue(bool expectedTrue, params bool[] expectedFalse)
-        {
-            expectedTrue.ShouldBeTrue();
-            expectedFalse.ShouldAllBe(b => b == false);
         }
 
         private static Task<HttpResponseMessage> SendOptionsRequest(TestServer server)
@@ -190,9 +101,9 @@ namespace tusdotnet.test.Tests
             return client.SendAsync(new HttpRequestMessage(HttpMethod.Options, "/"));
         }
 
-        private static async Task<TestServer> CreateTestServerAndSendOptionsRequest(Action<IEndpointRouteBuilder> endpoints, Action<IServiceCollection> configureServices)
+        private static async Task<TestServer> CreateTestServerAndSendOptionsRequest(Action<IEndpointRouteBuilder> endpoints)
         {
-            TestServer server = CreateTestServer(endpoints, configureServices);
+            TestServer server = CreateTestServer(endpoints);
 
             await SendOptionsRequest(server);
 

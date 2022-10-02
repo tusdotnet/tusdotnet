@@ -268,7 +268,7 @@ namespace tusdotnet.test.Tests
                 {
                     var urlPath = config.UrlPath;
                     config.UrlPath = null;
-                    e.MapTus(urlPath, config);
+                    e.MapTus(urlPath, _ => Task.FromResult(config));
                 });
 #else
 

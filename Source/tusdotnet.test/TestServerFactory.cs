@@ -94,7 +94,7 @@ namespace tusdotnet.test
             var urlPath = config.UrlPath;
             config.UrlPath = null;
             config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
-            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, config)));
+            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, _ => Task.FromResult(config))));
         }
 
 #else

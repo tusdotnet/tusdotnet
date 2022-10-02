@@ -2,7 +2,6 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
@@ -22,7 +21,7 @@ namespace tusdotnet
 
         internal async Task Invoke(HttpContext context)
         {
-            var config = await GetFactory(context).Invoke(context);
+            var config = await _endpointSpecificFactory.Invoke(context);
             if (config == null)
             {
                 context.NotFound();
@@ -55,24 +54,6 @@ namespace tusdotnet
             var response = DotnetCoreAdapterFactory.CreateResponseAdapter(context);
 
             return (request, response);
-        }
-
-        private Func<HttpContext, Task<DefaultTusConfiguration>> GetFactory(HttpContext httpContext)
-        {
-            if (_endpointSpecificFactory is not null)
-                return _endpointSpecificFactory;
-
-            var iocFactory = httpContext.RequestServices.GetService<Func<HttpContext, Task<DefaultTusConfiguration>>>();
-
-            if (iocFactory is not null)
-                return iocFactory;
-
-            var iocConfig = httpContext.RequestServices.GetService<DefaultTusConfiguration>();
-
-            if (iocConfig is not null)
-                return _ => Task.FromResult(iocConfig);
-
-            throw new TusConfigurationException("No configuration found. Searched the configuration factory provided when running MapTus and IoC container for Func<HttpContext, Task<DefaultTusConfiguration>> and DefaultTusConfiguration.");
         }
 
         private static string GetUrlPath(HttpContext httpContext)

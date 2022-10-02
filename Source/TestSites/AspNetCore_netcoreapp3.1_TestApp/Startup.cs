@@ -82,31 +82,11 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             app.UseEndpoints(endpoints =>
             {
+                // Handle downloads (must be set before MapTus)
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
 
-                // This will run tus on the /files endpoint and look for the configuration in the IOC container.
-                // Load order from IOC:
-                // 1. Func<HttpContext, Task<DefaultTusConfiguration>>
-                // 2. DefaultTusConfiguration
-                endpoints.MapTus("/files");
-
-                /* Alternatively you can provide the configuration for this specific endpoint:
-
-                    endpoints.MapTus("/files/", new DefaultTusConfiguration
-                    {
-                        // Omitted
-                    });
-
-                */
-
-                /* Or use a factory:
-
-                    app.MapTus("/files/", async httpContext => new DefaultTusConfiguration
-                    {
-                        // ...
-                    });
-
-                */
+                // Setup tusdotnet for the /files/ path.
+                endpoints.MapTus("/files/", TusConfigurationFactory);
             });
         }
 

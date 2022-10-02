@@ -21,7 +21,6 @@ builder.WebHost.ConfigureKestrel(kestrel =>
 
 builder.Services.AddSingleton(CreateTusConfigurationForCleanupService());
 builder.Services.AddHostedService<ExpiredFilesCleanupService>();
-builder.Services.AddSingleton(TusConfigurationFactory);
 
 AddAuthorization(builder);
 
@@ -32,31 +31,11 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseHttpsRedirection();
 
+// Handle downloads (must be set before MapTus)
 app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
 
-// This will run tus on the /files endpoint and look for the configuration in the IOC container.
-// Load order from IOC:
-// 1. Func<HttpContext, Task<DefaultTusConfiguration>>
-// 2. DefaultTusConfiguration
-app.MapTus("/files");
-
-/* Alternatively you can provide the configuration for this specific endpoint:
-
-    app.MapTus("/files/", new DefaultTusConfiguration
-    {
-        // ...
-    });
-
-*/
-
-/* Or use a factory:
-
-    app.MapTus("/files/", async httpContext => new DefaultTusConfiguration
-    {
-        // ...
-    });
-
-*/
+// Setup tusdotnet for the /files/ path.
+app.MapTus("/files/", TusConfigurationFactory);
 
 app.Run();
 
