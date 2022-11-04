@@ -66,6 +66,8 @@ namespace tusdotnet.Adapters
 
         public IUrlHelper UrlHelper { get; }
 
+        internal Uri UploadUrlOverride { private get; set; }
+
         public ContextAdapter(string configUrlPath, IUrlHelper urlHelper)
         {
             _configUrlPath = configUrlPath;
@@ -74,7 +76,9 @@ namespace tusdotnet.Adapters
 
         public string CreateFileLocation(string fileId)
         {
-            return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
+            return UploadUrlOverride != null
+                ? UploadUrlOverride.ToString()
+                : $"{_configUrlPath.TrimEnd('/')}/{fileId}";
         }
     }
 }

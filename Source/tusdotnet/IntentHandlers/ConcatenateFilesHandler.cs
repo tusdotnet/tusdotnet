@@ -130,6 +130,7 @@ namespace tusdotnet.IntentHandlers
                     ctx.Metadata = metadata;
                     ctx.UploadLength = uploadLength;
                     ctx.FileConcatenation = UploadConcat.Type;
+                    ctx.Context = Context;
                 });
 
                 await EventHelper.NotifyFileComplete(Context, ctx => ctx.FileId = createdFileId);
@@ -144,6 +145,7 @@ namespace tusdotnet.IntentHandlers
                     ctx.Metadata = metadata;
                     ctx.UploadLength = uploadLength;
                     ctx.FileConcatenation = UploadConcat.Type;
+                    ctx.Context = Context;
                 });
             }
 

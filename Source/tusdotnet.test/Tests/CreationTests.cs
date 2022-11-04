@@ -469,6 +469,36 @@ namespace tusdotnet.test.Tests
             metadata.ContainsKey("othermeta").ShouldBeTrue();
         }
 
+        [Theory, XHttpMethodOverrideData]
+        public async Task Returns_The_Correct_Location_Header_If_OnCreateCompleteAsync_Modifies_It(string method)
+        {
+            var store = Substitute.For<ITusCreationStore, ITusStore>();
+            var fileId = Guid.NewGuid().ToString();
+            var randomUrl = "https://example.org/" + Guid.NewGuid();
+
+            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+
+            var events = new Events
+            {
+                OnCreateCompleteAsync = ctx =>
+                {
+                    ctx.SetUploadUrl(new Uri(randomUrl));
+                    return Task.FromResult(0);
+                }
+            };
+
+            using var server = TestServerFactory.Create((ITusStore)store, events);
+            var response = await server.CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "1")
+                .AddHeader("Upload-Metadata", "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh")
+                .OverrideHttpMethodIfNeeded("POST", method)
+                .SendAsync(method);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.Headers.Location.ToString().ShouldBe(randomUrl);
+        }
+
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {

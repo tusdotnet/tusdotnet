@@ -75,6 +75,7 @@ namespace tusdotnet.IntentHandlers
                 ctx.FileConcatenation = null;
                 ctx.Metadata = _metadataFromRequirement;
                 ctx.UploadLength = Request.Headers.UploadLength;
+                ctx.Context = Context;
             });
 
             var isEmptyFile = Request.Headers.UploadLength == 0;
