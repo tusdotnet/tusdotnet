@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
@@ -12,20 +13,27 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
     // Don't do this in production...
     private const string Username = "test";
     private const string Password = "test";
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public BasicAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
-        ISystemClock clock)
+        ISystemClock clock,
+        IHttpContextAccessor httpContextAccessor)
         : base(options, logger, encoder, clock)
     {
+        _httpContextAccessor = httpContextAccessor;
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.ContainsKey("Authorization"))
+        {
+            // Force browser to display login prompt.
+            _httpContextAccessor.HttpContext!.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-net6"));
             return Task.FromResult(AuthenticateResult.NoResult());
+        }
 
         bool isAuthenticated;
         try

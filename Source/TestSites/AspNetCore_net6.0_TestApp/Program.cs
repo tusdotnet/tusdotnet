@@ -26,6 +26,7 @@ AddAuthorization(builder);
 
 var app = builder.Build();
 
+app.UseAuthorization();
 app.UseAuthentication();
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -41,7 +42,18 @@ app.Run();
 
 static void AddAuthorization(WebApplicationBuilder builder)
 {
+    builder.Services.AddHttpContextAccessor();
     builder.Services.Configure<OnAuthorizeOption>(opt => opt.EnableOnAuthorize = (bool)builder.Configuration.GetValue(typeof(bool), "EnableOnAuthorize"));
+    builder.Services.AddAuthorization(configure =>
+    {
+        configure.AddPolicy("BasicAuthentication", configure =>
+        {
+            configure.AddAuthenticationSchemes("BasicAuthentication");
+            configure.RequireAuthenticatedUser();
+        });
+
+        configure.DefaultPolicy = configure.GetPolicy("BasicAuthentication")!;
+    });
     builder.Services.AddAuthentication("BasicAuthentication").AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 }
 
@@ -72,6 +84,10 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
         {
             OnAuthorizeAsync = ctx =>
             {
+                // Note: This event is called even if RequireAuthorization is called on the endpoint.
+                // In that case this event is not required but can be used as fine-grained authorization control.
+                // This event can also be used as a "on request started" event to prefetch data or similar.
+
                 if (!enableAuthorize)
                     return Task.CompletedTask;
 
