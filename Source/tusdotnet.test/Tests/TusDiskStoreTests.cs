@@ -495,7 +495,7 @@ namespace tusdotnet.test.Tests
             // Correct encoding
             metadata["key"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
             // Wrong encoding just to test that the result is different.
-            metadata["key"].GetString(new UTF7Encoding()).ShouldBe("Â¶ÃÄÅ§Ì³");
+            metadata["key"].GetString(new ASCIIEncoding()).ShouldBe("??????????");
             metadata["key"].GetBytes().ShouldBe(new byte[] { 194, 182, 195, 128, 196, 154, 197, 167, 204, 179 });
         }
 
