@@ -1,5 +1,5 @@
 # Framework to use when generating coverage. Must be a "real" framework, i.e. not netstandard.
-$framework = "netcoreapp3.1";
+$framework = "net6.0";
 # The file path passed to coverlet...
 $coverletWantedOutput = "$PSScriptRoot\coverage.xml";
 # ...which will result in the following filename.
