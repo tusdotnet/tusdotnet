@@ -19,42 +19,64 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     kestrel.Limits.MaxRequestBodySize = null;
 });
 
-builder.Services.AddSingleton(CreateTusConfiguration);
+builder.Services.AddSingleton(CreateTusConfigurationForCleanupService());
 builder.Services.AddHostedService<ExpiredFilesCleanupService>();
-
 
 AddAuthorization(builder);
 
 var app = builder.Build();
 
-
+app.UseAuthorization();
 app.UseAuthentication();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseHttpsRedirection();
 
-app.UseTus(httpContext => httpContext.RequestServices.GetRequiredService<DefaultTusConfiguration>());
+// Handle downloads (must be set before MapTus)
 app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
+
+// Setup tusdotnet for the /files/ path.
+app.MapTus("/files/", TusConfigurationFactory);
 
 app.Run();
 
 static void AddAuthorization(WebApplicationBuilder builder)
 {
+    builder.Services.AddHttpContextAccessor();
     builder.Services.Configure<OnAuthorizeOption>(opt => opt.EnableOnAuthorize = (bool)builder.Configuration.GetValue(typeof(bool), "EnableOnAuthorize"));
+    builder.Services.AddAuthorization(configure =>
+    {
+        configure.AddPolicy("BasicAuthentication", configure =>
+        {
+            configure.AddAuthenticationSchemes("BasicAuthentication");
+            configure.RequireAuthenticatedUser();
+        });
+
+        configure.DefaultPolicy = configure.GetPolicy("BasicAuthentication")!;
+    });
     builder.Services.AddAuthentication("BasicAuthentication").AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 }
 
-static DefaultTusConfiguration CreateTusConfiguration(IServiceProvider serviceProvider)
+static DefaultTusConfiguration CreateTusConfigurationForCleanupService()
 {
-    var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<Program>();
+    // Simplified configuration just for the ExpiredFilesCleanupService to show load order of configs.
+    return new DefaultTusConfiguration
+    {
+        Store = new TusDiskStore(@"C:\tusfiles\"),
+        Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+    };
+}
+
+static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpContext)
+{
+    var logger = httpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger<Program>();
 
     // Change the value of EnableOnAuthorize in appsettings.json to enable or disable
     // the new authorization event.
-    var enableAuthorize = serviceProvider.GetRequiredService<IOptions<OnAuthorizeOption>>().Value.EnableOnAuthorize;
+    var enableAuthorize = httpContext.RequestServices.GetRequiredService<IOptions<OnAuthorizeOption>>().Value.EnableOnAuthorize;
 
-    return new DefaultTusConfiguration
+    var config = new DefaultTusConfiguration
     {
-        UrlPath = "/files",
         Store = new TusDiskStore(@"C:\tusfiles\"),
         MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
         UsePipelinesIfAvailable = true,
@@ -62,6 +84,10 @@ static DefaultTusConfiguration CreateTusConfiguration(IServiceProvider servicePr
         {
             OnAuthorizeAsync = ctx =>
             {
+                // Note: This event is called even if RequireAuthorization is called on the endpoint.
+                // In that case this event is not required but can be used as fine-grained authorization control.
+                // This event can also be used as a "on request started" event to prefetch data or similar.
+
                 if (!enableAuthorize)
                     return Task.CompletedTask;
 
@@ -157,4 +183,6 @@ static DefaultTusConfiguration CreateTusConfiguration(IServiceProvider servicePr
         // Sliding expiration will be saved per file on create and updated on each patch/update.
         Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
     };
+
+    return Task.FromResult(config);
 }

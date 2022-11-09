@@ -9,9 +9,11 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            if (context.Request.ContentType?.Equals("application/offset+octet-stream", StringComparison.OrdinalIgnoreCase) != true)
+            var contentType = context.Request.Headers.ContentType;
+
+            if (contentType?.Equals("application/offset+octet-stream", StringComparison.OrdinalIgnoreCase) != true)
             {
-                var errorMessage = $"Content-Type {context.Request.ContentType} is invalid. Must be application/offset+octet-stream";
+                var errorMessage = $"Content-Type {contentType} is invalid. Must be application/offset+octet-stream";
                 return UnsupportedMediaType(errorMessage);
             }
 

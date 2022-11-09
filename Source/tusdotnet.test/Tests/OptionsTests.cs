@@ -61,16 +61,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => _mockTusConfiguration);
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateTusResumableRequest("/files").SendAsync("OPTIONS");
             AssertForwardCall(false);

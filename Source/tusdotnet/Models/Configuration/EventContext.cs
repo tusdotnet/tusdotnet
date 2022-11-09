@@ -60,7 +60,7 @@ namespace tusdotnet.Models.Configuration
 
         internal static TSelf Create(ContextAdapter context, Action<TSelf> configure = null)
         {
-            var fileId = context.Request.FileId;
+            var fileId = context.FileId;
             if (string.IsNullOrEmpty(fileId))
             {
                 fileId = null;

@@ -61,7 +61,7 @@ namespace tusdotnet.Adapters
             {
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
-                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1) > 0;
+                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1, System.Threading.CancellationToken.None) > 0;
 
                 return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
             }
@@ -127,8 +127,9 @@ namespace tusdotnet.Adapters
 
             FileContentIsAvailable = hasData;
 
-            _context = new ContextAdapter
+            _context = new ContextAdapter(creationContext.ConfigUrlPath, creationContext.UrlHelper)
             {
+                FileId = _fileId,
                 CancellationToken = creationContext.CancellationToken,
                 Configuration = creationContext.Configuration,
                 HttpContext = creationContext.HttpContext,
@@ -151,15 +152,12 @@ namespace tusdotnet.Adapters
             };
         }
 
-        private RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
+        private static RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
         {
-            var uriBuilder = new UriBuilder(context.Request.RequestUri);
-            uriBuilder.Path = uriBuilder.Path + "/" + fileId;
-
-            var writeFileRequest = new RequestAdapter(context.Configuration.UrlPath)
+            var writeFileRequest = new RequestAdapter()
             {
                 Method = context.Request.Method,
-                RequestUri = uriBuilder.Uri,
+                RequestUri = context.Request.RequestUri,
                 Headers = context.Request.Headers,
                 Body = preReadByteFromStream.HasValue
                     ? new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByteFromStream.Value)
@@ -170,7 +168,7 @@ namespace tusdotnet.Adapters
             writeFileRequest.BodyReader = context.Request.BodyReader;
 #endif
 
-            writeFileRequest.Headers[HeaderConstants.UploadOffset] = new List<string>(1) { "0" };
+            writeFileRequest.Headers[HeaderConstants.UploadOffset] = "0";
             writeFileRequest.Headers.Remove(HeaderConstants.UploadLength);
 
             return writeFileRequest;

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -100,27 +99,6 @@ namespace tusdotnet.Models
 #endif
 
             AllowedExtensions = TusExtensions.All;
-        }
-
-        /// <summary>
-        /// Check that the config is valid. Throws a <exception cref="TusConfigurationException">TusConfigurationException</exception> if the config is invalid.
-        /// </summary>
-        internal void Validate()
-        {
-            if (Store == null)
-            {
-                throw new TusConfigurationException($"{nameof(Store)} cannot be null.");
-            }
-
-            if (string.IsNullOrWhiteSpace(UrlPath))
-            {
-                throw new TusConfigurationException($"{nameof(UrlPath)} cannot be empty.");
-            }
-
-            if (!Enum.IsDefined(typeof(MetadataParsingStrategy), MetadataParsingStrategy))
-            {
-                throw new TusConfigurationException($"{nameof(MetadataParsingStrategy)} is not a valid value.");
-            }
         }
 
         /// <summary>

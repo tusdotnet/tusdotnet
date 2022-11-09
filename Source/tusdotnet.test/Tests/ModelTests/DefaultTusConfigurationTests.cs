@@ -1,4 +1,5 @@
 ﻿using NSubstitute;
+using tusdotnet.Adapters;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using Xunit;
@@ -15,7 +16,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 UrlPath = "/files"
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(() => config.Validate());
+            var exception = Assert.Throws<TusConfigurationException>(() => MiddlewareConfigurationValidator.Instance.Validate(config));
             Assert.Equal("Store cannot be null.", exception.Message);
         }
 
@@ -31,7 +32,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 UrlPath = urlPath
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(() => config.Validate());
+            var exception = Assert.Throws<TusConfigurationException>(() => MiddlewareConfigurationValidator.Instance.Validate(config));
             Assert.Equal("UrlPath cannot be empty.", exception.Message);
         }
 
@@ -48,7 +49,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 MetadataParsingStrategy = (MetadataParsingStrategy)metadataParsingStrategyAsInt
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(() => config.Validate());
+            var exception = Assert.Throws<TusConfigurationException>(() => MiddlewareConfigurationValidator.Instance.Validate(config));
             Assert.Equal("MetadataParsingStrategy is not a valid value.", exception.Message);
         }
     }

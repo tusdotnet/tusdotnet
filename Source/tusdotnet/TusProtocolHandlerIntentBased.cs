@@ -54,7 +54,7 @@ namespace tusdotnet
                 var hasLock = await fileLock.Lock();
                 if (!hasLock)
                 {
-                    await context.Response.Error(HttpStatusCode.Conflict, $"File {context.Request.FileId} is currently being updated. Please try again later");
+                    await context.Response.Error(HttpStatusCode.Conflict, $"File {context.FileId} is currently being updated. Please try again later");
                     return ResultType.StopExecution;
                 }
             }
@@ -96,7 +96,7 @@ namespace tusdotnet
             if (intentHandler.Intent == IntentType.GetOptions)
                 return ResultType.ContinueExecution;
 
-            var tusResumableHeader = context.Request.GetHeader(HeaderConstants.TusResumable);
+            var tusResumableHeader = context.Request.Headers.TusResumable;
 
             if (tusResumableHeader == HeaderConstants.TusResumableValue)
                 return ResultType.ContinueExecution;

@@ -73,8 +73,8 @@ namespace tusdotnet.IntentHandlers
             var cancellationToken = writeTuple.Item2;
 
             var expires = _expirationHelper.IsSlidingExpiration
-                ? await _expirationHelper.SetExpirationIfSupported(Request.FileId, cancellationToken)
-                : await _expirationHelper.GetExpirationIfSupported(Request.FileId, cancellationToken);
+                ? await _expirationHelper.SetExpirationIfSupported(Context.FileId, cancellationToken)
+                : await _expirationHelper.GetExpirationIfSupported(Context.FileId, cancellationToken);
 
             var matchChecksumResult = await _checksumHelper.MatchChecksum(cancellationToken.IsCancellationRequested);
 
@@ -89,7 +89,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileOffset = Request.UploadOffset;
+            var fileOffset = Request.Headers.UploadOffset;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             Response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
@@ -101,7 +101,7 @@ namespace tusdotnet.IntentHandlers
 
             Response.SetStatus(HttpStatusCode.NoContent);
 
-            if (await FileIsComplete(Request.FileId, fileOffset, bytesWritten))
+            if (await FileIsComplete(Context.FileId, fileOffset, bytesWritten))
             {
                 if (!await IsPartialUpload())
                 {
@@ -119,7 +119,7 @@ namespace tusdotnet.IntentHandlers
             if (isSupported)
             {
                 var pipeReader = await GuardedPipeReaderFactory.Create(Context);
-                bytesWritten = await StoreAdapter.AppendDataAsync(Request.FileId, pipeReader, CancellationToken);
+                bytesWritten = await StoreAdapter.AppendDataAsync(Context.FileId, pipeReader, CancellationToken);
 
                 return new Tuple<long, CancellationToken>(bytesWritten, CancellationToken);
             }
@@ -137,16 +137,16 @@ namespace tusdotnet.IntentHandlers
             var stream = tuple.Item1;
             var cancellationToken = tuple.Item2;
 
-            var bytesWritten = await Store.AppendDataAsync(Request.FileId, stream, cancellationToken);
+            var bytesWritten = await Store.AppendDataAsync(Context.FileId, stream, cancellationToken);
             return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
         }
 
         private Task WriteUploadLengthIfDefered()
         {
-            var uploadLenghtHeader = Request.GetHeader(HeaderConstants.UploadLength);
-            if (uploadLenghtHeader != null && StoreAdapter.Extensions.CreationDeferLength)
+            var uploadLengthHeader = Request.Headers[HeaderConstants.UploadLength];
+            if (uploadLengthHeader != null && StoreAdapter.Extensions.CreationDeferLength)
             {
-                return StoreAdapter.SetUploadLengthAsync(Request.FileId, long.Parse(uploadLenghtHeader), Context.CancellationToken);
+                return StoreAdapter.SetUploadLengthAsync(Context.FileId, long.Parse(uploadLengthHeader), Context.CancellationToken);
             }
 
             return TaskHelper.Completed;
@@ -163,7 +163,7 @@ namespace tusdotnet.IntentHandlers
 
             async Task<bool> IsPartialUploadLocal()
             {
-                var concat = await StoreAdapter.GetUploadConcatAsync(Request.FileId, CancellationToken);
+                var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
 
                 return concat is FileConcatPartial;
             }
@@ -180,7 +180,7 @@ namespace tusdotnet.IntentHandlers
             var contentTypeRequirement = new ContentType();
             var uploadLengthRequirement = new UploadLengthForWriteFile();
             var uploadChecksumRequirement = new UploadChecksum(_checksumHelper);
-            var fileHasExpired = new FileHasNotExpired();
+            var fileHasNotExpired = new FileHasNotExpired();
 
             // Initiated using creation-with-upload meaning that we can guarantee that the file already exist, the offset is correct etc.
             if (_initiatedFromCreationWithUpload)
@@ -190,7 +190,7 @@ namespace tusdotnet.IntentHandlers
                     contentTypeRequirement,
                     uploadLengthRequirement,
                     uploadChecksumRequirement,
-                    fileHasExpired
+                    fileHasNotExpired
                 };
             }
 
@@ -202,7 +202,7 @@ namespace tusdotnet.IntentHandlers
                 new UploadOffset(),
                 new UploadConcatForWriteFile(),
                 uploadChecksumRequirement,
-                fileHasExpired,
+                fileHasNotExpired,
                 new RequestOffsetMatchesFileOffset(),
                 new FileIsNotCompleted()
             };

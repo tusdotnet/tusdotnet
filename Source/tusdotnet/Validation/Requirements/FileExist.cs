@@ -7,7 +7,7 @@ namespace tusdotnet.Validation.Requirements
     {
         public override async Task Validate(ContextAdapter context)
         {
-            var exists = await context.StoreAdapter.FileExistAsync(context.Request.FileId, context.CancellationToken);
+            var exists = await context.StoreAdapter.FileExistAsync(context.FileId, context.CancellationToken);
             if (!exists)
             {
                 await NotFound();

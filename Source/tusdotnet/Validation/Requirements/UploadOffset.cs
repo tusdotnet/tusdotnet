@@ -15,7 +15,7 @@ namespace tusdotnet.Validation.Requirements
                 return BadRequest($"Missing {HeaderConstants.UploadOffset} header");
             }
 
-            if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadOffset].FirstOrDefault(), out long requestOffset))
+            if (!long.TryParse(context.Request.Headers[HeaderConstants.UploadOffset], out long requestOffset))
             {
                 return BadRequest($"Could not parse {HeaderConstants.UploadOffset} header");
             }

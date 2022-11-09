@@ -56,7 +56,7 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            var metadataString = Request.GetHeader(HeaderConstants.UploadMetadata);
+            var metadataString = Request.Headers.UploadMetadata;
 
             string fileId;
             DateTimeOffset? expires = null;
@@ -65,7 +65,7 @@ namespace tusdotnet.IntentHandlers
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
                 ctx.Metadata = _metadataFromRequirement;
-                ctx.UploadLength = Request.UploadLength;
+                ctx.UploadLength = Request.Headers.UploadLength;
                 ctx.FileConcatenation = UploadConcat.Type;
             });
 
@@ -74,7 +74,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            fileId = await HandleCreationOfConcatFiles(Request.UploadLength, metadataString, _metadataFromRequirement);
+            fileId = await HandleCreationOfConcatFiles(Request.Headers.UploadLength, metadataString, _metadataFromRequirement);
 
             if (_isPartialFile)
             {
@@ -113,7 +113,7 @@ namespace tusdotnet.IntentHandlers
 
         private UploadConcat ParseUploadConcatHeader()
         {
-            return new UploadConcat(Request.GetHeader(HeaderConstants.UploadConcat), Context.Configuration.UrlPath);
+            return new UploadConcat(Request.Headers.UploadConcat, Context.ConfigUrlPath);
         }
 
         private async Task<string> HandleCreationOfConcatFiles(long uploadLength, string metadataString, Dictionary<string, Metadata> metadata)
@@ -130,6 +130,7 @@ namespace tusdotnet.IntentHandlers
                     ctx.Metadata = metadata;
                     ctx.UploadLength = uploadLength;
                     ctx.FileConcatenation = UploadConcat.Type;
+                    ctx.Context = Context;
                 });
 
                 await EventHelper.NotifyFileComplete(Context, ctx => ctx.FileId = createdFileId);
@@ -144,6 +145,7 @@ namespace tusdotnet.IntentHandlers
                     ctx.Metadata = metadata;
                     ctx.UploadLength = uploadLength;
                     ctx.FileConcatenation = UploadConcat.Type;
+                    ctx.Context = Context;
                 });
             }
 
@@ -153,7 +155,7 @@ namespace tusdotnet.IntentHandlers
         private void SetResponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
         {
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            Response.SetHeader(HeaderConstants.Location, Context.CreateFileLocation(fileId));
 
             if (expires != null)
             {

@@ -45,7 +45,7 @@ namespace tusdotnet.Helpers
 
             _supportedAlgorithms = new Lazy<Task<List<string>>>(LoadSupportAlgorithms);
 
-            var checksumHeader = _context.Request.GetHeader(HeaderConstants.UploadChecksum);
+            var checksumHeader = _context.Request.Headers.UploadChecksum;
 
             if (checksumHeader != null)
             {
@@ -146,7 +146,7 @@ namespace tusdotnet.Helpers
                 return Ok;
             }
 
-            var result = await _context.StoreAdapter.VerifyChecksumAsync(_context.Request.FileId, _checksum.Algorithm, _checksum.Hash, _context.CancellationToken);
+            var result = await _context.StoreAdapter.VerifyChecksumAsync(_context.FileId, _checksum.Algorithm, _checksum.Hash, _context.CancellationToken);
 
             if (!result)
             {

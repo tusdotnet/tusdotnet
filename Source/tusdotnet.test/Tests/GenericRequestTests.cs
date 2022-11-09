@@ -8,7 +8,6 @@ using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using tusdotnet.test.Data;
 using Xunit;
-using tusdotnet.Models.Configuration;
 #if pipelines
 using tusdotnet.test.Helpers;
 using System;
@@ -30,28 +29,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Requests_Without_The_Tus_Resumable_Header()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = ctx =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(true);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").SendAsync("POST");
             AssertForwardCall(true);
@@ -67,28 +45,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Requests_Where_Method_Is_Not_Supported()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = ctx =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(0);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").AddTusResumableHeader().GetAsync();
             AssertForwardCall(true);
@@ -131,16 +88,7 @@ namespace tusdotnet.test.Tests
         [XHttpMethodOverrideData]
         public async Task Ignores_Request_If_Configuration_Factory_Returns_Null(string httpMethod)
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => default(DefaultTusConfiguration));
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(0);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(null, () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             var request = await server.CreateRequest("/files").AddTusResumableHeader().SendAsync(httpMethod);
             AssertForwardCall(true);

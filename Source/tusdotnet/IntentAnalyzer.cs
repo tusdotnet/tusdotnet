@@ -14,7 +14,7 @@ namespace tusdotnet
 
             if (RequestRequiresTusResumableHeader(httpMethod))
             {
-                if (context.Request.GetHeader(HeaderConstants.TusResumable) == null)
+                if (context.Request.Headers.TusResumable == null)
                 {
                     return IntentHandler.NotApplicable;
                 }
@@ -22,12 +22,12 @@ namespace tusdotnet
 
             if (MethodRequiresFileIdUrl(httpMethod))
             {
-                if (!UrlMatchesFileIdUrl(context.Request.RequestUri, context.Configuration.UrlPath))
+                if (!context.UrlHelper.UrlMatchesFileIdUrl(context))
                 {
                     return IntentHandler.NotApplicable;
                 }
             }
-            else if (!UrlMatchesUrlPath(context.Request.RequestUri, context.Configuration.UrlPath))
+            else if (!context.UrlHelper.UrlMatchesUrlPath(context))
             {
                 return IntentHandler.NotApplicable;
             }
@@ -50,7 +50,7 @@ namespace tusdotnet
         /// <returns>The request method</returns>
         private static string GetHttpMethod(RequestAdapter request)
         {
-            var method = request.GetHeader(HeaderConstants.XHttpMethodOveride);
+            var method = request.Headers.XHttpMethodOveride;
 
             if (string.IsNullOrWhiteSpace(method))
             {
@@ -110,17 +110,6 @@ namespace tusdotnet
         private static bool RequestRequiresTusResumableHeader(string httpMethod)
         {
             return httpMethod != "options";
-        }
-
-        private static bool UrlMatchesUrlPath(Uri requestUri, string configUrlPath)
-        {
-            return requestUri.LocalPath.TrimEnd('/').Equals(configUrlPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool UrlMatchesFileIdUrl(Uri requestUri, string configUrlPath)
-        {
-            return !UrlMatchesUrlPath(requestUri, configUrlPath)
-                   && requestUri.LocalPath.StartsWith(configUrlPath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

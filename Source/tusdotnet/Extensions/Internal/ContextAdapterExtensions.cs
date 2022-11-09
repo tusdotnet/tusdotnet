@@ -18,7 +18,7 @@ namespace tusdotnet.Extensions.Internal
         internal static Task<ITusFileLock> GetFileLock(this ContextAdapter context)
         {
             var lockProvider = GetLockProvider(context);
-            return lockProvider.AquireLock(context.Request.FileId);
+            return lockProvider.AquireLock(context.FileId);
         }
 
 #if trailingheaders
@@ -51,10 +51,10 @@ namespace tusdotnet.Extensions.Internal
         internal static async Task<MaxReadSizeInfo> GetMaxReadSizeInfo(this ContextAdapter context)
         {
             // We can use the upload offset in the request here as this has been verified earlier in the pipeline.
-            var previouslyRead = context.Request.UploadOffset;
+            var previouslyRead = context.Request.Headers.UploadOffset;
             var sizeSource = MaxReadSizeExceededException.SizeSourceType.UploadLength;
 
-            var maxLength = await context.StoreAdapter.GetUploadLengthAsync(context.Request.FileId, context.CancellationToken);
+            var maxLength = await context.StoreAdapter.GetUploadLengthAsync(context.FileId, context.CancellationToken);
             if (maxLength == null)
             {
                 maxLength = context.Configuration.GetMaxAllowedUploadSizeInBytes();

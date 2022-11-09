@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -83,7 +82,7 @@ namespace tusdotnet.test.Tests.ModelTests
 
         private static ContextAdapter GetContext()
         {
-            return new ContextAdapter
+            return new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = CancellationToken.None,
                 Configuration = new DefaultTusConfiguration
@@ -91,10 +90,10 @@ namespace tusdotnet.test.Tests.ModelTests
                     Store = Substitute.For<ITusStore>(),
                     UrlPath = "/files",
                 },
-                Request = new RequestAdapter("/files")
+                Request = new RequestAdapter()
                 {
                     Body = new MemoryStream(),
-                    Headers = new Dictionary<string, List<string>>(),
+                    Headers = new RequestHeaders(),
                     Method = "post",
                     RequestUri = new Uri("https://localhost/files", UriKind.Absolute)
                 }

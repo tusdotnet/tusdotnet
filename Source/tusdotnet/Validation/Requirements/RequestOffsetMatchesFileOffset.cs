@@ -8,8 +8,8 @@ namespace tusdotnet.Validation.Requirements
     {
         public override async Task Validate(ContextAdapter context)
         {
-            var requestOffset = long.Parse(context.Request.GetHeader(HeaderConstants.UploadOffset));
-            var fileOffset = await context.StoreAdapter.GetUploadOffsetAsync(context.Request.FileId, context.CancellationToken);
+            var requestOffset = context.Request.Headers.UploadOffset;
+            var fileOffset = await context.StoreAdapter.GetUploadOffsetAsync(context.FileId, context.CancellationToken);
 
             if (requestOffset != fileOffset)
             {

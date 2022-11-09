@@ -300,9 +300,10 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Requests_Return_404_NotFound_If_Upload_Expires_Header_Has_Expired(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusExpirationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<ITusExpirationStore>();
+            store.WithExistingFile("expirationtestfile", 1, 0);
+
             var expirationStore = (ITusExpirationStore)store;
-            store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             expirationStore.GetExpirationAsync(null, CancellationToken.None)
                 .ReturnsForAnyArgs(DateTimeOffset.UtcNow.AddSeconds(-1));
 
@@ -313,16 +314,18 @@ namespace tusdotnet.test.Tests
                 Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
             });
 
-            foreach (var method in new[] { "PUT", "DELETE", "HEAD" })
+            foreach (var method in new[] { "PATCH", "DELETE", "HEAD" })
             {
                 var response = await server
                     .CreateRequest("/files/expirationtestfile")
                     .And(m => m.AddBody())
                     .AddTusResumableHeader()
+                    .AddHeader("Upload-Offset", "0")
                     .OverrideHttpMethodIfNeeded(method, methodToUse)
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+                await expirationStore.ReceivedWithAnyArgs().GetExpirationAsync(default, default);
             }
         }
 

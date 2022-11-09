@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using tusdotnet.Adapters;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Models.Configuration
@@ -28,5 +30,18 @@ namespace tusdotnet.Models.Configuration
         /// otherwise null.
         /// </summary>
         public FileConcat FileConcatenation { get; set; }
+
+        internal ContextAdapter Context { private get; set; }
+
+        /// <summary>
+        /// Calling this method will replace the default upload url that is provided to the client indicating where to upload the file data.
+        /// Both relative and absolute URLs are supported.
+        /// NOTE: tusdotnet is path based. The file id must the last item in the path (e.g. /files/myfiles/{fileId}).
+        /// </summary>
+        /// <param name="uploadUrl">The upload url to return to the client</param>
+        public void SetUploadUrl(Uri uploadUrl)
+        {
+            Context.UploadUrlOverride = uploadUrl;
+        }
     }
 }

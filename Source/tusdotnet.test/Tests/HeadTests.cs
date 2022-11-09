@@ -5,7 +5,6 @@ using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
-using tusdotnet.Stores;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
@@ -27,28 +26,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = ctx =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("HEAD");
             AssertForwardCall(true);

@@ -187,7 +187,7 @@ namespace tusdotnet.test.Tests
             httpContext.Features.Set(trailersFeature);
             httpContext.Request.Headers.Add("Trailer", Constants.HeaderConstants.UploadChecksum);
 
-            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
@@ -195,16 +195,16 @@ namespace tusdotnet.test.Tests
                     Store = store,
                     UrlPath = "/files",
                 },
-                Request = new RequestAdapter("/files")
+                Request = new RequestAdapter()
                 {
                     Body = new MemoryStream(),
                     RequestUri = new Uri("https://localhost/files/checksum"),
-                    Headers = new Dictionary<string, List<string>>
+                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>
                     {
-                        { Constants.HeaderConstants.TusResumable, new List<string> { Constants.HeaderConstants.TusResumableValue } },
-                        { Constants.HeaderConstants.UploadOffset, new List<string> { "5" } },
-                        { Constants.HeaderConstants.ContentType, new List<string> { "application/offset+octet-stream" } },
-                    },
+                        { Constants.HeaderConstants.TusResumable, Constants.HeaderConstants.TusResumableValue},
+                        { Constants.HeaderConstants.UploadOffset, "5"},
+                        { Constants.HeaderConstants.ContentType, "application/offset+octet-stream"},
+                    }),
                     Method = "PATCH"
                 },
                 Response = new ResponseAdapter
@@ -253,13 +253,28 @@ namespace tusdotnet.test.Tests
                     return next();
                 });
 
-                app.UseTus(_ => new()
+                var config = new DefaultTusConfiguration()
                 {
                     Store = (ITusStore)store,
                     FileLockProvider = new TestServerInMemoryFileLockProvider(),
                     UrlPath = "/files",
                     AllowedExtensions = allowedExtensions ?? TusExtensions.All
+                };
+
+#if NET6_0_OR_GREATER
+
+                app.UseRouting();
+                app.UseEndpoints(e =>
+                {
+                    var urlPath = config.UrlPath;
+                    config.UrlPath = null;
+                    e.MapTus(urlPath, _ => Task.FromResult(config));
                 });
+#else
+
+                app.UseTus(_ => config);
+
+#endif
             });
         }
 

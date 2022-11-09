@@ -28,16 +28,7 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Termination(string methodToUse)
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: false));
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(CreateStore(storeSupportsTermination: false), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server
                 .CreateRequest("/files/testfiledelete")
@@ -45,58 +36,37 @@ namespace tusdotnet.test.Tests
                 .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
                 .SendAsync(methodToUse);
 
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Forwards_Calls_If_Termination_Extension_Is_Disabled(string methodToUse)
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ =>
-                {
-                    var config = GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: false);
-                    config.AllowedExtensions = TusExtensions.All.Except(TusExtensions.Termination);
-                    return config;
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            var store = CreateStore(storeSupportsTermination: false);
+            var extensions = TusExtensions.All.Except(TusExtensions.Termination);
+            using var server = TestServerFactory.CreateWithForwarding(store, () => _onAuthorizeWasCalled = true, () => _callForwarded = true, extensions);
 
             await server
                 .CreateTusResumableRequest("/files/testfiledelete")
                 .OverrideHttpMethodIfNeeded("DELETE", methodToUse)
                 .SendAsync(methodToUse);
 
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task Ignores_Request_If_Url_Does_Not_Match(string methodToUse)
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(request => GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true));
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore, ITusTerminationStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
 
             await server.CreateRequest("/files/testfiledelete").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
-            AssertForwardCall(false);
+            AssertAndResetForwardCall(false);
 
             await server.CreateRequest("/otherfiles/testfiledelete").AddTusResumableHeader().OverrideHttpMethodIfNeeded("DELETE", methodToUse).SendAsync(methodToUse);
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -273,7 +243,22 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task OnAuthorized_Is_Called()
         {
-            using var server = TestServerFactory.Create(GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true));
+            var config = new DefaultTusConfiguration
+            {
+                Store = CreateStore(storeSupportsTermination: true),
+                UrlPath = "/files",
+                Events = new Events
+                {
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        _onAuthorizeWasCalled = true;
+                        _onAuthorizeWasCalledWithIntent = ctx.Intent;
+                        return Task.FromResult(0);
+                    }
+                }
+            };
+
+            using var server = TestServerFactory.Create(config);
 
             var response = await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("DELETE");
 
@@ -285,7 +270,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
-            using var server = TestServerFactory.Create(GetConfigForEmptyStoreWithOnAuthorize(storeSupportsTermination: true).Store, new Events
+            using var server = TestServerFactory.Create(CreateStore(storeSupportsTermination: true), new Events
             {
                 OnAuthorizeAsync = ctx =>
                 {
@@ -300,9 +285,9 @@ namespace tusdotnet.test.Tests
             response.ShouldNotContainHeaders("Tus-Resumable", "Content-Type");
         }
 
-        private DefaultTusConfiguration GetConfigForEmptyStoreWithOnAuthorize(bool storeSupportsTermination)
+        private static ITusStore CreateStore(bool storeSupportsTermination)
         {
-            ITusStore store = null;
+            ITusStore store;
             if (storeSupportsTermination)
             {
                 store = Substitute.For<ITusStore, ITusTerminationStore>();
@@ -312,23 +297,10 @@ namespace tusdotnet.test.Tests
                 store = Substitute.For<ITusStore>();
             }
 
-            return new DefaultTusConfiguration
-            {
-                Store = store,
-                UrlPath = "/files",
-                Events = new Events
-                {
-                    OnAuthorizeAsync = ctx =>
-                    {
-                        _onAuthorizeWasCalled = true;
-                        _onAuthorizeWasCalledWithIntent = ctx.Intent;
-                        return Task.FromResult(0);
-                    }
-                }
-            };
+            return store;
         }
 
-        private void AssertForwardCall(bool expectedCallForwarded)
+        private void AssertAndResetForwardCall(bool expectedCallForwarded)
         {
             _callForwarded.ShouldBe(expectedCallForwarded);
             _onAuthorizeWasCalled.ShouldBe(!expectedCallForwarded);

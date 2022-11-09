@@ -34,13 +34,13 @@ namespace tusdotnet
         {
             var config = await _configFactory(context.Request);
 
-            if(config == null)
+            if (config == null)
             {
                 await Next.Invoke(context);
                 return;
             }
 
-            config.Validate();
+            MiddlewareConfigurationValidator.Instance.Validate(config);
 
             if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(context.Request.Uri, config))
             {
@@ -48,9 +48,9 @@ namespace tusdotnet
                 return;
             }
 
-            var request = new RequestAdapter(config.UrlPath)
+            var request = new RequestAdapter()
             {
-                Headers = context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.ToList(), StringComparer.OrdinalIgnoreCase),
+                Headers = RequestHeaders.FromDictionary(context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.FirstOrDefault(), StringComparer.OrdinalIgnoreCase)),
                 Body = context.Request.Body,
                 Method = context.Request.Method,
                 RequestUri = context.Request.Uri
@@ -63,7 +63,7 @@ namespace tusdotnet
                 SetStatus = status => context.Response.StatusCode = (int)status
             };
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter
+            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
                 Response = response,

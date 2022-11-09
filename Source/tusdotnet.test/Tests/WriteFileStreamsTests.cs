@@ -32,37 +32,16 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.Create(app =>
-            {
-                app.UseTus(_ => new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files",
-                    Events = new Events
-                    {
-                        OnAuthorizeAsync = __ =>
-                        {
-                            _onAuthorizeWasCalled = true;
-                            return Task.FromResult(0);
-                        }
-                    }
-                });
-
-                app.Run(ctx =>
-                {
-                    _callForwarded = true;
-                    return Task.FromResult(true);
-                });
-            });
+            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
 
             await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("PATCH");
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
 
             await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH");
-            AssertForwardCall(false);
+            AssertAndResetForwardCall(false);
 
             await server.CreateRequest("/otherfiles/testfile").AddTusResumableHeader().SendAsync("PATCH");
-            AssertForwardCall(true);
+            AssertAndResetForwardCall(true);
         }
 
         [Fact]
@@ -270,7 +249,7 @@ namespace tusdotnet.test.Tests
                 SetStatus = status => responseStatus = status
             };
 
-            var context = new ContextAdapter
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
@@ -278,14 +257,14 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     Store = store
                 },
-                Request = new RequestAdapter("/files")
+                Request = new RequestAdapter()
                 {
-                    Headers = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
-                        {"Content-Type", new List<string>(1) {"application/offset+octet-stream"}},
-                        {"Tus-Resumable", new List<string>(1) {"1.0.0"}},
-                        {"Upload-Offset", new List<string>(1) {"5"}}
-                    },
+                        {"Content-Type", "application/offset+octet-stream"},
+                        {"Tus-Resumable", "1.0.0"},
+                        {"Upload-Offset", "5"}
+                    }),
                     Method = "PATCH",
                     Body = requestStream,
                     RequestUri = new Uri("https://localhost:8080/files/testfile")
@@ -569,7 +548,7 @@ namespace tusdotnet.test.Tests
             }
         }
 
-        private void AssertForwardCall(bool expectedCallForwarded)
+        private void AssertAndResetForwardCall(bool expectedCallForwarded)
         {
             _callForwarded.ShouldBe(expectedCallForwarded);
             _onAuthorizeWasCalled.ShouldBe(!expectedCallForwarded);

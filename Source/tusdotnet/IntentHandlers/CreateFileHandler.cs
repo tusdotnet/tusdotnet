@@ -55,12 +55,10 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            var metadata = Request.GetHeader(HeaderConstants.UploadMetadata);
-
             var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
             {
                 ctx.Metadata = _metadataFromRequirement;
-                ctx.UploadLength = Request.UploadLength;
+                ctx.UploadLength = Request.Headers.UploadLength;
             });
 
             if (onBeforeCreateResult == ResultType.StopExecution)
@@ -68,17 +66,19 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileId = await Context.StoreAdapter.CreateFileAsync(Request.UploadLength, metadata, CancellationToken);
+            var metadata = Request.Headers.UploadMetadata;
+            var fileId = await Context.StoreAdapter.CreateFileAsync(Request.Headers.UploadLength, metadata, CancellationToken);
 
             await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
             {
                 ctx.FileId = fileId;
                 ctx.FileConcatenation = null;
                 ctx.Metadata = _metadataFromRequirement;
-                ctx.UploadLength = Request.UploadLength;
+                ctx.UploadLength = Request.Headers.UploadLength;
+                ctx.Context = Context;
             });
 
-            var isEmptyFile = Request.UploadLength == 0;
+            var isEmptyFile = Request.Headers.UploadLength == 0;
 
             DateTimeOffset? expires = null;
             long? uploadOffset = null;
@@ -122,7 +122,7 @@ namespace tusdotnet.IntentHandlers
             }
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.Location, $"{Context.Configuration.UrlPath.TrimEnd('/')}/{fileId}");
+            Response.SetHeader(HeaderConstants.Location, Context.CreateFileLocation(fileId));
         }
     }
 }
