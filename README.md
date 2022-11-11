@@ -29,6 +29,42 @@ Visual Studio
 
 ## Configure
 
+On .NET6 and later:
+```csharp
+
+using tusdotnet;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapTus("/files", async httpContext => new()
+{
+    // This method is called on each request so different configurations can be returned per user, domain, path etc.
+    // Return null to disable tusdotnet for the current request.
+
+    // Where to store data?
+    Store = new tusdotnet.Stores.TusDiskStore(@"C:\tusfiles\"),
+    Events = new()
+    {
+        // What to do when file is completely uploaded?
+        OnFileCompleteAsync = async eventContext =>
+        {
+            tusdotnet.Interfaces.ITusFile file = await eventContext.GetFileAsync();
+            Dictionary<string, tusdotnet.Models.Metadata> metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
+            using Stream content = await file.GetContentAsync(eventContext.CancellationToken);
+
+            await DoSomeProcessing(content, metadata);
+        }
+    }
+});
+
+```
+
+ More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
+
+<details>
+<summary><h3>On older frameworks, use the tusdotnet middelware</h3></summary>
+
 Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
 ```csharp
@@ -56,6 +92,7 @@ app.UseTus(httpContext => new DefaultTusConfiguration
 });
 
 ```
+</details>
 
 ## Test sites
 
