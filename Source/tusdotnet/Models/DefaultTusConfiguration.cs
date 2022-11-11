@@ -15,6 +15,7 @@ namespace tusdotnet.Models
         /// <summary>
         /// The url path to listen for uploads on (e.g. "/files").
         /// If the site is located in a subpath (e.g. https://example.org/mysite) it must also be included (e.g. /mysite/files)
+        /// This property is not used when using endpoint routing.
         /// </summary>
         public virtual string UrlPath { get; set; }
 
