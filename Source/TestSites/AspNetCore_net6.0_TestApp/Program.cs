@@ -13,6 +13,12 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
 
+string path = Path.Combine(Environment.CurrentDirectory, "tusfiles");
+if (!File.Exists(path))
+    Directory.CreateDirectory(path);
+
+AppDomain.CurrentDomain.SetData("Path", path);
+
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
@@ -62,7 +68,7 @@ static DefaultTusConfiguration CreateTusConfigurationForCleanupService()
     // Simplified configuration just for the ExpiredFilesCleanupService to show load order of configs.
     return new DefaultTusConfiguration
     {
-        Store = new TusDiskStore(@"C:\tusfiles\"),
+        Store = new TusDiskStore(path),
         Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
     };
 }
@@ -77,7 +83,7 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
 
     var config = new DefaultTusConfiguration
     {
-        Store = new TusDiskStore(@"C:\tusfiles\"),
+        Store = new TusDiskStore(path),
         MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
         UsePipelinesIfAvailable = true,
         Events = new Events
