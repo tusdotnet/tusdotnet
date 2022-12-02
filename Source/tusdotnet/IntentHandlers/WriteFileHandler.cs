@@ -93,9 +93,9 @@ namespace tusdotnet.IntentHandlers
             var newUploadOffset = initialOffset + bytesWritten;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.UploadOffset, initialOffset.ToString());
+            Response.SetHeader(HeaderConstants.UploadOffset, newUploadOffset.ToString());
 
-            Context.Cache.UploadOffset = initialOffset;
+            Context.Cache.UploadOffset = newUploadOffset;
 
             if (expires.HasValue)
             {

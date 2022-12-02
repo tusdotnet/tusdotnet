@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
