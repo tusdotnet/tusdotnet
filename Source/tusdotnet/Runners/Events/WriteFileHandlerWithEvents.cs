@@ -8,9 +8,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class WriteFileWithEvents : IntentHandlerWithEvents
+    internal class WriteFileHandlerWithEvents : IntentHandlerWithEvents
     {
-        public WriteFileWithEvents(IntentHandler intentHandler) : base(intentHandler)
+        public WriteFileHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
         {
         }
 
@@ -25,7 +25,7 @@ namespace tusdotnet.Runners.Events
 
         internal override async Task NotifyAfterAction()
         {
-            var offset = await Context.StoreAdapter.GetUploadOffsetAsync(Context.FileId, CancellationToken.None);
+            var offset = Context.Cache.UploadOffset ?? await Context.StoreAdapter.GetUploadOffsetAsync(Context.FileId, CancellationToken.None);
             var length = await Context.StoreAdapter.GetUploadLengthAsync(Context.FileId, CancellationToken.None);
 
             if (offset != length)

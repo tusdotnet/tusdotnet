@@ -89,10 +89,13 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileOffset = Request.Headers.UploadOffset;
+            var initialOffset = Request.Headers.UploadOffset;
+            var newUploadOffset = initialOffset + bytesWritten;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
+            Response.SetHeader(HeaderConstants.UploadOffset, initialOffset.ToString());
+
+            Context.Cache.UploadOffset = initialOffset;
 
             if (expires.HasValue)
             {

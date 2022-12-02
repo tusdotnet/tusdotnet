@@ -6,9 +6,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class CreateFileWithEvents : IntentHandlerWithEvents
+    internal class CreateFileHandlerWithEvents : IntentHandlerWithEvents
     {
-        public CreateFileWithEvents(IntentHandler handler) : base(handler)
+        public CreateFileHandlerWithEvents(IntentHandler handler) : base(handler)
         {
         }
 

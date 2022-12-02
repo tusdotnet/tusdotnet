@@ -10,5 +10,6 @@ namespace tusdotnet.Adapters
 
         public UploadConcat UploadConcat { get; set; }
 
+        public long? UploadOffset { get; set; }
     }
 }

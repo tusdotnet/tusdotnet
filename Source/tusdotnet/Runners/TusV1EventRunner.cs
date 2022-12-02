@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -11,7 +8,6 @@ using tusdotnet.Extensions.Internal;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
-using tusdotnet.Models.Configuration;
 using tusdotnet.Runners.Events;
 
 namespace tusdotnet
@@ -31,7 +27,7 @@ namespace tusdotnet
 
             foreach (var handlerAndResponse in intentHandlers)
             {
-                var handler = CreateHandlerWithEvents(handlerAndResponse.Item1,;
+                var handler = CreateHandlerWithEvents(handlerAndResponse.Item1);
                 context.Response = handlerAndResponse.Item2;
 
                 if (prev is not null)
@@ -46,8 +42,7 @@ namespace tusdotnet
                 prev = handler.IntentHandler;
             }
 
-            var responsesToMerge = intentsAndResponses.Select(x => new Tuple<IntentHandler, ResponseAdapter>(x.Item1.IntentHandler, x.Item2));
-            context.Response = await IntentAnalyzer.MergeResponses(context, responsesToMerge);
+            context.Response = await IntentAnalyzer.MergeResponses(context, intentHandlers);
 
             return ResultType.StopExecution;
         }
@@ -119,20 +114,18 @@ namespace tusdotnet
             return ResultType.ContinueExecution;
         }
 
-        private static Tuple<IntentHandlerWithEvents, ResponseAdapter> CreateHandlerWithEvents(IntentHandler handler, ContextAdapter context)
+        private static IntentHandlerWithEvents CreateHandlerWithEvents(IntentHandler handler)
         {
-            IntentHandlerWithEvents h = handler switch
+            return handler switch
             {
                 ConcatenateFilesHandler => new ConcatenateFilesHandlerWithEvents(handler),
-                CreateFileHandler => new CreateFileWithEvents(handler),
-                DeleteFileHandler => new DeleteFileWithEvents(handler),
-                GetFileInfoHandler => new GetFileInfoWithEvents(handler),
-                GetOptionsHandler => new GetOptionsWithEvents(handler),
-                WriteFileHandler => new WriteFileWithEvents(handler),
+                CreateFileHandler => new CreateFileHandlerWithEvents(handler),
+                DeleteFileHandler => new DeleteFileHandlerWithEvents(handler),
+                GetFileInfoHandler => new GetFileInfoHandlerWithEvents(handler),
+                GetOptionsHandler => new GetOptionsHandlerWithEvents(handler),
+                WriteFileHandler => new WriteFileHandlerWithEvents(handler),
                 _ => throw new NotImplementedException()
             };
-
-            return new(h, new());
         }
 
         private static async Task<ResultType> VerifyTusVersionIfApplicable(ContextAdapter context, IntentHandlerWithEvents handler)

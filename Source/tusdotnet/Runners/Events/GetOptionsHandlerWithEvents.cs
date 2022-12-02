@@ -6,9 +6,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class GetFileInfoWithEvents : IntentHandlerWithEvents
+    internal class GetOptionsHandlerWithEvents : IntentHandlerWithEvents
     {
-        public GetFileInfoWithEvents(IntentHandler intentHandler) : base(intentHandler)
+        public GetOptionsHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
         {
         }
 
@@ -16,7 +16,7 @@ namespace tusdotnet.Runners.Events
         {
             return await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
             {
-                ctx.Intent = IntentType.GetFileInfo;
+                ctx.Intent = IntentType.GetOptions;
             });
         }
 

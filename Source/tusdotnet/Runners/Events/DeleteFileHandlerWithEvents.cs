@@ -6,9 +6,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class DeleteFileWithEvents : IntentHandlerWithEvents
+    internal class DeleteFileHandlerWithEvents : IntentHandlerWithEvents
     {
-        public DeleteFileWithEvents(IntentHandler intentHandler) : base(intentHandler)
+        public DeleteFileHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
         {
         }
 
