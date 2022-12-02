@@ -100,14 +100,6 @@ namespace tusdotnet.IntentHandlers
             }
 
             Response.SetStatus(HttpStatusCode.NoContent);
-
-            if (await FileIsComplete(Context.FileId, fileOffset, bytesWritten))
-            {
-                if (!await IsPartialUpload())
-                {
-                    await EventHelper.NotifyFileComplete(Context);
-                }
-            }
         }
 
 #if pipelines
@@ -152,28 +144,28 @@ namespace tusdotnet.IntentHandlers
             return TaskHelper.Completed;
         }
 
-        private Task<bool> IsPartialUpload()
-        {
-            if (!StoreAdapter.Extensions.Concatenation)
-            {
-                return Task.FromResult(false);
-            }
+        //private Task<bool> IsPartialUpload()
+        //{
+        //    if (!StoreAdapter.Extensions.Concatenation)
+        //    {
+        //        return Task.FromResult(false);
+        //    }
 
-            return IsPartialUploadLocal();
+        //    return IsPartialUploadLocal();
 
-            async Task<bool> IsPartialUploadLocal()
-            {
-                var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
+        //    async Task<bool> IsPartialUploadLocal()
+        //    {
+        //        var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
 
-                return concat is FileConcatPartial;
-            }
-        }
+        //        return concat is FileConcatPartial;
+        //    }
+        //}
 
-        private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
-        {
-            var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
-            return fileOffset + bytesWritten == fileUploadLength;
-        }
+        //private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
+        //{
+        //    var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
+        //    return fileOffset + bytesWritten == fileUploadLength;
+        //}
 
         private Requirement[] GetListOfRequirements()
         {

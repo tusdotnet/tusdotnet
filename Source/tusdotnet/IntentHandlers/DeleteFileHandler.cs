@@ -2,9 +2,7 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Helpers;
 using tusdotnet.Models;
-using tusdotnet.Models.Configuration;
 using tusdotnet.Validation;
 
 namespace tusdotnet.IntentHandlers
@@ -30,14 +28,7 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            if (await EventHelper.Validate<BeforeDeleteContext>(Context) == ResultType.StopExecution)
-            {
-                return;
-            }
-
             await StoreAdapter.DeleteFileAsync(Context.FileId, CancellationToken);
-
-            await EventHelper.Notify<DeleteCompleteContext>(Context);
 
             Response.SetStatus(HttpStatusCode.NoContent);
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);

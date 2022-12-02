@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Models;
@@ -52,21 +51,40 @@ namespace tusdotnet
             }
 
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, requestUri);
-            var response = DotnetCoreAdapterFactory.CreateResponseAdapter(context);
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
+            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
-                Response = response,
                 Configuration = config,
                 CancellationToken = context.RequestAborted,
                 HttpContext = context
-            });
+            };
+
+            var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
             if (handled == ResultType.ContinueExecution)
             {
                 await _next(context);
             }
+            else
+            {
+                await RespondToClient(contextAdapter.Response, context);
+            }
+        }
+
+        private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
+        {
+            // TODO: Implement support for custom responses by not writing if response has started
+
+            context.Response.StatusCode = (int)response.Status;
+            foreach (var item in response.Headers)
+            {
+                context.Response.Headers[item.Key] = item.Value;
+            }
+
+            response.Body.Seek(0, System.IO.SeekOrigin.Begin);
+            await response.Body.CopyToAsync(context.Response.Body);
+
         }
     }
 }

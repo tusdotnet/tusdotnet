@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net;
+using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Models;
@@ -81,6 +82,8 @@ namespace tusdotnet.IntentHandlers
                 (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.ConfigUrlPath);
                 Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
+
+            Response.SetStatus(HttpStatusCode.OK);
         }
 
         private Task<string> GetMetadata(ContextAdapter context)

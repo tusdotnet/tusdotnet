@@ -28,6 +28,8 @@ namespace tusdotnet.Adapters
 
 #endif
 
+        public ContextCache Cache { get; set; }
+
         private StoreAdapter _storeAdapter;
         public StoreAdapter StoreAdapter
         {
@@ -66,19 +68,17 @@ namespace tusdotnet.Adapters
 
         public IUrlHelper UrlHelper { get; }
 
-        internal Uri UploadUrlOverride { private get; set; }
-
         public ContextAdapter(string configUrlPath, IUrlHelper urlHelper)
         {
             _configUrlPath = configUrlPath;
             UrlHelper = urlHelper;
+
+            Cache = new();
         }
 
         public string CreateFileLocation(string fileId)
         {
-            return UploadUrlOverride != null
-                ? UploadUrlOverride.ToString()
-                : $"{_configUrlPath.TrimEnd('/')}/{fileId}";
+            return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
         }
     }
 }

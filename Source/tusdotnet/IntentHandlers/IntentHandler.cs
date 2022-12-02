@@ -21,11 +21,11 @@ namespace tusdotnet.IntentHandlers
 
         internal abstract Requirement[] Requires { get; }
 
-        protected ContextAdapter Context { get; }
+        internal ContextAdapter Context { get; }
 
-        protected RequestAdapter Request { get; }
+        protected RequestAdapter Request => Context.Request;
 
-        protected ResponseAdapter Response { get; }
+        protected ResponseAdapter Response => Context.Response;
 
         protected CancellationToken CancellationToken { get; }
 
@@ -38,8 +38,6 @@ namespace tusdotnet.IntentHandlers
         protected IntentHandler(ContextAdapter context, IntentType intent, LockType requiresLock)
         {
             Context = context;
-            Request = context.Request;
-            Response = context.Response;
             CancellationToken = context.CancellationToken;
             Store = context.Configuration.Store;
             StoreAdapter = context.StoreAdapter;

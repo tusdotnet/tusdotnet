@@ -423,7 +423,11 @@ namespace tusdotnet.test.Tests
                 }
             });
 
-            var response = await server.CreateTusResumableRequest("/files/").AddHeader("Upload-Length", "0").AddBody().SendAsync("POST");
+            var response = await server
+                .CreateTusResumableRequest("/files/")
+                .AddHeader("Upload-Length", "0")
+                .AddBody()
+                .SendAsync("POST");
 
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
@@ -448,10 +452,12 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
+            var offsetToReturn = 0;
+
             var store = Substitute.For<ITusStore, ITusCreationStore>();
             ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
             store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
-            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
+            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(_ => offsetToReturn).AndDoes(_ => offsetToReturn = bytesInRequestBody);
             store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody); ;
 
             using var server = TestServerFactory.Create(new DefaultTusConfiguration
