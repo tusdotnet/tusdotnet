@@ -27,7 +27,7 @@ namespace tusdotnet
             while (multiIntent.MoveNext() && multiIntent.Current is not null)
             {
                 var handler = CreateHandlerWithEvents(multiIntent.Current);
-                var result = await handler.RunWithEvents(context, multiIntent.Previous is not null);
+                var result = await handler.RunWithEvents(context, swallowExceptionsDuringInvoke: multiIntent.Previous is not null);
                 if (result == ResultType.StopExecution)
                     break;
             }
