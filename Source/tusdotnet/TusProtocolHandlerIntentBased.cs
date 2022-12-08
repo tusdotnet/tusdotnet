@@ -40,7 +40,7 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            if (await VerifyTusVersionIfApplicable(context, intentHandler) == ResultType.StopExecution)
+            if (await intentHandler.VerifyTusVersionIfApplicable(context) == ResultType.StopExecution)
             {
                 return ResultType.StopExecution;
             }
@@ -88,24 +88,6 @@ namespace tusdotnet
         private static Models.Concatenation.FileConcat GetFileConcatenationFromIntentHandler(IntentHandler intentHandler)
         {
             return intentHandler is ConcatenateFilesHandler concatFilesHandler ? concatFilesHandler.UploadConcat.Type : null;
-        }
-
-        private static async Task<ResultType> VerifyTusVersionIfApplicable(ContextAdapter context, IntentHandler intentHandler)
-        {
-            // Options does not require a correct tus resumable header.
-            if (intentHandler.Intent == IntentType.GetOptions)
-                return ResultType.ContinueExecution;
-
-            var tusResumableHeader = context.Request.Headers.TusResumable;
-
-            if (tusResumableHeader == HeaderConstants.TusResumableValue)
-                return ResultType.ContinueExecution;
-
-            context.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            context.Response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
-            await context.Response.Error(HttpStatusCode.PreconditionFailed, $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
-
-            return ResultType.StopExecution;
         }
     }
 }

@@ -17,38 +17,27 @@ namespace tusdotnet
     {
         internal static async Task<ResultType> Invoke(ContextAdapter context)
         {
-            var intentHandlers = await IntentAnalyzer.DetermineIntents(context);
+            var multiIntent = await IntentAnalyzer.DetermineIntents(context);
 
-            if (intentHandlers is null)
+            if (multiIntent is null)
             {
                 return ResultType.ContinueExecution;
             }
 
-            IntentHandler? prev = null;
-
-            foreach (var handlerAndResponse in intentHandlers)
+            while (multiIntent.MoveNext() && multiIntent.Current is not null)
             {
-                var handler = CreateHandlerWithEvents(handlerAndResponse.Item1);
-                context.Response = handlerAndResponse.Item2;
-
-                if (prev is not null)
-                {
-                    IntentAnalyzer.ModifyContextForNextIntent(context, prev, handler.IntentHandler);
-                }
-
-                var singleResult = await RunSingleIntentHandler(context, handler, prev is not null);
-                if (singleResult == ResultType.StopExecution)
+                var handler = CreateHandlerWithEvents(multiIntent.Current);
+                var result = await handler.RunWithEvents(context, multiIntent.Previous is not null);
+                if (result == ResultType.StopExecution)
                     break;
-
-                prev = handler.IntentHandler;
             }
 
-            context.Response = await IntentAnalyzer.MergeResponses(context, intentHandlers);
+            await multiIntent.FinalizeResponse();
 
             return ResultType.StopExecution;
         }
 
-        private static async Task<ResultType> RunSingleIntentHandler(ContextAdapter context, IntentHandlerWithEvents handler, bool swallowExceptionsDuringInvoke)
+        private static async Task<ResultType> RunWithEvents(this IntentHandlerWithEvents handler, ContextAdapter context, bool swallowExceptionsDuringInvoke)
         {
             var onAuhorizeResult = await handler.Authorize();
 
@@ -57,12 +46,12 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            if (await VerifyTusVersionIfApplicable(context, handler) == ResultType.StopExecution)
+            if (await handler.IntentHandler.VerifyTusVersionIfApplicable(context) == ResultType.StopExecution)
             {
                 return ResultType.StopExecution;
             }
 
-            ITusFileLock fileLock = null;
+            ITusFileLock? fileLock = null;
 
             if (handler.IntentHandler.LockType == LockType.RequiresLock)
             {
@@ -127,24 +116,6 @@ namespace tusdotnet
                 WriteFileHandler => new WriteFileHandlerWithEvents(handler),
                 _ => throw new NotImplementedException()
             };
-        }
-
-        private static async Task<ResultType> VerifyTusVersionIfApplicable(ContextAdapter context, IntentHandlerWithEvents handler)
-        {
-            // Options does not require a correct tus resumable header.
-            if (handler.IntentHandler.Intent == IntentType.GetOptions)
-                return ResultType.ContinueExecution;
-
-            var tusResumableHeader = context.Request.Headers.TusResumable;
-
-            if (tusResumableHeader == HeaderConstants.TusResumableValue)
-                return ResultType.ContinueExecution;
-
-            context.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            context.Response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
-            await context.Response.Error(HttpStatusCode.PreconditionFailed, $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
-
-            return ResultType.StopExecution;
         }
     }
 }
