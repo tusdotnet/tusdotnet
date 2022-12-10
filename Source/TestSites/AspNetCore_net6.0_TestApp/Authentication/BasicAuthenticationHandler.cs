@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net.Http.Headers;
@@ -28,11 +29,16 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        var shouldAuthorize = HasAuthorizeAttribute();
+
+        if(!shouldAuthorize)
+            return Task.FromResult(AuthenticateResult.NoResult());
+
         if (!Request.Headers.ContainsKey("Authorization"))
         {
             // Force browser to display login prompt.
             _httpContextAccessor.HttpContext!.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-net6"));
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return Task.FromResult(AuthenticateResult.Fail("No header provided"));
         }
 
         bool isAuthenticated;
@@ -56,6 +62,11 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
             };
 
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
+    }
+
+    private bool HasAuthorizeAttribute()
+    {
+        return Context.GetEndpoint()?.Metadata.Any(x => x is AuthorizeAttribute) == true;
     }
 
     private static bool Authenticate(string username, string password)
