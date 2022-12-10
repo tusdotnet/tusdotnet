@@ -272,7 +272,7 @@ namespace tusdotnet.test.Tests
                 Response = response
             };
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(context);
+            var handled = await TusV1EventRunner.Invoke(context);
 
             handled.ShouldBe(ResultType.StopExecution);
             responseStatus.ShouldBe(HttpStatusCode.OK);

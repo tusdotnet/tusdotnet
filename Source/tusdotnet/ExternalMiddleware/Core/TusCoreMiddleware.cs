@@ -28,48 +28,53 @@ namespace tusdotnet
         /// <summary>
         /// Handles the tus.io request.
         /// </summary>
-        /// <param name="context">The HttpContext</param>
+        /// <param name="httpContext">The HttpContext</param>
         /// <returns></returns>
-        public async Task Invoke(HttpContext context)
+        public async Task Invoke(HttpContext httpContext)
         {
-            var config = await _configFactory(context);
+            var config = await _configFactory(httpContext);
 
             if (config == null)
             {
-                await _next(context);
+                await _next(httpContext);
                 return;
             }
 
             MiddlewareConfigurationValidator.Instance.Validate(config);
 
-            var requestUri = DotnetCoreAdapterFactory.GetRequestUri(context);
+            var requestUri = DotnetCoreAdapterFactory.GetRequestUri(httpContext);
 
-            if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(requestUri, config))
+            if (!RequestIsForTusEndpoint(requestUri, config.UrlPath))
             {
-                await _next(context);
+                await _next(httpContext);
                 return;
             }
 
-            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, requestUri);
+            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(httpContext, requestUri);
 
             var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
                 Configuration = config,
-                CancellationToken = context.RequestAborted,
-                HttpContext = context
+                CancellationToken = httpContext.RequestAborted,
+                HttpContext = httpContext
             };
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
             if (handled == ResultType.ContinueExecution)
             {
-                await _next(context);
+                await _next(httpContext);
             }
             else
             {
-                await RespondToClient(contextAdapter.Response, context);
+                await RespondToClient(contextAdapter.Response, httpContext);
             }
+        }
+
+        private bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
+        {
+            return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
         }
 
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)

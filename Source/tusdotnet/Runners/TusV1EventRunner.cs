@@ -17,7 +17,7 @@ namespace tusdotnet
     {
         internal static async Task<ResultType> Invoke(ContextAdapter context)
         {
-            var multiIntent = await IntentAnalyzer.DetermineIntents(context);
+            var multiIntent = await IntentAnalyzer.DetermineIntent(context);
 
             if (multiIntent is null)
             {

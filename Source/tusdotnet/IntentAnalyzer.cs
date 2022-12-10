@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -9,9 +10,9 @@ namespace tusdotnet
 {
     internal static class IntentAnalyzer
     {
-        internal static async Task<MultiIntentHandler?> DetermineIntents(ContextAdapter context)
+        internal static async Task<MultiIntentHandler?> DetermineIntent(ContextAdapter context)
         {
-            var firstIntent = DetermineIntent(context);
+            var firstIntent = DetermineIntentFromRequest(context);
 
             if (firstIntent == IntentHandler.NotApplicable)
                 return null;
@@ -41,6 +42,7 @@ namespace tusdotnet
                 if (!writeFileContext.FileContentIsAvailable)
                     return null;
 
+                // Only need to replace the body as the body reader already supports buffering.
                 context.Request.Body = writeFileContext.Body;
 
                 return new WriteFileHandler(context, true);
@@ -51,7 +53,7 @@ namespace tusdotnet
             }
         }
 
-        internal static IntentHandler DetermineIntent(ContextAdapter context)
+        private static IntentHandler DetermineIntentFromRequest(ContextAdapter context)
         {
             var httpMethod = GetHttpMethod(context.Request);
 

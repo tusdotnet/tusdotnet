@@ -94,10 +94,7 @@ namespace tusdotnet.test.Tests
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
             checksumStore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(false);
 
-            var responseStatusCode = HttpStatusCode.OK;
-            var responseStream = new MemoryStream();
-
-            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
@@ -119,21 +116,16 @@ namespace tusdotnet.test.Tests
                     }),
                     Method = "PATCH"
                 },
-                Response = new ResponseAdapter
-                {
-                    Body = responseStream,
-                    SetHeader = (_, __) => { },
-                    SetStatus = status => responseStatusCode = status
-                },
                 HttpContext = new DefaultHttpContext()
-            });
+            };
+            await TusV1EventRunner.Invoke(context);
 
             await checksumStore.ReceivedWithAnyArgs().VerifyChecksumAsync(null, null, null, CancellationToken.None);
 
-            responseStatusCode.ShouldBe((HttpStatusCode)460);
+            context.Response.Status.ShouldBe((HttpStatusCode)460);
 
-            responseStream.Seek(0, SeekOrigin.Begin);
-            using var streamReader = new StreamReader(responseStream);
+            context.Response.Body.Seek(0, SeekOrigin.Begin);
+            using var streamReader = new StreamReader(context.Response.Body);
             streamReader.ReadToEnd().ShouldBe("Header Upload-Checksum does not match the checksum of the file");
         }
 

@@ -43,7 +43,7 @@ namespace tusdotnet
 
             MiddlewareConfigurationValidator.Instance.Validate(config);
 
-            if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(context.Request.Uri, config))
+            if (!RequestIsForTusEndpoint(context.Request.Uri, config.UrlPath))
             {
                 await Next.Invoke(context);
                 return;
@@ -75,6 +75,11 @@ namespace tusdotnet
             {
                 await RespondToClient(contextAdapter.Response, context);
             }
+        }
+
+        private bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
+        {
+            return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task RespondToClient(ResponseAdapter response, IOwinContext context)
