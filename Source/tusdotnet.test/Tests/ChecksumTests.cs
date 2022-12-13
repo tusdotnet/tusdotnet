@@ -123,10 +123,7 @@ namespace tusdotnet.test.Tests
             await checksumStore.ReceivedWithAnyArgs().VerifyChecksumAsync(null, null, null, CancellationToken.None);
 
             context.Response.Status.ShouldBe((HttpStatusCode)460);
-
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
-            using var streamReader = new StreamReader(context.Response.Body);
-            streamReader.ReadToEnd().ShouldBe("Header Upload-Checksum does not match the checksum of the file");
+            context.Response.Message.ShouldBe("Header Upload-Checksum does not match the checksum of the file");
         }
 
         [Theory, XHttpMethodOverrideData]

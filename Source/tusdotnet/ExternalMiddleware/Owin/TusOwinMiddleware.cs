@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.Extensions;
 using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
@@ -90,8 +91,11 @@ namespace tusdotnet
                 context.Response.Headers[item.Key] = item.Value;
             }
 
-            response.Body.Seek(0, SeekOrigin.Begin);
-            await response.Body.CopyToAsync(context.Response.Body);
+            if (string.IsNullOrWhiteSpace(response.Message))
+                return;
+
+            context.Response.ContentType = "text/plain";
+            await response.WriteMessageToStream(context.Response.Body);
         }
     }
 }

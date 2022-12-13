@@ -63,9 +63,11 @@ namespace tusdotnet
                 context.Response.Headers[item.Key] = item.Value;
             }
 
-            response.Body.Seek(0, System.IO.SeekOrigin.Begin);
-            await response.Body.CopyToAsync(context.Response.Body);
+            if (string.IsNullOrWhiteSpace(response.Message))
+                return;
 
+            context.Response.ContentType = "text/plain";
+            await response.WriteMessageToStream(context.Response.Body);
         }
 
         private static RequestAdapter CreateRequestAdapter(HttpContext context)

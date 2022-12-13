@@ -46,7 +46,7 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            if (await handler.IntentHandler.VerifyTusVersionIfApplicable(context) == ResultType.StopExecution)
+            if (handler.IntentHandler.VerifyTusVersionIfApplicable(context) == ResultType.StopExecution)
             {
                 return ResultType.StopExecution;
             }
@@ -60,7 +60,7 @@ namespace tusdotnet
                 var hasLock = await fileLock.Lock();
                 if (!hasLock)
                 {
-                    await context.Response.Error(HttpStatusCode.Conflict, $"File {context.FileId} is currently being updated. Please try again later");
+                    context.Response.Error(HttpStatusCode.Conflict, $"File {context.FileId} is currently being updated. Please try again later");
                     return ResultType.StopExecution;
                 }
             }
@@ -84,12 +84,12 @@ namespace tusdotnet
             }
             catch (MaxReadSizeExceededException readSizeException)
             {
-                await context.Response.Error(HttpStatusCode.RequestEntityTooLarge, readSizeException.Message);
+                context.Response.Error(HttpStatusCode.RequestEntityTooLarge, readSizeException.Message);
                 return ResultType.StopExecution;
             }
             catch (TusStoreException storeException)
             {
-                await context.Response.Error(HttpStatusCode.BadRequest, storeException.Message);
+                context.Response.Error(HttpStatusCode.BadRequest, storeException.Message);
                 return ResultType.StopExecution;
             }
             catch (Exception) when (swallowExceptionsDuringInvoke)

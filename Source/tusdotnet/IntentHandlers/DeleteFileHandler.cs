@@ -30,7 +30,7 @@ namespace tusdotnet.IntentHandlers
         {
             await StoreAdapter.DeleteFileAsync(Context.FileId, CancellationToken);
 
-            Response.SetStatus(HttpStatusCode.NoContent);
+            Response.SetResponse(HttpStatusCode.NoContent);
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
         }
     }

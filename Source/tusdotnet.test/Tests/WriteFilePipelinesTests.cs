@@ -243,15 +243,6 @@ namespace tusdotnet.test.Tests
                     return -1L; // Won't reach here so just return something.
                 });
 
-            var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var responseStatus = HttpStatusCode.OK;
-            var response = new ResponseAdapter
-            {
-                Body = new MemoryStream(),
-                SetHeader = (key, value) => responseHeaders[key] = value,
-                SetStatus = status => responseStatus = status
-            };
-
             var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
@@ -272,16 +263,15 @@ namespace tusdotnet.test.Tests
                     Method = "PATCH",
                     BodyReader = bodyReader,
                     RequestUri = new Uri("https://localhost:8080/files/testfile")
-                },
-                Response = response
+                }
             };
 
             var handled = await TusV1EventRunner.Invoke(context);
 
             handled.ShouldBe(ResultType.StopExecution);
-            responseStatus.ShouldBe(HttpStatusCode.OK);
-            responseHeaders.Count.ShouldBe(0);
-            response.Body.Length.ShouldBe(0);
+            context.Response.Status.ShouldBe((HttpStatusCode)0);
+            context.Response.Headers.Count.ShouldBe(0);
+            context.Response.Message.ShouldBeNull();
         }
 
         [Fact]

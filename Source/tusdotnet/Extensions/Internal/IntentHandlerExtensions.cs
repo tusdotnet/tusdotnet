@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.IntentHandlers;
@@ -9,7 +8,7 @@ namespace tusdotnet.Extensions.Internal
 {
     internal static  class IntentHandlerExtensions
     {
-        internal static async Task<ResultType> VerifyTusVersionIfApplicable(this IntentHandler handler, ContextAdapter context)
+        internal static ResultType VerifyTusVersionIfApplicable(this IntentHandler handler, ContextAdapter context)
         {
             // Options does not require a correct tus resumable header.
             if (handler.Intent == IntentType.GetOptions)
@@ -22,7 +21,7 @@ namespace tusdotnet.Extensions.Internal
 
             context.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             context.Response.SetHeader(HeaderConstants.TusVersion, HeaderConstants.TusResumableValue);
-            await context.Response.Error(HttpStatusCode.PreconditionFailed, $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
+            context.Response.Error(HttpStatusCode.PreconditionFailed, $"Tus version {tusResumableHeader} is not supported. Supported versions: {HeaderConstants.TusResumableValue}");
 
             return ResultType.StopExecution;
         }

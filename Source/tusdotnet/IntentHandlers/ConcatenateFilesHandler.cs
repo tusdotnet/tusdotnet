@@ -64,20 +64,13 @@ namespace tusdotnet.IntentHandlers
             if (_isPartialFile)
             {
                 expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
-
-                //    var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
-                //    if (writeFileContext.FileContentIsAvailable)
-                //    {
-                //        uploadOffset = await writeFileContext.SaveFileContent(UploadConcat.Type);
-                //        expires = writeFileContext.UploadExpires;
-                //    }
             }
 
             Context.FileId = fileId;
 
             SetResponseHeaders(fileId, expires, uploadOffset);
 
-            Response.SetStatus(HttpStatusCode.Created);
+            Response.SetResponse(HttpStatusCode.Created);
         }
 
         private Requirement[] BuildListOfRequirements()

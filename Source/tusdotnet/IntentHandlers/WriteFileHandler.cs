@@ -80,7 +80,7 @@ namespace tusdotnet.IntentHandlers
 
             if (matchChecksumResult.IsFailure())
             {
-                await Response.Error(matchChecksumResult.Status, matchChecksumResult.ErrorMessage);
+                Response.Error(matchChecksumResult.Status, matchChecksumResult.ErrorMessage);
                 return;
             }
 
@@ -102,7 +102,7 @@ namespace tusdotnet.IntentHandlers
                 Response.SetHeader(HeaderConstants.UploadExpires, ExpirationHelper.FormatHeader(expires));
             }
 
-            Response.SetStatus(HttpStatusCode.NoContent);
+            Response.SetResponse(HttpStatusCode.NoContent);
         }
 
 #if pipelines

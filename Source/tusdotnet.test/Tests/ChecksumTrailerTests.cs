@@ -220,10 +220,7 @@ namespace tusdotnet.test.Tests
             checksumArgument.ShouldAllBe(b => b == 0);
 
             context.Response.Status.ShouldBe((HttpStatusCode)460);
-
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
-            using var streamReader = new StreamReader(context.Response.Body);
-            streamReader.ReadToEnd().ShouldBe("Header Upload-Checksum does not match the checksum of the file");
+            context.Response.Message.ShouldBe("Header Upload-Checksum does not match the checksum of the file");
         }
 
         private static TestServer CreateTestServerWithChecksumTrailer(ITusChecksumStore store, string trailingUploadChecksumValue, TusExtensions allowedExtensions = null)

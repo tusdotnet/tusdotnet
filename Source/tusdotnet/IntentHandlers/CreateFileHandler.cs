@@ -69,23 +69,12 @@ namespace tusdotnet.IntentHandlers
                 // we need to update the header here to be able to keep track of expiration for this file.
                 expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
             }
-            else
-            {
-                
-
-                //var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
-                //if (writeFileContext.FileContentIsAvailable)
-                //{
-                //    uploadOffset = await writeFileContext.SaveFileContent();
-                //    expires = writeFileContext.UploadExpires;
-                //}
-            }
 
             Context.FileId = fileId;
 
             SetReponseHeaders(fileId, expires, uploadOffset);
 
-            Response.SetStatus(HttpStatusCode.Created);
+            Response.SetResponse(HttpStatusCode.Created);
         }
 
         private void SetReponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)

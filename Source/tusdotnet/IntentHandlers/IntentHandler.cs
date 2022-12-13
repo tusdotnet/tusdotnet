@@ -63,7 +63,7 @@ namespace tusdotnet.IntentHandlers
                 return false;
             }
 
-            await Context.Response.Error(validator.StatusCode, validator.ErrorMessage);
+            Context.Response.Error(validator.StatusCode, validator.ErrorMessage);
             return false;
         }
     }

@@ -83,7 +83,7 @@ namespace tusdotnet.IntentHandlers
                 Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
 
-            Response.SetStatus(HttpStatusCode.OK);
+            Response.SetResponse(HttpStatusCode.OK);
         }
 
         private Task<string> GetMetadata(ContextAdapter context)
