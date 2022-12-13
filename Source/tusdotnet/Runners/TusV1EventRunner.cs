@@ -3,7 +3,6 @@ using System;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Extensions.Internal;
 using tusdotnet.IntentHandlers;
