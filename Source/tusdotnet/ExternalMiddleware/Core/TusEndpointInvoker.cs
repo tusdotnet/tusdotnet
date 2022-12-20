@@ -31,29 +31,48 @@ namespace tusdotnet
             EndpointConfigurationValidator.Instance.Validate(config);
 
             var urlPath = GetUrlPath(context);
-            var (request, response) = CreateRequestAndResponseAdapters(context);
+            var request = CreateRequestAdapter(context);
 
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(urlPath, EndpointUrlHelper.Instance)
+            var contextAdapter = new ContextAdapter(urlPath, EndpointUrlHelper.Instance)
             {
                 Request = request,
-                Response = response,
                 Configuration = config,
                 CancellationToken = context.RequestAborted,
                 HttpContext = context
-            });
+            };
+
+            var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
             if (handled == ResultType.ContinueExecution)
             {
                 context.NotFound();
             }
+            else
+            {
+                await RespondToClient(contextAdapter.Response, context);
+            }
         }
 
-        private static (RequestAdapter Request, ResponseAdapter Response) CreateRequestAndResponseAdapters(HttpContext context)
+        private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
-            var request = DotnetCoreAdapterFactory.CreateRequestAdapter(context, DotnetCoreAdapterFactory.GetRequestUri(context));
-            var response = DotnetCoreAdapterFactory.CreateResponseAdapter(context);
+            // TODO: Implement support for custom responses by not writing if response has started
 
-            return (request, response);
+            context.Response.StatusCode = (int)response.Status;
+            foreach (var item in response.Headers)
+            {
+                context.Response.Headers[item.Key] = item.Value;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.Message))
+                return;
+
+            context.Response.ContentType = "text/plain";
+            await response.WriteMessageToStream(context.Response.Body);
+        }
+
+        private static RequestAdapter CreateRequestAdapter(HttpContext context)
+        {
+            return DotnetCoreAdapterFactory.CreateRequestAdapter(context, DotnetCoreAdapterFactory.GetRequestUri(context));
         }
 
         private static string GetUrlPath(HttpContext httpContext)

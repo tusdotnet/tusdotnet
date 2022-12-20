@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using tusdotnet.Adapters;
+using tusdotnet.Constants;
 using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Models.Configuration
@@ -41,7 +42,7 @@ namespace tusdotnet.Models.Configuration
         /// <param name="uploadUrl">The upload url to return to the client</param>
         public void SetUploadUrl(Uri uploadUrl)
         {
-            Context.UploadUrlOverride = uploadUrl;
+            Context.Response.SetHeader(HeaderConstants.Location, uploadUrl.ToString());
         }
     }
 }

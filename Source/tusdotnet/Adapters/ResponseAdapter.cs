@@ -1,18 +1,35 @@
-﻿using System;
-using System.IO;
+﻿#nullable enable
+using System;
+using System.Collections.Generic;
 using System.Net;
 
 namespace tusdotnet.Adapters
 {
-	/// <summary>
-	/// Response wrapper that handles different pipeline responses.
-	/// </summary>
-	internal sealed class ResponseAdapter
+    /// <summary>
+    /// Response wrapper that handles different pipeline responses.
+    /// </summary>
+    internal class ResponseAdapter
 	{
-		internal Action<HttpStatusCode> SetStatus { get; set; }
+        internal ResponseAdapter()
+        {
+            Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
 
-		internal Stream Body { get; set; }
+        internal void SetResponse(HttpStatusCode status, string? message = null)
+        {
+            Status = status;
+            Message = message;
+        }
 
-		internal Action<string, string> SetHeader { get; set; }
-	}
+        internal void SetHeader(string key, string value)
+        {
+            Headers[key] = value;
+        }
+
+        internal HttpStatusCode Status { get; private set; }
+
+        internal string? Message { get; private set; }
+
+        internal Dictionary<string, string> Headers { get; }
+    }
 }

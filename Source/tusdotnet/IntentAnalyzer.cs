@@ -1,14 +1,59 @@
-﻿using System;
+﻿#nullable enable
+using System;
+using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.IntentHandlers;
-using tusdotnet.Interfaces;
+using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet
 {
     internal static class IntentAnalyzer
     {
-        public static IntentHandler DetermineIntent(ContextAdapter context)
+        internal static async Task<MultiIntentHandler?> DetermineIntent(ContextAdapter context)
+        {
+            var firstIntent = DetermineIntentFromRequest(context);
+
+            if (firstIntent == IntentHandler.NotApplicable)
+                return null;
+
+            // Detect intents for "creation with upload"
+            var secondIntent = await IntentIncludesCreationWithUpload(firstIntent, context);
+
+            if (secondIntent is null)
+                return new(context, firstIntent);
+
+            return new(context, firstIntent, secondIntent);
+        }
+
+        private static async Task<IntentHandler?> IntentIncludesCreationWithUpload(IntentHandler firstIntent, ContextAdapter context)
+        {
+            if (firstIntent is not CreateFileHandler and not ConcatenateFilesHandler)
+                return null;
+
+            // Final files does not support writing.
+            if (firstIntent is ConcatenateFilesHandler concatenateFilesHandler && concatenateFilesHandler.UploadConcat.Type is FileConcatFinal)
+                return null;
+
+            try
+            {
+
+                var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(context);
+                if (!writeFileContext.FileContentIsAvailable)
+                    return null;
+
+                // Only need to replace the body as the body reader already supports buffering.
+                context.Request.Body = writeFileContext.Body;
+
+                return new WriteFileHandler(context, true);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static IntentHandler DetermineIntentFromRequest(ContextAdapter context)
         {
             var httpMethod = GetHttpMethod(context.Request);
 

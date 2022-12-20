@@ -2,9 +2,11 @@
 
 using Microsoft.Owin;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
+using tusdotnet.Extensions;
 using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
@@ -42,7 +44,7 @@ namespace tusdotnet
 
             MiddlewareConfigurationValidator.Instance.Validate(config);
 
-            if (!TusProtocolHandlerIntentBased.RequestIsForTusEndpoint(context.Request.Uri, config))
+            if (!RequestIsForTusEndpoint(context.Request.Uri, config.UrlPath))
             {
                 await Next.Invoke(context);
                 return;
@@ -56,26 +58,44 @@ namespace tusdotnet
                 RequestUri = context.Request.Uri
             };
 
-            var response = new ResponseAdapter
-            {
-                Body = context.Response.Body,
-                SetHeader = (key, value) => context.Response.Headers[key] = value,
-                SetStatus = status => context.Response.StatusCode = (int)status
-            };
-
-            var handled = await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
+            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
-                Response = response,
                 Configuration = config,
                 CancellationToken = context.Request.CallCancelled,
                 OwinContext = context
-            });
+            };
+
+            var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
             if (handled == ResultType.ContinueExecution)
             {
                 await Next.Invoke(context);
             }
+            else
+            {
+                await RespondToClient(contextAdapter.Response, context);
+            }
+        }
+
+        private bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
+        {
+            return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task RespondToClient(ResponseAdapter response, IOwinContext context)
+        {
+            context.Response.StatusCode = (int)response.Status;
+            foreach (var item in response.Headers)
+            {
+                context.Response.Headers[item.Key] = item.Value;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.Message))
+                return;
+
+            context.Response.ContentType = "text/plain";
+            await response.WriteMessageToStream(context.Response.Body);
         }
     }
 }

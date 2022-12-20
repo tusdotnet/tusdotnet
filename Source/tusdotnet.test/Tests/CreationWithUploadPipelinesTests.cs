@@ -454,10 +454,12 @@ namespace tusdotnet.test.Tests
             // New event handler
             var onFileCompleteAsyncCallbackCounts = 0;
 
+            var offsetToReturn = 0;
+
             ITusStore store = Substitute.For<ITusStore, ITusCreationStore>();
             ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
             store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
-            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
+            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(_ => offsetToReturn).AndDoes(_ => offsetToReturn = bytesInRequestBody);
             store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody);
 
             using var server = TestServerFactory.Create(new DefaultTusConfiguration

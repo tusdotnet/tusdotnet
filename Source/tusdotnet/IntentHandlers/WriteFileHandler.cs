@@ -80,7 +80,7 @@ namespace tusdotnet.IntentHandlers
 
             if (matchChecksumResult.IsFailure())
             {
-                await Response.Error(matchChecksumResult.Status, matchChecksumResult.ErrorMessage);
+                Response.Error(matchChecksumResult.Status, matchChecksumResult.ErrorMessage);
                 return;
             }
 
@@ -89,25 +89,20 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            var fileOffset = Request.Headers.UploadOffset;
+            var initialOffset = Request.Headers.UploadOffset;
+            var newUploadOffset = initialOffset + bytesWritten;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
-            Response.SetHeader(HeaderConstants.UploadOffset, (fileOffset + bytesWritten).ToString());
+            Response.SetHeader(HeaderConstants.UploadOffset, newUploadOffset.ToString());
+
+            Context.Cache.UploadOffset = newUploadOffset;
 
             if (expires.HasValue)
             {
                 Response.SetHeader(HeaderConstants.UploadExpires, ExpirationHelper.FormatHeader(expires));
             }
 
-            Response.SetStatus(HttpStatusCode.NoContent);
-
-            if (await FileIsComplete(Context.FileId, fileOffset, bytesWritten))
-            {
-                if (!await IsPartialUpload())
-                {
-                    await EventHelper.NotifyFileComplete(Context);
-                }
-            }
+            Response.SetResponse(HttpStatusCode.NoContent);
         }
 
 #if pipelines
@@ -152,28 +147,28 @@ namespace tusdotnet.IntentHandlers
             return TaskHelper.Completed;
         }
 
-        private Task<bool> IsPartialUpload()
-        {
-            if (!StoreAdapter.Extensions.Concatenation)
-            {
-                return Task.FromResult(false);
-            }
+        //private Task<bool> IsPartialUpload()
+        //{
+        //    if (!StoreAdapter.Extensions.Concatenation)
+        //    {
+        //        return Task.FromResult(false);
+        //    }
 
-            return IsPartialUploadLocal();
+        //    return IsPartialUploadLocal();
 
-            async Task<bool> IsPartialUploadLocal()
-            {
-                var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
+        //    async Task<bool> IsPartialUploadLocal()
+        //    {
+        //        var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
 
-                return concat is FileConcatPartial;
-            }
-        }
+        //        return concat is FileConcatPartial;
+        //    }
+        //}
 
-        private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
-        {
-            var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
-            return fileOffset + bytesWritten == fileUploadLength;
-        }
+        //private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
+        //{
+        //    var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
+        //    return fileOffset + bytesWritten == fileUploadLength;
+        //}
 
         private Requirement[] GetListOfRequirements()
         {

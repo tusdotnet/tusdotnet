@@ -40,12 +40,10 @@ namespace tusdotnet.IntentHandlers
         internal override Requirement[] Requires => new Requirement[]
         {
             new UploadLengthForCreateFileAndConcatenateFiles(),
-            new UploadMetadata(metadata => _metadataFromRequirement = metadata)
+            new UploadMetadata(metadata => Context.Cache.Metadata = metadata)
         };
 
         private readonly ExpirationHelper _expirationHelper;
-
-        private Dictionary<string, Metadata> _metadataFromRequirement;
 
         public CreateFileHandler(ContextAdapter context)
             : base(context, IntentType.CreateFile, LockType.NoLock)
@@ -55,58 +53,28 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            var onBeforeCreateResult = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
-            {
-                ctx.Metadata = _metadataFromRequirement;
-                ctx.UploadLength = Request.Headers.UploadLength;
-            });
-
-            if (onBeforeCreateResult == ResultType.StopExecution)
-            {
-                return;
-            }
-
             var metadata = Request.Headers.UploadMetadata;
             var fileId = await Context.StoreAdapter.CreateFileAsync(Request.Headers.UploadLength, metadata, CancellationToken);
 
-            await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
-            {
-                ctx.FileId = fileId;
-                ctx.FileConcatenation = null;
-                ctx.Metadata = _metadataFromRequirement;
-                ctx.UploadLength = Request.Headers.UploadLength;
-                ctx.Context = Context;
-            });
-
-            var isEmptyFile = Request.Headers.UploadLength == 0;
-
+            
             DateTimeOffset? expires = null;
             long? uploadOffset = null;
 
+            var isEmptyFile = Context.Request.Headers.UploadLength == 0;
+
             // If the file is empty there is no need to save any data.
-            if (isEmptyFile)
-            {
-                // Normally we would call NotifyFileComplete from WriteFileHandler but since we never use 
-                // WriteFileContextForCreationWithUpload if the file is empty, nor allow PATCH requests for the file, we need to trigger the event here. 
-                await EventHelper.NotifyFileComplete(Context, ctx => ctx.FileId = fileId);
-            }
-            else
+            if (!isEmptyFile)
             {
                 // Expiration is only used when patching files so if the file is not empty and we did not have any data in the current request body,
                 // we need to update the header here to be able to keep track of expiration for this file.
                 expires = await _expirationHelper.SetExpirationIfSupported(fileId, CancellationToken);
-
-                var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(Context, fileId);
-                if (writeFileContext.FileContentIsAvailable)
-                {
-                    uploadOffset = await writeFileContext.SaveFileContent();
-                    expires = writeFileContext.UploadExpires;
-                }
             }
+
+            Context.FileId = fileId;
 
             SetReponseHeaders(fileId, expires, uploadOffset);
 
-            Response.SetStatus(HttpStatusCode.Created);
+            Response.SetResponse(HttpStatusCode.Created);
         }
 
         private void SetReponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)

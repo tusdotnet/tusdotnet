@@ -28,7 +28,7 @@ namespace tusdotnet.Helpers
                 {
                     includeTusResumableHeaderInResponse = false;
                 }
-                await context.Response.Error(eventContext.StatusCode, eventContext.ErrorMessage, includeTusResumableHeaderInResponse);
+                context.Response.Error(eventContext.StatusCode, eventContext.ErrorMessage, includeTusResumableHeaderInResponse);
                 return ResultType.StopExecution;
             }
 

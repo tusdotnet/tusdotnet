@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using tusdotnet.Adapters;
 
 namespace tusdotnet
@@ -27,16 +28,6 @@ namespace tusdotnet
         internal static Uri GetRequestUri(HttpContext context)
         {
             return new Uri($"{context.Request.Scheme}://{context.Request.Host}{context.Request.PathBase}{context.Request.Path}");
-        }
-
-        internal static ResponseAdapter CreateResponseAdapter(HttpContext context)
-        {
-            return new ResponseAdapter
-            {
-                Body = context.Response.Body,
-                SetHeader = (key, value) => context.Response.Headers[key] = value,
-                SetStatus = status => context.Response.StatusCode = (int)status
-            };
         }
     }
 }

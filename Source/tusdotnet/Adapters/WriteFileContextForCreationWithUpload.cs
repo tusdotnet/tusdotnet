@@ -14,22 +14,18 @@ namespace tusdotnet.Adapters
 {
     internal sealed class WriteFileContextForCreationWithUpload
     {
-        internal DateTimeOffset? UploadExpires => GetUploadExpires();
-
         internal bool FileContentIsAvailable { get; }
 
-        private readonly ContextAdapter _context;
-
-        private readonly Dictionary<string, string> _responseHeaders;
-
-        private readonly Stream _responseStream;
-        private readonly string _fileId;
+        internal Stream Body { get; }
 
 #if pipelines
-        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
+        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext)
         {
             if (!creationContext.StoreAdapter.Extensions.CreationWithUpload)
-                return new WriteFileContextForCreationWithUpload(creationContext, fileId, false, null);
+                return new WriteFileContextForCreationWithUpload(creationContext, false, null);
+
+            if (creationContext.Request.Headers.UploadLength == 0)
+                return new WriteFileContextForCreationWithUpload(creationContext, false, null);
 
             if (creationContext.Configuration.UsePipelinesIfAvailable)
             {
@@ -55,153 +51,42 @@ namespace tusdotnet.Adapters
                 }
 
                 // No need to add the extra byte as the pipe reader already contains the buffered input.
-                return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, null);
+                return new WriteFileContextForCreationWithUpload(creationContext, hasData, null);
             }
             else
             {
+                // TODO: Grab the array from the array pool instead of creating it.
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
                 var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1, System.Threading.CancellationToken.None) > 0;
 
-                return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
+                return new WriteFileContextForCreationWithUpload(creationContext, hasData, buffer[0]);
             }
         }
 
 #else
-        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext, string fileId)
+        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext)
         {
             if (!creationContext.StoreAdapter.Extensions.CreationWithUpload)
-                return new WriteFileContextForCreationWithUpload(creationContext, fileId, false, null);
+                return new WriteFileContextForCreationWithUpload(creationContext, false, null);
+
+            if (creationContext.Request.Headers.UploadLength == 0)
+                return new WriteFileContextForCreationWithUpload(creationContext, false, null);
 
             // Check if there is any file content available in the request.
             var buffer = new byte[1];
             var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1) > 0;
 
-            return new WriteFileContextForCreationWithUpload(creationContext, fileId, hasData, buffer[0]);
+            return new WriteFileContextForCreationWithUpload(creationContext, hasData, buffer[0]);
         }
 #endif
 
-        /// <summary>
-        /// Creates an internal WriteFile request and runs it. Returns the Upload-Offset for the file or 0 if something failed.
-        /// The <c>UploadExpires</c> property is also updated if sliding expiration is used.
-        /// </summary>
-        /// <param name="fileConcat">Null for regular files or FileConcatPartial if the file is a partial file</param>
-        /// <returns>The Upload-Offset for the file or 0 if something failed.</returns>
-        internal async Task<long> SaveFileContent(FileConcat fileConcat = null)
+        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, bool hasData, byte? preReadByteFromStream)
         {
-            var authResponse = await EventHelper.Validate<AuthorizeContext>(_context, ctx =>
-            {
-                ctx.Intent = IntentType.WriteFile;
-                ctx.FileConcatenation = fileConcat;
-            });
-
-            if (authResponse == ResultType.StopExecution)
-            {
-                return 0;
-            }
-
-            var writeFileHandler = new WriteFileHandler(_context, initiatedFromCreationWithUpload: true);
-
-            if (!await writeFileHandler.Validate())
-            {
-                return 0;
-            }
-
-            try
-            {
-                await writeFileHandler.Invoke();
-            }
-            catch
-            {
-                // Left blank
-            }
-
-            return GetUploadOffset() ?? (await _context.StoreAdapter.GetUploadOffsetAsync(_fileId, _context.CancellationToken));
-        }
-
-        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, string fileId, bool hasData, byte? preReadByteFromStream)
-        {
-            _responseHeaders = new Dictionary<string, string>();
-            _responseStream = new MemoryStream();
-            _fileId = fileId;
-
             FileContentIsAvailable = hasData;
-
-            _context = new ContextAdapter(creationContext.ConfigUrlPath, creationContext.UrlHelper)
-            {
-                FileId = _fileId,
-                CancellationToken = creationContext.CancellationToken,
-                Configuration = creationContext.Configuration,
-                HttpContext = creationContext.HttpContext,
-                Request = CreateWriteFileRequest(creationContext, fileId, preReadByteFromStream),
-                Response = CreateWriteFileResponse(),
-                StoreAdapter = creationContext.StoreAdapter,
-#if netfull
-                OwinContext = creationContext.OwinContext
-#endif
-            };
-        }
-
-        private ResponseAdapter CreateWriteFileResponse()
-        {
-            return new ResponseAdapter
-            {
-                Body = _responseStream,
-                SetHeader = (key, value) => _responseHeaders[key] = value,
-                SetStatus = _ => { }
-            };
-        }
-
-        private static RequestAdapter CreateWriteFileRequest(ContextAdapter context, string fileId, byte? preReadByteFromStream = null)
-        {
-            var writeFileRequest = new RequestAdapter()
-            {
-                Method = context.Request.Method,
-                RequestUri = context.Request.RequestUri,
-                Headers = context.Request.Headers,
-                Body = preReadByteFromStream.HasValue
-                    ? new ReadOnlyStreamWithPreReadByte(context.Request.Body, preReadByteFromStream.Value)
-                    : context.Request.Body
-            };
-
-#if pipelines
-            writeFileRequest.BodyReader = context.Request.BodyReader;
-#endif
-
-            writeFileRequest.Headers[HeaderConstants.UploadOffset] = "0";
-            writeFileRequest.Headers.Remove(HeaderConstants.UploadLength);
-
-            return writeFileRequest;
-        }
-
-        private long? GetUploadOffset()
-        {
-            if (!_responseHeaders.TryGetValue(HeaderConstants.UploadOffset, out var uploadOffset))
-            {
-                return null;
-            }
-
-            if (long.TryParse(uploadOffset, out var i))
-            {
-                return i;
-            }
-
-            return null;
-        }
-
-        private DateTimeOffset? GetUploadExpires()
-        {
-            if (!_responseHeaders.TryGetValue(HeaderConstants.UploadExpires, out var uploadExpires))
-            {
-                return null;
-            }
-
-            if (DateTimeOffset.TryParseExact(uploadExpires, "R", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
-            {
-                return d;
-            }
-
-            return null;
+            Body = preReadByteFromStream.HasValue
+                    ? new ReadOnlyStreamWithPreReadByte(creationContext.Request.Body, preReadByteFromStream.Value)
+                    : creationContext.Request.Body;
         }
     }
 }

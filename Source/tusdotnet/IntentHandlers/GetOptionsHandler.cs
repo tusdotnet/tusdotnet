@@ -49,7 +49,7 @@ namespace tusdotnet.IntentHandlers
                 response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
             }
 
-            response.SetStatus(HttpStatusCode.NoContent);
+            response.SetResponse(HttpStatusCode.NoContent);
         }
     }
 }

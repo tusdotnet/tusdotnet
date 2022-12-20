@@ -177,9 +177,6 @@ namespace tusdotnet.test.Tests
             var store = CreateStore<ITusStore>(verifyChecksumAsyncReturnValue: false);
             store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5).AndDoes(_ => cts.Cancel());
 
-            var responseStatusCode = HttpStatusCode.OK;
-            var responseStream = new MemoryStream();
-
             var httpContext = new DefaultHttpContext();
             var trailersFeature = Substitute.For<IHttpRequestTrailersFeature>();
             trailersFeature.Available.ReturnsForAnyArgs(false);
@@ -187,7 +184,7 @@ namespace tusdotnet.test.Tests
             httpContext.Features.Set(trailersFeature);
             httpContext.Request.Headers.Add("Trailer", Constants.HeaderConstants.UploadChecksum);
 
-            await TusProtocolHandlerIntentBased.Invoke(new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
@@ -207,14 +204,10 @@ namespace tusdotnet.test.Tests
                     }),
                     Method = "PATCH"
                 },
-                Response = new ResponseAdapter
-                {
-                    Body = responseStream,
-                    SetHeader = (_, __) => { },
-                    SetStatus = status => responseStatusCode = status
-                },
                 HttpContext = httpContext
-            });
+            };
+
+            await TusV1EventRunner.Invoke(context);
 
             await store.Received().AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>());
 
@@ -226,11 +219,8 @@ namespace tusdotnet.test.Tests
             checksumArgument.Length.ShouldBe(20);
             checksumArgument.ShouldAllBe(b => b == 0);
 
-            responseStatusCode.ShouldBe((HttpStatusCode)460);
-
-            responseStream.Seek(0, SeekOrigin.Begin);
-            using var streamReader = new StreamReader(responseStream);
-            streamReader.ReadToEnd().ShouldBe("Header Upload-Checksum does not match the checksum of the file");
+            context.Response.Status.ShouldBe((HttpStatusCode)460);
+            context.Response.Message.ShouldBe("Header Upload-Checksum does not match the checksum of the file");
         }
 
         private static TestServer CreateTestServerWithChecksumTrailer(ITusChecksumStore store, string trailingUploadChecksumValue, TusExtensions allowedExtensions = null)

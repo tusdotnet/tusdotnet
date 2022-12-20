@@ -235,14 +235,19 @@ namespace tusdotnet.test.Tests
         public async Task Multiple_Patch_Requests_Can_Be_Sent_Before_Including_UploadLength()
         {
             var fileId = Guid.NewGuid().ToString();
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
-            store
-                .WithExistingFile(fileId, null)
-                .WithAppendDataCallback(fileId, _ => Task.FromResult(1L)); // Each request writes one byte.
-
             // Update upload offset and upload length when set.
             var uploadOffset = 0;
             long? uploadLength = null;
+
+            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+            store
+                .WithExistingFile(fileId, null)
+                .WithAppendDataCallback(fileId, _ =>
+                {
+                    uploadOffset++;
+                    return Task.FromResult(1L);
+                }); // Each request writes one byte.
+
             store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadOffset);
             store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadLength);
             ((ITusCreationDeferLengthStore)store)
@@ -271,7 +276,6 @@ namespace tusdotnet.test.Tests
 
                 var response = await request.SendAsync("PATCH");
                 response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                uploadOffset++;
             }
 
             // Event should not have been called as we do not know the completed length yet
