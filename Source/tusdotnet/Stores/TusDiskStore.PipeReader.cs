@@ -76,8 +76,13 @@ namespace tusdotnet.Stores
             catch (Exception)
             {
                 // Clear memory and complete the reader to not cause a Microsoft.AspNetCore.Connections.ConnectionAbortedException inside Kestrel later on as this is an "expected" exception.
-                reader.AdvanceTo(result.Buffer.End);
-                await reader.CompleteAsync();
+                try
+                {
+                    reader.AdvanceTo(result.Buffer.End);
+                    await reader.CompleteAsync();
+                }
+                catch { /* Ignore if we cannot complete the reader so that the real exception will propagate. */ }
+
                 throw;
             }
 
