@@ -24,7 +24,7 @@ namespace tusdotnet.Runners.TusV1Process
             };
         }
 
-        internal override void CopySpecificsToResponse(ContextAdapter commonContext)
+        internal override void CopySpecificsToCommonContext(ContextAdapter commonContext)
         {
             commonContext.Response.SetHeader(HeaderConstants.Location, Location.ToString());
 

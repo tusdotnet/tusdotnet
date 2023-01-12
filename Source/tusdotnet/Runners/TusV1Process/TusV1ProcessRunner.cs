@@ -2,12 +2,9 @@
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Pipelines;
-using System.Net;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Models;
@@ -16,6 +13,7 @@ namespace tusdotnet.Runners.TusV1Process
 {
     public class TusV1ProcessRunner
     {
+        // TODO: Check if we need to add an abstraction over checksum trailers or if it's good enough to hack it with the http context accessor.
         // TODO: Do not use this config but rather individual parts that we need (store, lock provider etc)
         private readonly Func<HttpContext, Task<DefaultTusConfiguration>> _config;
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -70,7 +68,6 @@ namespace tusdotnet.Runners.TusV1Process
         private async Task<DefaultTusConfiguration> GetConfig()
         {
             var conf = await _config(_httpContextAccessor.HttpContext);
-            conf.AllowedExtensions = TusExtensions.All.Except(TusExtensions.ChecksumTrailer);
             return conf;
         }
 
@@ -82,6 +79,21 @@ namespace tusdotnet.Runners.TusV1Process
             await new DeleteFileHandler(context).Invoke();
 
             var response = DeleteFileResponse.FromContextAdapter(context);
+
+            return response;
+        }
+
+        internal async Task<ServerOptionsResponse> GetServerOptions(ServerOptionsRequest request)
+        {
+            var config = await GetConfig();
+            var context = request.ToContextAdapter(config);
+
+            await new GetOptionsHandler(context).Invoke();
+
+            var response = ServerOptionsResponse.FromContextAdapter(context);
+
+            // Hack as we don't yet have a http context when running write file resulting in no trailing headers existing.
+            response.Extensions = new List<string>(response.Extensions).SkipWhile(x => x == ExtensionConstants.ChecksumTrailer).ToList();
 
             return response;
         }

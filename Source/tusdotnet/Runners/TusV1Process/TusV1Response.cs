@@ -17,10 +17,10 @@ namespace tusdotnet.Runners.TusV1Process
             commonContext.Response.SetResponse(StatusCode, ErrorMessage);
             commonContext.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
 
-            CopySpecificsToResponse(commonContext);
+            CopySpecificsToCommonContext(commonContext);
         }
 
-        internal abstract void CopySpecificsToResponse(ContextAdapter commonContext);
+        internal abstract void CopySpecificsToCommonContext(ContextAdapter commonContext);
     }
 }
 

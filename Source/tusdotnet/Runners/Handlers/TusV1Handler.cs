@@ -46,6 +46,11 @@ namespace tusdotnet.Runners.Handlers
         {
             return _process.DeleteFile(request);
         }
+
+        public virtual Task<ServerOptionsResponse> GetServerOptions(ServerOptionsRequest request)
+        {
+            return _process.GetServerOptions(request);
+        }
     }
 }
 

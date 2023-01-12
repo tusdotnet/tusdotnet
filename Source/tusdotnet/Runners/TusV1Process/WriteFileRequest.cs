@@ -1,12 +1,10 @@
 ﻿#if NET6_0_OR_GREATER
-using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
-using System.Net;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Models;
-using tusdotnet.Runners;
 
 namespace tusdotnet.Runners.TusV1Process
 {
@@ -18,29 +16,24 @@ namespace tusdotnet.Runners.TusV1Process
 
         public long UploadOffset { get; set; }
 
+
+        public string Checksum { get; set; }
+
         public Stream Body { get; set; }
 
         public PipeReader BodyReader { get; set; }
 
         internal ContextAdapter ToContextAdapter(DefaultTusConfiguration config)
         {
-            var adapter = new ContextAdapter("/", EndpointUrlHelper.Instance)
+            var headers = new Dictionary<string, string>
             {
-                Request = new()
-                {
-                    Body = Body,
-                    BodyReader = BodyReader,
-                    Method = "patch",
-                    RequestUri = new Uri("/" + FileId, UriKind.Relative),
-                    Headers = RequestHeaders.FromDictionary(new())
-                },
-                Response = new(),
-                Configuration = config,
-                FileId = FileId,
-                CancellationToken = CancellationToken
+                { HeaderConstants.UploadOffset, UploadOffset.ToString() },
+                { HeaderConstants.UploadChecksum, Checksum },
             };
 
-            adapter.Request.Headers[HeaderConstants.UploadOffset] = UploadOffset.ToString();
+            var adapter = ToContextAdapter("patch", config, headers, fileId: FileId);
+            adapter.Request.Body = Body;
+            adapter.Request.BodyReader = BodyReader;
 
             return adapter;
         }
@@ -54,7 +47,8 @@ namespace tusdotnet.Runners.TusV1Process
                 Body = context.Request.Body,
                 BodyReader = context.Request.BodyReader,
                 UploadOffset = context.Request.Headers.UploadOffset,
-                CancellationToken = context.CancellationToken
+                CancellationToken = context.CancellationToken,
+                Checksum = context.Request.Headers.UploadChecksum
             };
         }
     }

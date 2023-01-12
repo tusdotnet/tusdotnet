@@ -1,4 +1,6 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -28,6 +30,32 @@ namespace tusdotnet.Extensions
 
             response.SetResponse(statusCode, message);
         }
+
+
+        internal static string? GetResponseHeaderString(this ResponseAdapter response, string key, string? defaultValue = default)
+        {
+            return response.Headers.TryGetValue(key, out var value) ? value : defaultValue;
+        }
+
+        internal static long? GetResponseHeaderLong(this ResponseAdapter response, string key, long? defaultValue = default)
+        {
+            var str = response.GetResponseHeaderString(key, null);
+
+            return str is not null && long.TryParse(str, out var value) ? value : defaultValue;
+        }
+
+#if NET6_0_OR_GREATER
+
+        internal static IEnumerable<string> GetResponseHeaderList(this ResponseAdapter response, string key)
+        {
+            var list = response.GetResponseHeaderString(key);
+
+            return list is not null
+                ? list.Split(",", StringSplitOptions.RemoveEmptyEntries)
+                : Array.Empty<string>();
+        }
+
+#endif
 
         internal static async Task WriteMessageToStream(this ResponseAdapter response, Stream clientResponseStream)
         {

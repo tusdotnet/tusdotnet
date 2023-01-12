@@ -22,37 +22,18 @@ namespace tusdotnet.Runners.TusV1Process
 
         internal ContextAdapter ToContextAdapter(DefaultTusConfiguration config)
         {
-            var adapter = new ContextAdapter(UrlPath, EndpointUrlHelper.Instance)
-            {
-                Request = new()
-                {
-                    Body = null,
-                    BodyReader = null,
-                    Method = "post",
-                    RequestUri = new Uri(UrlPath, UriKind.Relative),
-                },
-                Response = new(),
-                Configuration = config,
-                CancellationToken = CancellationToken
-            };
+            var headers = new Dictionary<string, string>(3);
 
-            var headers = new Dictionary<string, string>();
             if (UploadDeferLength)
-            {
                 headers.Add(HeaderConstants.UploadDeferLength, "1");
-            }
+
             if (MetadataString is not null)
-            {
                 headers.Add(HeaderConstants.UploadMetadata, MetadataString);
-            }
+
             if (UploadLength is not null)
-            {
                 headers.Add(HeaderConstants.UploadLength, UploadLength.Value.ToString());
-            }
 
-            adapter.Request.Headers = RequestHeaders.FromDictionary(headers);
-
-            return adapter;
+            return ToContextAdapter("post", config, headers, urlPath: UrlPath);
         }
 
         internal static CreateFileRequest FromContextAdapter(ContextAdapter context)

@@ -20,6 +20,8 @@ using Microsoft.AspNetCore.Builder;
 
 namespace tusdotnet.test.Tests
 {
+    // TODO: Fix checksum trailers as these do not work when using the handler pattern.
+
     public class OptionsTests
     {
         private readonly DefaultTusConfiguration _mockTusConfiguration;
@@ -58,7 +60,7 @@ namespace tusdotnet.test.Tests
             };
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
             using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
@@ -159,7 +161,7 @@ namespace tusdotnet.test.Tests
             response.ShouldContainHeader("Tus-Max-Size", "50");
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called()
         {
             using var server = TestServerFactory.Create(_mockTusConfiguration);
@@ -172,7 +174,7 @@ namespace tusdotnet.test.Tests
             _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.GetOptions);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             using var server = TestServerFactory.Create(_mockTusConfiguration.Store, new Events

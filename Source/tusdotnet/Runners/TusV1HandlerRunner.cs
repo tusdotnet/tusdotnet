@@ -7,7 +7,6 @@ using System;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Extensions.Internal;
 using tusdotnet.IntentHandlers;
@@ -109,6 +108,7 @@ namespace tusdotnet.Runners
                 WriteFileHandler => await handler.WriteFile(WriteFileRequest.FromContextAdapter(intentHandler.Context)),
                 GetFileInfoHandler => await handler.GetFileInfo(FileInfoRequest.FromContextAdapter(intentHandler.Context)),
                 DeleteFileHandler => await handler.DeleteFile(DeleteFileRequest.FromContextAdapter(intentHandler.Context)),
+                GetOptionsHandler => await handler.GetServerOptions(ServerOptionsRequest.FromContextAdapter(intentHandler.Context)),
                 _ => null
             };
 

@@ -14,12 +14,14 @@ namespace tusdotnet.Runners.TusV1Process
         {
             return new()
             {
+                // Status is zero if client disconnected and the WriteFileHandler did not write a response.
                 StatusCode = context.Response.Status == 0 ? HttpStatusCode.NoContent : context.Response.Status,
+                ErrorMessage = context.Response.Message,
                 UploadOffset = GetUploadOffset(context.Response)
             };
         }
 
-        internal override void CopySpecificsToResponse(ContextAdapter commonContext)
+        internal override void CopySpecificsToCommonContext(ContextAdapter commonContext)
         {
             commonContext.Response.SetHeader(HeaderConstants.UploadOffset, UploadOffset.ToString());
         }

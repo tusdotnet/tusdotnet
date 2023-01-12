@@ -5,7 +5,6 @@ using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
 #if trailingheaders
@@ -67,7 +66,7 @@ namespace tusdotnet.Helpers
                 return new(HttpStatusCode.BadRequest, "Headers Upload-Checksum and trailing header Upload-Checksum are mutually exclusive and cannot be used in the same request");
             }
 
-            if (hasDeclaredChecksumTrailer && !_context.HttpContext.Request.SupportsTrailers())
+            if (hasDeclaredChecksumTrailer && _context.HttpContext?.Request.SupportsTrailers() == false)
             {
                 return new(HttpStatusCode.BadRequest, "Trailing header Upload-Checksum has been specified but http request does not support trailing headers");
             }

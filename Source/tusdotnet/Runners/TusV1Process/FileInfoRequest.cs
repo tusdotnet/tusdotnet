@@ -1,10 +1,4 @@
 ﻿#if NET6_0_OR_GREATER
-using Microsoft.AspNetCore.Components.Forms;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Models;
 
@@ -16,19 +10,7 @@ namespace tusdotnet.Runners.TusV1Process
 
         internal ContextAdapter ToContextAdapter(DefaultTusConfiguration config)
         {
-            return new("/", EndpointUrlHelper.Instance)
-            {
-                Request = new()
-                {
-                    Headers = RequestHeaders.FromDictionary(new()),
-                    Method = "head",
-                    RequestUri = new Uri("/" + FileId, UriKind.Relative)
-                },
-                Response = new(),
-                CancellationToken = CancellationToken,
-                Configuration = config,
-                FileId = FileId
-            };
+            return ToContextAdapter("head", config, fileId: FileId);
         }
 
         internal static FileInfoRequest FromContextAdapter(ContextAdapter contextAdapter)
