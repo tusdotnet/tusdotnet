@@ -1,15 +1,16 @@
 ﻿#if NET6_0_OR_GREATER
 
 using System.Threading.Tasks;
+using tusdotnet.Runners.TusV1Process;
 
 namespace tusdotnet.Runners.Handlers
 {
     public abstract class TusV1Handler
     {
-        private readonly TusV1Process _process;
+        private readonly TusV1ProcessRunner _process;
 
         // TODO: Probably need to support changing the process after creation to be used by Initialize.
-        protected TusV1Handler(TusV1Process process)
+        protected TusV1Handler(TusV1ProcessRunner process)
         {
             _process = process;
         }
@@ -39,6 +40,11 @@ namespace tusdotnet.Runners.Handlers
         public virtual Task<FileInfoResponse> GetFileInfo(FileInfoRequest request)
         {
             return _process.GetFileInfo(request);
+        }
+
+        public virtual Task<DeleteFileResponse> DeleteFile(DeleteFileRequest request)
+        {
+            return _process.DeleteFile(request);
         }
     }
 }

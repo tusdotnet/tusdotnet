@@ -5,7 +5,7 @@ using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Runners;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public class CreateFileResponse : TusV1Response
     {

@@ -130,7 +130,7 @@ namespace tusdotnet.test.Tests
             }
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Runs_OnBeforeDeleteAsync_Before_Deleting_The_File(string methodToUse)
         {
             var store = Substitute.For<ITusStore, ITusTerminationStore>();
@@ -164,7 +164,7 @@ namespace tusdotnet.test.Tests
             beforeDeleteCalled.ShouldBeTrue();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Returns_400_BadRequest_If_OnBeforeDelete_Fails_The_Request(string methodToUse)
         {
             var store = Substitute.For<ITusStore, ITusTerminationStore>();
@@ -193,7 +193,7 @@ namespace tusdotnet.test.Tests
             await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Cannot delete file");
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Runs_OnDeleteCompleteAsync_After_Deleting_The_File(string methodToUse)
         {
             var fileId = Guid.NewGuid().ToString();
@@ -240,7 +240,7 @@ namespace tusdotnet.test.Tests
             callbackStore.ShouldBe(store);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called()
         {
             var config = new DefaultTusConfiguration
@@ -267,7 +267,7 @@ namespace tusdotnet.test.Tests
             _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.DeleteFile);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             using var server = TestServerFactory.Create(CreateStore(storeSupportsTermination: true), new Events

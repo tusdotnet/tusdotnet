@@ -11,7 +11,7 @@ using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Parsers;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public class FileInfoResponse : TusV1Response
     {

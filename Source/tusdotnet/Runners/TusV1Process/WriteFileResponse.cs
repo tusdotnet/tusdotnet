@@ -4,7 +4,7 @@ using System.Net;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public class WriteFileResponse : TusV1Response
     {

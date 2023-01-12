@@ -12,15 +12,15 @@ using tusdotnet.Constants;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Models;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
-    public class TusV1Process
+    public class TusV1ProcessRunner
     {
         // TODO: Do not use this config but rather individual parts that we need (store, lock provider etc)
         private readonly Func<HttpContext, Task<DefaultTusConfiguration>> _config;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public TusV1Process(Func<HttpContext, Task<DefaultTusConfiguration>> config, IHttpContextAccessor httpContextAccessor)
+        public TusV1ProcessRunner(Func<HttpContext, Task<DefaultTusConfiguration>> config, IHttpContextAccessor httpContextAccessor)
         {
             _config = config;
             _httpContextAccessor = httpContextAccessor;
@@ -72,6 +72,18 @@ namespace tusdotnet.Runners
             var conf = await _config(_httpContextAccessor.HttpContext);
             conf.AllowedExtensions = TusExtensions.All.Except(TusExtensions.ChecksumTrailer);
             return conf;
+        }
+
+        internal async Task<DeleteFileResponse> DeleteFile(DeleteFileRequest request)
+        {
+            var config = await GetConfig();
+            var context = request.ToContextAdapter(config);
+
+            await new DeleteFileHandler(context).Invoke();
+
+            var response = DeleteFileResponse.FromContextAdapter(context);
+
+            return response;
         }
     }
 }

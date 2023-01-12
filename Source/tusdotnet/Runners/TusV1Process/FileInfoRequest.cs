@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Models;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public class FileInfoRequest : TusV1Request
     {

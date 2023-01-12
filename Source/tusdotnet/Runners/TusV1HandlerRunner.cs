@@ -14,6 +14,7 @@ using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Runners.Handlers;
+using tusdotnet.Runners.TusV1Process;
 
 namespace tusdotnet.Runners
 {
@@ -107,6 +108,7 @@ namespace tusdotnet.Runners
                 CreateFileHandler => await handler.CreateFile(CreateFileRequest.FromContextAdapter(intentHandler.Context)),
                 WriteFileHandler => await handler.WriteFile(WriteFileRequest.FromContextAdapter(intentHandler.Context)),
                 GetFileInfoHandler => await handler.GetFileInfo(FileInfoRequest.FromContextAdapter(intentHandler.Context)),
+                DeleteFileHandler => await handler.DeleteFile(DeleteFileRequest.FromContextAdapter(intentHandler.Context)),
                 _ => null
             };
 
@@ -114,7 +116,7 @@ namespace tusdotnet.Runners
             if (response is null)
                 throw new NotImplementedException();
 
-            response.CoptToCommonContext(intentHandler.Context);
+            response.CopyToCommonContext(intentHandler.Context);
         }
     }
 }

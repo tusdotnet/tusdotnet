@@ -12,6 +12,7 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.Runners;
 #if NET6_0_OR_GREATER
 using tusdotnet.Runners.Handlers;
+using tusdotnet.Runners.TusV1Process;
 #endif
 using tusdotnet.test.Helpers;
 
@@ -114,7 +115,7 @@ namespace tusdotnet.test
                     {
                         services.AddHttpContextAccessor();
                         services.AddTransient<Func<HttpContext, Task<DefaultTusConfiguration>>>(provider => httpContext => Task.FromResult(config));
-                        services.AddTransient<TusV1Process>();
+                        services.AddTransient<TusV1ProcessRunner>();
                         services.AddTransient<TusHandlerForTest>();
                     }
                 });
@@ -122,7 +123,7 @@ namespace tusdotnet.test
 
         public class TusHandlerForTest : TusV1Handler
         {
-            public TusHandlerForTest(TusV1Process process) : base(process)
+            public TusHandlerForTest(TusV1ProcessRunner process) : base(process)
             {
             }
         }

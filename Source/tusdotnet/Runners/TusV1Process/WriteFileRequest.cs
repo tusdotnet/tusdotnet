@@ -8,7 +8,7 @@ using tusdotnet.Constants;
 using tusdotnet.Models;
 using tusdotnet.Runners;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public class WriteFileRequest : TusV1Request
     {

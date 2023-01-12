@@ -4,7 +4,7 @@ using System.Net;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public abstract class TusV1Response
     {
@@ -12,7 +12,7 @@ namespace tusdotnet.Runners
 
         public string? ErrorMessage { get; set; }
 
-        internal void CoptToCommonContext(ContextAdapter commonContext)
+        internal void CopyToCommonContext(ContextAdapter commonContext)
         {
             commonContext.Response.SetResponse(StatusCode, ErrorMessage);
             commonContext.Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);

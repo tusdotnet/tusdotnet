@@ -1,7 +1,7 @@
 ﻿#if NET6_0_OR_GREATER
 using System.Threading;
 
-namespace tusdotnet.Runners
+namespace tusdotnet.Runners.TusV1Process
 {
     public abstract class TusV1Request
     {
