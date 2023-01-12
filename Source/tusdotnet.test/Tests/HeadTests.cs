@@ -129,7 +129,7 @@ namespace tusdotnet.test.Tests
             response.Headers.Contains("Upload-Metadata").ShouldBeFalse();
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called()
         {
             var onAuthorizeWasCalled = false;
@@ -159,7 +159,7 @@ namespace tusdotnet.test.Tests
             intentProvidedToOnAuthorize.ShouldBe(IntentType.GetFileInfo);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             var store = Substitute.For<ITusStore, ITusCreationStore>();

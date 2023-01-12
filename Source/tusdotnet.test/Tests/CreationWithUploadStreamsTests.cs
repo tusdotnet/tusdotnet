@@ -106,7 +106,7 @@ namespace tusdotnet.test.Tests
             await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         }
 
-        [Theory]
+        [ConditionalTheory(Conditions.Events)]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
         public async Task OnAuthorizeAsync_Is_Called_Twice_If_Request_Contains_A_Body(string uploadConcatHeader)
         {
@@ -388,7 +388,7 @@ namespace tusdotnet.test.Tests
             await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Runs_OnFileCompleteAsync_And_OnUploadCompleteAsync_When_Upload_Is_Complete_If_Upload_Length_Is_Zero()
         {
             // Old callback handler
@@ -437,7 +437,7 @@ namespace tusdotnet.test.Tests
             await store.DidNotReceiveWithAnyArgs().AppendDataAsync(default, default, default);
         }
 
-        [Theory]
+        [ConditionalTheory(Conditions.Events)]
         [InlineData(1, 1, true)]
         [InlineData(2, 1, false)]
         [InlineData(500, 500, true)]

@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
 using tusdotnet.Models;
+using tusdotnet.Runners;
+#if NET6_0_OR_GREATER
+using tusdotnet.Runners.Handlers;
+#endif
 
 namespace tusdotnet
 {
@@ -18,6 +22,44 @@ namespace tusdotnet
         {
             _endpointSpecificFactory = factory;
         }
+
+#if NET6_0_OR_GREATER
+
+        internal async Task Invoke<T>(HttpContext context) where T : TusV1Handler
+        {
+            var config = await _endpointSpecificFactory.Invoke(context);
+            if (config == null)
+            {
+                context.NotFound();
+                return;
+            }
+
+            EndpointConfigurationValidator.Instance.Validate(config);
+
+            var urlPath = GetUrlPath(context);
+            var request = CreateRequestAdapter(context);
+
+            var contextAdapter = new ContextAdapter(urlPath, EndpointUrlHelper.Instance)
+            {
+                Request = request,
+                Configuration = config,
+                CancellationToken = context.RequestAborted,
+                HttpContext = context
+            };
+
+            var handled = await TusV1HandlerRunner<T>.Invoke(contextAdapter);
+
+            if (handled == ResultType.ContinueExecution)
+            {
+                context.NotFound();
+            }
+            else
+            {
+                await RespondToClient(contextAdapter.Response, context);
+            }
+        }
+
+#endif
 
         internal async Task Invoke(HttpContext context)
         {

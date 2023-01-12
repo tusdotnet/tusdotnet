@@ -8,6 +8,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using tusdotnet.Models;
+#if NET6_0_OR_GREATER
+using tusdotnet.Runners.Handlers;
+#endif
 
 namespace tusdotnet
 {
@@ -40,6 +43,25 @@ namespace tusdotnet
                 .WithMetadata(new EndpointNameMetadata(name))
                 .WithDisplayName(name);
         }
+
+#if NET6_0_OR_GREATER
+
+        public static IEndpointConventionBuilder MapTus<T>(this IEndpointRouteBuilder endpoints, string pattern, Func<HttpContext, Task<DefaultTusConfiguration>> configFactory) where T : TusV1Handler
+        {
+            ThrowIfPatternContainsTusFileId(pattern);
+
+            var routePatternWithFileId = GetRoutePatternWithTusFileId(pattern);
+            var invoker = new TusEndpointInvoker(configFactory);
+
+            var name = "tushandler: " + routePatternWithFileId;
+
+            return endpoints
+                .Map(routePatternWithFileId, invoker.Invoke<T>)
+                .WithMetadata(new EndpointNameMetadata(name))
+                .WithDisplayName(name);
+        }
+
+#endif
 
         private static string GetRoutePatternWithTusFileId(string pattern)
         {

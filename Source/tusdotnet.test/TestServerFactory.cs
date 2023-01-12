@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Runners;
+#if NET6_0_OR_GREATER
+using tusdotnet.Runners.Handlers;
+#endif
 using tusdotnet.test.Helpers;
 
 #endif
@@ -67,12 +71,13 @@ namespace tusdotnet.test
 
 #if NET6_0_OR_GREATER
 
-        public static TestServer Create(Action<IApplicationBuilder> startup)
+        public static TestServer Create(Action<IApplicationBuilder> startup, Action<IServiceCollection> configureServices = null)
         {
             var builder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
                     services.AddRouting();
+                    configureServices?.Invoke(services);
                 })
                 .Configure(app =>
                 {
@@ -94,7 +99,32 @@ namespace tusdotnet.test
             var urlPath = config.UrlPath;
             config.UrlPath = null;
             config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
-            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, _ => Task.FromResult(config))));
+
+            return Create(
+                app => app.UseEndpoints(endpoints =>
+                {
+                    if (TestRunSettings.UseHandlerPattern)
+                        endpoints.MapTus<TusHandlerForTest>(urlPath, _ => Task.FromResult(config));
+                    else
+                        endpoints.MapTus(urlPath, _ => Task.FromResult(config));
+                }),
+                services =>
+                {
+                    if (TestRunSettings.UseHandlerPattern)
+                    {
+                        services.AddHttpContextAccessor();
+                        services.AddTransient<Func<HttpContext, Task<DefaultTusConfiguration>>>(provider => httpContext => Task.FromResult(config));
+                        services.AddTransient<TusV1Process>();
+                        services.AddTransient<TusHandlerForTest>();
+                    }
+                });
+        }
+
+        public class TusHandlerForTest : TusV1Handler
+        {
+            public TusHandlerForTest(TusV1Process process) : base(process)
+            {
+            }
         }
 
 #else

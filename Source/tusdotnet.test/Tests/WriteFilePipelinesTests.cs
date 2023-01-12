@@ -319,7 +319,7 @@ namespace tusdotnet.test.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Runs_OnFileCompleteAsync_And_OnUploadCompleteAsync_When_Upload_Is_Complete()
         {
             // Old callback handler
@@ -462,7 +462,7 @@ namespace tusdotnet.test.Tests
             onFileCompleteAsyncCallbackCounts.ShouldBe(0);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called()
         {
             var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
@@ -489,7 +489,7 @@ namespace tusdotnet.test.Tests
             _onAuthorizeWasCalledWithIntent.ShouldBe(IntentType.WriteFile);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);

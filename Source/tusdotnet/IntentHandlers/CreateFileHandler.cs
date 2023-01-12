@@ -56,7 +56,6 @@ namespace tusdotnet.IntentHandlers
             var metadata = Request.Headers.UploadMetadata;
             var fileId = await Context.StoreAdapter.CreateFileAsync(Request.Headers.UploadLength, metadata, CancellationToken);
 
-            
             DateTimeOffset? expires = null;
             long? uploadOffset = null;
 

@@ -350,7 +350,7 @@ namespace tusdotnet.test.Tests
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Runs_OnBeforeCreateAsync_Before_Creating_The_File(string method)
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
@@ -394,7 +394,7 @@ namespace tusdotnet.test.Tests
             metadata.ContainsKey("othermeta").ShouldBeTrue();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Returns_400_Bad_Request_If_OnBeforeCreateAsync_Fails_The_Request(string method)
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
@@ -421,7 +421,7 @@ namespace tusdotnet.test.Tests
                 "The request failed with custom error message");
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Runs_OnCreateCompleteAsync_After_Creating_The_File(string method)
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
@@ -469,7 +469,7 @@ namespace tusdotnet.test.Tests
             metadata.ContainsKey("othermeta").ShouldBeTrue();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Returns_The_Correct_Location_Header_If_OnCreateCompleteAsync_Modifies_It(string method)
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
@@ -499,7 +499,7 @@ namespace tusdotnet.test.Tests
             response.Headers.Location.ToString().ShouldBe(randomUrl);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called()
         {
             var onAuthorizeWasCalled = false;
@@ -524,7 +524,7 @@ namespace tusdotnet.test.Tests
             intentProvidedToOnAuthorize.ShouldBe(IntentType.CreateFile);
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             var store = Substitute.For<ITusStore, ITusCreationStore>();
@@ -543,7 +543,7 @@ namespace tusdotnet.test.Tests
             response.ShouldNotContainHeaders("Tus-Resumable", "Location", "Content-Type");
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Runs_OnFileCompleteAsync_And_OnUploadCompleteAsync_When_Upload_Is_Complete_If_Upload_Length_Is_Zero()
         {
             // Old callback handler
