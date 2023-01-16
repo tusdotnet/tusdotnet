@@ -3,6 +3,7 @@ using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Models.Concatenation;
 
@@ -55,7 +56,7 @@ namespace tusdotnet
 
         private static IntentHandler DetermineIntentFromRequest(ContextAdapter context)
         {
-            var httpMethod = GetHttpMethod(context.Request);
+            var httpMethod = context.Request.GetHttpMethod();
 
             if (RequestRequiresTusResumableHeader(httpMethod))
             {
@@ -88,22 +89,7 @@ namespace tusdotnet
             };
         }
 
-        /// <summary>
-        /// Returns the request method taking X-Http-Method-Override into account.
-        /// </summary>
-        /// <param name="request">The request to get the method for</param>
-        /// <returns>The request method</returns>
-        private static string GetHttpMethod(RequestAdapter request)
-        {
-            var method = request.Headers.XHttpMethodOveride;
-
-            if (string.IsNullOrWhiteSpace(method))
-            {
-                method = request.Method;
-            }
-
-            return method.ToLower();
-        }
+        
 
         private static bool MethodRequiresFileIdUrl(string httpMethod)
         {

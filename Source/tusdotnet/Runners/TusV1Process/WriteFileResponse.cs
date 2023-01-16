@@ -11,17 +11,20 @@ namespace tusdotnet.Runners.TusV1Process
 {
     public class WriteFileResponse : TusV1Response
     {
+        public WriteFileResponse(HttpStatusCode statusCode, string errorMessage) : base(statusCode, errorMessage)
+        {
+        }
+
         public long UploadOffset { get; set; }
 
         public DateTimeOffset? UploadExpires { get; set; }
 
         internal static WriteFileResponse FromContextAdapter(ContextAdapter context)
         {
-            return new()
+            var statusCode = context.Response.Status == 0 ? HttpStatusCode.NoContent : context.Response.Status;
+
+            return new(statusCode, context.Response.Message)
             {
-                // Status is zero if client disconnected and the WriteFileHandler did not write a response.
-                StatusCode = context.Response.Status == 0 ? HttpStatusCode.NoContent : context.Response.Status,
-                ErrorMessage = context.Response.Message,
                 UploadOffset = context.Response.GetResponseHeaderLong(HeaderConstants.UploadOffset, -1).Value,
                 UploadExpires = context.Response.GetResponseHeaderDateTimeOffset(HeaderConstants.UploadExpires)
             };

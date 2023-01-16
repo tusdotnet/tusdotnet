@@ -29,7 +29,15 @@ namespace tusdotnet.Runners.TusV1Process
             var config = await GetConfig();
             var context = request.ToContextAdapter(config);
 
-            await new CreateFileHandler(context).Invoke();
+            if (request.IsPartialFile)
+            {
+                context.Request.Headers[HeaderConstants.UploadConcat] = "partial";
+                await new ConcatenateFilesHandler(context).Invoke();
+            }
+            else
+            {
+                await new CreateFileHandler(context).Invoke();
+            }
 
             return CreateFileResponse.FromContextAdapter(context);
         }
@@ -39,8 +47,7 @@ namespace tusdotnet.Runners.TusV1Process
             var config = await GetConfig();
             var context = request.ToContextAdapter(config);
 
-            // TODO: how to determine if initiated from creation with upload
-            await new WriteFileHandler(context, false).Invoke();
+            await new WriteFileHandler(context, request.InitiatedFromCreationWithUpload).Invoke();
 
             var response = WriteFileResponse.FromContextAdapter(context);
 
@@ -95,6 +102,17 @@ namespace tusdotnet.Runners.TusV1Process
             response.Extensions = new List<string>(response.Extensions).SkipWhile(x => x == ExtensionConstants.ChecksumTrailer).ToList();
 
             return response;
+        }
+
+        internal async Task<ConcatenateFilesResponse> ConcatenateFiles(ConcatenateFilesRequest request)
+        {
+            var config = await GetConfig();
+
+            var context = request.ToContextAdapter(config);
+
+            await new ConcatenateFilesHandler(context).Invoke();
+
+            return ConcatenateFilesResponse.FromContextAdapter(context);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿#if NET6_0_OR_GREATER
 
+using System;
 using System.Threading.Tasks;
 using tusdotnet.Runners.TusV1Process;
 
@@ -50,6 +51,11 @@ namespace tusdotnet.Runners.Handlers
         public virtual Task<ServerOptionsResponse> GetServerOptions(ServerOptionsRequest request)
         {
             return _process.GetServerOptions(request);
+        }
+
+        internal virtual Task<ConcatenateFilesResponse> ConcatenateFiles(ConcatenateFilesRequest request)
+        {
+            return _process.ConcatenateFiles(request);
         }
     }
 }

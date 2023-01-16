@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
@@ -15,6 +16,10 @@ namespace tusdotnet.Runners.TusV1Process
 {
     public class FileInfoResponse : TusV1Response
     {
+        public FileInfoResponse(HttpStatusCode statusCode, string? errorMessage) : base(statusCode, errorMessage)
+        {
+        }
+
         public long? UploadLength { get; set; }
 
         public long UploadOffset { get; set; }
@@ -29,11 +34,7 @@ namespace tusdotnet.Runners.TusV1Process
 
         internal static FileInfoResponse FromContextAdapter(ContextAdapter context)
         {
-            var response = new FileInfoResponse()
-            {
-                StatusCode = context.Response.Status,
-                ErrorMessage = context.Response.Message,
-            };
+            var response = new FileInfoResponse(context.Response.Status, context.Response.Message);
 
             if (context.Response.Headers.TryGetValue(HeaderConstants.UploadOffset, out var offsetString))
                 response.UploadOffset = long.Parse(offsetString);
@@ -72,7 +73,19 @@ namespace tusdotnet.Runners.TusV1Process
                 response.SetHeader(HeaderConstants.UploadMetadata, MetadataString);
 
             if (UploadConcat is not null)
+            {
+                if (UploadConcat is FileConcatFinal final)
+                {
+                    final.AddUrlPathToFiles(commonContext.ConfigUrlPath);
+
+                    // "The response to a HEAD request for a final upload SHOULD NOT contain the Upload-Offset header unless the concatenation has been successfully finished."
+                    if (UploadLength != UploadOffset)
+                        response.Headers.Remove(HeaderConstants.UploadOffset);
+
+                }
+
                 response.SetHeader(HeaderConstants.UploadConcat, UploadConcat.GetHeader());
+            }
 
             // TODO Shouldn't expires be included?
         }

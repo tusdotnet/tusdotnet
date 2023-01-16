@@ -12,6 +12,12 @@ namespace tusdotnet.Runners.TusV1Process
 
         public string? ErrorMessage { get; set; }
 
+        public TusV1Response(HttpStatusCode statusCode, string? errorMessage)
+        {
+            StatusCode = statusCode;
+            ErrorMessage = errorMessage;
+        }
+
         internal void CopyToCommonContext(ContextAdapter commonContext)
         {
             commonContext.Response.SetResponse(StatusCode, ErrorMessage);

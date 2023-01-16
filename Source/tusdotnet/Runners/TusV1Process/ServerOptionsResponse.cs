@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
@@ -10,6 +11,10 @@ namespace tusdotnet.Runners.TusV1Process
 {
     public class ServerOptionsResponse : TusV1Response
     {
+        public ServerOptionsResponse(HttpStatusCode statusCode, string errorMessage) : base(statusCode, errorMessage)
+        {
+        }
+
         public string TusVersion { get; set; }
 
         public long? FileMaxSize { get; set; }
@@ -20,10 +25,8 @@ namespace tusdotnet.Runners.TusV1Process
 
         internal static ServerOptionsResponse FromContextAdapter(ContextAdapter context)
         {
-            return new()
+            return new(context.Response.Status, context.Response.Message)
             {
-                StatusCode = context.Response.Status,
-                ErrorMessage = context.Response.Message,
                 TusVersion = context.Response.GetResponseHeaderString(HeaderConstants.TusVersion),
                 FileMaxSize = context.Response.GetResponseHeaderLong(HeaderConstants.TusMaxSize),
                 Extensions = context.Response.GetResponseHeaderList(HeaderConstants.TusExtension),

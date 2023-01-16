@@ -417,7 +417,7 @@ namespace tusdotnet.test.Tests
                 "The concatenated file exceeds the server's max file size.");
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task Runs_OnFileCompleteAsync_When_A_Final_File_Is_Created(string methodToUse)
         {
             var store = CreateStoreForFinalFileConcatenation();
@@ -530,7 +530,7 @@ namespace tusdotnet.test.Tests
             callbackCalled.ShouldBeFalse();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task OnBeforeCreateAsync_Receives_FileConcatPartial_For_Partial_Files(string methodToUse)
         {
             FileConcat fileConcat = null;
@@ -555,7 +555,7 @@ namespace tusdotnet.test.Tests
             fileConcat.ShouldBeOfType<FileConcatPartial>();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task OnBeforeCreateAsync_Receives_FileConcatFinal_For_Final_Files(string methodToUse)
         {
             FileConcat fileConcat = null;
@@ -582,7 +582,7 @@ namespace tusdotnet.test.Tests
             fileConcatFinal.Files.All(f => f == "partial1" || f == "partial2").ShouldBeTrue();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task OnCreateCompleteAsync_Receives_FileConcatPartial_For_Partial_Files(string methodToUse)
         {
             FileConcat fileConcat = null;
@@ -607,7 +607,7 @@ namespace tusdotnet.test.Tests
             fileConcat.ShouldBeOfType<FileConcatPartial>();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task OnCreateCompleteAsync_Receives_FileConcatFinal_For_Final_Files(string methodToUse)
         {
             FileConcat fileConcat = null;
@@ -633,7 +633,7 @@ namespace tusdotnet.test.Tests
             fileConcatFinal.Files.All(f => f == "partial1" || f == "partial2").ShouldBeTrue();
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called_For_Partial_Files()
         {
             var onAuthorizeWasCalled = false;
@@ -665,7 +665,7 @@ namespace tusdotnet.test.Tests
             fileConcatProvidedToOnAuthorize.ShouldBeOfType<FileConcatPartial>();
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task OnAuthorized_Is_Called_For_Final_Files()
         {
             var onAuthorizeWasCalled = false;
@@ -698,7 +698,7 @@ namespace tusdotnet.test.Tests
             fileConcatFinal.Files.All(f => f == "partial1" || f == "partial2").ShouldBeTrue();
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request_For_Partial_Files()
         {
             using var server = TestServerFactory.Create(CreateStoreForPartialFileConcatenation(), new Events
@@ -720,7 +720,7 @@ namespace tusdotnet.test.Tests
             response.ShouldNotContainHeaders("Tus-Resumable", "Location", "Content-Type");
         }
 
-        [Fact]
+        [ConditionalFact(Conditions.Events)]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request_For_Final_Files()
         {
             using var server = TestServerFactory.Create(CreateStoreForFinalFileConcatenation(), new Events

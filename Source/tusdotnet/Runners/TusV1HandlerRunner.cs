@@ -12,6 +12,7 @@ using tusdotnet.Extensions.Internal;
 using tusdotnet.IntentHandlers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 using tusdotnet.Runners.Handlers;
 using tusdotnet.Runners.TusV1Process;
 
@@ -109,15 +110,29 @@ namespace tusdotnet.Runners
                 GetFileInfoHandler => await handler.GetFileInfo(FileInfoRequest.FromContextAdapter(intentHandler.Context)),
                 DeleteFileHandler => await handler.DeleteFile(DeleteFileRequest.FromContextAdapter(intentHandler.Context)),
                 GetOptionsHandler => await handler.GetServerOptions(ServerOptionsRequest.FromContextAdapter(intentHandler.Context)),
+                ConcatenateFilesHandler => await HandleConcatenation(intentHandler, handler),
                 _ => null
             };
 
-            
             if (response is null)
                 throw new NotImplementedException();
 
             response.CopyToCommonContext(intentHandler.Context);
+
+            static async Task<TusV1Response> HandleConcatenation(IntentHandler intentHandler, T handler)
+            {
+                if (intentHandler.Context.Cache.UploadConcat.Type is FileConcatPartial)
+                {
+                    var createFileRequest = CreateFileRequest.FromContextAdapter(intentHandler.Context);
+                    createFileRequest.IsPartialFile = true;
+                    return await handler.CreateFile(createFileRequest);
+                }
+
+                return await handler.ConcatenateFiles(ConcatenateFilesRequest.FromContextAdapter(intentHandler.Context));
+            }
         }
+
+
     }
 }
 

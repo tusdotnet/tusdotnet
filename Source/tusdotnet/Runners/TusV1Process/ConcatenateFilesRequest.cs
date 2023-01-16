@@ -1,48 +1,44 @@
 ﻿#if NET6_0_OR_GREATER
-using System;
+
 using System.Collections.Generic;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Runners.TusV1Process
 {
-    public class CreateFileRequest : TusV1Request
+    public class ConcatenateFilesRequest : TusV1Request
     {
+        public string[] PartialFileIds { get; set; }
+
         public Dictionary<string, Metadata>? Metadata { get; set; }
 
         public string? MetadataString { get; set; }
 
-        public long? UploadLength { get; set; }
-
-        public bool UploadDeferLength { get; set; }
-
-        public bool IsPartialFile { get; internal set; }
-
         internal ContextAdapter ToContextAdapter(DefaultTusConfiguration config)
         {
-            var headers = new Dictionary<string, string>(3);
+            var final = new FileConcatFinal(PartialFileIds);
+            final.AddUrlPathToFiles("/");
 
-            if (UploadDeferLength)
-                headers.Add(HeaderConstants.UploadDeferLength, "1");
+            var headers = new Dictionary<string, string>
+            {
+                { HeaderConstants.UploadConcat, final.GetHeader() }
+            };
 
             if (MetadataString is not null)
                 headers.Add(HeaderConstants.UploadMetadata, MetadataString);
 
-            if (UploadLength is not null)
-                headers.Add(HeaderConstants.UploadLength, UploadLength.Value.ToString());
-
             return ToContextAdapter("post", config, headers);
         }
 
-        internal static CreateFileRequest FromContextAdapter(ContextAdapter context)
+        internal static ConcatenateFilesRequest FromContextAdapter(ContextAdapter context)
         {
             return new()
             {
+                PartialFileIds = ((FileConcatFinal)context.Cache.UploadConcat.Type).Files,
                 Metadata = context.Cache.Metadata,
                 MetadataString = context.Request.Headers.UploadMetadata,
-                UploadLength = context.Request.Headers.UploadLength,
-                UploadDeferLength = context.Request.Headers.UploadDeferLength == "1",
                 CancellationToken = context.CancellationToken
             };
         }

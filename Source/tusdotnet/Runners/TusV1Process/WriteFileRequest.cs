@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Pipelines;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Extensions.Internal;
 using tusdotnet.Models;
 
 namespace tusdotnet.Runners.TusV1Process
@@ -11,8 +12,6 @@ namespace tusdotnet.Runners.TusV1Process
     public class WriteFileRequest : TusV1Request
     {
         public string FileId { get; set; }
-
-        public bool InitiatedFromCreationWithUpload { get; set; }
 
         public long UploadOffset { get; set; }
 
@@ -23,6 +22,8 @@ namespace tusdotnet.Runners.TusV1Process
         public Stream Body { get; set; }
 
         public PipeReader BodyReader { get; set; }
+
+        internal bool InitiatedFromCreationWithUpload { get; set; }
 
         internal ContextAdapter ToContextAdapter(DefaultTusConfiguration config)
         {
@@ -49,13 +50,15 @@ namespace tusdotnet.Runners.TusV1Process
             return new()
             {
                 FileId = context.FileId,
-                InitiatedFromCreationWithUpload = false, // TODO: Fix
                 Body = context.Request.Body,
                 BodyReader = context.Request.BodyReader,
                 UploadOffset = context.Request.Headers.UploadOffset,
                 UploadLength = context.Request.Headers.UploadLength == -1 ? null : context.Request.Headers.UploadLength,
                 CancellationToken = context.CancellationToken,
                 Checksum = context.Request.Headers.UploadChecksum,
+
+                // Called from POST request to create the file. Set to true in that case to bypass some validations.
+                InitiatedFromCreationWithUpload = context.Request.GetHttpMethod() == "post"
             };
         }
     }
