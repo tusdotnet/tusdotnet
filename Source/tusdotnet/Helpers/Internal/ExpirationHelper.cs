@@ -52,5 +52,12 @@ namespace tusdotnet.Helpers
         {
             return expires?.ToString("R");
         }
+
+        internal static DateTimeOffset? ParseFromHeader(string header)
+        {
+            return DateTimeOffset.TryParseExact(header, "R", null, System.Globalization.DateTimeStyles.None, out var dto)
+                ? dto
+                : null;
+        }
     }
 }

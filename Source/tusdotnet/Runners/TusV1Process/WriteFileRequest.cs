@@ -16,6 +16,7 @@ namespace tusdotnet.Runners.TusV1Process
 
         public long UploadOffset { get; set; }
 
+        public long? UploadLength { get; set; }
 
         public string Checksum { get; set; }
 
@@ -28,8 +29,13 @@ namespace tusdotnet.Runners.TusV1Process
             var headers = new Dictionary<string, string>
             {
                 { HeaderConstants.UploadOffset, UploadOffset.ToString() },
-                { HeaderConstants.UploadChecksum, Checksum },
             };
+
+            if (UploadLength is not null)
+                headers.Add(HeaderConstants.UploadLength, UploadLength.ToString());
+
+            if (Checksum is not null)
+                headers.Add(HeaderConstants.UploadChecksum, Checksum);
 
             var adapter = ToContextAdapter("patch", config, headers, fileId: FileId);
             adapter.Request.Body = Body;
@@ -47,8 +53,9 @@ namespace tusdotnet.Runners.TusV1Process
                 Body = context.Request.Body,
                 BodyReader = context.Request.BodyReader,
                 UploadOffset = context.Request.Headers.UploadOffset,
+                UploadLength = context.Request.Headers.UploadLength == -1 ? null : context.Request.Headers.UploadLength,
                 CancellationToken = context.CancellationToken,
-                Checksum = context.Request.Headers.UploadChecksum
+                Checksum = context.Request.Headers.UploadChecksum,
             };
         }
     }

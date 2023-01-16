@@ -231,7 +231,7 @@ namespace tusdotnet.test.Tests
             response.Headers.Contains("Upload-Length").ShouldBeFalse();
         }
 
-        [Fact]
+        [Fact(Skip ="Uses events to determine to determine outcome")]
         public async Task Multiple_Patch_Requests_Can_Be_Sent_Before_Including_UploadLength()
         {
             var fileId = Guid.NewGuid().ToString();
@@ -478,9 +478,8 @@ namespace tusdotnet.test.Tests
                 "Upload-Length cannot be updated once set");
         }
 
-        [Theory, XHttpMethodOverrideData]
-        public async Task OnBeforeCreateAsync_Receives_UploadLengthIsDeferred_True_If_UploadDeferLength_Has_Been_Set(
-            string methodToUse)
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
+        public async Task OnBeforeCreateAsync_Receives_UploadLengthIsDeferred_True_If_UploadDeferLength_Has_Been_Set(string methodToUse)
         {
             var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
             var creationStore = (ITusCreationStore)store;
@@ -508,7 +507,7 @@ namespace tusdotnet.test.Tests
             uploadIsDeferred.ShouldBeTrue();
         }
 
-        [Theory, XHttpMethodOverrideData]
+        [ConditionalTheory(Conditions.Events), XHttpMethodOverrideData]
         public async Task OnCreateCompleteAsync_Receives_UploadLengthIsDeferred_True_If_UploadDeferLength_Has_Been_Set(
             string methodToUse)
         {

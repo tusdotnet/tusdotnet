@@ -44,10 +44,9 @@ namespace tusdotnet.Runners.TusV1Process
 
             var response = WriteFileResponse.FromContextAdapter(context);
 
+            // Load current offset from store if we did not get one from the handler, e.g. if the client discconected.
             if (response.UploadOffset == -1)
-            {
                 response.UploadOffset = await config.Store.GetUploadOffsetAsync(request.FileId, CancellationToken.None);
-            }
 
             return response;
         }

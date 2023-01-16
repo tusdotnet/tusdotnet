@@ -7,7 +7,6 @@ using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
-using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 #if pipelines
@@ -146,29 +145,6 @@ namespace tusdotnet.IntentHandlers
 
             return TaskHelper.Completed;
         }
-
-        //private Task<bool> IsPartialUpload()
-        //{
-        //    if (!StoreAdapter.Extensions.Concatenation)
-        //    {
-        //        return Task.FromResult(false);
-        //    }
-
-        //    return IsPartialUploadLocal();
-
-        //    async Task<bool> IsPartialUploadLocal()
-        //    {
-        //        var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
-
-        //        return concat is FileConcatPartial;
-        //    }
-        //}
-
-        //private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
-        //{
-        //    var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
-        //    return fileOffset + bytesWritten == fileUploadLength;
-        //}
 
         private Requirement[] GetListOfRequirements()
         {

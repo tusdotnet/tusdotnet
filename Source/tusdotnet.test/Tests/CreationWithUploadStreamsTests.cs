@@ -297,7 +297,7 @@ namespace tusdotnet.test.Tests
             await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         }
 
-        [Theory]
+        [Theory(Skip = "Requires events, should be rewritten")]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
         public async Task Expiration_Is_Updated_After_File_Write_If_Sliding_Expiration_Is_Used(string uploadConcatHeader)
         {

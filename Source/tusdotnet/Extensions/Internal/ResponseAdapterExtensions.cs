@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Extensions
 {
@@ -31,6 +32,7 @@ namespace tusdotnet.Extensions
             response.SetResponse(statusCode, message);
         }
 
+#if NET6_0_OR_GREATER
 
         internal static string? GetResponseHeaderString(this ResponseAdapter response, string key, string? defaultValue = default)
         {
@@ -44,8 +46,6 @@ namespace tusdotnet.Extensions
             return str is not null && long.TryParse(str, out var value) ? value : defaultValue;
         }
 
-#if NET6_0_OR_GREATER
-
         internal static IEnumerable<string> GetResponseHeaderList(this ResponseAdapter response, string key)
         {
             var list = response.GetResponseHeaderString(key);
@@ -53,6 +53,12 @@ namespace tusdotnet.Extensions
             return list is not null
                 ? list.Split(",", StringSplitOptions.RemoveEmptyEntries)
                 : Array.Empty<string>();
+        }
+
+        internal static DateTimeOffset? GetResponseHeaderDateTimeOffset(this ResponseAdapter response, string key)
+        {
+            var str = response.GetResponseHeaderString(key);
+            return ExpirationHelper.ParseFromHeader(str);
         }
 
 #endif
