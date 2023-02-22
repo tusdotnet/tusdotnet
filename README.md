@@ -4,13 +4,13 @@
 
 >"Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network." - https://tus.io
 
-tusdotnet is a .NET server implementation of the tus.io protocol that runs on both .NET 4.x, .NET Core and .NET6+!
+tusdotnet is a .NET server implementation of the tus.io protocol that runs on both .NET 4.x, .NET Core, .NET6 and later.
 
-Comments, ideas, questions and PRs are welcome :)
+Comments, ideas, questions and PRs are welcome!
 
 ## Features
 
-* Runs on OWIN and ASP.NET Core (on both .NET Framework, .NET Core and .NET6+)
+* Runs on OWIN and ASP.NET Core (on both .NET Framework, .NET Core, .NET6 and later)
 * Full support for tus 1.0.0 including all major extensions (checksum, checksum-trailers, concatenation, creation, creation-with-upload, upload-defer-length, expiration and termination)
 * Fast and reliable
 * Easy to configure
@@ -60,12 +60,14 @@ app.MapTus("/files", async httpContext => new()
 
 ```
 
+ Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies). 
+ 
  More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
 <details>
 <summary><h3>On older frameworks, use the tusdotnet middelware</h3></summary>
 
-Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
+Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies).  More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
 ```csharp
 
@@ -110,7 +112,7 @@ Test sites are available for:
 
 ## Clients
 
-[Tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
+[tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
 
 ## License
 
@@ -118,4 +120,4 @@ This project is licensed under the MIT license, see [LICENSE](LICENSE).
 
 ## Want to know more?
 
-Check out the [wiki](https://github.com/tusdotnet/tusdotnet/wiki), create an [issue](https://github.com/tusdotnet/tusdotnet/issues) or [contact me](https://twitter.com/DevLifeOfStefan) :)
+Check out the [wiki](https://github.com/tusdotnet/tusdotnet/wiki) or create an [issue](https://github.com/tusdotnet/tusdotnet/issues)
