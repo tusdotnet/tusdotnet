@@ -16,7 +16,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override Task FileComplete(FileCompleteContext context)
         {
-            _logger.LogInformation("File completed: {FileName}", context.Headers.UploadToken);
+            _logger.LogInformation("File completed: {FileName}", context.Headers.ResourceId);
             return base.FileComplete(context);
         }
     }

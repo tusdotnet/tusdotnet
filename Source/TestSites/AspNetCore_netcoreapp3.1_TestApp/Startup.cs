@@ -53,8 +53,12 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             services.AddTus2(options =>
             {
+
+                var config = new Tus2Options();
+                Configuration.Bind(config);
+
                 options.AddStorageFactory(new SimpleTus2StorageFactory());
-                options.AddDiskStorage(@"C:\tusfiles");
+                options.AddDiskStorage(config.FolderDiskPath);
                 //options.AddDiskBasedUploadManager(@"C:\tusfiles");
                 options.AddHandler<MyTusHandler>();
                 options.AddHandler<OnlyCompleteTusHandler>();
@@ -107,16 +111,6 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 endpoints.MapTus2<OnlyCompleteTusHandler>("/files-tus-2-only-complete");
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
                 endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);
-                endpoints.MapGet("/random-file-id", async httpContext =>
-                {
-                    var arr = ArrayPool<byte>.Shared.Rent(32);
-                    var span = arr.AsMemory()[..32];
-                    RandomNumberGenerator.Fill(span.Span);
-
-                    await httpContext.Response.WriteAsync(":" + Convert.ToBase64String(span.Span) + ":");
-
-                    ArrayPool<byte>.Shared.Return(arr, clearArray: true);
-                });
             });
         }
 

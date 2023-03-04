@@ -1,18 +1,28 @@
 ﻿using Microsoft.AspNetCore.Http;
-using System.Net;
+using Microsoft.AspNetCore.Http.Extensions;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
 {
     public class UploadTransferProcedureResponse : Tus2BaseResponse
     {
-        public bool UploadIncomplete { get; set; }
+        public bool RequestUploadIncomplete { get; set; }
+
+        public string ResourceId { get; set; }
+
+        internal bool ResourceWasJustCreated { get; set; }
+
+        internal bool EntireUploadCompleted { get; set; }
 
         protected override Task WriteResponse(HttpContext context)
         {
-            if (UploadIncomplete)
+            if (!EntireUploadCompleted)
+                context.SetHeader("Upload-Incomplete", RequestUploadIncomplete.ToSfBool());
+
+            if (ResourceWasJustCreated)
             {
-                context.SetHeader("Upload-Incomplete", UploadIncomplete.ToSfBool());
+                var displayUrl = context.Request.GetDisplayUrl().TrimEnd('/');
+                context.SetHeader("Location", displayUrl + "/" + ResourceId);
             }
 
             return Task.CompletedTask;

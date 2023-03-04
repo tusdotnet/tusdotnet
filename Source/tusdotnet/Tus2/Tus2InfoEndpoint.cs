@@ -15,19 +15,19 @@ namespace tusdotnet.Tus2
 
             var headers = new Tus2HeadersParser().Parse(httpContext);
 
-            if (string.IsNullOrWhiteSpace(headers.UploadToken))
+            if (string.IsNullOrWhiteSpace(headers.ResourceId))
             {
                 await httpContext.Error(System.Net.HttpStatusCode.BadRequest, "Missing Upload-Token header");
             }
 
-            headers.UploadToken = Tus2DiskStorage.CleanUploadToken(headers.UploadToken);
+            headers.ResourceId = Tus2DiskStorage.CleanUploadToken(headers.ResourceId);
 
             var pathHelper = new DiskPathHelper(options.FolderDiskPath);
-            var path = pathHelper.DataFilePath(headers.UploadToken);
+            var path = pathHelper.DataFilePath(headers.ResourceId);
             var exists = File.Exists(path);
             var fileSize = exists ? (long?)new FileInfo(path).Length : null;
-            var isComplete = File.Exists(pathHelper.CompletedFilePath(headers.UploadToken));
-            var metadata = File.Exists(pathHelper.MetadataFilePath(headers.UploadToken)) ? File.ReadAllText(pathHelper.MetadataFilePath(headers.UploadToken)) : null;
+            var isComplete = File.Exists(pathHelper.CompletedFilePath(headers.ResourceId));
+            var metadata = File.Exists(pathHelper.MetadataFilePath(headers.ResourceId)) ? File.ReadAllText(pathHelper.MetadataFilePath(headers.ResourceId)) : null;
 
             var sb = new StringBuilder();
             sb.AppendFormat("Exists: {0}\n", exists);

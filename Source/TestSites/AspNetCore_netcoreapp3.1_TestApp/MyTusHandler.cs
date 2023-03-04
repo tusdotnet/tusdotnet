@@ -20,7 +20,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext context)
         {
-            _logger.LogInformation("Creating file {UploadToken}", context.Headers.UploadToken);
+            _logger.LogInformation("Creating file {UploadToken}", context.Headers.ResourceId);
 
             var response = await _storage.CreateFile(context);
 
@@ -42,7 +42,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<UploadRetrievingProcedureResponse> RetrieveOffset(RetrieveOffsetContext context)
         {
-            _logger.LogInformation("Retrieving offset for {UploadToken}", context.Headers.UploadToken);
+            _logger.LogInformation("Retrieving offset for {UploadToken}", context.Headers.ResourceId);
 
             var response = await base.RetrieveOffset(context);
 
@@ -53,7 +53,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override async Task<UploadCancellationProcedureResponse> Delete(DeleteContext context)
         {
-            _logger.LogInformation("Deleting file {UploadToken}", context.Headers.UploadToken);
+            _logger.LogInformation("Deleting file {UploadToken}", context.Headers.ResourceId);
 
             var response = await base.Delete(context);
 
@@ -64,7 +64,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override Task FileComplete(FileCompleteContext context)
         {
-            _logger.LogInformation("File {UploadToken} is complete", context.Headers.UploadToken);
+            _logger.LogInformation("File {UploadToken} is complete", context.Headers.ResourceId);
 
             return base.FileComplete(context);
         }

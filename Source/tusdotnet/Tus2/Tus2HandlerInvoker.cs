@@ -40,9 +40,9 @@ namespace tusdotnet.Tus2
             {
                 Tus2Validator.AssertNoInvalidHeaders(context.Headers);
 
-                await uploadManager.CancelOtherUploads(context.Headers.UploadToken);
+                await uploadManager.CancelOtherUploads(context.Headers.ResourceId);
 
-                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId);
 
                 return await handler.RetrieveOffset(context);
 
@@ -53,7 +53,7 @@ namespace tusdotnet.Tus2
                 {
                     Status = ex.Status,
                     ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.UploadToken!)
+                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.ResourceId!)
                 };
             }
         }
@@ -94,9 +94,9 @@ namespace tusdotnet.Tus2
 
                 Tus2Validator.AssertNoInvalidHeaders(context.Headers);
 
-                await uploadManager.CancelOtherUploads(context.Headers.UploadToken);
+                await uploadManager.CancelOtherUploads(context.Headers.ResourceId);
 
-                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.UploadToken);
+                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId);
 
                 return await handler.Delete(context);
 
@@ -107,7 +107,7 @@ namespace tusdotnet.Tus2
                 {
                     Status = ex.Status,
                     ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.UploadToken!)
+                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.ResourceId!)
                 };
             }
         }
@@ -118,41 +118,17 @@ namespace tusdotnet.Tus2
             WriteDataContext context,
             IOngoingUploadManager uploadManager)
         {
-            /*
-            The Upload Transfer Procedure is intended for transferring the data chunk. As such, it can be used for either resuming an existing upload, or starting a new upload. A limited form of this procedure MAY be used by the client to start a new upload without the knowledge of server support.
 
-            This procedure is designed to be compatible with a regular upload. Therefore all methods are allowed with the exception of GET, HEAD, DELETE, and OPTIONS. All response status codes are allowed. The client is RECOMMENDED to use the POST method if not otherwise intended. The server MAY only support a limited number of methods.
-
-            The client MUST use the same method throughout an entire upload. The server SHOULD reject the attempt to resume an upload with a different method with 400 (Bad Request) response.
-
-            The request MUST include the Upload-Token header field ({{upload-token}}) which uniquely identifies an upload. The client MUST NOT reuse the token for a different upload.
-
-            When resuming an upload, the Upload-Offset header field ({{upload-offset}}) MUST be set to the resumption offset. The resumption offset 0 indicates a new upload. The absence of the Upload-Offset header field implies the resumption offset of 0.
-
-            If the end of the request body is not the end of the upload, the Upload-Incomplete header field ({{upload-incomplete}}) MUST be set to true.
-
-            The client MAY send the metadata of the file using headers such as Content-Type (see {{Section 8.3 of HTTP}} and Content-Disposition {{!RFC6266}} when starting a new upload. It is OPTIONAL for the client to repeat the metadata when resuming an upload.
-
-            If the server does not consider the upload associated with the token in the Upload-Token header field active, but the resumption offset is non-zero, it MUST respond with 404 (Not Found) status code.
-
-            The client MUST NOT perform multiple Upload Transfer Procedures ({{upload-transfer}}) for the same token in parallel to avoid race conditions and data loss or corruption. The server is RECOMMENDED to take measures to avoid parallel Upload Transfer Procedures: The server MAY terminate any ongoing Upload Transfer Procedure ({{upload-transfer}}) for the same token. Since the client is not allowed to perform multiple transfers in parallel, the server can assume that the previous attempt has already failed. Therefore, the server MAY abruptly terminate the previous HTTP connection or stream.
-
-            If the offset in the Upload-Offset header field does not match the value 0, the offset provided by the immediate previous Offset Retrieving Procedure ({{offset-retrieving}}), or the end offset of the immediate previous incomplete transfer, the server MUST respond with 409 (Conflict) status code.
-
-            If the request completes successfully and the entire upload is complete, the server MUST acknowledge it by responding with a successful status code between 200 and 299 (inclusive). Server is RECOMMENDED to use 201 (Created) response if not otherwise specified. The response MUST NOT include the Upload-Incomplete header with the value of true.
-
-            If the request completes successfully but the entire upload is not yet complete indicated by the Upload-Incomplete header, the server MUST acknowledge it by responding with the 201 (Created) status code and the Upload-Incomplete header set to true.
-              * */
-
+            // This method is a combo of the upload creation procedure and the upload appening procedure due to them being one and the same in earlier drafts.
             long? uploadOffsetFromStorage = null;
             try
             {
                 var metadataParser = context.HttpContext.RequestServices.GetRequiredService<IMetadataParser>();
 
-                await uploadManager.CancelOtherUploads(context.Headers.UploadToken);
+                await uploadManager.CancelOtherUploads(context.Headers.ResourceId);
 
-                var ongoingCancellationToken = await uploadManager.StartUpload(context.Headers.UploadToken);
-                await using var finishOngoing = Deferrer.Defer(() => uploadManager.FinishUpload(context.Headers.UploadToken));
+                var ongoingCancellationToken = await uploadManager.StartUpload(context.Headers.ResourceId);
+                await using var finishOngoing = Deferrer.Defer(() => uploadManager.FinishUpload(context.Headers.ResourceId));
 
                 var metadata = metadataParser?.Parse(context.HttpContext);
 
@@ -160,7 +136,7 @@ namespace tusdotnet.Tus2
 
                 context.Headers.UploadOffset ??= 0;
 
-                var fileExist = await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.UploadToken, context.Headers.UploadOffset != 0);
+                var fileExist = await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId, context.Headers.UploadOffset != 0);
 
                 if (!fileExist)
                 {
@@ -182,7 +158,7 @@ namespace tusdotnet.Tus2
                 }
                 else
                 {
-                    var fileIsComplete = await storageFacade.Storage.IsComplete(context.Headers.UploadToken);
+                    var fileIsComplete = await storageFacade.Storage.IsComplete(context.Headers.ResourceId);
                     if (fileIsComplete)
                     {
                         return new()
@@ -197,7 +173,7 @@ namespace tusdotnet.Tus2
                 // could change during the request but were we do not wish to read the data multiple times,
                 // e.g. Upload-Offset for the file retrieved from storage.
 
-                uploadOffsetFromStorage = await storageFacade.Storage.GetOffset(context.Headers.UploadToken);
+                uploadOffsetFromStorage = await storageFacade.Storage.GetOffset(context.Headers.ResourceId);
                 await Tus2Validator.AssertValidOffset(uploadOffsetFromStorage.Value, context.Headers.UploadOffset);
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.HttpContext.RequestAborted, ongoingCancellationToken);
@@ -215,7 +191,7 @@ namespace tusdotnet.Tus2
 
                 if (ongoingCancellationToken.IsCancellationRequested)
                 {
-                    await uploadManager.NotifyCancelComplete(context.Headers.UploadToken);
+                    await uploadManager.NotifyCancelComplete(context.Headers.ResourceId);
                 }
 
                 return writeDataResponse;

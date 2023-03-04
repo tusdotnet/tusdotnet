@@ -6,9 +6,14 @@
 
 tusdotnet is a .NET server implementation of the tus.io protocol that runs on both .NET 4.x and .NET Core!
 
-This branch is intended for the new [tus2 protocol](https://github.com/tus/tus-v2). For tus 1.x, see the main branch: https://github.com/tusdotnet/tusdotnet/
+This branch is intended for the [IETF "Resumable uploads for http" protocol](https://github.com/httpwg/http-extensions/blob/main/draft-ietf-httpbis-resumable-upload.md) (formerly known as ["tus2"](https://github.com/tus/tus-v2)). For tus 1.x, see the main branch: https://github.com/tusdotnet/tusdotnet/
 
-Please note that this is a POC/experimental implementation and breaking changes will happen.
+Please note that this is a **POC/experimental** implementation and breaking changes will happen.
+
+Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/d2db65d8db8f6e9c3fab22878090773e62042489
+
+## Known issues
+The `104 Upload Resumption Supported` response cannot be sent as .NET does not support 1xx responses (see [this issue on github](https://github.com/dotnet/aspnetcore/issues/27851)) and as such feature detection is not supported.
 
 ## Install
 

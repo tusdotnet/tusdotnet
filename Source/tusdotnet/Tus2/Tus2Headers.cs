@@ -7,7 +7,7 @@ namespace tusdotnet.Tus2
     {
         public long? UploadOffset { get; set; }
 
-        public string? UploadToken { get; set; }
+        public string? ResourceId { get; set; }
 
         public bool? UploadIncomplete { get; set; }
     }

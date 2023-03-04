@@ -25,7 +25,7 @@ namespace tusdotnet.Tus2
             return _headers = new()
             {
                 UploadOffset = uploadOffset,
-                UploadToken = uploadTokenParser.Parse(uploadToken),
+                ResourceId = uploadTokenParser.Parse(uploadToken),
                 UploadIncomplete = uploadIncomplete
             };
         }

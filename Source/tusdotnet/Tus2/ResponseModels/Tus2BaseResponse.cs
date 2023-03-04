@@ -49,6 +49,8 @@ namespace tusdotnet.Tus2
                 return;
             }
 
+            httpContext.SetHeader("upload-draft-interop-version", "3");
+
             httpContext.Response.StatusCode = (int)Status;
 
             await WriteResponse(httpContext);
