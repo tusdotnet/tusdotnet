@@ -33,13 +33,15 @@ namespace tusdotnet.Stores
 
             var bytesWrittenThisRequest = 0L;
             ReadResult result = default;
-            bool latestDataHasBeenFlushedToDisk = false;
+            var latestDataHasBeenFlushedToDisk = false;
+            var clientDisconnectedDuringRead = false;
 
             try
             {
                 while (!PipeReadingIsDone(result, cancellationToken))
                 {
                     result = await reader.ReadAsync(cancellationToken);
+                    clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
 
                     AssertNotToMuchData(fileSizeOnDisk, result.Buffer.Length, fileUploadLengthProvidedDuringCreate);
 
@@ -86,7 +88,7 @@ namespace tusdotnet.Stores
                 throw;
             }
 
-            if (!cancellationToken.IsCancellationRequested)
+            if (!clientDisconnectedDuringRead)
             {
                 MarkChunkComplete(chunkCompleteFile);
             }
