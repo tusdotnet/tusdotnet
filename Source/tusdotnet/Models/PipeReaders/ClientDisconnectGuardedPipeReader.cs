@@ -13,7 +13,7 @@ namespace tusdotnet.Models
     {
         private readonly PipeReader _backingReader;
         private readonly CancellationToken _cancellationToken;
-        private readonly ReadOnlySequence<byte> _emptySequence = new(Array.Empty<byte>());
+        private readonly ReadOnlySequence<byte> _emptySequence = new();
 
         public ClientDisconnectGuardedPipeReader(PipeReader backingReader, CancellationToken cancellation)
         {
