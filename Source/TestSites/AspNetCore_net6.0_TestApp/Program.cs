@@ -13,19 +13,14 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.Models.Expiration;
 using tusdotnet.Stores;
 
-string path = Path.Combine(Environment.CurrentDirectory, "tusfiles");
-if (!File.Exists(path))
-    Directory.CreateDirectory(path);
-
-AppDomain.CurrentDomain.SetData("Path", path);
-
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
     kestrel.Limits.MaxRequestBodySize = null;
 });
 
-builder.Services.AddSingleton(CreateTusConfigurationForCleanupService());
+builder.Services.AddSingleton<TusDiskStorageOptionHelper>();
+builder.Services.AddSingleton(services => CreateTusConfigurationForCleanupService(services));
 builder.Services.AddHostedService<ExpiredFilesCleanupService>();
 
 AddAuthorization(builder);
@@ -63,12 +58,14 @@ static void AddAuthorization(WebApplicationBuilder builder)
     builder.Services.AddAuthentication("BasicAuthentication").AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 }
 
-static DefaultTusConfiguration CreateTusConfigurationForCleanupService()
+static DefaultTusConfiguration CreateTusConfigurationForCleanupService(IServiceProvider services)
 {
+    var path = services.GetRequiredService<TusDiskStorageOptionHelper>().StorageDiskPath;
+
     // Simplified configuration just for the ExpiredFilesCleanupService to show load order of configs.
     return new DefaultTusConfiguration
     {
-        Store = new TusDiskStore(AppDomain.CurrentDomain.GetData("Path") as string),
+        Store = new TusDiskStore(path),
         Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
     };
 }
@@ -81,9 +78,11 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
     // the new authorization event.
     var enableAuthorize = httpContext.RequestServices.GetRequiredService<IOptions<OnAuthorizeOption>>().Value.EnableOnAuthorize;
 
+    var diskStorePath = httpContext.RequestServices.GetRequiredService<TusDiskStorageOptionHelper>().StorageDiskPath;
+
     var config = new DefaultTusConfiguration
     {
-        Store = new TusDiskStore(AppDomain.CurrentDomain.GetData("Path") as string),
+        Store = new TusDiskStore(diskStorePath),
         MetadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues,
         UsePipelinesIfAvailable = true,
         Events = new Events
