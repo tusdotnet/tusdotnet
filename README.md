@@ -12,6 +12,7 @@ Comments, ideas, questions and PRs are welcome!
 
 * Runs on OWIN and ASP.NET Core (on both .NET Framework, .NET Core, .NET6 and later)
 * Full support for tus 1.0.0 including all major extensions (checksum, checksum-trailers, concatenation, creation, creation-with-upload, upload-defer-length, expiration and termination)
+* Experimental support for IETF's [Resumable Uploads For Http](https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/) (see branch [POC/tus2](https://github.com/tusdotnet/tusdotnet/tree/POC/tus2))
 * Fast and reliable
 * Easy to configure
 * Customizable data storage
