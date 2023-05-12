@@ -15,6 +15,12 @@
             <input type="file" name="droppedFile" id="droppedFile" />
             <input type="button" id="uploadButton" value="Upload" onclick="uploadFile()" />
             <input type="button" id="cancelUploadButton" value="Cancel" onclick="cancelUpload()" disabled />
+            <br />
+            <select id="endpoint">
+                <option value="filesmodelbinding/">filesmodelbinding</option>
+                <option value="filesmodelbindingmvc/">filesmodelbindingmvc</option>
+            </select>
+            
             <progress value="0" max="100" id="uploadProgress" style="display:none"></progress>
         </div>
         <br />

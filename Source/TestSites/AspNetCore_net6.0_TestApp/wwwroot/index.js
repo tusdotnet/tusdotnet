@@ -2,6 +2,7 @@
 var downloadLink = document.getElementById('downloadLink');
 var cancelUploadButton = document.getElementById('cancelUploadButton');
 var uploadButton = document.getElementById('uploadButton');
+var endpoint = document.getElementById("endpoint");
 var upload;
 
 function uploadFile() {
@@ -17,7 +18,7 @@ function uploadFile() {
 
     upload = new tus.Upload(file,
         {
-            endpoint: 'files/',
+            endpoint: endpoint.value,
             onError: onTusError,
             onProgress: onTusProgress,
             onSuccess: onTusSuccess,

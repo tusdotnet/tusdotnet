@@ -7,6 +7,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net;
 using tusdotnet;
+using tusdotnet.Interfaces;
+using tusdotnet.ModelBinders;
+using tusdotnet.ModelBinders.Validation;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -23,6 +26,12 @@ builder.Services.AddSingleton<TusDiskStorageOptionHelper>();
 builder.Services.AddSingleton(services => CreateTusConfigurationForCleanupService(services));
 builder.Services.AddHostedService<ExpiredFilesCleanupService>();
 
+// TODO: Make this prettier
+builder.Services.AddSingleton<ITusStore>(new TusDiskStore(new TusDiskStorageOptionHelper().StorageDiskPath));
+builder.Services.AddSingleton<MetadataValidator<MyMappedResumableUpload>, MyResumableUploadMetadataValidator>();
+
+builder.Services.AddControllers(options => options.AddResumableUploadModelBinder());
+
 AddAuthorization(builder);
 
 var app = builder.Build();
@@ -33,11 +42,21 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseHttpsRedirection();
 
+
+app.UseResumableUploadModelBinding();
+
+app.MapControllers();
+
 // Handle downloads (must be set before MapTus)
 app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
 
 // Setup tusdotnet for the /files/ path.
 app.MapTus("/files/", TusConfigurationFactory);
+
+app.Map("/filesmodelbinding", (MyMappedResumableUpload? file, ILogger<object> logger) =>
+{
+    logger.LogInformation($"Minimal api bound file to: {file?.UploadId ?? "<not bound>"}");
+});
 
 app.Run();
 

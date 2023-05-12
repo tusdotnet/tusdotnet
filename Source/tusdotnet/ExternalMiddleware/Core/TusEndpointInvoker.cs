@@ -6,6 +6,7 @@ using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 
 namespace tusdotnet
@@ -49,25 +50,8 @@ namespace tusdotnet
             }
             else
             {
-                await RespondToClient(contextAdapter.Response, context);
+                await context.RespondToClient(contextAdapter.Response);
             }
-        }
-
-        private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
-        {
-            // TODO: Implement support for custom responses by not writing if response has started
-
-            context.Response.StatusCode = (int)response.Status;
-            foreach (var item in response.Headers)
-            {
-                context.Response.Headers[item.Key] = item.Value;
-            }
-
-            if (string.IsNullOrWhiteSpace(response.Message))
-                return;
-
-            context.Response.ContentType = "text/plain";
-            await response.WriteMessageToStream(context.Response.Body);
         }
 
         private static RequestAdapter CreateRequestAdapter(HttpContext context)
