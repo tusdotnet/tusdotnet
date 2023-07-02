@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -147,6 +148,7 @@ namespace tusdotnet.Tus2
                         CancellationToken = context.CancellationToken,
                         Metadata = metadata
                     });
+
                     if (createFileResponse.IsError)
                     {
                         return new()
@@ -155,6 +157,9 @@ namespace tusdotnet.Tus2
                             ErrorMessage = createFileResponse.ErrorMessage
                         };
                     }
+
+                    // New file so send the 104 response with the location header
+                    await context.HttpContext.Send104UploadResumptionSupported(context.HttpContext.Request.GetDisplayUrl().TrimEnd('/') + "/" + context.Headers.ResourceId);
                 }
                 else
                 {

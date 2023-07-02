@@ -14,15 +14,15 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-            .ConfigureServices(services =>
-            {
-                services.Configure<IISServerOptions>(
-                        options =>
-                        {
-                            options.MaxRequestBodySize = null;
-                        }
-                    );
-            })
+                .ConfigureServices(services =>
+                {
+                    services.Configure<IISServerOptions>(
+                            options =>
+                            {
+                                options.MaxRequestBodySize = null;
+                            }
+                        );
+                })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();

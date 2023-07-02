@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>AspNetCore_netcoreapp3._1_TestApp</RootNamespace>
+	  <EnablePreviewFeatures>True</EnablePreviewFeatures>
+	  <RootNamespace>AspNetCore_netcoreapp3._1_TestApp</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
