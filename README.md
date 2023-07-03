@@ -7,7 +7,15 @@ Please note that this is a **POC/experimental** implementation and breaking chan
 Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/d2db65d8db8f6e9c3fab22878090773e62042489
 
 ## Known issues
-The `104 Upload Resumption Supported` response cannot be sent as .NET does not support 1xx responses (see [this issue on github](https://github.com/dotnet/aspnetcore/issues/27851)) and as such feature detection is not supported. This means that the client is required to perform a POST request with `Upload-Incomplete: true` and an empty body to get the upload url.
+
+`IIS` and `http.sys` does not support sending 1xx responses and thus there is no support for feature detection for these web servers/stacks. 
+Running **directly on Kestrel** or behind a **nginx reverse proxy** works as expected.
+
+For `IIS`/`http.sys` the client is required to perform a POST request with `Upload-Incomplete: true` and an empty body to get the upload url.
+
+See Github issues:
+* https://github.com/dotnet/aspnetcore/issues/4249#issuecomment-726266302
+* https://github.com/dotnet/aspnetcore/issues/27851
 
 ## Install
 
