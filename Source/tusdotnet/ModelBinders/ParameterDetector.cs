@@ -1,5 +1,6 @@
 ﻿#if NET6_0_OR_GREATER
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using System;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace tusdotnet.ModelBinders
 {
     internal static class ParameterDetector
     {
-        internal static ResumableUploadParameterInfo GetParameterThatIsResumableUpload(this Endpoint endpoint, IServiceProvider services)
+        internal static ResumableUploadParameterInfo GetParameterThatIsResumableUpload(this Endpoint endpoint, IServiceProvider services, bool bindAnyType)
         {
             if (endpoint is null)
                 return null;
@@ -22,8 +23,10 @@ namespace tusdotnet.ModelBinders
 
             return metadata switch
             {
-                ControllerActionDescriptor cad => ParseForMvc(cad, services),
-                MethodInfo mi => ParseForMinimalApi(mi, services),
+                ControllerActionDescriptor cad when bindAnyType is false => ParseForMvc(cad, services),
+                ControllerActionDescriptor cad when bindAnyType is true => ParseForMvcUsingFromBody(cad, services),
+                MethodInfo mi when bindAnyType is false => ParseForMinimalApi(mi, services),
+                MethodInfo mi when bindAnyType is true => ParseForMinimalApiUsingFromBody(mi, services),
                 _ => null
             };
         }
@@ -53,10 +56,24 @@ namespace tusdotnet.ModelBinders
             return CreateResult(parameter.ParameterType, services);
         }
 
+        private static ResumableUploadParameterInfo ParseForMinimalApiUsingFromBody(MethodInfo methodInfo, IServiceProvider services)
+        {
+            //var parameter = methodInfo.GetParameters().SingleOrDefault(x => x.GetCustomAttribute(typeof(FromBodyAttribute)) is not null);
+            var parameter = methodInfo.GetParameters().SingleOrDefault(x => x.ParameterType.Name == "MyClass");
+            //var validatorType = GetValidatorFromAttribute(parameter);
+            return CreateResult(parameter.ParameterType, services);
+        }
+
         private static ResumableUploadParameterInfo ParseForMvc(ControllerActionDescriptor actionDescriptor, IServiceProvider services)
         {
             var parameter = actionDescriptor.MethodInfo.GetParameters().SingleOrDefault(x => typeof(ResumableUpload).IsAssignableFrom(x.ParameterType));
             //var validatorType = GetValidatorFromAttribute(paramDescriptor);
+            return CreateResult(parameter.ParameterType, services);
+        }
+
+        private static ResumableUploadParameterInfo ParseForMvcUsingFromBody(ControllerActionDescriptor actionDescriptor, IServiceProvider services)
+        {
+            var parameter = actionDescriptor.MethodInfo.GetParameters().SingleOrDefault(x => x.GetCustomAttribute(typeof(FromBodyAttribute)) is not null);
             return CreateResult(parameter.ParameterType, services);
         }
     }

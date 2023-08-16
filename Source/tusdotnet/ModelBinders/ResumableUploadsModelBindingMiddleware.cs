@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,7 +34,17 @@ namespace tusdotnet.ModelBinders
         {
             var endpoint = httpContext.GetEndpoint();
 
-            if (endpoint.GetParameterThatIsResumableUpload(httpContext.RequestServices) is not ResumableUploadParameterInfo parameterInfo)
+            // TODO: These needs to be options
+            const bool BIND_ANY_TYPE = true;
+            Func<Dictionary<string, Metadata>, string> resolveContentType = meta =>
+            {
+                if (meta.TryGetValue("contentType", out var contentType))
+                    return contentType.GetString(System.Text.Encoding.UTF8);
+
+                return string.Empty;
+            };
+
+            if (endpoint.GetParameterThatIsResumableUpload(httpContext.RequestServices, BIND_ANY_TYPE) is not ResumableUploadParameterInfo parameterInfo)
             {
                 await _next.Invoke(httpContext);
                 return;
@@ -44,7 +56,7 @@ namespace tusdotnet.ModelBinders
                 Store = store,
                 Events = new()
                 {
-                    OnBeforeCreateAsync = (beforeCreateContext) => ValidateMetadata(beforeCreateContext, parameterInfo.TypeOfResumableUploadParam),
+                    //OnBeforeCreateAsync = (beforeCreateContext) => ValidateMetadata(beforeCreateContext, parameterInfo.TypeOfResumableUploadParam),
                     OnCreateCompleteAsync = SetUploadUrl
                 }
             };
@@ -65,6 +77,18 @@ namespace tusdotnet.ModelBinders
                 var file = await contextAdapter.StoreAdapter.GetFileAsync(contextAdapter.FileId, CancellationToken.None);
                 httpContext.Features.Set(new ResumableUploadCompleteFeature(file));
                 httpContext.Response.OnStarting(SetTusHeaders, contextAdapter);
+
+                if (BIND_ANY_TYPE)
+                {
+                    var meta = await file.GetMetadataAsync(default);
+
+                    // We need to replace the content type for the native model binders to be able to bind.
+                    var contentType = resolveContentType(meta);
+
+                    if (string.IsNullOrWhiteSpace(contentType) is false)
+                        httpContext.Request.Headers.ContentType = new(contentType);
+                    httpContext.Request.Body = await file.GetContentAsync(httpContext.RequestAborted);
+                }
 
                 await _next.Invoke(httpContext);
 

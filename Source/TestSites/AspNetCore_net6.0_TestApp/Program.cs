@@ -1,8 +1,10 @@
 using AspNetCore_net6._0_TestApp;
 using AspNetCore_net6._0_TestApp.Authentication;
+using AspNetCore_net6._0_TestApp.Controllers;
 using AspNetCore_net6._0_TestApp.Endpoints;
 using AspNetCore_net6._0_TestApp.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net;
@@ -53,9 +55,10 @@ app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
 // Setup tusdotnet for the /files/ path.
 app.MapTus("/files/", TusConfigurationFactory);
 
-app.Map("/filesmodelbinding", (MyMappedResumableUpload? file, ILogger<object> logger) =>
+app.Map("/filesmodelbinding", (MyClass? data, ILogger<object> logger) =>
 {
-    logger.LogInformation($"Minimal api bound file to: {file?.UploadId ?? "<not bound>"}");
+    //logger.LogInformation($"Minimal api bound file to: {file?.UploadId ?? "<not bound>"}");
+    logger.LogInformation($"{data.Name} {data.SomeProp} {data.MyProperty}");
 });
 
 app.Run();
@@ -77,7 +80,7 @@ static void AddAuthorization(WebApplicationBuilder builder)
     builder.Services.AddAuthentication("BasicAuthentication").AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 }
 
-static DefaultTusConfiguration CreateTusConfigurationForCleanupService(IServiceProvider services)
+static DefaultTusConfiguration CreateTusConfigurationForCleanupService([FromBody] IServiceProvider services)
 {
     var path = services.GetRequiredService<TusDiskStorageOptionHelper>().StorageDiskPath;
 
@@ -89,7 +92,7 @@ static DefaultTusConfiguration CreateTusConfigurationForCleanupService(IServiceP
     };
 }
 
-static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpContext)
+static Task<DefaultTusConfiguration> TusConfigurationFactory([FromBody] HttpContext httpContext)
 {
     var logger = httpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger<Program>();
 
