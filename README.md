@@ -6,6 +6,8 @@ Please note that this is a **POC/experimental** implementation and breaking chan
 
 Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/d2db65d8db8f6e9c3fab22878090773e62042489
 
+Other implementations (both server and clients): https://github.com/tus/draft-example
+
 ## Known issues
 
 `IIS` and `http.sys` does not support sending 1xx responses and thus there is no support for feature detection for these web servers/stacks. 
@@ -20,6 +22,16 @@ See Github issues:
 ## Install
 
 Clone this branch and include it in your project. All classes related to tus2 are found in the `tusdotnet.tus2` namespace. Files are found in `Source/tusdotnet/tus2`.
+
+## Run
+
+Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp`.
+
+`dotnet run`
+
+Open a browser and go to `https://localhost:5007` which will load the test page with the IETF branch of [tus-js-client](https://github.com/tus/tus-js-client/pull/609)
+
+Files will be saved in the location found in `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp\appsettings.json` -> `FolderDiskPath`
 
 ## Configure (simple)
 

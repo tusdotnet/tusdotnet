@@ -85,8 +85,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             app.UseAuthentication();
 
-            //app.UseDefaultFiles();
-            //app.UseStaticFiles();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
 
             //app.UseHttpsRedirection();
 

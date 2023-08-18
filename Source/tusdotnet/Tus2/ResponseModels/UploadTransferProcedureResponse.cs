@@ -6,9 +6,9 @@ namespace tusdotnet.Tus2
 {
     public class UploadTransferProcedureResponse : Tus2BaseResponse
     {
-        public bool RequestUploadIncomplete { get; set; }
+        internal string ResourceId { get; set; }
 
-        public string ResourceId { get; set; }
+        internal bool RequestUploadIncomplete { get; set; }
 
         internal bool ResourceWasJustCreated { get; set; }
 

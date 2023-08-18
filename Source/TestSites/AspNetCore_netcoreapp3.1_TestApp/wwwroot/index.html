@@ -61,7 +61,7 @@
 
     </form>
 
-    <script src="tus.js"></script>
+    <script src="tus.min.js"></script>
     <script>
 
         var uploadProgress = document.getElementById('uploadProgress');
@@ -83,10 +83,11 @@
 
             upload = new tus.Upload(file,
                 {
-                    endpoint: 'files/',
+                    endpoint: 'files-tus-2/',
                     onError: onTusError,
                     onProgress: onTusProgress,
                     onSuccess: onTusSuccess,
+                    protocol: 'ietf-draft-01',
                     metadata: {
                         name: file.name,
                         contentType: file.type || 'application/octet-stream',
@@ -95,7 +96,17 @@
                 });
 
             setProgressTest('Starting upload...');
-            upload.start();
+
+            upload.findPreviousUploads().then(function (previousUploads) {
+
+                if (previousUploads.length) {
+                    upload.resumeFromPreviousUpload(previousUploads[0]);
+                }
+                upload.start();
+
+            }).catch(function () {
+                upload.start();
+            });
         }
 
         function cancelUpload() {
