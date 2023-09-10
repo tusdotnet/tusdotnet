@@ -94,19 +94,11 @@ namespace tusdotnet.test.Tests
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
             checksumStore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(false);
 
-            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
+            var request = new RequestAdapter()
             {
-                CancellationToken = cts.Token,
-                Configuration = new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                },
-                Request = new RequestAdapter()
-                {
-                    Body = new MemoryStream(),
-                    RequestUri = new Uri("https://localhost/files/" + fileId),
-                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>
+                Body = new MemoryStream(),
+                RequestUri = new Uri("https://localhost/files/" + fileId),
+                Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>
                     {
                         { Constants.HeaderConstants.TusResumable, Constants.HeaderConstants.TusResumableValue },
                         // Just random gibberish as checksum
@@ -114,10 +106,17 @@ namespace tusdotnet.test.Tests
                         { Constants.HeaderConstants.UploadOffset, "5" },
                         { Constants.HeaderConstants.ContentType, "application/offset+octet-stream" },
                     }),
-                    Method = "PATCH"
-                },
-                HttpContext = new DefaultHttpContext()
+                Method = "PATCH"
             };
+
+            var config = new DefaultTusConfiguration
+            {
+                Store = store,
+                UrlPath = "/files",
+            };
+
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, new DefaultHttpContext());
+
             await TusV1EventRunner.Invoke(context);
 
             await checksumStore.ReceivedWithAnyArgs().VerifyChecksumAsync(null, null, null, CancellationToken.None);

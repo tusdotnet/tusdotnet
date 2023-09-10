@@ -70,6 +70,8 @@ namespace tusdotnet.IntentHandlers
 #endif
 
             var bytesWritten = writeTuple.Item1;
+
+            // TODO: Investigate why we need the token like this here instead of using the Context.CancellationToken.
             var cancellationToken = writeTuple.Item2;
 
             var expires = _expirationHelper.IsSlidingExpiration
@@ -128,12 +130,10 @@ namespace tusdotnet.IntentHandlers
 
         private async Task<Tuple<long, CancellationToken>> HandleStreamWrite()
         {
-            var tuple = await GuardedStreamFactory.Create(Context);
-            var stream = tuple.Item1;
-            var cancellationToken = tuple.Item2;
+            var stream = await GuardedStreamFactory.Create(Context);
 
-            var bytesWritten = await Store.AppendDataAsync(Context.FileId, stream, cancellationToken);
-            return new Tuple<long, CancellationToken>(bytesWritten, cancellationToken);
+            var bytesWritten = await Store.AppendDataAsync(Context.FileId, stream, Context.CancellationToken);
+            return new Tuple<long, CancellationToken>(bytesWritten, Context.CancellationToken);
         }
 
         private Task WriteUploadLengthIfDefered()

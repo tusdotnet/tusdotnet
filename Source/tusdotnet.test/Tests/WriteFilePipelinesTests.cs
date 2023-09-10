@@ -18,6 +18,7 @@ using tusdotnet.test.Extensions;
 using Xunit;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace tusdotnet.test.Tests
 {
@@ -223,6 +224,10 @@ namespace tusdotnet.test.Tests
             var pipelineDetails = PipelineDisconnectEmulationDataAttribute.GetInfo(pipeline);
 
             var cts = new CancellationTokenSource();
+            var httpContext = new DefaultHttpContext
+            {
+                RequestAborted = cts.Token
+            };
 
             var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
 
@@ -243,28 +248,28 @@ namespace tusdotnet.test.Tests
                     return -1L; // Won't reach here so just return something.
                 });
 
-            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
+            var request = new RequestAdapter()
             {
-                CancellationToken = cts.Token,
-                Configuration = new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store,
-                    UsePipelinesIfAvailable = true
-                },
-                Request = new RequestAdapter()
-                {
-                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
                         {"Content-Type", "application/offset+octet-stream"},
                         {"Tus-Resumable", "1.0.0"},
                         {"Upload-Offset", "5"}
                     }),
-                    Method = "PATCH",
-                    BodyReader = bodyReader,
-                    RequestUri = new Uri("https://localhost:8080/files/testfile")
-                }
+                Method = "PATCH",
+                BodyReader = bodyReader,
+                RequestUri = new Uri("https://localhost:8080/files/testfile")
             };
+
+            var config = new DefaultTusConfiguration
+            {
+                UrlPath = "/files",
+                Store = store,
+                UsePipelinesIfAvailable = true
+            };
+
+            
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(context);
 

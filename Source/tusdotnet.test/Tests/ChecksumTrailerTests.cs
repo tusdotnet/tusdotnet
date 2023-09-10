@@ -177,35 +177,35 @@ namespace tusdotnet.test.Tests
             var store = CreateStore<ITusStore>(verifyChecksumAsyncReturnValue: false);
             store.AppendDataAsync("checksum", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(5).AndDoes(_ => cts.Cancel());
 
-            var httpContext = new DefaultHttpContext();
+            var httpContext = new DefaultHttpContext
+            {
+                RequestAborted = cts.Token
+            };
+
             var trailersFeature = Substitute.For<IHttpRequestTrailersFeature>();
             trailersFeature.Available.ReturnsForAnyArgs(false);
 
             httpContext.Features.Set(trailersFeature);
             httpContext.Request.Headers.Add("Trailer", Constants.HeaderConstants.UploadChecksum);
 
-            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
+            var request = new RequestAdapter()
             {
-                CancellationToken = cts.Token,
-                Configuration = new DefaultTusConfiguration
-                {
-                    Store = store,
-                    UrlPath = "/files",
-                },
-                Request = new RequestAdapter()
-                {
-                    Body = new MemoryStream(),
-                    RequestUri = new Uri("https://localhost/files/checksum"),
-                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>
+                Body = new MemoryStream(),
+                RequestUri = new Uri("https://localhost/files/checksum"),
+                Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>
                     {
                         { Constants.HeaderConstants.TusResumable, Constants.HeaderConstants.TusResumableValue},
                         { Constants.HeaderConstants.UploadOffset, "5"},
                         { Constants.HeaderConstants.ContentType, "application/offset+octet-stream"},
                     }),
-                    Method = "PATCH"
-                },
-                HttpContext = httpContext
+                Method = "PATCH"
             };
+            var config = new DefaultTusConfiguration
+            {
+                Store = store,
+                UrlPath = "/files",
+            };
+            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             await TusV1EventRunner.Invoke(context);
 

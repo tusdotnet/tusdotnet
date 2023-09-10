@@ -7,32 +7,24 @@ namespace tusdotnet.Models
 {
     internal class ClientDisconnectGuardedReadOnlyStream : ReadOnlyStream
     {
-        internal CancellationToken CancellationToken { get; }
+        private readonly ClientDisconnectGuardWithTimeout _clientDisconnectGuard;
 
-        private readonly CancellationTokenSource _cancellationTokenSource;
-
-        /// <summary>
-        /// Default ctor
-        /// </summary>
-        /// <param name="backingStream">The stream to guard against client disconnects</param>
-        /// <param name="cancellationTokenSource">Token source to cancel when the client disconnects. Preferably use CancellationTokenSource.CreateLinkedTokenSource(RequestCancellationToken).</param>
-        internal ClientDisconnectGuardedReadOnlyStream(Stream backingStream, CancellationTokenSource cancellationTokenSource)
+        internal ClientDisconnectGuardedReadOnlyStream(Stream backingStream, ClientDisconnectGuardWithTimeout clientDisconnectGuard)
             : base(backingStream)
         {
-            CancellationToken = cancellationTokenSource.Token;
-
-            _cancellationTokenSource = cancellationTokenSource;
+            _clientDisconnectGuard = clientDisconnectGuard;
         }
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            var result = await ClientDisconnectGuard.ReadStreamAsync(BackingStream, buffer, offset, count, cancellationToken);
-
-            if (result.ClientDisconnected)
-            {
-                _cancellationTokenSource.Cancel();
-                return 0;
-            }
+            var result = await _clientDisconnectGuard.Execute(
+                guardFromClientDisconnect: async () =>
+                {
+                    var bytesRead = await BackingStream.ReadAsync(buffer, offset, count, cancellationToken);
+                    return new ClientDisconnectGuardReadStreamAsyncResult(false, bytesRead);
+                },
+                getDefaultValue: () => new ClientDisconnectGuardReadStreamAsyncResult(true, 0),
+                cancellationToken);
 
             return result.BytesRead;
         }

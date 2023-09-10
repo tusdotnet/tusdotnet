@@ -88,6 +88,9 @@ namespace tusdotnet.Models
         /// </summary>
         public TusExtensions AllowedExtensions { get; set; }
 
+
+        public TimeSpan ClientReadTimeout { get; set; }
+
         /// <summary>
         /// Default constructor.
         /// </summary>
@@ -100,6 +103,9 @@ namespace tusdotnet.Models
 #endif
 
             AllowedExtensions = TusExtensions.All;
+
+            // TODO: Find a suitable value
+            ClientReadTimeout = TimeSpan.FromSeconds(10);
         }
 
         /// <summary>

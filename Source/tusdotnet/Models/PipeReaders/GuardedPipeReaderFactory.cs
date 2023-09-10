@@ -12,7 +12,7 @@ namespace tusdotnet.Models.PipeReaders
         internal static async Task<PipeReader> Create(ContextAdapter context)
         {
             var maxSizeData = await context.GetMaxReadSizeInfo();
-            var guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.Request.BodyReader, context.CancellationToken);
+            var guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.Request.BodyReader, context.ClientDisconnectGuard);
 
             if (maxSizeData.MaxReadSize is null)
             {

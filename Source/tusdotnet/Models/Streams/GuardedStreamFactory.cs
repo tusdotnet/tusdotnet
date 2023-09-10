@@ -10,17 +10,16 @@ namespace tusdotnet.IntentHandlers
 {
     internal static class GuardedStreamFactory
     {
-        internal static async Task<Tuple<Stream, CancellationToken>> Create(ContextAdapter context)
+        internal static async Task<Stream> Create(ContextAdapter context)
         {
             var maxSizeData = await context.GetMaxReadSizeInfo();
-            var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(context.Request.Body, cancellationTokenSource);
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(context.Request.Body, context.ClientDisconnectGuard);
 
             if (maxSizeData.MaxReadSize is null)
-                return new(guardedStream, guardedStream.CancellationToken);
+                return guardedStream;
 
             var maxSizeStream = new MaxReadSizeGuardedReadOnlyStream(guardedStream, maxSizeData.PreviouslyRead, maxSizeData.MaxReadSize.Value, maxSizeData.SizeSource);
-            return new(maxSizeStream, guardedStream.CancellationToken);
+            return maxSizeStream;
         }
     }
 }

@@ -53,13 +53,7 @@ namespace tusdotnet
 
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(httpContext, requestUri);
 
-            var contextAdapter = new ContextAdapter(config.UrlPath, null, MiddlewareUrlHelper.Instance)
-            {
-                Request = request,
-                Configuration = config,
-                CancellationToken = httpContext.RequestAborted,
-                HttpContext = httpContext
-            };
+            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
@@ -73,7 +67,7 @@ namespace tusdotnet
             }
         }
 
-        private bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
+        private static bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
         {
             return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
         }

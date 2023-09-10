@@ -58,13 +58,7 @@ namespace tusdotnet
                 RequestUri = context.Request.Uri
             };
 
-            var contextAdapter = new ContextAdapter(config.UrlPath, null, MiddlewareUrlHelper.Instance)
-            {
-                Request = request,
-                Configuration = config,
-                CancellationToken = context.Request.CallCancelled,
-                OwinContext = context
-            };
+            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance, request, config, context);
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
@@ -78,7 +72,7 @@ namespace tusdotnet
             }
         }
 
-        private bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
+        private static bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
         {
             return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
         }
