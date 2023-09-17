@@ -19,6 +19,9 @@ using Xunit;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using System.Net.Http;
+using tusdotnet.test.Helpers;
+using System.Diagnostics;
 
 namespace tusdotnet.test.Tests
 {
@@ -268,7 +271,7 @@ namespace tusdotnet.test.Tests
                 UsePipelinesIfAvailable = true
             };
 
-            
+
             var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(context);
@@ -277,6 +280,46 @@ namespace tusdotnet.test.Tests
             context.Response.Status.ShouldBe((HttpStatusCode)0);
             context.Response.Headers.Count.ShouldBe(0);
             context.Response.Message.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task Handles_Read_Timeouts_Gracefully()
+        {
+
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+
+            store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(async callInfo =>
+            {
+                var reader = callInfo.Arg<PipeReader>();
+                var ct = callInfo.Arg<CancellationToken>();
+                var res = await reader.ReadAsync(ct);
+
+                return res.Buffer.Length;
+            });
+
+            var config = new DefaultTusConfiguration
+            {
+                ClientReadTimeout = TimeSpan.FromMilliseconds(100),
+                UrlPath = "/files",
+                Store = store,
+                UsePipelinesIfAvailable = true
+            };
+
+            using var server = TestServerFactory.Create(config);
+
+            var response = await server
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "5")
+                    .And(m =>
+                    {
+                        m.Content = new StreamContent(new SlowMemoryStream(new byte[5], delayPerReadInMs: 500));
+                        m.Content.Headers.Add("Content-Type", "application/offset+octet-stream");
+                    })
+                    .SendAsync("PATCH");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.RequestTimeout);
+            response.Headers.ShouldBeEmpty();
+
         }
 
         [Fact]

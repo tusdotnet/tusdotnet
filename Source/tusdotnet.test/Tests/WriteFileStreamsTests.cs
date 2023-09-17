@@ -15,6 +15,9 @@ using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 using Microsoft.AspNetCore.Http;
+using System.Net.Http;
+using tusdotnet.test.Helpers;
+using System.Linq;
 #if netfull
 using Owin;
 #endif
@@ -273,6 +276,47 @@ namespace tusdotnet.test.Tests
             context.Response.Status.ShouldBe((HttpStatusCode)0);
             context.Response.Headers.Count.ShouldBe(0);
             context.Response.Message.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task Handles_Read_Timeouts_Gracefully()
+        {
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+
+            store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(async callInfo =>
+            {
+                var reader = callInfo.Arg<Stream>();
+                var ct = callInfo.Arg<CancellationToken>();
+                var res = await reader.ReadAsync(new byte[100], 0, 5);
+
+                return (long)res;
+            });
+
+            var config = new DefaultTusConfiguration
+            {
+                ClientReadTimeout = TimeSpan.FromMilliseconds(100),
+                UrlPath = "/files",
+                Store = store,
+
+#if pipelines
+                UsePipelinesIfAvailable = false
+#endif
+            };
+
+            using var server = TestServerFactory.Create(config);
+
+            var response = await server
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "5")
+                    .And(m =>
+                    {
+                        m.Content = new StreamContent(new SlowMemoryStream(new byte[5], delayPerReadInMs: 500));
+                        m.Content.Headers.Add("Content-Type", "application/offset+octet-stream");
+                    })
+                    .SendAsync("PATCH");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.RequestTimeout);
+            response.Headers.ShouldBeEmpty();
         }
 
         [Fact]

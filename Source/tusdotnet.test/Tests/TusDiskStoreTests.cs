@@ -318,18 +318,13 @@ namespace tusdotnet.test.Tests
 
             var pipeReader = PipeReader.Create(new SlowMemoryStream(new byte[fileSize]));
 
-            var appendTask = _fixture.Store
-                .AppendDataAsync(fileId, pipeReader, cancellationToken.Token);
-
-            await Task.Delay(150, CancellationToken.None);
-
-            cancellationToken.Cancel();
+            _ = Task.Delay(150, CancellationToken.None).ContinueWith(x => cancellationToken.Cancel());
 
             long bytesWritten = -1;
 
             try
             {
-                bytesWritten = await appendTask;
+                bytesWritten = await _fixture.Store.AppendDataAsync(fileId, pipeReader, cancellationToken.Token); ;
                 // Should have written something but should not have completed.
                 bytesWritten.ShouldBeInRange(1, 10240000);
             }

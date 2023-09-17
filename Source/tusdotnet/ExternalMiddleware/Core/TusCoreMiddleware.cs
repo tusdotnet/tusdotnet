@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
@@ -75,6 +76,12 @@ namespace tusdotnet
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
             // TODO: Implement support for custom responses by not writing if response has started
+
+            if (context.RequestAborted.IsCancellationRequested)
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.RequestTimeout;
+                return;
+            }
 
             context.Response.StatusCode = (int)response.Status;
             foreach (var item in response.Headers)
