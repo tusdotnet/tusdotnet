@@ -88,7 +88,12 @@ namespace tusdotnet.Models
         /// </summary>
         public TusExtensions AllowedExtensions { get; set; }
 
-
+        /// <summary>
+        /// Timeout to wait for data from the client. 
+        /// This value is per call to ReadAsync on the request's Stream/PipeReader. 
+        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast. 
+        /// This can be an issue if the client abrubtly disconnects due to network loss or similar.
+        /// </summary>
         public TimeSpan ClientReadTimeout { get; set; }
 
         /// <summary>

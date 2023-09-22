@@ -13,7 +13,7 @@ namespace tusdotnet.IntentHandlers
     {
         internal static IntentHandler NotApplicable { get; } = null;
 
-        internal static Requirement[] NoRequirements = new Requirement[0];
+        internal static Requirement[] NoRequirements { get; } = new Requirement[0];
 
         internal LockType LockType { get; }
 
@@ -27,20 +27,17 @@ namespace tusdotnet.IntentHandlers
 
         protected ResponseAdapter Response => Context.Response;
 
-        protected CancellationToken CancellationToken { get; }
+        protected CancellationToken CancellationToken => Context.CancellationToken;
 
-        protected ITusStore Store { get; }
+        protected ITusStore Store => StoreAdapter.Store;
 
-        protected StoreAdapter StoreAdapter { get; }
+        protected StoreAdapter StoreAdapter => Context.StoreAdapter;
 
         internal abstract Task Invoke();
 
         protected IntentHandler(ContextAdapter context, IntentType intent, LockType requiresLock)
         {
             Context = context;
-            CancellationToken = context.CancellationToken;
-            Store = context.Configuration.Store;
-            StoreAdapter = context.StoreAdapter;
 
             Intent = intent;
             LockType = requiresLock;

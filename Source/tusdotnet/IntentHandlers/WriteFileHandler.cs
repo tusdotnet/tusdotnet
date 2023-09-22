@@ -1,13 +1,10 @@
-﻿using System;
-using System.Net;
-using System.Threading;
+﻿using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
-using tusdotnet.Models.Concatenation;
 using tusdotnet.Validation;
 using tusdotnet.Validation.Requirements;
 #if pipelines
@@ -63,22 +60,17 @@ namespace tusdotnet.IntentHandlers
 
 #if pipelines
 
-            var writeTuple = await HandlePipelineWrite();
+            var bytesWritten = await HandlePipelineWrite();
 
 #else
-            var writeTuple = await HandleStreamWrite();
+            var bytesWritten = await HandleStreamWrite();
 #endif
 
-            var bytesWritten = writeTuple.Item1;
-
-            // TODO: Investigate why we need the token like this here instead of using the Context.CancellationToken.
-            var cancellationToken = writeTuple.Item2;
-
             var expires = _expirationHelper.IsSlidingExpiration
-                ? await _expirationHelper.SetExpirationIfSupported(Context.FileId, cancellationToken)
-                : await _expirationHelper.GetExpirationIfSupported(Context.FileId, cancellationToken);
+                ? await _expirationHelper.SetExpirationIfSupported(Context.FileId, Context.CancellationToken)
+                : await _expirationHelper.GetExpirationIfSupported(Context.FileId, Context.CancellationToken);
 
-            var matchChecksumResult = await _checksumHelper.MatchChecksum(cancellationToken.IsCancellationRequested);
+            var matchChecksumResult = await _checksumHelper.MatchChecksum(Context.CancellationToken.IsCancellationRequested);
 
             if (matchChecksumResult.IsFailure())
             {
@@ -86,7 +78,7 @@ namespace tusdotnet.IntentHandlers
                 return;
             }
 
-            if (cancellationToken.IsCancellationRequested)
+            if (Context.CancellationToken.IsCancellationRequested)
             {
                 return;
             }
@@ -109,7 +101,7 @@ namespace tusdotnet.IntentHandlers
 
 #if pipelines
 
-        private async Task<Tuple<long, CancellationToken>> HandlePipelineWrite()
+        private async Task<long> HandlePipelineWrite()
         {
             long bytesWritten;
             var isSupported = Context.Configuration.UsePipelinesIfAvailable && StoreAdapter.Features.Pipelines;
@@ -118,7 +110,7 @@ namespace tusdotnet.IntentHandlers
                 var pipeReader = await GuardedPipeReaderFactory.Create(Context);
                 bytesWritten = await StoreAdapter.AppendDataAsync(Context.FileId, pipeReader, CancellationToken);
 
-                return new Tuple<long, CancellationToken>(bytesWritten, CancellationToken);
+                return bytesWritten;
             }
             else
             {
@@ -128,12 +120,12 @@ namespace tusdotnet.IntentHandlers
 
 #endif
 
-        private async Task<Tuple<long, CancellationToken>> HandleStreamWrite()
+        private async Task<long> HandleStreamWrite()
         {
             var stream = await GuardedStreamFactory.Create(Context);
 
             var bytesWritten = await Store.AppendDataAsync(Context.FileId, stream, Context.CancellationToken);
-            return new Tuple<long, CancellationToken>(bytesWritten, Context.CancellationToken);
+            return bytesWritten;
         }
 
         private Task WriteUploadLengthIfDefered()

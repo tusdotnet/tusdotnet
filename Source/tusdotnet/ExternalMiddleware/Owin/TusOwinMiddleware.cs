@@ -1,10 +1,9 @@
 ﻿#if netfull
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Owin;
 using System;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
@@ -80,13 +79,6 @@ namespace tusdotnet
 
         private async Task RespondToClient(ResponseAdapter response, IOwinContext context)
         {
-            if (context.Request.CallCancelled.IsCancellationRequested)
-            {
-                context.Response.StatusCode = (int)HttpStatusCode.RequestTimeout;
-                return;
-            }
-
-
             context.Response.StatusCode = (int)response.Status;
             foreach (var item in response.Headers)
             {

@@ -278,6 +278,8 @@ namespace tusdotnet.test.Tests
             context.Response.Message.ShouldBeNull();
         }
 
+#if netstandard
+
         [Fact]
         public async Task Handles_Read_Timeouts_Gracefully()
         {
@@ -305,7 +307,9 @@ namespace tusdotnet.test.Tests
 
             using var server = TestServerFactory.Create(config);
 
-            var response = await server
+            var exception = await Should.ThrowAsync<Exception>(async () =>
+            {
+                var response = await server
                     .CreateTusResumableRequest("/files/testfile")
                     .AddHeader("Upload-Offset", "5")
                     .And(m =>
@@ -314,10 +318,12 @@ namespace tusdotnet.test.Tests
                         m.Content.Headers.Add("Content-Type", "application/offset+octet-stream");
                     })
                     .SendAsync("PATCH");
+            });
 
-            response.StatusCode.ShouldBe(HttpStatusCode.RequestTimeout);
-            response.Headers.ShouldBeEmpty();
+            exception.Message.ShouldBe("The application aborted the request.");
         }
+
+#endif
 
         [Fact]
         public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()

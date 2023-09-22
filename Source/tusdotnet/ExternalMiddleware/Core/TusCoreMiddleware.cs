@@ -79,7 +79,7 @@ namespace tusdotnet
 
             if (context.RequestAborted.IsCancellationRequested)
             {
-                context.Response.StatusCode = (int)HttpStatusCode.RequestTimeout;
+                context.Abort();
                 return;
             }
 
