@@ -579,7 +579,7 @@ namespace tusdotnet.test.Tests
 
             var buffer = new UTF8Encoding(false).GetBytes(message);
 
-            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(CancellationToken.None, TimeSpan.FromSeconds(10));
+            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), CancellationToken.None);
 
             var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, clientDisconnectGuard.GuardedToken);
 
@@ -618,7 +618,7 @@ namespace tusdotnet.test.Tests
 
                 // Create a new store and cancellation token source on each request as one would do in a real scenario.
                 _fixture.CreateNewStore();
-                var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(CancellationToken.None, TimeSpan.FromSeconds(10));
+                var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), CancellationToken.None);
                 var token = clientDisconnectGuard.GuardedToken;
 
                 var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(dataBuffer), clientDisconnectGuard);
@@ -644,7 +644,7 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(6, null, CancellationToken.None);
 
             var cts = new CancellationTokenSource();
-            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(cts.Token, TimeSpan.FromSeconds(10));
+            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), cts.Token);
 
             var requestStream = new RequestStreamFake(
                 (stream, bufferToFill, offset, _, cancellationToken) =>
@@ -681,7 +681,7 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(6, null, CancellationToken.None);
 
             var cts = new CancellationTokenSource();
-            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(cts.Token, TimeSpan.FromSeconds(10));
+            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), cts.Token);
 
             var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(dataBuffer), clientDisconnectGuard);
             await _fixture.Store.AppendDataAsync(fileId, guardedStream, clientDisconnectGuard.GuardedToken);
