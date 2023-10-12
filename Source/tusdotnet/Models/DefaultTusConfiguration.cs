@@ -88,12 +88,24 @@ namespace tusdotnet.Models
         /// </summary>
         public TusExtensions AllowedExtensions { get; set; }
 
+#if pipelines
         /// <summary>
         /// Timeout to wait for data from the client. 
-        /// This value is per call to ReadAsync on the request's Stream/PipeReader. 
-        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast. 
-        /// This can be an issue if the client abrubtly disconnects due to network loss or similar.
+        /// The timeout is applied from the moment the store starts reading from the client until it has filled its internal read buffer.
+        /// Once the buffer is filled, the timeout is reset and restarted on the next read.
+        /// When <see cref="UsePipelinesIfAvailable" /> is enabled, the internal read buffer is always 4 KiB. When false, it is determined by the store.
+        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abrubtly disconnects due to network loss or similar.
+        /// The default value is 60 seconds.
         /// </summary>
+#else
+        /// <summary>
+        /// Timeout to wait for data from the client. 
+        /// The timeout is applied from the moment the store starts reading from the client until it has filled its internal read buffer.
+        /// Once the buffer is filled, the timeout is reset and restarted on the next read. The buffer size is determined by the store.
+        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abrubtly disconnects due to network loss or similar.
+        /// The default value is 60 seconds.
+        /// </summary>
+#endif
         public TimeSpan ClientReadTimeout { get; set; }
 
         /// <summary>
@@ -109,8 +121,7 @@ namespace tusdotnet.Models
 
             AllowedExtensions = TusExtensions.All;
 
-            // TODO: Find a suitable value
-            ClientReadTimeout = TimeSpan.FromSeconds(10);
+            ClientReadTimeout = TimeSpan.FromSeconds(60);
         }
 
         /// <summary>

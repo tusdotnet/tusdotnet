@@ -134,7 +134,7 @@ namespace tusdotnet.Adapters
             if (tokenToMonitor is null)
                 return;
 
-            ClientDisconnectGuard = new ClientDisconnectGuardWithTimeout(tokenToMonitor.Value, executionTimeout);
+            ClientDisconnectGuard = new ClientDisconnectGuardWithTimeout(executionTimeout, tokenToMonitor.Value);
         }
     }
 }
