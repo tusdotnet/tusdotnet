@@ -260,4 +260,4 @@ nugetbuild/
 Tools/coverage.xml
 
 # Temp files when running tusdotnet
-App_Data/tusfiles
+**/**/App_Data/tusfiles
