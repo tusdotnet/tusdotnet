@@ -1,12 +1,19 @@
 ﻿#if netstandard && !NET6_0_OR_GREATER
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Helpers
 {
+    /*
+    * "Subsequent calls to CancelAfter will reset the delay for this CancellationTokenSource, if it has not been canceled already."
+    * https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource.cancelafter?view=netcore-3.1#system-threading-cancellationtokensource-cancelafter(system-timespan)
+    * 
+    * Using Timeout.Infinite will remove the timer from the timer queue, making it a no-op: 
+    * https://source.dot.net/#System.Private.CoreLib/src/libraries/System.Private.CoreLib/src/System/Threading/CancellationTokenSource.cs,418
+    * https://source.dot.net/#System.Private.CoreLib/src/libraries/System.Private.CoreLib/src/System/Threading/Timer.cs,552
+    */
+
     internal partial class ClientDisconnectGuardWithTimeout
     {
 
@@ -14,34 +21,24 @@ namespace tusdotnet.Helpers
 
         private void ExecuteWithTimeout(Action guardFromClientDisconnect)
         {
-            var completed = false;
-            var timeout = Task.Delay(_executionTimeout);
-            timeout.ContinueWith(x =>
-            {
-                if (completed) return;
-
-                _cts.Cancel();
-            });
+            _cts.CancelAfter(_executionTimeout);
 
             guardFromClientDisconnect();
-            completed = true;
+
+            _cts.CancelAfter(Timeout.Infinite);
         }
 
 #endif
 
         private async Task<T> ExecuteWithTimeout<T>(Func<Task<T>> guardFromClientDisconnect)
         {
-            var timeout = Task.Delay(_executionTimeout);
-            var res = guardFromClientDisconnect();
+            _cts.CancelAfter(_executionTimeout);
 
-            var t = await Task.WhenAny(res, timeout);
-            if (t == timeout)
-            {
-                _cts.Cancel();
-                return default;
-            }
+            var res = await guardFromClientDisconnect();
 
-            return res.Result;
+            _cts.CancelAfter(Timeout.Infinite);
+
+            return res;
         }
     }
 }
