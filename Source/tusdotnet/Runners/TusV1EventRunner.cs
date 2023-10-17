@@ -38,9 +38,9 @@ namespace tusdotnet
 
         private static async Task<ResultType> RunWithEvents(this IntentHandlerWithEvents handler, ContextAdapter context, bool swallowExceptionsDuringInvoke)
         {
-            var onAuhorizeResult = await handler.Authorize();
+            var onAuthorizeResult = await handler.Authorize();
 
-            if (onAuhorizeResult == ResultType.StopExecution)
+            if (onAuthorizeResult == ResultType.StopExecution)
             {
                 return ResultType.StopExecution;
             }
