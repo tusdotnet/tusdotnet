@@ -94,7 +94,7 @@ namespace tusdotnet.test.Tests
             checksumStore.GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
             checksumStore.VerifyChecksumAsync(null, null, null, CancellationToken.None).ReturnsForAnyArgs(false);
 
-            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration

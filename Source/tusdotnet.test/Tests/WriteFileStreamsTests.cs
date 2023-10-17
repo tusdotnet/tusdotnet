@@ -240,7 +240,7 @@ namespace tusdotnet.test.Tests
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                 .ReturnsForAnyArgs<Task<long>>(async callInfo => await callInfo.Arg<Stream>().ReadAsync(null, 0, 0, callInfo.Arg<CancellationToken>()));
 
-            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration

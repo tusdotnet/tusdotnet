@@ -184,7 +184,7 @@ namespace tusdotnet.test.Tests
             httpContext.Features.Set(trailersFeature);
             httpContext.Request.Headers.Add("Trailer", Constants.HeaderConstants.UploadChecksum);
 
-            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration

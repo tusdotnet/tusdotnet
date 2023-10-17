@@ -243,7 +243,7 @@ namespace tusdotnet.test.Tests
                     return -1L; // Won't reach here so just return something.
                 });
 
-            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = cts.Token,
                 Configuration = new DefaultTusConfiguration
