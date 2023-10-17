@@ -65,12 +65,14 @@ namespace tusdotnet.Adapters
         /// </summary>
         public string ConfigUrlPath => _configUrlPath;
         private readonly string _configUrlPath;
+        private readonly string _requestPathBase;
 
         public IUrlHelper UrlHelper { get; }
 
-        public ContextAdapter(string configUrlPath, IUrlHelper urlHelper)
+        public ContextAdapter(string configUrlPath, string requestPathBase, IUrlHelper urlHelper)
         {
             _configUrlPath = configUrlPath;
+            _requestPathBase = requestPathBase;
             UrlHelper = urlHelper;
 
             Cache = new();
@@ -78,7 +80,9 @@ namespace tusdotnet.Adapters
 
         public string CreateFileLocation(string fileId)
         {
-            return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
+            if (string.IsNullOrWhiteSpace(_requestPathBase))
+                return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
+            return $"{_requestPathBase.TrimEnd('/')}/{_configUrlPath.TrimEnd('/')}/{fileId}";
         }
     }
 }
