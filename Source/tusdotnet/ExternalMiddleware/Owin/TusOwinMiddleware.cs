@@ -58,7 +58,7 @@ namespace tusdotnet
                 RequestUri = context.Request.Uri
             };
 
-            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance)
+            var contextAdapter = new ContextAdapter(config.UrlPath, null, MiddlewareUrlHelper.Instance)
             {
                 Request = request,
                 Configuration = config,
