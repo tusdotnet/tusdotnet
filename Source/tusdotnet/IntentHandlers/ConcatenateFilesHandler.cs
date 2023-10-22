@@ -93,7 +93,7 @@ namespace tusdotnet.IntentHandlers
 
         private UploadConcat ParseUploadConcatHeader()
         {
-            return new UploadConcat(Request.Headers.UploadConcat, Context.ConfigUrlPath);
+            return new UploadConcat(Request.Headers.UploadConcat, Context.ResolveEndpointUrlWithoutTrailingSlash());
         }
 
         private async Task<string> HandleCreationOfConcatFiles(long uploadLength, string metadataString)

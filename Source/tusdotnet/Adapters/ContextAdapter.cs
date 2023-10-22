@@ -80,10 +80,15 @@ namespace tusdotnet.Adapters
 
         public string CreateFileLocation(string fileId)
         {
-            if (string.IsNullOrWhiteSpace(_requestPathBase))
-                return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
+            return $"{ResolveEndpointUrlWithoutTrailingSlash()}/{fileId}";
+        }
 
-            return $"{_requestPathBase.TrimEnd('/')}/{_configUrlPath.Trim('/')}/{fileId}";
+        public string ResolveEndpointUrlWithoutTrailingSlash()
+        {
+            if (string.IsNullOrWhiteSpace(_requestPathBase))
+                return $"{_configUrlPath.TrimEnd('/')}";
+
+            return $"{_requestPathBase.TrimEnd('/')}/{_configUrlPath.Trim('/')}";
         }
     }
 }
