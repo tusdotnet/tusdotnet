@@ -82,7 +82,8 @@ namespace tusdotnet.Adapters
         {
             if (string.IsNullOrWhiteSpace(_requestPathBase))
                 return $"{_configUrlPath.TrimEnd('/')}/{fileId}";
-            return $"{_requestPathBase.TrimEnd('/')}/{_configUrlPath.TrimEnd('/')}/{fileId}";
+
+            return $"{_requestPathBase.TrimEnd('/')}/{_configUrlPath.Trim('/')}/{fileId}";
         }
     }
 }
