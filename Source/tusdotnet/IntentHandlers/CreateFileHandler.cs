@@ -56,7 +56,7 @@ namespace tusdotnet.IntentHandlers
             var metadata = Request.Headers.UploadMetadata;
             var fileId = await Context.StoreAdapter.CreateFileAsync(Request.Headers.UploadLength, metadata, CancellationToken);
 
-            
+
             DateTimeOffset? expires = null;
             long? uploadOffset = null;
 
@@ -72,12 +72,12 @@ namespace tusdotnet.IntentHandlers
 
             Context.FileId = fileId;
 
-            SetReponseHeaders(fileId, expires, uploadOffset);
+            SetResponseHeaders(fileId, expires, uploadOffset);
 
             Response.SetResponse(HttpStatusCode.Created);
         }
 
-        private void SetReponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
+        private void SetResponseHeaders(string fileId, DateTimeOffset? expires, long? uploadOffset)
         {
             if (expires != null)
             {

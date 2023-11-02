@@ -32,8 +32,9 @@ namespace tusdotnet
 
             var urlPath = GetUrlPath(context);
             var request = CreateRequestAdapter(context);
+            var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : null;
 
-            var contextAdapter = new ContextAdapter(urlPath, EndpointUrlHelper.Instance)
+            var contextAdapter = new ContextAdapter(urlPath, pathBase, EndpointUrlHelper.Instance)
             {
                 Request = request,
                 Configuration = config,

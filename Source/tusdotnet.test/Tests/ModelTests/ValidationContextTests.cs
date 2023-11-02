@@ -82,7 +82,7 @@ namespace tusdotnet.test.Tests.ModelTests
 
         private static ContextAdapter GetContext()
         {
-            return new ContextAdapter("/files", MiddlewareUrlHelper.Instance)
+            return new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
             {
                 CancellationToken = CancellationToken.None,
                 Configuration = new DefaultTusConfiguration

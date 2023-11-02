@@ -44,7 +44,7 @@ namespace tusdotnet.Validation.Requirements
             var filesArePartial = await Task.WhenAll(
                 finalConcat.Files.Select(f => context.StoreAdapter.GetUploadConcatAsync(f, context.CancellationToken)));
 
-            if (filesArePartial.Any(f => !(f is FileConcatPartial)))
+            if (filesArePartial.Any(f => f is not FileConcatPartial))
             {
                 await BadRequest($"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}");
                 return;
