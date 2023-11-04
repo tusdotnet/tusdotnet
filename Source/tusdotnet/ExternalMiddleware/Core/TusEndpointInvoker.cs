@@ -35,7 +35,7 @@ namespace tusdotnet
             var request = CreateRequestAdapter(context);
             var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : null;
 
-            var contextAdapter = new ContextAdapter(urlPath, EndpointUrlHelper.Instance, request, config, context);
+            var contextAdapter = new ContextAdapter(urlPath, pathBase, EndpointUrlHelper.Instance, request, config, context);
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 

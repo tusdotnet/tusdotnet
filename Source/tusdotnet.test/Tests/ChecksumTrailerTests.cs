@@ -205,7 +205,7 @@ namespace tusdotnet.test.Tests
                 Store = store,
                 UrlPath = "/files",
             };
-            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, httpContext);
+            var context = new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             await TusV1EventRunner.Invoke(context);
 

@@ -76,6 +76,7 @@ namespace tusdotnet.Adapters
 
         public ContextAdapter(
             string configUrlPath, 
+            string requestPathBase,
             IUrlHelper urlHelper, 
             RequestAdapter request, 
             DefaultTusConfiguration config, 
@@ -106,7 +107,7 @@ namespace tusdotnet.Adapters
             RequestAdapter request,
             DefaultTusConfiguration config,
             IOwinContext owinContext)
-            : this(configUrlPath, urlHelper, request, config, null as HttpContext)
+            : this(configUrlPath, requestPathBase: null, urlHelper, request, config, null as HttpContext)
         {
             OwinContext = owinContext;
 

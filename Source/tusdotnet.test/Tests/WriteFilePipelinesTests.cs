@@ -272,7 +272,7 @@ namespace tusdotnet.test.Tests
             };
 
 
-            var context = new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, httpContext);
+            var context = new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(context);
 

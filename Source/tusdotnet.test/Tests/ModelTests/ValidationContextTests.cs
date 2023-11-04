@@ -97,7 +97,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 UrlPath = "/files",
             };
 
-            return new ContextAdapter("/files", MiddlewareUrlHelper.Instance, request, config, new DefaultHttpContext());
+            return new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, new DefaultHttpContext());
         }
 
         private class ValidationContextForTest : ValidationContext<ValidationContextForTest>

@@ -54,7 +54,9 @@ namespace tusdotnet
 
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(httpContext, requestUri);
 
-            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance, request, config, httpContext);
+            // Note: When using the middleware one must prefix the UrlPath with the base path so no need to provide it here.
+            // This is done for backwards compatibility.
+            var contextAdapter = new ContextAdapter(config.UrlPath, requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
