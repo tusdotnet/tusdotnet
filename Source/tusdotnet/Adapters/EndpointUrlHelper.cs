@@ -2,6 +2,8 @@
 
 namespace tusdotnet.Adapters
 {
+    // This class assumes that it's running for an endpoint and such we already know that
+    // the path pattern matches as the code would not run otherwise.
     internal class EndpointUrlHelper : IUrlHelper
     {
         public static EndpointUrlHelper Instance { get; } = new();
@@ -22,7 +24,7 @@ namespace tusdotnet.Adapters
 
         public bool UrlMatchesUrlPath(ContextAdapter context)
         {
-            return true;
+            return !UrlMatchesFileIdUrl(context);
         }
     }
 }

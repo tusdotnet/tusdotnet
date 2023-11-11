@@ -11,10 +11,12 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Shouldly;
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.test.Extensions;
 using Xunit;
 
 namespace tusdotnet.test.Tests
@@ -60,6 +62,28 @@ namespace tusdotnet.test.Tests
             endpointFactoryUsed.ShouldBeTrue();
         }
 
+        [Fact]
+        public async Task Ignores_Request_If_Url_Does_Not_Match()
+        {
+            using var server = CreateTestServer(endpoints => endpoints.MapTus("/files", _ => Task.FromResult(CreateConfig())));
+
+            await SendAndAssert(server, "/files", HttpStatusCode.Created);
+
+            await SendAndAssert(server, "/otherfiles", HttpStatusCode.NotFound);
+
+            await SendAndAssert(server, "/files/testfile", HttpStatusCode.NotFound);
+
+            static async Task SendAndAssert(TestServer server, string path, HttpStatusCode expectedStatusCode)
+            {
+                var response = await server.CreateRequest(path)
+                    .AddTusResumableHeader()
+                    .AddHeader("Upload-Length", "100")
+                    .SendAsync("POST");
+
+                response.StatusCode.ShouldBe(expectedStatusCode);
+            }
+        }
+
         private static TestServer CreateTestServer(Action<IEndpointRouteBuilder> endpoints, Action<IServiceCollection> configureServices = null)
         {
             var builder = new WebHostBuilder()
@@ -83,7 +107,7 @@ namespace tusdotnet.test.Tests
         {
             return new DefaultTusConfiguration
             {
-                Store = Substitute.For<ITusStore>(),
+                Store = Substitute.For<ITusStore, ITusCreationStore>(),
                 Events = new()
                 {
                     OnAuthorizeAsync = _ =>
