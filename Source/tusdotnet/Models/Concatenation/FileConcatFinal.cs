@@ -15,10 +15,10 @@ namespace tusdotnet.Models.Concatenation
 		/// <summary>
 		/// Initializes a new instance of the <see cref="FileConcatFinal"/> class.
 		/// </summary>
-		/// <param name="partialFiles">The files to include in the final concatenation. The files does not contain any URL only the file id.</param>
-		public FileConcatFinal(params string[] partialFiles)
+		/// <param name="partialFileIds">The files to include in the final concatenation. The files does not contain any URL only the file id.</param>
+		public FileConcatFinal(params string[] partialFileIds)
 		{
-			Files = partialFiles;
+			Files = partialFileIds;
 		}
 
 		/// <summary>
