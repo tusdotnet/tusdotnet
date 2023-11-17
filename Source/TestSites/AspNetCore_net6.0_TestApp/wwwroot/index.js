@@ -21,6 +21,7 @@ function uploadFile() {
             onError: onTusError,
             onProgress: onTusProgress,
             onSuccess: onTusSuccess,
+            uploadDataDuringCreation: false,
             metadata: {
                 name: file.name,
                 contentType: file.type || 'application/octet-stream',

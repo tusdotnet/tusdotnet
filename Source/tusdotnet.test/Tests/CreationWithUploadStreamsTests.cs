@@ -492,5 +492,63 @@ namespace tusdotnet.test.Tests
             onUploadCompleteCallCounts.ShouldBe(expectedCallbackCount);
             onFileCompleteAsyncCallbackCounts.ShouldBe(expectedCallbackCount);
         }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task Returns_An_Error_To_The_Client_If_An_Exception_Is_Thrown_From_OnFileCompleteAsync(bool useLegacyOnFileComplete)
+        {
+            var uploadLength = 100;
+            var bytesInRequestBody = 100;
+            var offsetToReturn = 0;
+
+            ITusStore store = Substitute.For<ITusStore, ITusCreationStore>();
+            ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
+            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(_ => offsetToReturn).AndDoes(_ => offsetToReturn = bytesInRequestBody);
+            store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody);
+
+            var config = new DefaultTusConfiguration
+            {
+                Store = store,
+                UrlPath = "/files",
+#if pipelines
+                UsePipelinesIfAvailable = false,
+#endif
+            };
+
+            if (useLegacyOnFileComplete)
+            {
+#pragma warning disable CS0618 // Type or member is obsolete
+                config.OnUploadCompleteAsync = (_, __, ___) =>
+                {
+                    throw new Exception("Test from user code");
+
+                };
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
+            else
+            {
+                config.Events = new()
+                {
+                    OnFileCompleteAsync = _ =>
+                    {
+                        throw new Exception("Test from user code");
+                    }
+                };
+            }
+
+            using var server = TestServerFactory.Create(config);
+
+            var exception = await Should.ThrowAsync<Exception>(() =>
+            {
+                return server.CreateTusResumableRequest("/files/")
+                                       .AddHeader("Upload-Length", uploadLength.ToString())
+                                       .AddBody(bytesInRequestBody)
+                                       .SendAsync("POST");
+            });
+
+            exception.Message.ShouldBe("Test from user code");
+        }
     }
 }

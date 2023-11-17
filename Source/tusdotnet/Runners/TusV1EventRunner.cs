@@ -79,6 +79,10 @@ namespace tusdotnet
 
                 await handler.IntentHandler.Invoke();
 
+                // Invoke of generic code was OK so disable the swallowing of exceptions to allow propagation of
+                // user thrown exceptions in NotifyAfter.
+                swallowExceptionsDuringInvoke = false;
+
                 await handler.NotifyAfterAction();
             }
             catch (MaxReadSizeExceededException readSizeException)
