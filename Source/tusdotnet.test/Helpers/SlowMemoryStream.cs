@@ -12,15 +12,17 @@ namespace tusdotnet.test.Helpers
     {
         private readonly MemoryStream _stream;
         private readonly int _delayPerReadInMs;
+        private readonly bool _allowCancellation;
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
-        public SlowMemoryStream(byte[] buffer, int delayPerReadInMs = 100)
+        public SlowMemoryStream(byte[] buffer, int delayPerReadInMs = 100, bool allowCancellation = false)
         {
             _stream = new MemoryStream(buffer);
             _delayPerReadInMs = delayPerReadInMs;
+            _allowCancellation = allowCancellation;
         }
 
         public override bool CanRead => _stream.CanRead;
@@ -43,7 +45,9 @@ namespace tusdotnet.test.Helpers
 
             // Note: Some of our tests require that we get the data back to verify that things worked.
             // Ignore the cancellation token here to let this happen.
-            return await _stream.ReadAsync(buffer, offset, count, CancellationToken.None);
+
+            var ct = _allowCancellation ? cancellationToken : CancellationToken.None;
+            return await _stream.ReadAsync(buffer, offset, count, ct);
         }
 
 #if netstandard
@@ -54,7 +58,9 @@ namespace tusdotnet.test.Helpers
 
             // Note: Some of our tests require that we get the data back to verify that things worked.
             // Ignore the cancellation token here to let this happen.
-            return await _stream.ReadAsync(buffer, CancellationToken.None);
+
+            var ct = _allowCancellation ? cancellationToken : CancellationToken.None;
+            return await _stream.ReadAsync(buffer, ct);
         }
 
 #endif

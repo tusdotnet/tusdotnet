@@ -39,7 +39,7 @@ namespace tusdotnet.IntentHandlers
         };
 
         public GetFileInfoHandler(ContextAdapter context)
-            : base(context, IntentType.GetFileInfo, LockType.NoLock)
+            : base(context, IntentType.GetFileInfo, LockType.RequiresLock)
         {
         }
 

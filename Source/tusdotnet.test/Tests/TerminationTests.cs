@@ -13,14 +13,14 @@ using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
-#if netstandard
-using Microsoft.AspNetCore.Builder;
-#endif
 
 namespace tusdotnet.test.Tests
 {
     public class TerminationTests
     {
+        // HttpStatusCode.Locked is not available on netstandard nor net452.
+        private const HttpStatusCode HttpStatusLocked = (HttpStatusCode)423;
+
         private bool _callForwarded;
         private bool _onAuthorizeWasCalled;
         private IntentType? _onAuthorizeWasCalledWithIntent;
@@ -88,7 +88,7 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Delete_The_Same_File(string methodToUse)
+        public async Task Returns_423_Conflict_If_Multiple_Requests_Try_To_Delete_The_Same_File(string methodToUse)
         {
             var random = new Random();
             var store = Substitute.For<ITusStore, ITusTerminationStore>();
@@ -121,11 +121,11 @@ namespace tusdotnet.test.Tests
             if (task1.Result.StatusCode == HttpStatusCode.NoContent)
             {
                 task1.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task2.Result.StatusCode.ShouldBe(HttpStatusLocked);
             }
             else
             {
-                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task1.Result.StatusCode.ShouldBe(HttpStatusLocked);
                 task2.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             }
         }

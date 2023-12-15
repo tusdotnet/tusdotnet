@@ -172,17 +172,18 @@ namespace tusdotnet.test.Tests
             const string urlPath = "/files/";
             var fileIdUrl = urlPath + Guid.NewGuid();
 
-            // PATCH and DELETE are using locks.
+            // PATCH, DELETE and HEAD are using locks.
             var response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("PATCH");
             response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("DELETE");
+            response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("HEAD");
 
             // Others will not lock.
             response = await server.CreateTusResumableRequest(urlPath).SendAsync("OPTIONS");
             response = await server.CreateTusResumableRequest(urlPath).SendAsync("POST");
-            response = await server.CreateTusResumableRequest(fileIdUrl).SendAsync("HEAD");
+            
 
-            lockProvider.LockCount.ShouldBe(2);
-            lockProvider.ReleaseCount.ShouldBe(2);
+            lockProvider.LockCount.ShouldBe(3);
+            lockProvider.ReleaseCount.ShouldBe(3);
         }
 
         private class FileLockProviderForConfigurationTests : ITusFileLockProvider

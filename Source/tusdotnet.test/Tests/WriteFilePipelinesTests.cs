@@ -268,7 +268,8 @@ namespace tusdotnet.test.Tests
             {
                 UrlPath = "/files",
                 Store = store,
-                UsePipelinesIfAvailable = true
+                UsePipelinesIfAvailable = true,
+                FileLockProvider = new TestServerInMemoryFileLockProvider()
             };
 
 
@@ -329,7 +330,7 @@ namespace tusdotnet.test.Tests
 #endif
 
         [Fact]
-        public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
+        public async Task Returns_423_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
         {
             var random = new Random();
             var offset = 5;
@@ -364,11 +365,11 @@ namespace tusdotnet.test.Tests
             if (task1.Result.StatusCode == HttpStatusCode.NoContent)
             {
                 task1.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Locked);
             }
             else
             {
-                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Locked);
                 task2.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             }
         }
