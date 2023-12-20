@@ -18,6 +18,10 @@ using tusdotnet.test.Extensions;
 using Xunit;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using System.Net.Http;
+using tusdotnet.test.Helpers;
+using System.Diagnostics;
 
 namespace tusdotnet.test.Tests
 {
@@ -223,6 +227,10 @@ namespace tusdotnet.test.Tests
             var pipelineDetails = PipelineDisconnectEmulationDataAttribute.GetInfo(pipeline);
 
             var cts = new CancellationTokenSource();
+            var httpContext = new DefaultHttpContext
+            {
+                RequestAborted = cts.Token
+            };
 
             var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
 
@@ -243,28 +251,29 @@ namespace tusdotnet.test.Tests
                     return -1L; // Won't reach here so just return something.
                 });
 
-            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
+            var request = new RequestAdapter()
             {
-                CancellationToken = cts.Token,
-                Configuration = new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store,
-                    UsePipelinesIfAvailable = true
-                },
-                Request = new RequestAdapter()
-                {
-                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
                         {"Content-Type", "application/offset+octet-stream"},
                         {"Tus-Resumable", "1.0.0"},
                         {"Upload-Offset", "5"}
                     }),
-                    Method = "PATCH",
-                    BodyReader = bodyReader,
-                    RequestUri = new Uri("https://localhost:8080/files/testfile")
-                }
+                Method = "PATCH",
+                BodyReader = bodyReader,
+                RequestUri = new Uri("https://localhost:8080/files/testfile")
             };
+
+            var config = new DefaultTusConfiguration
+            {
+                UrlPath = "/files",
+                Store = store,
+                UsePipelinesIfAvailable = true,
+                FileLockProvider = new TestServerInMemoryFileLockProvider()
+            };
+
+
+            var context = new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(context);
 
@@ -274,8 +283,54 @@ namespace tusdotnet.test.Tests
             context.Response.Message.ShouldBeNull();
         }
 
+#if netstandard
+
         [Fact]
-        public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
+        public async Task Handles_Read_Timeouts_Gracefully()
+        {
+
+            var store = (ITusPipelineStore)Substitute.For<ITusPipelineStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+
+            store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(async callInfo =>
+            {
+                var reader = callInfo.Arg<PipeReader>();
+                var ct = callInfo.Arg<CancellationToken>();
+                var res = await reader.ReadAsync(ct);
+
+                return res.Buffer.Length;
+            });
+
+            var config = new DefaultTusConfiguration
+            {
+                ClientReadTimeout = TimeSpan.FromMilliseconds(100),
+                UrlPath = "/files",
+                Store = store,
+                UsePipelinesIfAvailable = true
+            };
+
+            using var server = TestServerFactory.Create(config);
+
+            var exception = await Should.ThrowAsync<Exception>(async () =>
+            {
+                var response = await server
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "5")
+                    .And(m =>
+                    {
+                        m.Content = new StreamContent(new SlowMemoryStream(new byte[5], delayPerReadInMs: 500));
+                        m.Content.Headers.Add("Content-Type", "application/offset+octet-stream");
+                    })
+                    .SendAsync("PATCH");
+            });
+
+            exception.Message.ShouldBe("The application aborted the request.");
+
+        }
+
+#endif
+
+        [Fact]
+        public async Task Returns_423_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
         {
             var random = new Random();
             var offset = 5;
@@ -310,11 +365,11 @@ namespace tusdotnet.test.Tests
             if (task1.Result.StatusCode == HttpStatusCode.NoContent)
             {
                 task1.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Locked);
             }
             else
             {
-                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Locked);
                 task2.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             }
         }

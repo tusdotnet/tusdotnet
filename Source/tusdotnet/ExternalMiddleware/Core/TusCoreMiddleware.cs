@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
@@ -53,13 +54,9 @@ namespace tusdotnet
 
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(httpContext, requestUri);
 
-            var contextAdapter = new ContextAdapter(config.UrlPath, null, MiddlewareUrlHelper.Instance)
-            {
-                Request = request,
-                Configuration = config,
-                CancellationToken = httpContext.RequestAborted,
-                HttpContext = httpContext
-            };
+            // Note: When using the middleware one must prefix the UrlPath with the base path so no need to provide it here.
+            // This is done for backwards compatibility.
+            var contextAdapter = new ContextAdapter(config.UrlPath, requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
@@ -73,7 +70,7 @@ namespace tusdotnet
             }
         }
 
-        private bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
+        private static bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
         {
             return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
         }
@@ -81,6 +78,12 @@ namespace tusdotnet
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
             // TODO: Implement support for custom responses by not writing if response has started
+
+            if (context.RequestAborted.IsCancellationRequested)
+            {
+                context.Abort();
+                return;
+            }
 
             context.Response.StatusCode = (int)response.Status;
             foreach (var item in response.Headers)

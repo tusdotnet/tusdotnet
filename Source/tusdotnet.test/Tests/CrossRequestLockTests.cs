@@ -20,7 +20,7 @@ namespace tusdotnet.test.Tests
     public class CrossRequestLockTests
     {
         [Fact]
-        public async Task Returns_409_Conflict_For_A_Patch_Request_If_A_Delete_Is_Ongoing()
+        public async Task Returns_423_Locked_For_A_Patch_Request_If_A_Delete_Is_Ongoing()
         {
             var fileId = Guid.NewGuid().ToString();
 
@@ -49,11 +49,11 @@ namespace tusdotnet.test.Tests
             await Task.WhenAll(deleteRequest, patchRequest);
 
             deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-            patchRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+            patchRequest.Result.StatusCode.ShouldBe((HttpStatusCode)423);
         }
 
         [Fact]
-        public async Task Returns_409_Conflict_For_A_Delete_Request_If_A_Patch_Is_Ongoing()
+        public async Task Returns_423_Locked_For_A_Delete_Request_If_A_Patch_Is_Ongoing()
         {
             var fileId = Guid.NewGuid().ToString();
             var store = Substitute.For<ITusStore, ITusTerminationStore>();
@@ -85,7 +85,7 @@ namespace tusdotnet.test.Tests
 
             await Task.WhenAll(deleteRequest, patchRequest);
 
-            deleteRequest.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+            deleteRequest.Result.StatusCode.ShouldBe((HttpStatusCode)423);
             patchRequest.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         }
     }

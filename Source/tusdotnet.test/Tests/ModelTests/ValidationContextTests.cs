@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Threading;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Adapters;
@@ -82,22 +83,21 @@ namespace tusdotnet.test.Tests.ModelTests
 
         private static ContextAdapter GetContext()
         {
-            return new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
+            var request = new RequestAdapter()
             {
-                CancellationToken = CancellationToken.None,
-                Configuration = new DefaultTusConfiguration
-                {
-                    Store = Substitute.For<ITusStore>(),
-                    UrlPath = "/files",
-                },
-                Request = new RequestAdapter()
-                {
-                    Body = new MemoryStream(),
-                    Headers = new RequestHeaders(),
-                    Method = "post",
-                    RequestUri = new Uri("https://localhost/files", UriKind.Absolute)
-                }
+                Body = new MemoryStream(),
+                Headers = new RequestHeaders(),
+                Method = "post",
+                RequestUri = new Uri("https://localhost/files", UriKind.Absolute)
             };
+
+            var config = new DefaultTusConfiguration
+            {
+                Store = Substitute.For<ITusStore>(),
+                UrlPath = "/files",
+            };
+
+            return new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, new DefaultHttpContext());
         }
 
         private class ValidationContextForTest : ValidationContext<ValidationContextForTest>

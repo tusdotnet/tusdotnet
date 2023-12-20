@@ -6,19 +6,23 @@ using System.Threading.Tasks;
 namespace tusdotnet.test.Helpers
 {
     /// <summary>
-    /// The SlowMemoryStream adds a 100 ms delay on every ReadAsync.
+    /// The SlowMemoryStream adds a delay on every ReadAsync.
     /// </summary>
     public class SlowMemoryStream : Stream
     {
         private readonly MemoryStream _stream;
+        private readonly int _delayPerReadInMs;
+        private readonly bool _allowCancellation;
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
-        public SlowMemoryStream(byte[] buffer)
+        public SlowMemoryStream(byte[] buffer, int delayPerReadInMs = 100, bool allowCancellation = false)
         {
             _stream = new MemoryStream(buffer);
+            _delayPerReadInMs = delayPerReadInMs;
+            _allowCancellation = allowCancellation;
         }
 
         public override bool CanRead => _stream.CanRead;
@@ -37,13 +41,31 @@ namespace tusdotnet.test.Helpers
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            await Task.Delay(100);
+            await Task.Delay(_delayPerReadInMs);
 
-            // Note: Do not use the provided cancellation token but let the disk store cancel the read instead.
-            return await _stream.ReadAsync(buffer, offset, count, CancellationToken.None);
+            // Note: Some of our tests require that we get the data back to verify that things worked.
+            // Ignore the cancellation token here to let this happen.
+
+            var ct = _allowCancellation ? cancellationToken : CancellationToken.None;
+            return await _stream.ReadAsync(buffer, offset, count, ct);
         }
 
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotImplementedException();
+#if netstandard
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(_delayPerReadInMs);
+
+            // Note: Some of our tests require that we get the data back to verify that things worked.
+            // Ignore the cancellation token here to let this happen.
+
+            var ct = _allowCancellation ? cancellationToken : CancellationToken.None;
+            return await _stream.ReadAsync(buffer, ct);
+        }
+
+#endif
+
+        public override long Seek(long offset, SeekOrigin origin) => _stream.Seek(offset, origin);
 
         public override int Read(byte[] buffer, int offset, int count) => throw new NotImplementedException();
 

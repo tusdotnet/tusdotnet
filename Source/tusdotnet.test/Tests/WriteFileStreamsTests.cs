@@ -14,6 +14,10 @@ using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
+using Microsoft.AspNetCore.Http;
+using System.Net.Http;
+using tusdotnet.test.Helpers;
+
 #if netfull
 using Owin;
 #endif
@@ -25,6 +29,9 @@ namespace tusdotnet.test.Tests
 {
     public class WriteFileStreamsTests
     {
+        // HttpStatusCode.Locked is not available on netstandard nor net452.
+        private const HttpStatusCode HttpStatusCodeLocked = (HttpStatusCode)423;
+
         private bool _callForwarded;
         private bool _onAuthorizeWasCalled;
         private IntentType? _onAuthorizeWasCalledWithIntent;
@@ -224,6 +231,11 @@ namespace tusdotnet.test.Tests
             var pipelineDetails = PipelineDisconnectEmulationDataAttribute.GetInfo(pipeline);
 
             var cts = new CancellationTokenSource();
+            var httpContext = new DefaultHttpContext
+            {
+                RequestAborted = cts.Token
+            };
+
             var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
 
             var requestStream = Substitute.For<Stream>();
@@ -240,27 +252,27 @@ namespace tusdotnet.test.Tests
             store.AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                 .ReturnsForAnyArgs<Task<long>>(async callInfo => await callInfo.Arg<Stream>().ReadAsync(null, 0, 0, callInfo.Arg<CancellationToken>()));
 
-            var context = new ContextAdapter("/files", null, MiddlewareUrlHelper.Instance)
+            var request = new RequestAdapter()
             {
-                CancellationToken = cts.Token,
-                Configuration = new DefaultTusConfiguration
-                {
-                    UrlPath = "/files",
-                    Store = store
-                },
-                Request = new RequestAdapter()
-                {
-                    Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                Headers = RequestHeaders.FromDictionary(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
                         {"Content-Type", "application/offset+octet-stream"},
                         {"Tus-Resumable", "1.0.0"},
                         {"Upload-Offset", "5"}
                     }),
-                    Method = "PATCH",
-                    Body = requestStream,
-                    RequestUri = new Uri("https://localhost:8080/files/testfile")
-                },
+                Method = "PATCH",
+                Body = requestStream,
+                RequestUri = new Uri("https://localhost:8080/files/testfile")
             };
+
+            var config = new DefaultTusConfiguration
+            {
+                UrlPath = "/files",
+                Store = store,
+                FileLockProvider = new TestServerInMemoryFileLockProvider()
+            };
+
+            var context = new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
 
             var handled = await TusV1EventRunner.Invoke(context);
 
@@ -270,8 +282,66 @@ namespace tusdotnet.test.Tests
             context.Response.Message.ShouldBeNull();
         }
 
+#if netstandard
+
         [Fact]
-        public async Task Returns_409_Conflict_If_Multiple_Requests_Try_To_Patch_The_Same_File()
+        public async Task Handles_Read_Timeouts_Gracefully()
+        {
+            var store = Substitute.For<ITusStore>().WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+
+            store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(async callInfo =>
+            {
+                var reader = callInfo.Arg<Stream>();
+                var ct = callInfo.Arg<CancellationToken>();
+                var res = await reader.ReadAsync(new byte[100], 0, 5, ct);
+
+                return (long)res;
+            });
+
+            var config = new DefaultTusConfiguration
+            {
+                ClientReadTimeout = TimeSpan.FromMilliseconds(100),
+                UrlPath = "/files",
+                Store = store,
+
+#if pipelines
+                UsePipelinesIfAvailable = false
+#endif
+            };
+
+            bool failedSuccessfully;
+
+            try
+            {
+                using var server = TestServerFactory.Create(config);
+                var response = await server
+                    .CreateTusResumableRequest("/files/testfile")
+                    .AddHeader("Upload-Offset", "5")
+                    .And(m =>
+                    {
+                        m.Content = new StreamContent(new SlowMemoryStream(new byte[5], delayPerReadInMs: 500, allowCancellation: true));
+                        m.Content.Headers.Add("Content-Type", "application/offset+octet-stream");
+                    })
+                    .SendAsync("PATCH");
+
+                // The test server in .NET Core < 3 does not properly disconnect when the server kills the connection.
+                // Instead it returns a default object with status 200 OK.
+                // Since tus does not allow this status in this case and tusdotnet does not set anything (since the connection was killed)
+                // we can use this state to determine that the client was disconnected.
+                failedSuccessfully = response.StatusCode == HttpStatusCode.OK && !response.Headers.TryGetValues("Tus-Resumable", out var _);
+            }
+            catch (Exception ex)
+            {
+                failedSuccessfully = ex.Message == "The application aborted the request.";
+            }
+
+            failedSuccessfully.ShouldBeTrue("Request did not fail successfully");
+        }
+
+#endif
+
+        [Fact]
+        public async Task Returns_423_Locked_If_Multiple_Requests_Try_To_Patch_The_Same_File()
         {
             var random = new Random();
             var offset = 5;
@@ -306,11 +376,11 @@ namespace tusdotnet.test.Tests
             if (task1.Result.StatusCode == HttpStatusCode.NoContent)
             {
                 task1.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-                task2.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task2.Result.StatusCode.ShouldBe(HttpStatusCodeLocked);
             }
             else
             {
-                task1.Result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                task1.Result.StatusCode.ShouldBe(HttpStatusCodeLocked);
                 task2.Result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             }
         }

@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
@@ -34,13 +35,7 @@ namespace tusdotnet
             var request = CreateRequestAdapter(context);
             var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : null;
 
-            var contextAdapter = new ContextAdapter(urlPath, pathBase, EndpointUrlHelper.Instance)
-            {
-                Request = request,
-                Configuration = config,
-                CancellationToken = context.RequestAborted,
-                HttpContext = context
-            };
+            var contextAdapter = new ContextAdapter(urlPath, pathBase, EndpointUrlHelper.Instance, request, config, context);
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
@@ -57,6 +52,12 @@ namespace tusdotnet
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
             // TODO: Implement support for custom responses by not writing if response has started
+
+            if (context.RequestAborted.IsCancellationRequested)
+            {
+                context.Abort();
+                return;
+            }
 
             context.Response.StatusCode = (int)response.Status;
             foreach (var item in response.Headers)

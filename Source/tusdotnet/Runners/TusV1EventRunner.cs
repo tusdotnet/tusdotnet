@@ -59,7 +59,7 @@ namespace tusdotnet
                 var hasLock = await fileLock.Lock();
                 if (!hasLock)
                 {
-                    context.Response.Error(HttpStatusCode.Conflict, $"File {context.FileId} is currently being updated. Please try again later");
+                    context.Response.Locked();
                     return ResultType.StopExecution;
                 }
             }

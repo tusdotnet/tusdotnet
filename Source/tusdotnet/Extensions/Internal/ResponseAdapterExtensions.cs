@@ -19,6 +19,13 @@ namespace tusdotnet.Extensions
             response.SetResponse(HttpStatusCode.NotFound);
         }
 
+        internal static void Locked(this ResponseAdapter response)
+        {
+            // HttpStatusCode.Locked is not available on netstandard nor net452.
+            const HttpStatusCode RESOURCE_LOCKED = (HttpStatusCode)423;
+            response.Error(RESOURCE_LOCKED, "File is currently being updated. Please try again later");
+        }
+
         internal static void Error(this ResponseAdapter response, HttpStatusCode statusCode, string message, bool includeTusResumableHeader = true)
         {
             if (includeTusResumableHeader)
