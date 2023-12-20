@@ -15,12 +15,11 @@ namespace tusdotnet.Adapters
     {
         public RequestAdapter Request { get; }
 
-        // TODO: See if we can make this clearer why it needs to be set-able.
+        // Note: Needs to be settable as we wish to reuse the context for multi intent handling, e.g. creation-with-upload.
         public ResponseAdapter Response { get; set; }
 
         public DefaultTusConfiguration Configuration { get; }
 
-        // TODO: Remove this and use ClientDisconnectGuard.GuardedToken directly? 
         public CancellationToken CancellationToken => ClientDisconnectGuard.GuardedToken;
 
         public HttpContext HttpContext { get; }

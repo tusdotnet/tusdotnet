@@ -91,7 +91,7 @@ namespace tusdotnet
                 context.Response.Error(HttpStatusCode.BadRequest, storeException.Message);
                 return ResultType.StopExecution;
             }
-            catch (Exception exc) when (swallowExceptionsDuringInvoke)
+            catch (Exception) when (swallowExceptionsDuringInvoke)
             {
                 // Left blank
             }
