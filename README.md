@@ -6,7 +6,16 @@ Please note that this is a **POC/experimental** implementation and breaking chan
 
 Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/d2db65d8db8f6e9c3fab22878090773e62042489
 
-Other implementations (both server and clients): https://github.com/tus/draft-example
+Other features implemented:
+* [Upload progress via informational responses #2664](https://github.com/httpwg/http-extensions/pull/2664)
+
+Other implementations (both server and clients): 
+* https://github.com/tus/draft-example
+
+Usage from cURL: 
+```
+curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: application/octet-stream" -H "Upload-Incomplete: ?0" --data-binary "@c:\testfile10mb.bin" https://localhost:5007/files-tus-2
+```
 
 ## Known issues
 

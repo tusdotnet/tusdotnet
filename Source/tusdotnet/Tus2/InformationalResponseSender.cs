@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using System.Reflection;
+using System.Net.Http;
 
 namespace tusdotnet.Tus2
 {
@@ -18,22 +19,38 @@ namespace tusdotnet.Tus2
             switch (httpContext.Request.Protocol)
             {
                 case "HTTP/1.0" or "HTTP/1.1":
-                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, location);
+                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, location, null);
                     break;
                 case "HTTP/2": // or "HTTP/3":
-                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, location);
+                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, location, null);
+                    break;
+            }
+        }
+
+        public static async Task Send104UploadResumptionSupported(this HttpContext httpContext, long uploadOffset)
+        {
+            switch (httpContext.Request.Protocol)
+            {
+                case "HTTP/1.0" or "HTTP/1.1":
+                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, null, uploadOffset);
+                    break;
+                case "HTTP/2": // or "HTTP/3":
+                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, null, uploadOffset);
                     break;
             }
         }
 
         private static class Http1xWriter
         {
-            private const string _http10Format = "HTTP/1.0 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
-            private const string _http11Format = "HTTP/1.1 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
+            private const string _http10FormatLocation = "HTTP/1.0 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
+            private const string _http11FormatLocation = "HTTP/1.1 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
+
+            private const string _http10FormatUploadOffset = "HTTP/1.0 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
+            private const string _http11FormatUploadOffset = "HTTP/1.1 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
 
             private delegate ValueTask<FlushResult> WriteDataToPipeAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default);
 
-            public static async Task Send104UploadResumptionSupported(HttpContext httpContext, string location)
+            public static async Task Send104UploadResumptionSupported(HttpContext httpContext, string? location, long? uploadOffset)
             {
                 const string outputProducerName = "Output";
                 const string writeDataMethodName = "WriteDataToPipeAsync";
@@ -44,11 +61,38 @@ namespace tusdotnet.Tus2
 
                 var writeToPipe = method.CreateDelegate<WriteDataToPipeAsync>(output);
 
-                var formatToUse = httpContext.Request.Protocol == "HTTP/1.0" ? _http10Format : _http11Format;
-
-                var bytes = Encoding.UTF8.GetBytes(string.Format(formatToUse, location));
+                string message = GetMessageToSend(httpContext.Request.Protocol, location, uploadOffset);
+                var bytes = Encoding.UTF8.GetBytes(message);
 
                 await writeToPipe(bytes.AsSpan());
+            }
+
+            private static string GetMessageToSend(string protocol, string? location, long? uploadOffset)
+            {
+                string locationFormat;
+                string uploadOffsetFormat;
+                if (protocol == "HTTP/1.0")
+                {
+                    locationFormat = _http10FormatLocation;
+                    uploadOffsetFormat = _http10FormatUploadOffset;
+                }
+                else
+                {
+                    locationFormat = _http11FormatLocation;
+                    uploadOffsetFormat = _http11FormatUploadOffset;
+                }
+
+                if (location is not null)
+                {
+                    return string.Format(locationFormat, location);
+                }
+                
+                if (uploadOffset is not null)
+                {
+                    return string.Format(uploadOffsetFormat, uploadOffset.Value.ToString());
+                }
+
+                throw new ArgumentException("Neither location nor upload-offset has been provided ");
             }
         }
 
@@ -60,12 +104,17 @@ namespace tusdotnet.Tus2
 
             private static readonly object _endHeadersFlag = LoadEndHeadersFlag();
 
-            public static void Send104UploadResumptionSupported(HttpContext httpContext, string location)
+            public static void Send104UploadResumptionSupported(HttpContext httpContext, string? location, long? uploadOffset)
             {
                 var output = GetOutputProducer(httpContext);
 
                 var headers = GetHeaderDictionary();
-                headers.Add("location", new(location));
+                if (location is not null)
+                    headers.Add("location", new(location));
+
+                if (uploadOffset is not null)
+                    headers.Add("Upload-Offset", uploadOffset.Value.ToString());
+
                 headers.Add("upload-draft-interop-version", new("3"));
 
                 Write(output, UploadResumptionSupportedHttpStatusCode, httpContext.Request.Protocol, headers);
@@ -80,7 +129,6 @@ namespace tusdotnet.Tus2
                 var outputProducerType = outputProducer.GetType();
 
                 var writer = outputProducerType.GetField(FrameWriterName, BindingFlagsPrivate).GetValue(outputProducer);
-                
 
                 // Methods are different between HTTP/2 and HTTP/3.
                 if (httpProtocol == "HTTP/2")

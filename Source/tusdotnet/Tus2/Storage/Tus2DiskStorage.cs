@@ -69,7 +69,6 @@ namespace tusdotnet.Tus2
 
             var dataFilePath = _diskPathHelper.DataFilePath(uploadToken);
 
-
             using var diskFileStream = new FileStream(dataFilePath, FileMode.Append, FileAccess.Write, FileShare.None, bufferSize: JUST_BELOW_LOH_BYTE_LIMIT);
 
             ReadResult result = default;
@@ -78,6 +77,9 @@ namespace tusdotnet.Tus2
 
             try
             {
+
+                var completeDataWritten = context.Headers.UploadOffset.Value;
+
                 while (!PipeReadingIsDone(result, cancellationToken))
                 {
                     result = await reader.ReadAsync(cancellationToken);
@@ -85,6 +87,11 @@ namespace tusdotnet.Tus2
                     foreach (var segment in result.Buffer)
                     {
                         await diskFileStream.WriteAsync(segment, CancellationToken.None);
+
+                        completeDataWritten += segment.Length;
+
+                        if (context.ReportOffset is not null)
+                            await context.ReportOffset(completeDataWritten);
                     }
 
                     reader.AdvanceTo(result.Buffer.End);

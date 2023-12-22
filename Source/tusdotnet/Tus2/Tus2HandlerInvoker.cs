@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Http.Extensions;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Models;
+using tusdotnet.Validation.Requirements;
 
 namespace tusdotnet.Tus2
 {
@@ -189,7 +192,8 @@ namespace tusdotnet.Tus2
                     BodyReader = guardedPipeReader,
                     CancellationToken = cts.Token,
                     Headers = context.Headers,
-                    HttpContext = context.HttpContext
+                    HttpContext = context.HttpContext,
+                    ReportOffset = CreateUploadOffsetReporter(context.HttpContext)
                 };
 
                 var writeDataResponse = await handler.WriteData(writeDataContext);
@@ -211,6 +215,21 @@ namespace tusdotnet.Tus2
                     UploadOffset = uploadOffsetFromStorage
                 };
             }
+        }
+
+        private static Func<long, Task> CreateUploadOffsetReporter(HttpContext httpContext)
+        {
+            const int SECONDS_BETWEEN_REPORTS = 1;
+            var lastWrite = DateTime.MinValue;
+
+            return async (offset) =>
+            {
+                if (lastWrite == DateTime.MinValue || (DateTime.Now - lastWrite).TotalSeconds > SECONDS_BETWEEN_REPORTS)
+                {
+                    await InformationalResponseSender.Send104UploadResumptionSupported(httpContext, offset);
+                    lastWrite = DateTime.Now;
+                }
+            };
         }
 
         private static async Task<long?> TryGetOffset(Tus2Storage storage, string uploadToken)
