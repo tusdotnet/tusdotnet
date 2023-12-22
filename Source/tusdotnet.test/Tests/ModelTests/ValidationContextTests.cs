@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Net;
-using System.Threading;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Shouldly;

@@ -5,7 +5,6 @@ using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
 #if trailingheaders

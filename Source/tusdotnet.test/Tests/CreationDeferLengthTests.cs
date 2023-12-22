@@ -11,8 +11,6 @@ using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 using tusdotnet.test.Helpers;
-using System.Linq;
-using System.IO;
 #if netfull
 using Owin;
 #endif

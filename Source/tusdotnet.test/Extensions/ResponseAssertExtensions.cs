@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -7,7 +6,7 @@ using Shouldly;
 
 namespace tusdotnet.test.Extensions
 {
-	internal static class ResponseAssertHelpers
+    internal static class ResponseAssertHelpers
 	{
 		internal static async Task ShouldBeErrorResponse(this HttpResponseMessage response, HttpStatusCode expectedStatusCode,
 			string expectedMessage = null)

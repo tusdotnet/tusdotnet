@@ -1,12 +1,11 @@
-﻿using System;
-using tusdotnet.Parsers;
+﻿using tusdotnet.Parsers;
 
 namespace tusdotnet.Models
 {
-	/// <summary>
-	/// Container for uploaded file checksum information.
-	/// </summary>
-	public class Checksum
+    /// <summary>
+    /// Container for uploaded file checksum information.
+    /// </summary>
+    public class Checksum
 	{
 		/// <summary>
 		/// The algorithm provided.

@@ -1,14 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
-using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
 

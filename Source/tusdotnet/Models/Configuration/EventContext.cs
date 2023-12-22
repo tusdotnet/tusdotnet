@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using tusdotnet.Adapters;
-using tusdotnet.Extensions;
 using tusdotnet.Interfaces;
 using Microsoft.AspNetCore.Http;
 using System.Threading.Tasks;

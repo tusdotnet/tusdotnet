@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Constants;
 
 namespace tusdotnet.Validation.Requirements
 {

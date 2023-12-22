@@ -2,7 +2,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
-using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Expiration;
 
