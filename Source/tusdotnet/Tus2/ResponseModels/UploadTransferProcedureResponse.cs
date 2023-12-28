@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using System;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
@@ -12,7 +13,9 @@ namespace tusdotnet.Tus2
 
         internal bool ResourceWasJustCreated { get; set; }
 
-        internal bool EntireUploadCompleted { get; set; }
+        public bool EntireUploadCompleted { get; internal set; }
+
+        public Uri? ContentLocation { get; set; }
 
         protected override Task WriteResponse(HttpContext context)
         {
@@ -24,6 +27,9 @@ namespace tusdotnet.Tus2
                 var displayUrl = context.Request.GetDisplayUrl().TrimEnd('/');
                 context.SetHeader("Location", displayUrl + "/" + ResourceId);
             }
+
+            if (ContentLocation is not null)
+                context.SetHeader("Content-Location", ContentLocation.ToString());
 
             return Task.CompletedTask;
         }

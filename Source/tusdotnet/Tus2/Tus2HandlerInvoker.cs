@@ -6,7 +6,6 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Models;
-using tusdotnet.Validation.Requirements;
 
 namespace tusdotnet.Tus2
 {
@@ -48,8 +47,10 @@ namespace tusdotnet.Tus2
 
                 await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId);
 
-                return await handler.RetrieveOffset(context);
+                var response = await handler.RetrieveOffset(context);
+                response.ContentLocation = await handler.GetContentLocation(context.Headers.ResourceId, !response.UploadIncomplete);
 
+                return response;
             }
             catch (Tus2AssertRequestException ex)
             {
@@ -203,6 +204,7 @@ namespace tusdotnet.Tus2
                     await uploadManager.NotifyCancelComplete(context.Headers.ResourceId);
                 }
 
+                writeDataResponse.ContentLocation = await handler.GetContentLocation(context.Headers.ResourceId, writeDataResponse.EntireUploadCompleted);
                 return writeDataResponse;
 
             }

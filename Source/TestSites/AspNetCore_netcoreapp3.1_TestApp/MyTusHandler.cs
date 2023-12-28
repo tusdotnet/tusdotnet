@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Threading.Tasks;
 using tusdotnet.Tus2;
 
@@ -67,6 +68,14 @@ namespace AspNetCore_netcoreapp3._1_TestApp
             _logger.LogInformation("FileComplete: File {UploadToken} is complete", context.Headers.ResourceId);
 
             return base.FileComplete(context);
+        }
+
+        public override async Task<Uri> GetContentLocation(string resourceId, bool uploadCompleted)
+        {
+            if (!uploadCompleted)
+                return null;
+
+            return new Uri("/files-tus-2-status/" + resourceId, UriKind.Relative);
         }
     }
 }

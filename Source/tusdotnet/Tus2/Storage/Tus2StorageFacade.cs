@@ -89,6 +89,5 @@ namespace tusdotnet.Tus2
                 EntireUploadCompleted = true
             };
         }
-
     }
 }

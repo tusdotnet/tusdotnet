@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
@@ -67,6 +68,11 @@ namespace tusdotnet.Tus2
                 : (await _configurationManager.GetDefaultStorage());
 
             return (_storageFacade = storage);
+        }
+
+        public virtual async Task<Uri?> GetContentLocation(string resourceId, bool uploadCompleted)
+        {
+            return null;
         }
     }
 }

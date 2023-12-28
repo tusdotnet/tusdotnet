@@ -2,11 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Buffers;
 using System.Net;
-using System.Net.Http;
-using System.Reflection.PortableExecutable;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2

@@ -53,7 +53,6 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             services.AddTus2(options =>
             {
-
                 var config = new Tus2Options();
                 Configuration.Bind(config);
 
@@ -111,6 +110,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
                 endpoints.MapTus2<OnlyCompleteTusHandler>("/files-tus-2-only-complete");
                 endpoints.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
                 endpoints.Map("/files-tus-2-info", Tus2InfoEndpoint.Invoke);
+                endpoints.Map("/files-tus-2-status/{fileId}", (string fileId, HttpContext context) => Tus2StatusEndpoint.Invoke(fileId, context)).WithName("Tus2StatusEndpoint");
             });
         }
 
