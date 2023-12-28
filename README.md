@@ -8,6 +8,7 @@ Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit
 
 Other features implemented:
 * [Upload progress via informational responses #2664](https://github.com/httpwg/http-extensions/pull/2664)
+* [Support for Content-Location #2312](https://github.com/httpwg/http-extensions/issues/2312) - Override [GetContentLocation](https://github.com/tusdotnet/tusdotnet/blob/POC/tus2/Source/TestSites/AspNetCore_netcoreapp3.1_TestApp/MyTusHandler.cs#L73) in the handler to set it
 
 Other implementations (both server and clients): 
 * https://github.com/tus/draft-example
