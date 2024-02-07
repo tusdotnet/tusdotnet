@@ -4,13 +4,13 @@
 
 >"Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network." - https://tus.io
 
-tusdotnet is a .NET server implementation of the tus.io protocol that runs on both .NET 4.x, .NET Core, .NET6 and later.
+tusdotnet is a .NET server implementation of the tus.io protocol that runs on .NET Framework, .NET Standard, .NET6 and later.
 
 Comments, ideas, questions and PRs are welcome!
 
 ## Features
 
-* Runs on OWIN and ASP.NET Core (on both .NET Framework, .NET Core, .NET6 and later)
+* Runs on .NET Framework, .NET Standard 1.3+ and .NET 6+ using OWIN or ASP.NET Core
 * Full support for tus 1.0.0 including all major extensions (checksum, checksum-trailers, concatenation, creation, creation-with-upload, upload-defer-length, expiration and termination)
 * Experimental support for IETF's [Resumable Uploads For Http](https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/) (see branch [POC/tus2](https://github.com/tusdotnet/tusdotnet/tree/POC/tus2))
 * Fast and reliable
