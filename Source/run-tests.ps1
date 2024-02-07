@@ -1,8 +1,8 @@
 
 $net6sdk = "6.0.404";
-$net7sdk = "7.0.101"
+$net8sdk = "8.0.101"
 $runtimesOnNet6 = "net452", "netcoreapp2.1", "netcoreapp2.2", "netcoreapp3.0", "netcoreapp3.1", "net6.0";
-$runtimesOnNet7 = "net7.0";
+$runtimesOnNet8 = "net7.0", "net8.0";
 
 Push-Location tusdotnet.test
 
@@ -26,6 +26,6 @@ dotnet build -c release -v q -nowarn:NETSDK1138
 RunTests $net6sdk $runtimesOnNet6;
 
 # Run the rest on .NET7
-RunTests $net7sdk $runtimesOnNet7;
+RunTests $net8sdk $runtimesOnNet8;
 
 Pop-Location

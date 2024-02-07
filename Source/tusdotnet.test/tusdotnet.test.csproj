@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks Condition=" '$(Configuration)' == 'Debug' ">net452;netcoreapp3.1;net6.0;net7.0</TargetFrameworks>
-		<TargetFrameworks Condition=" '$(Configuration)' == 'Release' ">net452;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;net6.0;net7.0</TargetFrameworks>
+		<TargetFrameworks Condition=" '$(Configuration)' == 'Debug' ">net452;netcoreapp3.1;net6.0;net7.0;net8.0</TargetFrameworks>
+		<TargetFrameworks Condition=" '$(Configuration)' == 'Release' ">net452;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;net6.0;net7.0;net8.0</TargetFrameworks>
 		<DebugType>portable</DebugType>
 		<AssemblyName>tusdotnet.test</AssemblyName>
 		<PackageId>tusdotnet.test</PackageId>
@@ -76,6 +76,13 @@
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
 	</ItemGroup>
 
+	<ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" Version="7.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
+		<PackageReference Include="Shouldly" Version="4.1.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
+	</ItemGroup>
+
 	<ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
 		<PackageReference Include="Microsoft.Owin.Testing" Version="4.2.2" />
 		<PackageReference Include="Owin" Version="1.0.0" />
@@ -107,6 +114,10 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition=" '$(TargetFramework)' == 'net7.0' ">
+		<DefineConstants>$(DefineConstants);netstandard;trailingheaders;pipelines</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
 		<DefineConstants>$(DefineConstants);netstandard;trailingheaders;pipelines</DefineConstants>
 	</PropertyGroup>
 
