@@ -10,5 +10,7 @@ namespace tusdotnet.Tus2
         public string? ResourceId { get; set; }
 
         public bool? UploadComplete { get; set; }
+
+        public long? ContentLength { get; set; }
     }
 }

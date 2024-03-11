@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Models;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace tusdotnet.Tus2
 {
@@ -141,16 +142,20 @@ namespace tusdotnet.Tus2
 
                 context.Headers.UploadOffset ??= 0;
 
+                var contentLength = context.Headers.UploadComplete != false ? context.Headers.ContentLength : null;
+
                 var fileExist = await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId, context.Headers.UploadOffset != 0);
 
                 if (!fileExist)
                 {
+
                     var createFileResponse = await handler.CreateFile(new()
                     {
                         Headers = context.Headers,
                         HttpContext = context.HttpContext,
                         CancellationToken = context.CancellationToken,
-                        Metadata = metadata
+                        Metadata = metadata,
+                        ResourceLength = contentLength
                     });
 
                     if (createFileResponse.IsError)
@@ -185,6 +190,13 @@ namespace tusdotnet.Tus2
                 uploadOffsetFromStorage = await storageFacade.Storage.GetOffset(context.Headers.ResourceId);
                 await Tus2Validator.AssertValidOffset(uploadOffsetFromStorage.Value, context.Headers.UploadOffset);
 
+                var resourceLength = await storageFacade.Storage.GetResourceLength(context.Headers.ResourceId);
+
+                if (contentLength is not null && resourceLength is not null)
+                {
+                    Tus2Validator.AssertValidResourceLength(resourceLength.Value, context.Headers.UploadOffset.Value, contentLength);
+                }
+
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.HttpContext.RequestAborted, ongoingCancellationToken);
                 var guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.HttpContext.Request.BodyReader, cts.Token);
 
@@ -194,10 +206,16 @@ namespace tusdotnet.Tus2
                     CancellationToken = cts.Token,
                     Headers = context.Headers,
                     HttpContext = context.HttpContext,
-                    ReportOffset = CreateUploadOffsetReporter(context.HttpContext)
+                    ReportOffset = CreateUploadOffsetReporter(context.HttpContext),
+                    ResourceLength = resourceLength
                 };
 
                 var writeDataResponse = await handler.WriteData(writeDataContext);
+
+                if (resourceLength is null && contentLength is not null)
+                {
+                    await storageFacade.Storage.SetResourceLength(context.Headers.ResourceId, contentLength.Value);
+                }
 
                 if (ongoingCancellationToken.IsCancellationRequested)
                 {

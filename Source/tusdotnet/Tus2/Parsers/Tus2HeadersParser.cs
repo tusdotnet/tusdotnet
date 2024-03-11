@@ -19,6 +19,7 @@ namespace tusdotnet.Tus2
             var uploadOffset = headers["Upload-Offset"].FirstOrDefault().FromSfInteger();
             var uploadComplete = headers["Upload-Complete"].FirstOrDefault().FromSfBool();
             var uploadToken = headers["Upload-Token"].FirstOrDefault();
+            var contentLength = headers.ContentLength;
 
             var uploadTokenParser = httpContext.RequestServices.GetRequiredService<IUploadTokenParser>();
 
@@ -26,7 +27,8 @@ namespace tusdotnet.Tus2
             {
                 UploadOffset = uploadOffset,
                 ResourceId = uploadTokenParser.Parse(uploadToken),
-                UploadComplete = uploadComplete
+                UploadComplete = uploadComplete,
+                ContentLength = contentLength
             };
         }
     }

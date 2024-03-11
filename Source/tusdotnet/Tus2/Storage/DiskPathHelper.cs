@@ -40,5 +40,10 @@ namespace tusdotnet.Tus2
         {
             return Path.Combine(_diskPath, uploadToken) + ".cancel";
         }
+
+        internal string ResourceLengthFilePath(string uploadToken)
+        {
+            return Path.Combine(_diskPath, uploadToken) + ".length";
+        }
     }
 }

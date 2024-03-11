@@ -37,6 +37,19 @@ namespace tusdotnet.Tus2
             return Task.FromResult(0L);
         }
 
+        public virtual Task<long?> GetResourceLength(string uploadToken)
+        {
+            Tus2StorageThrowHelper.ThrowNotImplemented();
+            return Task.FromResult<long?>(null);
+        }
+
+        public virtual Task SetResourceLength(string uploadToken, long resourceLength)
+        {
+            Tus2StorageThrowHelper.ThrowNotImplemented();
+            return Task.CompletedTask;
+        }
+
+
         public virtual Task<bool> IsComplete(string uploadToken)
         {
             Tus2StorageThrowHelper.ThrowNotImplemented();

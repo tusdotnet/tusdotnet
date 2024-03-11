@@ -8,6 +8,8 @@ namespace tusdotnet.Tus2
     {
         public PipeReader BodyReader { get; set; }
 
+        public long? ResourceLength { get; set; }
+
         public Func<long, Task> ReportOffset { get; set; }
     }
 }

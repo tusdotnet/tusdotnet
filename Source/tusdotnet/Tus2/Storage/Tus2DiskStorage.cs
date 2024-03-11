@@ -51,15 +51,37 @@ namespace tusdotnet.Tus2
             return Task.FromResult(new FileInfo(_diskPathHelper.DataFilePath(uploadToken)).Length);
         }
 
-        public override Task CreateFile(string uploadToken, CreateFileContext context)
+        public override Task<long?> GetResourceLength(string uploadToken)
+        {
+            uploadToken = CleanUploadToken(uploadToken);
+
+            var path = _diskPathHelper.ResourceLengthFilePath(uploadToken);
+            var str = File.Exists(path) ? File.ReadAllText(path) : null;
+
+            return Task.FromResult<long?>(
+                str is not null
+                ? long.Parse(str)
+                : null);
+        }
+
+        public override Task SetResourceLength(string uploadToken, long resourceLength)
+        {
+            File.WriteAllText(_diskPathHelper.ResourceLengthFilePath(uploadToken), resourceLength.ToString());
+
+            return Task.CompletedTask;
+        }
+
+        public override async Task CreateFile(string uploadToken, CreateFileContext context)
         {
             uploadToken = CleanUploadToken(uploadToken);
 
             if (context.Metadata != null)
                 File.WriteAllText(_diskPathHelper.MetadataFilePath(uploadToken), GetMetadataString(context.Metadata));
 
+            if (context.ResourceLength != null)
+                await SetResourceLength(uploadToken, context.ResourceLength.Value);
+
             File.Create(_diskPathHelper.DataFilePath(uploadToken)).Dispose();
-            return Task.CompletedTask;
         }
 
         public override async Task WriteData(string uploadToken, WriteDataContext context)
@@ -86,6 +108,11 @@ namespace tusdotnet.Tus2
 
                     foreach (var segment in result.Buffer)
                     {
+                        if(completeDataWritten + segment.Length > context.ResourceLength)
+                        {
+                            throw new Tus2AssertRequestException(System.Net.HttpStatusCode.BadRequest, "Too much data in request body");
+                        }
+
                         await diskFileStream.WriteAsync(segment, CancellationToken.None);
 
                         completeDataWritten += segment.Length;

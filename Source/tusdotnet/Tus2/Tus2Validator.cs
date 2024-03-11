@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
@@ -36,6 +37,17 @@ namespace tusdotnet.Tus2
             if (uploadOffsetFromStorage != uploadOffsetFromClient)
             {
                 throw new Tus2AssertRequestException(HttpStatusCode.Conflict);
+            }
+        }
+
+        internal static void AssertValidResourceLength(long resourceLength, long uploadOffset, long? contentLength)
+        {
+            if (contentLength is null)
+                return;
+
+            if (uploadOffset + contentLength > resourceLength)
+            {
+                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, "Upload-Offset + Content-Length is larger than the resources allowed length from previous Content-Length");
             }
         }
     }
