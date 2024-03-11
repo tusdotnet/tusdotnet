@@ -42,11 +42,11 @@ namespace tusdotnet.Tus2
 
         private static class Http1xWriter
         {
-            private const string _http10FormatLocation = "HTTP/1.0 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
-            private const string _http11FormatLocation = "HTTP/1.1 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
+            private const string _http10FormatLocation = "HTTP/1.0 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
+            private const string _http11FormatLocation = "HTTP/1.1 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
 
-            private const string _http10FormatUploadOffset = "HTTP/1.0 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
-            private const string _http11FormatUploadOffset = "HTTP/1.1 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 3\r\n\r\n";
+            private const string _http10FormatUploadOffset = "HTTP/1.0 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
+            private const string _http11FormatUploadOffset = "HTTP/1.1 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
 
             private delegate ValueTask<FlushResult> WriteDataToPipeAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default);
 
@@ -115,7 +115,7 @@ namespace tusdotnet.Tus2
                 if (uploadOffset is not null)
                     headers.Add("Upload-Offset", uploadOffset.Value.ToString());
 
-                headers.Add("upload-draft-interop-version", new("3"));
+                headers.Add("upload-draft-interop-version", new("5"));
 
                 Write(output, UploadResumptionSupportedHttpStatusCode, httpContext.Request.Protocol, headers);
             }

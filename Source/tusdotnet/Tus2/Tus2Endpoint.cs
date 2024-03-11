@@ -75,14 +75,12 @@ namespace tusdotnet.Tus2
             var writeFileContext = CreateContext<WriteDataContext>(httpContext, headers);
             var writeResponse = await Tus2HandlerInvoker.WriteDataEntryPoint(handler, writeFileContext, uploadManager);
 
-            if (writeResponse.EntireUploadCompleted)
+            if (writeResponse.UploadComplete)
             {
                 // TODO: Might want to pass the uploadmanager combined CT to this context
                 // instead of the one from the request.
                 var fileCompleteContext = CreateContext<FileCompleteContext>(httpContext, headers);
                 await handler.FileComplete(fileCompleteContext);
-
-                writeResponse.EntireUploadCompleted = true;
             }
 
             writeResponse.ResourceWasJustCreated = newlyCreatedFile;

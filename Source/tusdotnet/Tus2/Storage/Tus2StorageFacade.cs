@@ -27,7 +27,7 @@ namespace tusdotnet.Tus2
             {
                 Status = HttpStatusCode.NoContent,
                 UploadOffset = offset,
-                UploadIncomplete = !isComplete,
+                UploadComplete = isComplete,
             };
         }
 
@@ -56,7 +56,7 @@ namespace tusdotnet.Tus2
                 // Left blank. This is the case when the store does throws on cancellation instead of returning.
             }
 
-            var uploadIncomplete = context.Headers.UploadIncomplete == true;
+            var uploadComplete = context.Headers.UploadComplete != false;
 
             var uploadOffset = await Storage.GetOffset(context.Headers.ResourceId);
 
@@ -65,16 +65,16 @@ namespace tusdotnet.Tus2
                 return new()
                 {
                     DisconnectClient = true,
-                    RequestUploadIncomplete = uploadIncomplete
+                    UploadComplete = false
                 };
             }
 
-            if (uploadIncomplete)
+            if (!uploadComplete)
             {
                 return new()
                 {
                     Status = HttpStatusCode.Created,
-                    RequestUploadIncomplete = true,
+                    UploadComplete = false,
                     UploadOffset = uploadOffset
                 };
             }
@@ -84,9 +84,8 @@ namespace tusdotnet.Tus2
             return new()
             {
                 Status = HttpStatusCode.Created,
+                UploadComplete = true,
                 UploadOffset = uploadOffset,
-                RequestUploadIncomplete = false,
-                EntireUploadCompleted = true
             };
         }
     }

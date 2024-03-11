@@ -4,10 +4,11 @@ This branch is intended for the [IETF "Resumable uploads for http" protocol](htt
 
 Please note that this is a **POC/experimental** implementation and breaking changes will happen.
 
-Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/d2db65d8db8f6e9c3fab22878090773e62042489
+Current Upload-Draft-Interop-Version: 5
+
+Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/ce8d2f6647d4094a6e9938dbaa107f921ea29190
 
 Other features implemented:
-* [Upload progress via informational responses #2664](https://github.com/httpwg/http-extensions/pull/2664)
 * [Support for Content-Location #2312](https://github.com/httpwg/http-extensions/issues/2312) - Override [GetContentLocation](https://github.com/tusdotnet/tusdotnet/blob/POC/tus2/Source/TestSites/AspNetCore_netcoreapp3.1_TestApp/MyTusHandler.cs#L73) in the handler to set it
 
 Other implementations (both server and clients): 
@@ -15,8 +16,11 @@ Other implementations (both server and clients):
 
 Usage from cURL: 
 ```
-curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: application/octet-stream" -H "Upload-Incomplete: ?0" --data-binary "@c:\testfile10mb.bin" https://localhost:5007/files-tus-2
+curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: application/octet-stream" -H "Upload-Complete: ?1" --data-binary "@c:\testfile10mb.bin" https://localhost:5007/files-tus-2
 ```
+
+## Previous draft versions (Upload-Draft-Interop-Version)
+* Upload-Draft-Interop-Version: 3 - commit: 568f9d2e0b794cb9b779944cddadee44d8a0b044
 
 ## Known issues
 
@@ -35,7 +39,7 @@ Clone this branch and include it in your project. All classes related to tus2 ar
 
 ## Run
 
-Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp`.
+Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp` (runs on net6):
 
 `dotnet run`
 

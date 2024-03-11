@@ -9,18 +9,15 @@ namespace tusdotnet.Tus2
     {
         internal string ResourceId { get; set; }
 
-        internal bool RequestUploadIncomplete { get; set; }
+        internal bool UploadComplete { get; set; }
 
         internal bool ResourceWasJustCreated { get; set; }
-
-        public bool EntireUploadCompleted { get; internal set; }
 
         public Uri? ContentLocation { get; set; }
 
         protected override Task WriteResponse(HttpContext context)
         {
-            if (!EntireUploadCompleted)
-                context.SetHeader("Upload-Incomplete", RequestUploadIncomplete.ToSfBool());
+            context.SetHeader("Upload-Complete", UploadComplete.ToSfBool());
 
             if (ResourceWasJustCreated)
             {

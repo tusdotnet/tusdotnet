@@ -20,9 +20,9 @@ namespace tusdotnet.Tus2
 
         internal static void AssertNoInvalidHeaders(Tus2Headers headers)
         {
-            if (headers.UploadIncomplete.HasValue)
+            if (headers.UploadComplete.HasValue)
             {
-                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, "Upload-Incomplete header is not allowed for procedure");
+                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, "Upload-Complete header is not allowed for procedure");
             }
 
             if (headers.UploadOffset.HasValue)

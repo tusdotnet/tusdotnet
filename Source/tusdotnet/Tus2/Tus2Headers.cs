@@ -9,6 +9,6 @@ namespace tusdotnet.Tus2
 
         public string? ResourceId { get; set; }
 
-        public bool? UploadIncomplete { get; set; }
+        public bool? UploadComplete { get; set; }
     }
 }
