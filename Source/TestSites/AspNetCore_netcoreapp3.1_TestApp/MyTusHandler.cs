@@ -21,7 +21,7 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override bool EnableReportingOfProgress => false;
 
-        public override TusHandlerLimits Limits => new()
+        public override TusHandlerLimits? Limits => new()
         {
             Expiration = TimeSpan.FromHours(24),
             MaxSize = 1024 * 1024 * 1024,

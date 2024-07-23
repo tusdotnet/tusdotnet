@@ -4,12 +4,9 @@ This branch is intended for the [IETF "Resumable uploads for http" protocol](htt
 
 Please note that this is a **POC/experimental** implementation and breaking changes will happen.
 
-Current Upload-Draft-Interop-Version: 5
+Current Upload-Draft-Interop-Version: 6
 
-Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/ce8d2f6647d4094a6e9938dbaa107f921ea29190
-
-Other features implemented:
-* [Support for Content-Location #2312](https://github.com/httpwg/http-extensions/issues/2312) - Override [GetContentLocation](https://github.com/tusdotnet/tusdotnet/blob/POC/tus2/Source/TestSites/AspNetCore_netcoreapp3.1_TestApp/MyTusHandler.cs#L73) in the handler to set it
+Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/fa47df58021eef10d6371010c049685538b4dbf5
 
 Other implementations (both server and clients): 
 * https://github.com/tus/draft-example
@@ -20,7 +17,13 @@ curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: applicatio
 ```
 
 ## Previous draft versions (Upload-Draft-Interop-Version)
+* Upload-Draft-Interop-Version: 5 - commit: 303ef832440c2fe7bba652e11625e8d87f8e6764
 * Upload-Draft-Interop-Version: 3 - commit: 568f9d2e0b794cb9b779944cddadee44d8a0b044
+
+## Known limitations
+
+* Support for digest headers is not implemented
+* Upload-Limit is only sent as a hint to the client but is never validated on requests, e.g. files larger than max-size can be uploaded
 
 ## Known issues
 
@@ -92,6 +95,21 @@ public class MyTusHandler : TusHandler
     }
 
     public override bool AllowClientToDeleteFile => true;
+
+    // Set to false to not report progress back to the client. This is needed as some clients (e.g. the one in golang) errors out after a fixed number of 104 responses.
+    // Default value is true.
+    public override bool EnableReportingOfProgress => true;
+
+    // Limits that apply for this handler to handle files. Limits or any of its properties can be null. Note that these are note validated on the next request and are just kept as a hint for the client.
+    // Default value is null (i.e. no limits).
+    public override TusHandlerLimits? Limits => new()
+    {
+        Expiration = TimeSpan.FromHours(24),
+        MaxSize = 1024 * 1024 * 1024,
+        MaxAppendSize = 100 * 1024 * 1024,
+        MinSize = 1024,
+        MinAppendSize = 5 * 1024 * 1024
+    };
 
     public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext context)
     {
