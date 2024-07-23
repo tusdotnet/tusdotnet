@@ -23,6 +23,10 @@ namespace tusdotnet.Tus2
 
         public virtual bool AllowClientToDeleteFile { get; }
 
+        public virtual TusHandlerLimits? Limits { get; }
+
+        public virtual bool EnableReportingOfProgress { get; } = true;
+
         public virtual async Task<UploadRetrievingProcedureResponse> RetrieveOffset(RetrieveOffsetContext context)
         {
             var storage = await GetStorageFacade();

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net;
+﻿using System.Net;
 using System.Threading.Tasks;
 
 namespace tusdotnet.Tus2
@@ -19,6 +16,15 @@ namespace tusdotnet.Tus2
             return fileExist;
         }
 
+        internal static async Task AssertFileNotCompleted(Tus2Storage storage, string resourceId)
+        {
+            var fileIsComplete = await storage.IsComplete(resourceId);
+            if (fileIsComplete)
+            {
+                throw new Tus2UploadCompletedException();
+            }
+        }
+
         internal static void AssertNoInvalidHeaders(Tus2Headers headers)
         {
             if (headers.UploadComplete.HasValue)
@@ -32,12 +38,14 @@ namespace tusdotnet.Tus2
             }
         }
 
-        internal static async Task AssertValidOffset(long uploadOffsetFromStorage, long? uploadOffsetFromClient)
+        internal static Task AssertValidOffset(long uploadOffsetFromStorage, long? uploadOffsetFromClient)
         {
             if (uploadOffsetFromStorage != uploadOffsetFromClient)
             {
-                throw new Tus2AssertRequestException(HttpStatusCode.Conflict);
+                throw new Tus2MismatchingUploadOffsetException(uploadOffsetFromStorage, uploadOffsetFromClient ?? 0);
             }
+
+            return Task.CompletedTask;
         }
 
         internal static void AssertValidResourceLength(long resourceLength, long uploadOffset, long? contentLength)

@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Text;
 
 namespace tusdotnet.Tus2
 {
@@ -64,5 +65,30 @@ namespace tusdotnet.Tus2
             }
         }
 
+        public static string? ToSfDictionary(this TusHandlerLimits limits)
+        {
+            var sb = new StringBuilder();
+
+            var expires = (long?)(limits.Expiration?.TotalSeconds);
+
+            AppendIfNotNull(sb, "max-size", limits.MaxSize);
+            AppendIfNotNull(sb, "min-size", limits.MinSize);
+            AppendIfNotNull(sb, "max-append-size", limits.MaxAppendSize);
+            AppendIfNotNull(sb, "min-append-size", limits.MinAppendSize);
+            AppendIfNotNull(sb, "expires", expires);
+
+            return sb.ToString().TrimEnd(',');
+
+            static void AppendIfNotNull(StringBuilder sb, string key, long? value)
+            {
+                if (value is not null)
+                {
+                    sb.Append(key);
+                    sb.Append('=');
+                    sb.Append(value);
+                    sb.Append(',');
+                }
+            }
+        }
     }
 }

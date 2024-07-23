@@ -31,17 +31,33 @@ namespace tusdotnet.Tus2
                 var handler = httpContext.RequestServices.GetRequiredService<T>();
                 response = await InvokeHandler(handler, httpContext, headers);
             }
+            catch (Tus2ProblemDetailsException problemDetailsException)
+            {
+                await WriteProblemDetails(httpContext, problemDetailsException);
+                response = null;
+            }
             finally
             {
-                if (response != null)
+                if (!httpContext.Response.HasStarted)
                 {
-                    await response.WriteTo(httpContext);
-                }
-                else
-                {
-                    await httpContext.Error(HttpStatusCode.InternalServerError);
+
+                    if (response != null)
+                    {
+                        await response.WriteTo(httpContext);
+                    }
+                    else
+                    {
+                        await httpContext.Error(HttpStatusCode.InternalServerError);
+                    }
                 }
             }
+        }
+
+        private static async Task WriteProblemDetails(HttpContext httpContext, Tus2ProblemDetailsException problemDetailsException)
+        {
+            var details = problemDetailsException.GetProblemDetails();
+            httpContext.Response.StatusCode = (int)problemDetailsException.Status;
+            await httpContext.Response.WriteAsJsonAsync(details);
         }
 
         private static async Task<Tus2BaseResponse> InvokeHandler(TusHandler handler, HttpContext httpContext, Tus2Headers headers)
@@ -66,6 +82,13 @@ namespace tusdotnet.Tus2
                 var deleteContext = CreateContext<DeleteContext>(httpContext, headers);
                 return await Tus2HandlerInvoker.DeleteEntryPoint(handler, deleteContext, uploadManager);
             }
+            else if (method.Equals("patch", StringComparison.OrdinalIgnoreCase))
+            {
+                if (AssertContentType<UploadTransferProcedureResponse>(headers.ContentType) is var response and not null)
+                {
+                    return response;
+                }
+            }
 
 
             var newlyCreatedFile = headers.ResourceId is null;
@@ -87,6 +110,20 @@ namespace tusdotnet.Tus2
             writeResponse.ResourceId = headers.ResourceId;
 
             return writeResponse;
+        }
+
+        private static Tus2BaseResponse? AssertContentType<T>(string? contentType) where T : Tus2BaseResponse, new()
+        {
+            if (contentType is not "application/partial-upload")
+            {
+                return new T()
+                {
+                    ErrorMessage = "Content-Type must be application/partial-upload",
+                    Status = HttpStatusCode.UnsupportedMediaType
+                };
+            }
+
+            return null;
         }
 
         private static string GenerateResourceId()

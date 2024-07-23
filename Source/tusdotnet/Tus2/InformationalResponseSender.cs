@@ -8,48 +8,61 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace tusdotnet.Tus2
 {
     internal static class InformationalResponseSender
     {
-        public static async Task Send104UploadResumptionSupported(this HttpContext httpContext, string location)
+        public static async Task Send104UploadResumptionSupported(this HttpContext httpContext, string location, TusHandlerLimits? limits)
         {
+            var headers = new Dictionary<string, string>
+            {
+                { "Location", location },
+                { "upload-draft-interop-version", "6" }
+            };
+
+            if (limits is not null)
+                headers.Add("Upload-Limit", limits.ToSfDictionary());
+
             switch (httpContext.Request.Protocol)
             {
                 case "HTTP/1.0" or "HTTP/1.1":
-                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, location, null);
+                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, headers);
                     break;
                 case "HTTP/2": // or "HTTP/3":
-                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, location, null);
+                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, headers);
                     break;
             }
         }
 
         public static async Task Send104UploadResumptionSupported(this HttpContext httpContext, long uploadOffset)
         {
+            var headers = new Dictionary<string, string>
+            {
+                { "upload-offset", uploadOffset.ToString() },
+                { "upload-draft-interop-version", "6" }
+            };
+
             switch (httpContext.Request.Protocol)
             {
                 case "HTTP/1.0" or "HTTP/1.1":
-                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, null, uploadOffset);
+                    await Http1xWriter.Send104UploadResumptionSupported(httpContext, headers);
                     break;
                 case "HTTP/2": // or "HTTP/3":
-                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, null, uploadOffset);
+                    Http2And3Writer.Send104UploadResumptionSupported(httpContext, headers);
                     break;
             }
         }
 
         private static class Http1xWriter
         {
-            private const string _http10FormatLocation = "HTTP/1.0 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
-            private const string _http11FormatLocation = "HTTP/1.1 104 Upload Resumption Supported\r\nLocation:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
-
-            private const string _http10FormatUploadOffset = "HTTP/1.0 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
-            private const string _http11FormatUploadOffset = "HTTP/1.1 104 Upload Resumption Supported\r\nUpload-Offset:{0}\r\nupload-draft-interop-version: 5\r\n\r\n";
+            private const string _http10FormatLocation = "HTTP/1.0 104 Upload Resumption Supported\r\n{0}\r\n";
+            private const string _http11FormatLocation = "HTTP/1.1 104 Upload Resumption Supported\r\n{0}\r\n";
 
             private delegate ValueTask<FlushResult> WriteDataToPipeAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default);
 
-            public static async Task Send104UploadResumptionSupported(HttpContext httpContext, string? location, long? uploadOffset)
+            public static async Task Send104UploadResumptionSupported(HttpContext httpContext, Dictionary<string, string> headers)
             {
                 const string outputProducerName = "Output";
                 const string writeDataMethodName = "WriteDataToPipeAsync";
@@ -60,38 +73,34 @@ namespace tusdotnet.Tus2
 
                 var writeToPipe = method.CreateDelegate<WriteDataToPipeAsync>(output);
 
-                string message = GetMessageToSend(httpContext.Request.Protocol, location, uploadOffset);
+                string message = GetMessageToSend(httpContext.Request.Protocol, headers);
                 var bytes = Encoding.UTF8.GetBytes(message);
 
                 await writeToPipe(bytes.AsSpan());
             }
 
-            private static string GetMessageToSend(string protocol, string? location, long? uploadOffset)
+            private static string GetMessageToSend(string protocol, Dictionary<string, string> headers)
             {
-                string locationFormat;
-                string uploadOffsetFormat;
+                string format;
                 if (protocol == "HTTP/1.0")
                 {
-                    locationFormat = _http10FormatLocation;
-                    uploadOffsetFormat = _http10FormatUploadOffset;
+                    format = _http10FormatLocation;
                 }
                 else
                 {
-                    locationFormat = _http11FormatLocation;
-                    uploadOffsetFormat = _http11FormatUploadOffset;
+                    format = _http11FormatLocation;
                 }
 
-                if (location is not null)
+                var sb = new StringBuilder();
+                foreach(var item in headers)
                 {
-                    return string.Format(locationFormat, location);
-                }
-                
-                if (uploadOffset is not null)
-                {
-                    return string.Format(uploadOffsetFormat, uploadOffset.Value.ToString());
+                    sb.Append(item.Key);
+                    sb.Append(':');
+                    sb.Append(item.Value);
+                    sb.Append("\r\n");
                 }
 
-                throw new ArgumentException("Neither location nor upload-offset has been provided ");
+                return string.Format(format, sb.ToString());
             }
         }
 
@@ -103,20 +112,17 @@ namespace tusdotnet.Tus2
 
             private static readonly object _endHeadersFlag = LoadEndHeadersFlag();
 
-            public static void Send104UploadResumptionSupported(HttpContext httpContext, string? location, long? uploadOffset)
+            public static void Send104UploadResumptionSupported(HttpContext httpContext, Dictionary<string, string> headers)
             {
                 var output = GetOutputProducer(httpContext);
 
-                var headers = GetHeaderDictionary();
-                if (location is not null)
-                    headers.Add("location", new(location));
+                var internalHeaders = GetHeaderDictionary();
+                foreach (var item in headers)
+                {
+                    internalHeaders.Add(item.Key, new(item.Value));
+                }
 
-                if (uploadOffset is not null)
-                    headers.Add("Upload-Offset", uploadOffset.Value.ToString());
-
-                headers.Add("upload-draft-interop-version", new("5"));
-
-                Write(output, UploadResumptionSupportedHttpStatusCode, httpContext.Request.Protocol, headers);
+                Write(output, UploadResumptionSupportedHttpStatusCode, httpContext.Request.Protocol, internalHeaders);
             }
 
             private static void Write(object outputProducer, int statusCode, string httpProtocol, IHeaderDictionary headers)

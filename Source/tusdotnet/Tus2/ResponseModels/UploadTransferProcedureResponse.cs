@@ -13,6 +13,8 @@ namespace tusdotnet.Tus2
 
         internal bool ResourceWasJustCreated { get; set; }
 
+        internal TusHandlerLimits Limits { get; set; }
+
         public Uri? ContentLocation { get; set; }
 
         protected override Task WriteResponse(HttpContext context)
@@ -23,6 +25,9 @@ namespace tusdotnet.Tus2
             {
                 var displayUrl = context.Request.GetDisplayUrl().TrimEnd('/');
                 context.SetHeader("Location", displayUrl + "/" + ResourceId);
+
+                if (Limits is not null)
+                    context.SetHeader("Upload-Limit", Limits.ToSfDictionary());
             }
 
             if (ContentLocation is not null)

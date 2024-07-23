@@ -6,7 +6,6 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Models;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace tusdotnet.Tus2
 {
@@ -168,19 +167,11 @@ namespace tusdotnet.Tus2
                     }
 
                     // New file so send the 104 response with the location header
-                    await context.HttpContext.Send104UploadResumptionSupported(context.HttpContext.Request.GetDisplayUrl().TrimEnd('/') + "/" + context.Headers.ResourceId);
+                    await context.HttpContext.Send104UploadResumptionSupported(context.HttpContext.Request.GetDisplayUrl().TrimEnd('/') + "/" + context.Headers.ResourceId, handler.Limits);
                 }
                 else
                 {
-                    var fileIsComplete = await storageFacade.Storage.IsComplete(context.Headers.ResourceId);
-                    if (fileIsComplete)
-                    {
-                        return new()
-                        {
-                            Status = HttpStatusCode.BadRequest,
-                            ErrorMessage = "File is already completed"
-                        };
-                    }
+                    await Tus2Validator.AssertFileNotCompleted(storageFacade.Storage, context.Headers.ResourceId);
                 }
 
                 // TODO: See if we can implement some kind of updatable "request cache" for data that
@@ -206,7 +197,7 @@ namespace tusdotnet.Tus2
                     CancellationToken = cts.Token,
                     Headers = context.Headers,
                     HttpContext = context.HttpContext,
-                    ReportOffset = CreateUploadOffsetReporter(context.HttpContext),
+                    ReportOffset = handler.EnableReportingOfProgress ? CreateUploadOffsetReporter(context.HttpContext) : _ => Task.CompletedTask,
                     ResourceLength = resourceLength
                 };
 
@@ -223,10 +214,11 @@ namespace tusdotnet.Tus2
                 }
 
                 writeDataResponse.ContentLocation = await handler.GetContentLocation(context.Headers.ResourceId, writeDataResponse.UploadComplete);
+                writeDataResponse.Limits = handler.Limits;
                 return writeDataResponse;
 
             }
-            catch (Tus2AssertRequestException exc)
+            catch (Tus2AssertRequestException exc) when (exc is not Tus2ProblemDetailsException)
             {
                 return new()
                 {

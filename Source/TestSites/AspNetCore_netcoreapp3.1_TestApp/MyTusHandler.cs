@@ -19,6 +19,17 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
         public override bool AllowClientToDeleteFile => true;
 
+        public override bool EnableReportingOfProgress => false;
+
+        public override TusHandlerLimits Limits => new()
+        {
+            Expiration = TimeSpan.FromHours(24),
+            MaxSize = 1024 * 1024 * 1024,
+            MaxAppendSize = 100 * 1024 * 1024,
+            MinSize = 1024,
+            MinAppendSize = 5 * 1024 * 1024
+        };
+
         public override async Task<CreateFileProcedureResponse> CreateFile(CreateFileContext context)
         {
             _logger.LogInformation("CreateFile: Creating file {UploadToken}", context.Headers.ResourceId);
