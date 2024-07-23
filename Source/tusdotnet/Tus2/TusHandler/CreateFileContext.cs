@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Threading;
 using tusdotnet.Models;
 
 namespace tusdotnet.Tus2

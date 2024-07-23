@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using System.Reflection;
-using System.Net.Http;
 
 namespace tusdotnet.Tus2
 {

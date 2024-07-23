@@ -108,7 +108,7 @@ namespace tusdotnet.Tus2
 
                     foreach (var segment in result.Buffer)
                     {
-                        if(completeDataWritten + segment.Length > context.ResourceLength)
+                        if (completeDataWritten + segment.Length > context.ResourceLength)
                         {
                             throw new Tus2AssertRequestException(System.Net.HttpStatusCode.BadRequest, "Too much data in request body");
                         }
