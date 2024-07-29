@@ -62,7 +62,7 @@ namespace tusdotnet.Tus2
 
         private static async Task<Tus2BaseResponse> InvokeHandler(TusHandler handler, HttpContext httpContext, Tus2Headers headers)
         {
-            var method = httpContext.Request.Method;
+            var method = httpContext.Request.Method;            
 
             var uploadManager = await GetOngoingUploadManager(httpContext);
 

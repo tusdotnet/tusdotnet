@@ -23,7 +23,7 @@ curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: applicatio
 ## Known limitations
 
 * Support for digest headers is not implemented
-* Upload-Limit is only sent as a hint to the client but is never validated on requests, e.g. files larger than max-size can be uploaded
+* Upload-Limit's `min-size` and `min-append-size` are only sent as a hint to the client but is never validated on requests, e.g. files smaller than `min-size` can be uploaded
 
 ## Known issues
 

@@ -2,10 +2,12 @@
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.IO.Pipelines;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Models;
+using tusdotnet.Models.PipeReaders;
 
 namespace tusdotnet.Tus2
 {
@@ -147,7 +149,6 @@ namespace tusdotnet.Tus2
 
                 if (!fileExist)
                 {
-
                     var createFileResponse = await handler.CreateFile(new()
                     {
                         Headers = context.Headers,
@@ -189,7 +190,20 @@ namespace tusdotnet.Tus2
                 }
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.HttpContext.RequestAborted, ongoingCancellationToken);
-                var guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.HttpContext.Request.BodyReader, cts.Token);
+                PipeReader guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.HttpContext.Request.BodyReader, cts.Token);
+
+                if (handler.Limits is not null && (handler.Limits.MaxSize is not null || handler.Limits.MaxAppendSize is not null))
+                {
+                    var maxSize = handler.Limits.MaxSize + (resourceLength ?? 0);
+                    var maxAppendSize = handler.Limits.MaxAppendSize + (resourceLength ?? 0);
+
+                    var sizeToUse = Math.Min(maxAppendSize ?? 0, maxSize ?? 0);
+
+                    if (sizeToUse is not 0)
+                    {
+                        guardedPipeReader = new MaxReadSizeGuardedPipeReader(guardedPipeReader, resourceLength ?? 0, sizeToUse);
+                    }
+                }
 
                 var writeDataContext = new WriteDataContext
                 {
