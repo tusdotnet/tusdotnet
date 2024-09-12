@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net8</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,10 +11,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\tusdotnet\tusdotnet.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Benchmarks\" />
   </ItemGroup>
 
 </Project>

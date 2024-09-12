@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
+using tusdotnet.benchmark.Benchmarks;
 //using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark
@@ -9,7 +10,7 @@ namespace tusdotnet.benchmark
     {
         public static void Main()
         {
-            //var summary = BenchmarkRunner.Run<CreateAndWriteFile>();
+            var summary = BenchmarkRunner.Run<ChecksumBenchmark3>();
             //var summary = BenchmarkRunner.Run<NoTusResumableHeader>();
             //var summary = BenchmarkRunner.Run<RequestIsNotForTusEndpoint>();
 
