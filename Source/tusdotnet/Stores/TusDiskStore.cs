@@ -430,6 +430,8 @@ namespace tusdotnet.Stores
         {
             var chunkComplete = _fileRepFactory.ChunkComplete(internalFileId);
             chunkComplete.Delete();
+
+            _fileRepFactory.ChunkChecksum(internalFileId).Delete();
             _fileRepFactory
                 .ChunkStartPosition(internalFileId)
                 .Write(totalDiskFileLength.ToString());

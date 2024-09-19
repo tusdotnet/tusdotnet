@@ -11,7 +11,10 @@ namespace tusdotnet.IntentHandlers
     {
         internal static async Task<Stream> Create(ContextAdapter context)
         {
-            Stream guardedStream = new ClientDisconnectGuardedReadOnlyStream(context.Request.Body, context.ClientDisconnectGuard);
+            Stream guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                context.Request.Body,
+                context.ClientDisconnectGuard
+            );
 
             guardedStream = await WrapWithMaxSize(guardedStream, context);
             guardedStream = WrapWithChecksumInfo(guardedStream, context);
@@ -24,7 +27,12 @@ namespace tusdotnet.IntentHandlers
             var maxSizeData = await context.GetMaxReadSizeInfo();
             if (maxSizeData.MaxReadSize is not null)
             {
-                stream = new MaxReadSizeGuardedReadOnlyStream(stream, maxSizeData.PreviouslyRead, maxSizeData.MaxReadSize.Value, maxSizeData.SizeSource);
+                stream = new MaxReadSizeGuardedReadOnlyStream(
+                    stream,
+                    maxSizeData.PreviouslyRead,
+                    maxSizeData.MaxReadSize.Value,
+                    maxSizeData.SizeSource
+                );
             }
 
             return stream;
@@ -32,7 +40,10 @@ namespace tusdotnet.IntentHandlers
 
         private static Stream WrapWithChecksumInfo(Stream stream, ContextAdapter context)
         {
-            if (context.StoreAdapter.Extensions.Checksum && context.Cache.UploadChecksum?.IsValid == true)
+            if (
+                context.StoreAdapter.Extensions.Checksum
+                && context.Cache.UploadChecksum?.IsValid == true
+            )
             {
                 stream = new ChecksumAwareStream(stream, context.Cache.UploadChecksum);
             }
