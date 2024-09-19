@@ -29,6 +29,11 @@ namespace tusdotnet.Stores
             File.WriteAllText(Path, text);
         }
 
+        public void Write(byte[] data)
+        {
+            File.WriteAllBytes(Path, data);
+        }
+
         public long ReadFirstLineAsLong(bool fileIsOptional = false, long defaultValue = -1)
         {
             var content = ReadFirstLine(fileIsOptional);
@@ -38,6 +43,20 @@ namespace tusdotnet.Stores
             }
 
             return defaultValue;
+        }
+
+        public byte[] ReadBytes(bool fileIsOptional)
+        {
+            if (fileIsOptional && !File.Exists(Path))
+            {
+                return null;
+            }
+
+            using var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
+            var data = new byte[stream.Length];
+            stream.Read(data, 0, data.Length);
+
+            return data;
         }
 
         public string ReadFirstLine(bool fileIsOptional = false)
@@ -84,6 +103,8 @@ namespace tusdotnet.Stores
             public InternalFileRep ChunkStartPosition(InternalFileId fileId) => Create(fileId, "chunkstart");
 
             public InternalFileRep ChunkComplete(InternalFileId fileId) => Create(fileId, "chunkcomplete");
+
+            public InternalFileRep ChunkChecksum(InternalFileId fileId) => Create(fileId, "chunkchecksum");
 
             private InternalFileRep Create(InternalFileId fileId, string extension)
             {

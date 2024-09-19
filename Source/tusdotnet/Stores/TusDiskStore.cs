@@ -102,8 +102,7 @@ namespace tusdotnet.Stores
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
 
-            if (bufferSize == null)
-                bufferSize = TusDiskBufferSize.Default;
+            bufferSize ??= TusDiskBufferSize.Default;
 
             _maxWriteBufferSize = bufferSize.WriteBufferSizeInBytes;
             _maxReadBufferSize = bufferSize.ReadBufferSizeInBytes;
@@ -125,7 +124,7 @@ namespace tusdotnet.Stores
             var firstLine = _fileRepFactory
                 .UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId))
                 .ReadFirstLine(true);
-            return firstLine == null ? (long?)null : long.Parse(firstLine);
+            return firstLine == null ? null : long.Parse(firstLine);
         }
 
         /// <inheritdoc />
@@ -214,6 +213,7 @@ namespace tusdotnet.Stores
                 var chunkPositionFile = _fileRepFactory.ChunkStartPosition(internalFileId);
                 var chunkStartPosition = chunkPositionFile.ReadFirstLineAsLong(true, 0);
                 var chunkCompleteFile = _fileRepFactory.ChunkComplete(internalFileId);
+                var chunkChecksumFile = _fileRepFactory.ChunkChecksum(internalFileId);
 
                 // Only verify the checksum if the entire lastest chunk has been written.
                 // If not, just discard the last chunk as it won't match the checksum anyway.
@@ -223,7 +223,11 @@ namespace tusdotnet.Stores
                     && !ChecksumTrailerHelper.IsFallback(algorithm, checksum)
                 )
                 {
-                    var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
+                    // If we don't have the optimized checksum file calculate it from the file stream.
+                    var calculateSha1 =
+                        chunkChecksumFile.ReadBytes(fileIsOptional: true)
+                        ?? dataStream.CalculateSha1(chunkStartPosition);
+
                     valid = checksum.SequenceEqual(calculateSha1);
                 }
 
