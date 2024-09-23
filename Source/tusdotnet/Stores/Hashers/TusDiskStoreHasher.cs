@@ -3,11 +3,13 @@
 using System.Buffers;
 #endif
 
+#nullable enable
+
 namespace tusdotnet.Stores.Hashers
 {
-    internal abstract partial class TusDiskStoreHasher : IDisposable
+    internal abstract class TusDiskStoreHasher : IDisposable
     {
-        public static TusDiskStoreHasher Create(string algorithm)
+        public static TusDiskStoreHasher Create(string? algorithm)
         {
             if (algorithm?.Equals("sha1", StringComparison.OrdinalIgnoreCase) == true)
             {
@@ -29,7 +31,7 @@ namespace tusdotnet.Stores.Hashers
 
         public abstract void Append(byte[] data, int count);
 
-        public abstract byte[] GetHashAndReset();
+        public abstract byte[]? GetHashAndReset();
 
         public abstract void Dispose();
     }
