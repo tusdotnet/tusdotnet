@@ -49,6 +49,10 @@ namespace tusdotnet.Helpers
             if (checksumHeader != null)
             {
                 _checksum = new Checksum(checksumHeader);
+                if (_checksum.IsValid)
+                {
+                    context.Cache.UploadChecksum = _checksum;
+                }
             }
         }
 

@@ -32,14 +32,9 @@ namespace tusdotnet.IntentHandlers
 
         private static Stream WrapWithChecksumInfo(Stream stream, ContextAdapter context)
         {
-            if (context.StoreAdapter.Extensions.Checksum)
+            if (context.StoreAdapter.Extensions.Checksum && context.Cache.UploadChecksum?.IsValid == true)
             {
-                // TODO: should be cached once parsed
-                var checksum = !string.IsNullOrEmpty(context.Request.Headers.UploadChecksum) ? new Checksum(context.Request.Headers.UploadChecksum) : null;
-                if (checksum?.IsValid == true)
-                {
-                    stream = new ChecksumAwareStream(stream, checksum);
-                }
+                stream = new ChecksumAwareStream(stream, context.Cache.UploadChecksum);
             }
 
             return stream;
