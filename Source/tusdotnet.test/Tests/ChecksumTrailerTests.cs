@@ -186,7 +186,7 @@ namespace tusdotnet.test.Tests
             trailersFeature.Available.ReturnsForAnyArgs(false);
 
             httpContext.Features.Set(trailersFeature);
-            httpContext.Request.Headers.Add("Trailer", Constants.HeaderConstants.UploadChecksum);
+            httpContext.Request.Headers.Append("Trailer", Constants.HeaderConstants.UploadChecksum);
 
             var request = new RequestAdapter()
             {

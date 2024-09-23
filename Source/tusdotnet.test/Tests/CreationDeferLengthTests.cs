@@ -11,6 +11,8 @@ using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
 using tusdotnet.test.Helpers;
+using tusdotnet.Helpers;
+
 #if netfull
 using Owin;
 #endif
@@ -40,7 +42,7 @@ namespace tusdotnet.test.Tests
                 app.Run(ctx =>
                 {
                     callForwarded = true;
-                    return Task.FromResult(true);
+                    return TaskHelper.Completed;
                 });
             });
 
