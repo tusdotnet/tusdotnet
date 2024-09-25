@@ -79,6 +79,19 @@ namespace tusdotnet.Stores
             // Left blank.
         }
 
+#if NETCOREAPP2_0_OR_GREATER
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
+        /// </summary>
+        /// <param name="directoryPath">The path on disk where to save files</param>
+        /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
+        /// <param name="bufferSize">The buffer size to use when reading and writing. If unsure use <see cref="TusDiskBufferSize.Default"/>.</param>
+        /// <param name="fileIdProvider">The provider that generates ids for files. If unsure use <see cref="GuidFileIdProvider"/>.</param>
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize, ITusFileIdProvider fileIdProvider)
+            : this(directoryPath, deletePartialFilesOnConcat, bufferSize, fileIdProvider, _defaultFileSystem)
+        {
+        }
+#else
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
         /// </summary>
@@ -100,7 +113,8 @@ namespace tusdotnet.Stores
 
             _fileIdProvider = fileIdProvider;
         }
-
+#endif
+        
         /// <inheritdoc />
         public async Task<bool> FileExistAsync(string fileId, CancellationToken _)
         {
@@ -126,7 +140,13 @@ namespace tusdotnet.Stores
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
         {
             var fileId = await InternalFileId.CreateNew(_fileIdProvider, metadata);
+
+#if NETCOREAPP2_0_OR_GREATER
+            await _fileSystem.FileStream.New(_fileRepFactory.Data(fileId).Path, FileMode.CreateNew).DisposeAsync();
+#else
             new FileStream(_fileRepFactory.Data(fileId).Path, FileMode.CreateNew).Dispose();
+#endif
+
             if (uploadLength != -1)
             {
                 await SetUploadLengthAsync(fileId, uploadLength, cancellationToken);
@@ -282,9 +302,22 @@ namespace tusdotnet.Stores
         public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken _)
         {
             var expiredFiles = new List<string>();
-            foreach (var file in Directory.EnumerateFiles(_directoryPath, "*.expiration"))
+            
+#if NETCOREAPP2_0_OR_GREATER
+            var enumerateFiles = _fileSystem.Directory.EnumerateFiles(_directoryPath, "*.expiration");
+#else
+            var enumerateFiles = Directory.EnumerateFiles(_directoryPath, "*.expiration");
+#endif
+            
+            foreach (var file in enumerateFiles)
             {
-                var f = await InternalFileId.Parse(_fileIdProvider, Path.GetFileNameWithoutExtension(file));
+#if NETCOREAPP2_0_OR_GREATER
+                var fileNameWithoutExtension = _fileSystem.Path.GetFileNameWithoutExtension(file);
+#else
+                var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file);
+#endif
+                
+                var f = await InternalFileId.Parse(_fileIdProvider, fileNameWithoutExtension);
                 if (FileHasExpired(f, _fileRepFactory) && FileIsIncomplete(f, _fileRepFactory))
                 {
                     expiredFiles.Add(f);

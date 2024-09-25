@@ -1,4 +1,7 @@
 ﻿using System.IO;
+#if NETCOREAPP2_0_OR_GREATER
+using System.IO.Abstractions;
+#endif
 
 namespace tusdotnet.Stores
 {
@@ -7,26 +10,50 @@ namespace tusdotnet.Stores
         public string Path { get; }
 
         public string FileId { get; set; }
+        
 
         private InternalFileRep(string fileId, string path)
         {
             FileId = fileId;
             Path = path;
         }
+        
+#if NETCOREAPP2_0_OR_GREATER
+        private readonly IFileSystem _fileSystem;
+
+        private InternalFileRep(string fileId, string path, IFileSystem fileSystem)
+        {
+            FileId = fileId;
+            Path = path;
+            _fileSystem = fileSystem;
+        }
+#endif
 
         public void Delete()
         {
+#if NETCOREAPP2_0_OR_GREATER
+            _fileSystem.File.Delete(Path);
+#else
             File.Delete(Path);
+#endif
         }
 
         public bool Exist()
         {
+#if NETCOREAPP2_0_OR_GREATER
+            return _fileSystem.File.Exists(Path);
+#else
             return File.Exists(Path);
+#endif
         }
 
         public void Write(string text)
         {
+#if NETCOREAPP2_0_OR_GREATER
+            _fileSystem.File.WriteAllText(Path, text);
+#else
             File.WriteAllText(Path, text);
+#endif
         }
 
         public long ReadFirstLineAsLong(bool fileIsOptional = false, long defaultValue = -1)
@@ -42,7 +69,13 @@ namespace tusdotnet.Stores
 
         public string ReadFirstLine(bool fileIsOptional = false)
         {
-            if (fileIsOptional && !File.Exists(Path))
+#if NETCOREAPP2_0_OR_GREATER
+            var fileExists =  _fileSystem.File.Exists(Path);
+#else
+            var fileExists =  File.Exists(Path);
+#endif           
+            
+            if (fileIsOptional && !fileExists)
             {
                 return null;
             }
@@ -50,16 +83,25 @@ namespace tusdotnet.Stores
             using var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
             using var sr = new StreamReader(stream);
             return sr.ReadLine();
+            
         }
 
         public FileStream GetStream(FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
         {
+#if NETCOREAPP2_0_OR_GREATER
+            return (FileStream)_fileSystem.FileStream.New(Path, mode, access, share, bufferSize, FileOptions.SequentialScan | FileOptions.Asynchronous);
+#else
             return new FileStream(Path, mode, access, share, bufferSize, FileOptions.SequentialScan | FileOptions.Asynchronous);
+#endif  
         }
 
         public long GetLength()
         {
+#if NETCOREAPP2_0_OR_GREATER
+            return _fileSystem.FileInfo.New(Path).Length;
+#else
             return new FileInfo(Path).Length;
+#endif  
         }
 
         internal sealed class FileRepFactory
@@ -70,6 +112,16 @@ namespace tusdotnet.Stores
             {
                 _directoryPath = directoryPath;
             }
+            
+#if NETCOREAPP2_0_OR_GREATER
+            private readonly IFileSystem _fileSystem;
+
+            public FileRepFactory(string directoryPath, IFileSystem fileSystem)
+            {
+                _directoryPath = directoryPath;
+                _fileSystem = fileSystem;
+            }
+#endif 
 
             public InternalFileRep Data(InternalFileId fileId) => Create(fileId, "");
 
@@ -93,7 +145,11 @@ namespace tusdotnet.Stores
                     fileName += "." + extension;
                 }
 
+#if NETCOREAPP2_0_OR_GREATER
+                return new InternalFileRep(fileId, _fileSystem.Path.Combine(_directoryPath, fileName), _fileSystem);
+#else
                 return new InternalFileRep(fileId, System.IO.Path.Combine(_directoryPath, fileName));
+#endif 
             }
         }
     }

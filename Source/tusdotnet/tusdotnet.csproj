@@ -93,6 +93,13 @@
     <PackageReference Include="System.Buffers" Version="4.5.1" />
   </ItemGroup>
 
+  <!-- Package references for .NET Standard 2.0 or greater -->
+  <ItemGroup Condition="     '$(TargetFramework)' == 'netstandard2.0' 
+                          Or '$(TargetFramework)' == 'netcoreapp3.1' 
+                          Or '$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="System.IO.Abstractions" Version="21.0.29"/>
+  </ItemGroup>
+
   <!-- Package references for .NET Core 3.1+ -->
   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
