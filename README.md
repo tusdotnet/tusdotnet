@@ -6,7 +6,7 @@ Please note that this is a **POC/experimental** implementation and breaking chan
 
 Current Upload-Draft-Interop-Version: 6
 
-Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/fa47df58021eef10d6371010c049685538b4dbf5
+Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/38de7e8265e5417dd645c0ec7eb101abcc3c3b9e
 
 Other implementations (both server and clients): 
 * https://github.com/tus/draft-example
@@ -15,6 +15,8 @@ Usage from cURL:
 ```
 curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: application/octet-stream" -H "Upload-Complete: ?1" --data-binary "@c:\testfile10mb.bin" https://localhost:5007/files-tus-2
 ```
+
+See `Source\tusdotnet.test\run-104-upload-resumption-supported-tests.ps1` for some more tests.
 
 ## Previous draft versions (Upload-Draft-Interop-Version)
 * Upload-Draft-Interop-Version: 5 - commit: 303ef832440c2fe7bba652e11625e8d87f8e6764
@@ -287,7 +289,7 @@ public class MyService
 
 ## Test sites
 
-Test site only is available for ASP.NET Core 3.1 (.NET Core 3.1) as the tus2 implementation requires .NET classes only found in Core 3.1 and later.
+Test site only is available for ASP.NET Core 6 (.NET 6) as the tus2 implementation requires .NET classes only found in Core 3.1 and later.
 
 ## License
 
