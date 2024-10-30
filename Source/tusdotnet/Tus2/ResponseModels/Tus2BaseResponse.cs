@@ -35,7 +35,7 @@ namespace tusdotnet.Tus2
 
             if (NoCache)
             {
-                httpContext.SetHeader("Cache-Control", "no-cache");
+                httpContext.SetHeader("Cache-Control", "no-store");
             }
 
             if (UploadOffset != null)
