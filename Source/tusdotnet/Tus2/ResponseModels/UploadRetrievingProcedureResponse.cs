@@ -13,6 +13,8 @@ namespace tusdotnet.Tus2
 
         public TusHandlerLimits? UploadLimit { get; set; }
 
+        public long? UploadLength { get; set; }
+
         public UploadRetrievingProcedureResponse()
         {
             NoCache = true;
@@ -28,6 +30,9 @@ namespace tusdotnet.Tus2
 
             if (UploadLimit is not null)
                 context.SetHeader("Upload-Limit", UploadLimit.ToSfDictionary());
+
+            if (UploadLength is not null)
+                context.SetHeader("Upload-Length", UploadLength.ToString());
 
             return Task.CompletedTask;
         }

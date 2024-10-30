@@ -1,7 +1,7 @@
 ﻿#nullable enable
+using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 
 namespace tusdotnet.Tus2
 {
@@ -21,8 +21,10 @@ namespace tusdotnet.Tus2
             var uploadToken = headers["Upload-Token"].FirstOrDefault();
             var contentLength = headers.ContentLength;
             var contentType = headers.ContentType;
+            var uploadLength = headers["Upload-Length"].FirstOrDefault().FromSfInteger();
 
-            var uploadTokenParser = httpContext.RequestServices.GetRequiredService<IUploadTokenParser>();
+            var uploadTokenParser =
+                httpContext.RequestServices.GetRequiredService<IUploadTokenParser>();
 
             return _headers = new()
             {
@@ -31,6 +33,7 @@ namespace tusdotnet.Tus2
                 UploadComplete = uploadComplete,
                 ContentLength = contentLength,
                 ContentType = contentType,
+                UploadLength = uploadLength,
             };
         }
     }

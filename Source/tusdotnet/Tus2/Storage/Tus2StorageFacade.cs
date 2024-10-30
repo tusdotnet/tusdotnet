@@ -13,21 +13,26 @@ namespace tusdotnet.Tus2
 
         public Tus2Storage Storage { get; }
 
-        public virtual async Task<UploadRetrievingProcedureResponse> RetrieveOffset(RetrieveOffsetContext context)
+        public virtual async Task<UploadRetrievingProcedureResponse> RetrieveOffset(
+            RetrieveOffsetContext context
+        )
         {
             var offsetTask = Storage.GetOffset(context.Headers.ResourceId);
             var isCompleteTask = Storage.IsComplete(context.Headers.ResourceId);
+            var lengthTask = Storage.GetResourceLength(context.Headers.ResourceId);
 
-            await Task.WhenAll(offsetTask, isCompleteTask);
+            await Task.WhenAll(offsetTask, isCompleteTask, lengthTask);
 
             var offset = offsetTask.Result;
             var isComplete = isCompleteTask.Result;
+            var uploadLength = lengthTask.Result;
 
             return new()
             {
                 Status = HttpStatusCode.NoContent,
                 UploadOffset = offset,
                 UploadComplete = isComplete,
+                UploadLength = uploadLength
             };
         }
 
@@ -62,11 +67,7 @@ namespace tusdotnet.Tus2
 
             if (context.CancellationToken.IsCancellationRequested)
             {
-                return new()
-                {
-                    DisconnectClient = true,
-                    UploadComplete = false
-                };
+                return new() { DisconnectClient = true, UploadComplete = false };
             }
 
             if (!uploadComplete)

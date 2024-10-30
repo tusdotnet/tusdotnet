@@ -5,7 +5,11 @@ namespace tusdotnet.Tus2
 {
     internal static class Tus2Validator
     {
-        internal static async Task<bool> AssertFileExist(Tus2Storage store, string uploadToken, bool additionalCondition = true)
+        internal static async Task<bool> AssertFileExist(
+            Tus2Storage store,
+            string uploadToken,
+            bool additionalCondition = true
+        )
         {
             var fileExist = await store.FileExist(uploadToken);
             if (!fileExist && additionalCondition)
@@ -29,34 +33,76 @@ namespace tusdotnet.Tus2
         {
             if (headers.UploadComplete.HasValue)
             {
-                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, "Upload-Complete header is not allowed for procedure");
+                throw new Tus2AssertRequestException(
+                    HttpStatusCode.BadRequest,
+                    "Upload-Complete header is not allowed for request"
+                );
             }
 
             if (headers.UploadOffset.HasValue)
             {
-                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, "Upload-Offset header is not allowed for procedure");
+                throw new Tus2AssertRequestException(
+                    HttpStatusCode.BadRequest,
+                    "Upload-Offset header is not allowed for request"
+                );
+            }
+
+            if (headers.UploadLength.HasValue)
+            {
+                throw new Tus2AssertRequestException(
+                    HttpStatusCode.BadRequest,
+                    "Upload-Length header is not allowed for request"
+                );
             }
         }
 
-        internal static Task AssertValidOffset(long uploadOffsetFromStorage, long? uploadOffsetFromClient)
+        internal static Task AssertValidOffset(
+            long uploadOffsetFromStorage,
+            long? uploadOffsetFromClient
+        )
         {
             if (uploadOffsetFromStorage != uploadOffsetFromClient)
             {
-                throw new Tus2MismatchingUploadOffsetException(uploadOffsetFromStorage, uploadOffsetFromClient ?? 0);
+                throw new Tus2MismatchingUploadOffsetException(
+                    uploadOffsetFromStorage,
+                    uploadOffsetFromClient ?? 0
+                );
             }
 
             return Task.CompletedTask;
         }
 
-        internal static void AssertValidResourceLength(long resourceLength, long uploadOffset, long? contentLength)
+        internal static void AssertValidResourceLength(
+            long resourceLength,
+            long uploadOffset,
+            long? contentLength
+        )
         {
             if (contentLength is null)
                 return;
 
             if (uploadOffset + contentLength > resourceLength)
             {
-                throw new Tus2AssertRequestException(HttpStatusCode.BadRequest, "Upload-Offset + Content-Length is larger than the resources allowed length from previous Content-Length");
+                throw new Tus2AssertRequestException(
+                    HttpStatusCode.BadRequest,
+                    "Upload-Offset + Content-Length is larger than the resources allowed length from previous Content-Length"
+                );
             }
+        }
+
+        internal static void AssertContentLengthAndUploadLimitAreTheSame(
+            long? contentLength,
+            long? uploadLimit
+        )
+        {
+            if (contentLength is null || uploadLimit is null)
+                return;
+
+            if (contentLength.Value != uploadLimit.Value)
+                throw new Tus2AssertRequestException(
+                    HttpStatusCode.BadRequest,
+                    "Upload-Limit and Content-Length must have the same value if both are specified"
+                );
         }
     }
 }

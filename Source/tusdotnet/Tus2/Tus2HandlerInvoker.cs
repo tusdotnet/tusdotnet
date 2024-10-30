@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.Extensions.DependencyInjection;
-using System;
+﻿using System;
 using System.IO.Pipelines;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 using tusdotnet.Models;
 using tusdotnet.Models.PipeReaders;
 
@@ -14,9 +14,10 @@ namespace tusdotnet.Tus2
     internal class Tus2HandlerInvoker
     {
         internal static async Task<UploadRetrievingProcedureResponse> RetrieveOffsetEntryPoint(
-           TusHandler handler,
-           RetrieveOffsetContext context,
-           IOngoingUploadManager uploadManager)
+            TusHandler handler,
+            RetrieveOffsetContext context,
+            IOngoingUploadManager uploadManager
+        )
         {
             /*
             If an upload is interrupted, the client MAY attempt to fetch the offset of the incomplete upload by sending a HEAD request to the server with the same Upload-Token header field ({{upload-token}}). The client MUST NOT initiate this procedure without the knowledge of server support.
@@ -47,10 +48,18 @@ namespace tusdotnet.Tus2
 
                 await uploadManager.CancelOtherUploads(context.Headers.ResourceId);
 
-                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId);
+                await Tus2Validator.AssertFileExist(
+                    storageFacade.Storage,
+                    context.Headers.ResourceId
+                );
 
                 var response = await handler.RetrieveOffset(context);
-                response.ContentLocation = await handler.GetContentLocation(context.Headers.ResourceId, !response.UploadComplete);
+                response.ContentLocation = await handler.GetContentLocation(
+                    context.Headers.ResourceId,
+                    !response.UploadComplete
+                );
+
+                response.UploadLimit = handler.Limits;
 
                 return response;
             }
@@ -60,17 +69,19 @@ namespace tusdotnet.Tus2
                 {
                     Status = ex.Status,
                     ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.ResourceId!)
+                    UploadOffset = await TryGetOffset(
+                        storageFacade.Storage,
+                        context.Headers.ResourceId!
+                    )
                 };
             }
         }
-
 
         internal static async Task<UploadCancellationProcedureResponse> DeleteEntryPoint(
             TusHandler handler,
             DeleteContext context,
             IOngoingUploadManager uploadManager
-            )
+        )
         {
             /*
             If the client wants to terminate the transfer without the ability to resume, it MAY send a DELETE request to the server along with the Upload-Token which is an indication that the client is no longer interested in uploading this body and the server can release resources associated with this token. The client MUST NOT initiate this procedure without the knowledge of server support.
@@ -103,10 +114,12 @@ namespace tusdotnet.Tus2
 
                 await uploadManager.CancelOtherUploads(context.Headers.ResourceId);
 
-                await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId);
+                await Tus2Validator.AssertFileExist(
+                    storageFacade.Storage,
+                    context.Headers.ResourceId
+                );
 
                 return await handler.Delete(context);
-
             }
             catch (Tus2AssertRequestException ex)
             {
@@ -114,28 +127,35 @@ namespace tusdotnet.Tus2
                 {
                     Status = ex.Status,
                     ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await TryGetOffset(storageFacade.Storage, context.Headers.ResourceId!)
+                    UploadOffset = await TryGetOffset(
+                        storageFacade.Storage,
+                        context.Headers.ResourceId!
+                    )
                 };
             }
         }
 
-
         public static async Task<UploadTransferProcedureResponse> WriteDataEntryPoint(
             TusHandler handler,
             WriteDataContext context,
-            IOngoingUploadManager uploadManager)
+            IOngoingUploadManager uploadManager
+        )
         {
-
             // This method is a combo of the upload creation procedure and the upload appening procedure due to them being one and the same in earlier drafts.
             long? uploadOffsetFromStorage = null;
             try
             {
-                var metadataParser = context.HttpContext.RequestServices.GetRequiredService<IMetadataParser>();
+                var metadataParser =
+                    context.HttpContext.RequestServices.GetRequiredService<IMetadataParser>();
 
                 await uploadManager.CancelOtherUploads(context.Headers.ResourceId);
 
-                var ongoingCancellationToken = await uploadManager.StartUpload(context.Headers.ResourceId);
-                await using var finishOngoing = Deferrer.Defer(() => uploadManager.FinishUpload(context.Headers.ResourceId));
+                var ongoingCancellationToken = await uploadManager.StartUpload(
+                    context.Headers.ResourceId
+                );
+                await using var finishOngoing = Deferrer.Defer(
+                    () => uploadManager.FinishUpload(context.Headers.ResourceId)
+                );
 
                 var metadata = metadataParser?.Parse(context.HttpContext);
 
@@ -143,20 +163,32 @@ namespace tusdotnet.Tus2
 
                 context.Headers.UploadOffset ??= 0;
 
-                var contentLength = context.Headers.UploadComplete != false ? context.Headers.ContentLength : null;
+                var contentLength =
+                    context.Headers.UploadComplete != false ? context.Headers.ContentLength : null;
 
-                var fileExist = await Tus2Validator.AssertFileExist(storageFacade.Storage, context.Headers.ResourceId, context.Headers.UploadOffset != 0);
+                var fileExist = await Tus2Validator.AssertFileExist(
+                    storageFacade.Storage,
+                    context.Headers.ResourceId,
+                    context.Headers.UploadOffset != 0
+                );
 
                 if (!fileExist)
                 {
-                    var createFileResponse = await handler.CreateFile(new()
-                    {
-                        Headers = context.Headers,
-                        HttpContext = context.HttpContext,
-                        CancellationToken = context.CancellationToken,
-                        Metadata = metadata,
-                        ResourceLength = contentLength
-                    });
+                    long? resourceLengthForCreate = AssertAndGetResourceLength(
+                        context,
+                        contentLength
+                    );
+
+                    var createFileResponse = await handler.CreateFile(
+                        new()
+                        {
+                            Headers = context.Headers,
+                            HttpContext = context.HttpContext,
+                            CancellationToken = context.CancellationToken,
+                            Metadata = metadata,
+                            ResourceLength = resourceLengthForCreate
+                        }
+                    );
 
                     if (createFileResponse.IsError)
                     {
@@ -168,31 +200,62 @@ namespace tusdotnet.Tus2
                     }
 
                     // New file so send the 104 response with the location header
-                    await context.HttpContext.Send104UploadResumptionSupported(context.HttpContext.Request.GetDisplayUrl().TrimEnd('/') + "/" + context.Headers.ResourceId, handler.Limits);
+                    await context.HttpContext.Send104UploadResumptionSupported(
+                        context.HttpContext.Request.GetDisplayUrl().TrimEnd('/')
+                            + "/"
+                            + context.Headers.ResourceId,
+                        handler.Limits
+                    );
                 }
                 else
                 {
-                    await Tus2Validator.AssertFileNotCompleted(storageFacade.Storage, context.Headers.ResourceId);
+                    await Tus2Validator.AssertFileNotCompleted(
+                        storageFacade.Storage,
+                        context.Headers.ResourceId
+                    );
                 }
 
                 // TODO: See if we can implement some kind of updatable "request cache" for data that
                 // could change during the request but were we do not wish to read the data multiple times,
                 // e.g. Upload-Offset for the file retrieved from storage.
 
-                uploadOffsetFromStorage = await storageFacade.Storage.GetOffset(context.Headers.ResourceId);
-                await Tus2Validator.AssertValidOffset(uploadOffsetFromStorage.Value, context.Headers.UploadOffset);
+                uploadOffsetFromStorage = await storageFacade.Storage.GetOffset(
+                    context.Headers.ResourceId
+                );
+                await Tus2Validator.AssertValidOffset(
+                    uploadOffsetFromStorage.Value,
+                    context.Headers.UploadOffset
+                );
 
-                var resourceLength = await storageFacade.Storage.GetResourceLength(context.Headers.ResourceId);
+                var resourceLength = await storageFacade.Storage.GetResourceLength(
+                    context.Headers.ResourceId
+                );
 
                 if (contentLength is not null && resourceLength is not null)
                 {
-                    Tus2Validator.AssertValidResourceLength(resourceLength.Value, context.Headers.UploadOffset.Value, contentLength);
+                    Tus2Validator.AssertValidResourceLength(
+                        resourceLength.Value,
+                        context.Headers.UploadOffset.Value,
+                        contentLength
+                    );
                 }
 
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.HttpContext.RequestAborted, ongoingCancellationToken);
-                PipeReader guardedPipeReader = new ClientDisconnectGuardedPipeReader(context.HttpContext.Request.BodyReader, cts.Token);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+                    context.HttpContext.RequestAborted,
+                    ongoingCancellationToken
+                );
+                PipeReader guardedPipeReader = new ClientDisconnectGuardedPipeReader(
+                    context.HttpContext.Request.BodyReader,
+                    cts.Token
+                );
 
-                if (handler.Limits is not null && (handler.Limits.MaxSize is not null || handler.Limits.MaxAppendSize is not null))
+                if (
+                    handler.Limits is not null
+                    && (
+                        handler.Limits.MaxSize is not null
+                        || handler.Limits.MaxAppendSize is not null
+                    )
+                )
                 {
                     var maxSize = handler.Limits.MaxSize + (resourceLength ?? 0);
                     var maxAppendSize = handler.Limits.MaxAppendSize + (resourceLength ?? 0);
@@ -201,7 +264,11 @@ namespace tusdotnet.Tus2
 
                     if (sizeToUse is not 0)
                     {
-                        guardedPipeReader = new MaxReadSizeGuardedPipeReader(guardedPipeReader, resourceLength ?? 0, sizeToUse);
+                        guardedPipeReader = new MaxReadSizeGuardedPipeReader(
+                            guardedPipeReader,
+                            resourceLength ?? 0,
+                            sizeToUse
+                        );
                     }
                 }
 
@@ -211,7 +278,9 @@ namespace tusdotnet.Tus2
                     CancellationToken = cts.Token,
                     Headers = context.Headers,
                     HttpContext = context.HttpContext,
-                    ReportOffset = handler.EnableReportingOfProgress ? CreateUploadOffsetReporter(context.HttpContext) : _ => Task.CompletedTask,
+                    ReportOffset = handler.EnableReportingOfProgress
+                        ? CreateUploadOffsetReporter(context.HttpContext)
+                        : _ => Task.CompletedTask,
                     ResourceLength = resourceLength
                 };
 
@@ -219,7 +288,10 @@ namespace tusdotnet.Tus2
 
                 if (resourceLength is null && contentLength is not null)
                 {
-                    await storageFacade.Storage.SetResourceLength(context.Headers.ResourceId, contentLength.Value);
+                    await storageFacade.Storage.SetResourceLength(
+                        context.Headers.ResourceId,
+                        contentLength.Value
+                    );
                 }
 
                 if (ongoingCancellationToken.IsCancellationRequested)
@@ -227,10 +299,12 @@ namespace tusdotnet.Tus2
                     await uploadManager.NotifyCancelComplete(context.Headers.ResourceId);
                 }
 
-                writeDataResponse.ContentLocation = await handler.GetContentLocation(context.Headers.ResourceId, writeDataResponse.UploadComplete);
+                writeDataResponse.ContentLocation = await handler.GetContentLocation(
+                    context.Headers.ResourceId,
+                    writeDataResponse.UploadComplete
+                );
                 writeDataResponse.Limits = handler.Limits;
                 return writeDataResponse;
-
             }
             catch (Tus2AssertRequestException exc) when (exc is not Tus2ProblemDetailsException)
             {
@@ -243,6 +317,24 @@ namespace tusdotnet.Tus2
             }
         }
 
+        private static long? AssertAndGetResourceLength(
+            WriteDataContext context,
+            long? contentLength
+        )
+        {
+            Tus2Validator.AssertContentLengthAndUploadLimitAreTheSame(
+                contentLength,
+                context.Headers.UploadLength
+            );
+
+            long? resourceLengthForCreate = Math.Min(
+                contentLength ?? long.MaxValue,
+                context.Headers.UploadLength ?? long.MaxValue
+            );
+
+            return resourceLengthForCreate == long.MaxValue ? null : resourceLengthForCreate;
+        }
+
         private static Func<long, Task> CreateUploadOffsetReporter(HttpContext httpContext)
         {
             const int SECONDS_BETWEEN_REPORTS = 1;
@@ -250,9 +342,15 @@ namespace tusdotnet.Tus2
 
             return async (offset) =>
             {
-                if (lastWrite == DateTime.MinValue || (DateTime.Now - lastWrite).TotalSeconds > SECONDS_BETWEEN_REPORTS)
+                if (
+                    lastWrite == DateTime.MinValue
+                    || (DateTime.Now - lastWrite).TotalSeconds > SECONDS_BETWEEN_REPORTS
+                )
                 {
-                    await InformationalResponseSender.Send104UploadResumptionSupported(httpContext, offset);
+                    await InformationalResponseSender.Send104UploadResumptionSupported(
+                        httpContext,
+                        offset
+                    );
                     lastWrite = DateTime.Now;
                 }
             };
