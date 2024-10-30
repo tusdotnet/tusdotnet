@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
+﻿using System;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace tusdotnet.Tus2
 {
@@ -11,17 +11,23 @@ namespace tusdotnet.Tus2
 
         public Uri? ContentLocation { get; set; }
 
+        public TusHandlerLimits? UploadLimit { get; set; }
+
         public UploadRetrievingProcedureResponse()
         {
             NoCache = true;
             Status = HttpStatusCode.NoContent;
         }
+
         protected override Task WriteResponse(HttpContext context)
         {
             context.SetHeader("Upload-Complete", UploadComplete.ToSfBool());
 
             if (ContentLocation is not null)
                 context.SetHeader("Content-Location", ContentLocation.ToString());
+
+            if (UploadLimit is not null)
+                context.SetHeader("Upload-Limit", UploadLimit.ToSfDictionary());
 
             return Task.CompletedTask;
         }
