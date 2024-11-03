@@ -1,14 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
 	  <EnablePreviewFeatures>True</EnablePreviewFeatures>
 	  <RootNamespace>AspNetCore_netcoreapp3._1_TestApp</RootNamespace>
+	  <UserSecretsId>d8060ddb-b60e-40d5-846d-d996c6efbe8a</UserSecretsId>
+	  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	  <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="index.html" />
     <None Remove="tus.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
   </ItemGroup>
 
   <ItemGroup>
