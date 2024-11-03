@@ -44,7 +44,7 @@ Clone this branch and include it in your project. All classes related to tus2 ar
 
 ## Run
 
-Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp` (runs on net6):
+Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp` (runs on .NET8):
 
 `dotnet run`
 
@@ -289,7 +289,7 @@ public class MyService
 
 ## Test sites
 
-Test site only is available for ASP.NET Core 6 (.NET 6) as the tus2 implementation requires .NET classes only found in Core 3.1 and later.
+Test site only is available for ASP.NET Core 8 (.NET 8) as the tus2 implementation requires .NET classes only found in Core 3.1 and later.
 
 ## License
 
