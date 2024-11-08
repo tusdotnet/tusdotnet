@@ -3,6 +3,7 @@ var downloadLink = document.getElementById('downloadLink');
 var cancelUploadButton = document.getElementById('cancelUploadButton');
 var uploadButton = document.getElementById('uploadButton');
 var endpoint = document.getElementById("endpoint");
+var consolidateRequests = document.getElementById("consolidateRequests");
 var upload;
 
 function uploadFile() {
@@ -26,6 +27,9 @@ function uploadFile() {
                 name: file.name,
                 contentType: file.type || 'application/octet-stream',
                 emptyMetaKey: ''
+            },
+            headers: {
+                "consolidateRequests": consolidateRequests.checked ? "?1" : "?0"
             }
         });
 

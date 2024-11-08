@@ -5,7 +5,11 @@ namespace tusdotnet.Extensions
 {
     internal static class HttpContextExtensions
     {
-        internal static void NotFound(this HttpContext httpContext) => httpContext.Response.StatusCode = 404;
+        internal static void NotFound(this HttpContext httpContext) =>
+            httpContext.Response.StatusCode = 404;
+
+        internal static T? GetFeature<T>(this HttpContext httpContext) =>
+            (T?)httpContext.Features[typeof(T)];
     }
 }
 #endif

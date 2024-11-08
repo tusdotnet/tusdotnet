@@ -1,11 +1,13 @@
-﻿using tusdotnet.ModelBinders.Validation;
+﻿using tusdotnet.ModelBinding.Validation;
 using tusdotnet.Models;
 
 namespace AspNetCore_net6._0_TestApp
 {
     public class MyResumableUploadMetadataValidator : MetadataValidator<MyMappedResumableUpload>
     {
-        public override Task<IEnumerable<string>> ValidateMetadata(Dictionary<string, Metadata> metadata)
+        public override Task<IEnumerable<string>> ValidateMetadata(
+            Dictionary<string, Metadata> metadata
+        )
         {
             var result = new LinkedList<string>();
 

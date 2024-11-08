@@ -1,9 +1,9 @@
 ﻿#if NET6_0_OR_GREATER
 using System;
 
-namespace tusdotnet.ModelBinders
+namespace tusdotnet.ModelBinding.ProtocolHandler
 {
-    internal class ResumableUploadParameterInfo
+    public class ResumableUploadParameterInfo
     {
         public Type TypeOfResumableUploadParam { get; set; }
     }

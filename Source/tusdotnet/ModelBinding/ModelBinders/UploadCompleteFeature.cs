@@ -1,11 +1,11 @@
 ﻿#if NET6_0_OR_GREATER
 using tusdotnet.Interfaces;
 
-namespace tusdotnet.ModelBinders
+namespace tusdotnet.ModelBinding.ModelBinders
 {
-    internal class ResumableUploadCompleteFeature
+    internal class UploadCompleteFeature
     {
-        public ResumableUploadCompleteFeature(ITusFile file)
+        public UploadCompleteFeature(ITusFile file)
         {
             File = file;
         }

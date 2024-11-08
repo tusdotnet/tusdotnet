@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using System.Text;
-using tusdotnet.ModelBinders;
+using tusdotnet.ModelBinding.Models;
 
 namespace AspNetCore_net6._0_TestApp
 {
@@ -10,7 +10,10 @@ namespace AspNetCore_net6._0_TestApp
 
         public long DataLength => Content.Length;
 
-        public static async ValueTask<MyMappedResumableUpload> BindAsync(HttpContext context, ParameterInfo _)
+        public static async ValueTask<MyMappedResumableUpload> BindAsync(
+            HttpContext context,
+            ParameterInfo _
+        )
         {
             return await CreateAndBindFromHttpContext<MyMappedResumableUpload>(context);
         }

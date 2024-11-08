@@ -1,53 +1,45 @@
 ﻿#if NET6_0_OR_GREATER
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using tusdotnet.Adapters;
+using tusdotnet.Extensions;
 using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
-using tusdotnet.ModelBinders.Validation;
+using tusdotnet.ModelBinding.Middlewares;
+using tusdotnet.ModelBinding.ModelBinders;
+using tusdotnet.ModelBinding.Validation;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 
-namespace tusdotnet.ModelBinders
+namespace tusdotnet.ModelBinding.ProtocolHandler
 {
-    internal class ResumableUploadModelBindingMiddleware
+    internal static class ModelBindingHandler
     {
-        private readonly RequestDelegate _next;
-
         private const string TUSDOTNET_UPLOAD_ID_QUERY_NAME = "tdn-upload-id";
 
-        public ResumableUploadModelBindingMiddleware(RequestDelegate next)
-        {
-            _next = next;
-        }
-
-        public async Task Invoke(HttpContext httpContext)
+        internal static async Task<ITusFile> BindFromHttpContext(HttpContext httpContext)
         {
             var endpoint = httpContext.GetEndpoint();
 
-            // TODO: These needs to be options
-            const bool BIND_ANY_TYPE = true;
-            Func<Dictionary<string, Metadata>, string> resolveContentType = meta =>
+            if (
+                endpoint.GetParameterThatIsResumableUpload()
+                is not ResumableUploadParameterInfo parameterInfo
+            )
             {
-                if (meta.TryGetValue("contentType", out var contentType))
-                    return contentType.GetString(System.Text.Encoding.UTF8);
+                return null;
+            }
 
-                return string.Empty;
-            };
-
-            if (endpoint.GetParameterThatIsResumableUpload(httpContext.RequestServices, BIND_ANY_TYPE) is not ResumableUploadParameterInfo parameterInfo)
+            var uploadCompleteFeature = httpContext.GetFeature<UploadCompleteFeature>();
+            if (uploadCompleteFeature is not null)
             {
-                await _next.Invoke(httpContext);
-                return;
+                return uploadCompleteFeature.File;
             }
 
             var store = httpContext.RequestServices.GetRequiredService<ITusStore>();
@@ -56,8 +48,17 @@ namespace tusdotnet.ModelBinders
                 Store = store,
                 Events = new()
                 {
-                    //OnBeforeCreateAsync = (beforeCreateContext) => ValidateMetadata(beforeCreateContext, parameterInfo.TypeOfResumableUploadParam),
-                    OnCreateCompleteAsync = SetUploadUrl
+                    OnBeforeCreateAsync = (beforeCreateContext) =>
+                        ValidateMetadata(
+                            beforeCreateContext,
+                            parameterInfo.TypeOfResumableUploadParam
+                        ),
+                    OnCreateCompleteAsync = SetUploadUrl,
+                    OnFileCompleteAsync = async ctx =>
+                        ctx.HttpContext.RequestServices.GetRequiredService<
+                            ILogger<ResumableUploadModelBindingWithConsolidateRequestsMiddleware>
+                        >()
+                            .LogInformation("File uploaded completely")
                 }
             };
 
@@ -69,36 +70,48 @@ namespace tusdotnet.ModelBinders
             if (handled == ResultType.ContinueExecution)
             {
                 httpContext.Response.StatusCode = 400;
-                return;
+                return null;
             }
+
+            ITusFile file = null;
 
             if (await FileIsComplete(contextAdapter.FileId, store))
             {
-                var file = await contextAdapter.StoreAdapter.GetFileAsync(contextAdapter.FileId, CancellationToken.None);
-                httpContext.Features.Set(new ResumableUploadCompleteFeature(file));
+                file = await contextAdapter.StoreAdapter.GetFileAsync(
+                    contextAdapter.FileId,
+                    CancellationToken.None
+                );
+
                 httpContext.Response.OnStarting(SetTusHeaders, contextAdapter);
 
-                if (BIND_ANY_TYPE)
-                {
-                    var meta = await file.GetMetadataAsync(default);
+                //httpContext.Features.Set(new ResumableUploadCompleteFeature(file));
+                //httpContext.Response.OnStarting(SetTusHeaders, contextAdapter);
 
-                    // We need to replace the content type for the native model binders to be able to bind.
-                    var contentType = resolveContentType(meta);
+                //if (BIND_ANY_TYPE)
+                //{
+                //    var meta = await file.GetMetadataAsync(default);
 
-                    if (string.IsNullOrWhiteSpace(contentType) is false)
-                        httpContext.Request.Headers.ContentType = new(contentType);
-                    httpContext.Request.Body = await file.GetContentAsync(httpContext.RequestAborted);
-                }
+                //    // We need to replace the content type for the native model binders to be able to bind.
+                //    var contentType = resolveContentType(meta);
 
-                await _next.Invoke(httpContext);
+                //    if (string.IsNullOrWhiteSpace(contentType) is false)
+                //        httpContext.Request.Headers.ContentType = new(contentType);
+                //    httpContext.Request.Body = await file.GetContentAsync(
+                //        httpContext.RequestAborted
+                //    );
+                //}
 
-                return;
+                //await _next.Invoke(httpContext);
+
+                //return;
             }
 
             await httpContext.RespondToClient(contextAdapter.Response);
+
+            return file;
         }
 
-        private Task SetTusHeaders(object state)
+        private static Task SetTusHeaders(object state)
         {
             var contextAdapter = (ContextAdapter)state;
             var httpContext = contextAdapter.HttpContext;
@@ -119,7 +132,10 @@ namespace tusdotnet.ModelBinders
             return Task.CompletedTask;
         }
 
-        private static ContextAdapter CreateContextAdapter(HttpContext httpContext, DefaultTusConfiguration config)
+        private static ContextAdapter CreateContextAdapter(
+            HttpContext httpContext,
+            DefaultTusConfiguration config
+        )
         {
             // No file id: https://localhost:5009/filesmodelbindingmvc
             // File id: https://localhost:5009/filesmodelbindingmvc?tdn-upload-id=asdf
@@ -137,14 +153,19 @@ namespace tusdotnet.ModelBinders
 
             static Uri GetRequestUri(HttpContext httpContext)
             {
-                if (httpContext.Request.Query.TryGetValue(TUSDOTNET_UPLOAD_ID_QUERY_NAME, out var strings))
+                if (
+                    httpContext.Request.Query.TryGetValue(
+                        TUSDOTNET_UPLOAD_ID_QUERY_NAME,
+                        out var strings
+                    )
+                )
                     return new Uri("https://localhost/" + strings.First());
 
                 return new Uri("https://localhost/");
             }
         }
 
-        private Task SetUploadUrl(CreateCompleteContext context)
+        private static Task SetUploadUrl(CreateCompleteContext context)
         {
             var url = new UriBuilder(context.HttpContext.Request.GetDisplayUrl());
             var query = HttpUtility.ParseQueryString(url.Query);
@@ -156,10 +177,16 @@ namespace tusdotnet.ModelBinders
             return Task.CompletedTask;
         }
 
-        private static async Task ValidateMetadata(BeforeCreateContext beforeCreateContext, Type typeOfResumableUploadParameter)
+        private static async Task ValidateMetadata(
+            BeforeCreateContext beforeCreateContext,
+            Type typeOfResumableUploadParameter
+        )
         {
-            var generic = typeof(MetadataValidator<>).MakeGenericType(typeOfResumableUploadParameter);
-            var metadataValidator = (MetadataValidator)beforeCreateContext.HttpContext.RequestServices.GetService(generic);
+            var generic = typeof(MetadataValidator<>).MakeGenericType(
+                typeOfResumableUploadParameter
+            );
+            var metadataValidator = (MetadataValidator)
+                beforeCreateContext.HttpContext.RequestServices.GetService(generic);
 
             if (metadataValidator is null)
                 return;
@@ -183,4 +210,5 @@ namespace tusdotnet.ModelBinders
         }
     }
 }
+
 #endif

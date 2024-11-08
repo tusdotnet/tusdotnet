@@ -1,3 +1,4 @@
+using System.Net;
 using AspNetCore_net6._0_TestApp;
 using AspNetCore_net6._0_TestApp.Authentication;
 using AspNetCore_net6._0_TestApp.Controllers;
@@ -7,11 +8,12 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
-using System.Net;
 using tusdotnet;
 using tusdotnet.Interfaces;
-using tusdotnet.ModelBinders;
-using tusdotnet.ModelBinders.Validation;
+using tusdotnet.ModelBinding.Extensions;
+using tusdotnet.ModelBinding.ModelBinders;
+using tusdotnet.ModelBinding.Models;
+using tusdotnet.ModelBinding.Validation;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -29,10 +31,20 @@ builder.Services.AddSingleton(services => CreateTusConfigurationForCleanupServic
 builder.Services.AddHostedService<ExpiredFilesCleanupService>();
 
 // TODO: Make this prettier
-builder.Services.AddSingleton<ITusStore>(new TusDiskStore(new TusDiskStorageOptionHelper().StorageDiskPath));
-builder.Services.AddSingleton<MetadataValidator<MyMappedResumableUpload>, MyResumableUploadMetadataValidator>();
+builder.Services.AddSingleton<ITusStore>(
+    new TusDiskStore(new TusDiskStorageOptionHelper().StorageDiskPath)
+);
+builder.Services.AddSingleton<
+    MetadataValidator<MyMappedResumableUpload>,
+    MyResumableUploadMetadataValidator
+>();
 
-builder.Services.AddControllers(options => options.AddResumableUploadModelBinder());
+builder.Services.AddControllers(options =>
+{
+    options.AddResumableUploadModelBinder();
+    options.Filters.Add(new Filter1());
+    options.Filters.Add(new Filter3AuthFilter());
+});
 
 AddAuthorization(builder);
 
@@ -44,8 +56,19 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseHttpsRedirection();
 
+Func<HttpContext, bool> consolidateRequestsForModelBinding = ctx =>
+{
+    return ctx.Request.Headers["ConsolidateRequests"] == "?1";
+};
 
-app.UseResumableUploadModelBinding();
+app.UseWhen(
+    consolidateRequestsForModelBinding,
+    app => app.UseResumableUploadModelBinding(consolidateRequests: true)
+);
+app.UseWhen(
+    ctx => !consolidateRequestsForModelBinding(ctx),
+    app => app.UseResumableUploadModelBinding(consolidateRequests: false)
+);
 
 app.MapControllers();
 
@@ -55,32 +78,47 @@ app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
 // Setup tusdotnet for the /files/ path.
 app.MapTus("/files/", TusConfigurationFactory);
 
-app.Map("/filesmodelbinding", (MyClass? data, ILogger<object> logger) =>
-{
-    //logger.LogInformation($"Minimal api bound file to: {file?.UploadId ?? "<not bound>"}");
-    logger.LogInformation($"{data.Name} {data.SomeProp} {data.MyProperty}");
-});
+app.Map(
+    "/filesmodelbinding",
+    (ResumableUpload? data, ILogger<object> logger) =>
+    {
+        logger.LogInformation($"Minimal api bound file to: {data?.UploadId ?? "<not bound>"}");
+    }
+);
 
 app.Run();
 
 static void AddAuthorization(WebApplicationBuilder builder)
 {
     builder.Services.AddHttpContextAccessor();
-    builder.Services.Configure<OnAuthorizeOption>(opt => opt.EnableOnAuthorize = (bool)builder.Configuration.GetValue(typeof(bool), "EnableOnAuthorize"));
+    builder.Services.Configure<OnAuthorizeOption>(opt =>
+        opt.EnableOnAuthorize = (bool)
+            builder.Configuration.GetValue(typeof(bool), "EnableOnAuthorize")
+    );
     builder.Services.AddAuthorization(configure =>
     {
-        configure.AddPolicy("BasicAuthentication", configure =>
-        {
-            configure.AddAuthenticationSchemes("BasicAuthentication");
-            configure.RequireAuthenticatedUser();
-        });
+        configure.AddPolicy(
+            "BasicAuthentication",
+            configure =>
+            {
+                configure.AddAuthenticationSchemes("BasicAuthentication");
+                configure.RequireAuthenticatedUser();
+            }
+        );
 
         configure.DefaultPolicy = configure.GetPolicy("BasicAuthentication")!;
     });
-    builder.Services.AddAuthentication("BasicAuthentication").AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+    builder
+        .Services.AddAuthentication("BasicAuthentication")
+        .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>(
+            "BasicAuthentication",
+            null
+        );
 }
 
-static DefaultTusConfiguration CreateTusConfigurationForCleanupService([FromBody] IServiceProvider services)
+static DefaultTusConfiguration CreateTusConfigurationForCleanupService(
+    [FromBody] IServiceProvider services
+)
 {
     var path = services.GetRequiredService<TusDiskStorageOptionHelper>().StorageDiskPath;
 
@@ -94,13 +132,19 @@ static DefaultTusConfiguration CreateTusConfigurationForCleanupService([FromBody
 
 static Task<DefaultTusConfiguration> TusConfigurationFactory([FromBody] HttpContext httpContext)
 {
-    var logger = httpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger<Program>();
+    var logger = httpContext
+        .RequestServices.GetRequiredService<ILoggerFactory>()
+        .CreateLogger<Program>();
 
     // Change the value of EnableOnAuthorize in appsettings.json to enable or disable
     // the new authorization event.
-    var enableAuthorize = httpContext.RequestServices.GetRequiredService<IOptions<OnAuthorizeOption>>().Value.EnableOnAuthorize;
+    var enableAuthorize = httpContext
+        .RequestServices.GetRequiredService<IOptions<OnAuthorizeOption>>()
+        .Value.EnableOnAuthorize;
 
-    var diskStorePath = httpContext.RequestServices.GetRequiredService<TusDiskStorageOptionHelper>().StorageDiskPath;
+    var diskStorePath = httpContext
+        .RequestServices.GetRequiredService<TusDiskStorageOptionHelper>()
+        .StorageDiskPath;
 
     var config = new DefaultTusConfiguration
     {
@@ -120,7 +164,10 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory([FromBody] HttpCont
 
                 if (ctx.HttpContext.User.Identity?.IsAuthenticated != true)
                 {
-                    ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-net6.0"));
+                    ctx.HttpContext.Response.Headers.Add(
+                        "WWW-Authenticate",
+                        new StringValues("Basic realm=tusdotnet-test-net6.0")
+                    );
                     ctx.FailRequest(HttpStatusCode.Unauthorized);
                     return Task.CompletedTask;
                 }
@@ -173,7 +220,10 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory([FromBody] HttpCont
                     ctx.FailRequest("name metadata must be specified. ");
                 }
 
-                if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
+                if (
+                    !ctx.Metadata.ContainsKey("contentType")
+                    || ctx.Metadata["contentType"].HasEmptyValue
+                )
                 {
                     ctx.FailRequest("contentType metadata must be specified. ");
                 }
@@ -182,7 +232,9 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory([FromBody] HttpCont
             },
             OnCreateCompleteAsync = ctx =>
             {
-                logger.LogInformation($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                logger.LogInformation(
+                    $"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                );
                 return Task.CompletedTask;
             },
             OnBeforeDeleteAsync = ctx =>
@@ -192,12 +244,16 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory([FromBody] HttpCont
             },
             OnDeleteCompleteAsync = ctx =>
             {
-                logger.LogInformation($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                logger.LogInformation(
+                    $"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                );
                 return Task.CompletedTask;
             },
             OnFileCompleteAsync = ctx =>
             {
-                logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");
+                logger.LogInformation(
+                    $"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}"
+                );
                 // If the store implements ITusReadableStore one could access the completed file here.
                 // The default TusDiskStore implements this interface:
                 //var file = await ctx.GetFileAsync();

@@ -1,11 +1,38 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Filters;
 using tusdotnet.Interfaces;
 
 namespace AspNetCore_net6._0_TestApp.Controllers
 {
+    public class Filter3AuthFilter : IAuthorizationFilter
+    {
+        public void OnAuthorization(AuthorizationFilterContext context)
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<
+                ILogger<Filter3AuthFilter>
+            >();
+
+            logger.LogInformation("In IAuthorizationFilter");
+        }
+    }
+
+    public class Filter1 : IAsyncActionFilter
+    {
+        public async Task OnActionExecutionAsync(
+            ActionExecutingContext context,
+            ActionExecutionDelegate next
+        )
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Filter1>>();
+
+            logger.LogInformation("In IAsyncActionFilter before controller action");
+
+            await next();
+
+            logger.LogInformation("In IAsyncActionFilter after controller action");
+        }
+    }
+
     public class UploadFileController : Controller
     {
         private readonly ILogger<UploadFileController> _logger;
@@ -24,33 +51,14 @@ namespace AspNetCore_net6._0_TestApp.Controllers
         }
 
         [Route("/filesmodelbindingmvc")]
-        public async Task<IActionResult> Handle([FromBody] MyClass data) //MyMappedResumableUpload? data)
+        public async Task<IActionResult> Handle(MyMappedResumableUpload? data)
         {
-            //_logger.LogInformation($"MVC bound file to: {data?.UploadId ?? "<not bound>"}");
-
             if (data is not null)
             {
-                _logger.LogInformation($"{data.Name} {data.SomeProp} {data.MyProperty}");
-                //_logger.LogInformation($"Content length is {data.DataLength}");
-                //_logger.LogInformation($"Number of metadata keys is {data.Metadata.Count} with name being {data.FileName}");
+                _logger.LogInformation($"Content length is {data.DataLength}");
             }
 
             return Ok("hello world");
-        }
-
-    }
-
-    public class MyClass
-    {
-        public string Name { get; set; }
-
-        public string SomeProp { get; set; }
-
-        public int MyProperty { get; set; }
-
-        public static ValueTask<MyClass> BindAsync(HttpContext context, ParameterInfo _)
-        {
-            return JsonSerializer.DeserializeAsync<MyClass>(context.Request.Body)!;
         }
     }
 }
