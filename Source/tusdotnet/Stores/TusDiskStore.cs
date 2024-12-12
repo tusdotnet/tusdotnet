@@ -17,18 +17,18 @@ namespace tusdotnet.Stores
     /// <summary>
     /// The built in data store that save files on disk.
     /// </summary>
-    public partial class TusDiskStore :
-        ITusStore,
+    public partial class TusDiskStore
+        : ITusStore,
 #if pipelines
-        ITusPipelineStore,
+            ITusPipelineStore,
 #endif
-        ITusCreationStore,
-        ITusReadableStore,
-        ITusTerminationStore,
-        ITusChecksumStore,
-        ITusConcatenationStore,
-        ITusExpirationStore,
-        ITusCreationDeferLengthStore
+            ITusCreationStore,
+            ITusReadableStore,
+            ITusTerminationStore,
+            ITusChecksumStore,
+            ITusConcatenationStore,
+            ITusExpirationStore,
+            ITusCreationDeferLengthStore
     {
         private readonly string _directoryPath;
         private readonly bool _deletePartialFilesOnConcat;
@@ -51,7 +51,8 @@ namespace tusdotnet.Stores
         /// Using this overload will not delete partial files if a final concatenation is performed.
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
-        public TusDiskStore(string directoryPath) : this(directoryPath, false, TusDiskBufferSize.Default)
+        public TusDiskStore(string directoryPath)
+            : this(directoryPath, false, TusDiskBufferSize.Default)
         {
             // Left blank.
         }
@@ -61,7 +62,7 @@ namespace tusdotnet.Stores
         /// </summary>
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat) 
+        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat)
             : this(directoryPath, deletePartialFilesOnConcat, TusDiskBufferSize.Default)
         {
             // Left blank.
@@ -73,7 +74,11 @@ namespace tusdotnet.Stores
         /// <param name="directoryPath">The path on disk where to save files</param>
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
         /// <param name="bufferSize">The buffer size to use when reading and writing. If unsure use <see cref="TusDiskBufferSize.Default"/>.</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize) 
+        public TusDiskStore(
+            string directoryPath,
+            bool deletePartialFilesOnConcat,
+            TusDiskBufferSize bufferSize
+        )
             : this(directoryPath, deletePartialFilesOnConcat, bufferSize, _defaultFileIdProvider)
         {
             // Left blank.
@@ -86,7 +91,12 @@ namespace tusdotnet.Stores
         /// <param name="deletePartialFilesOnConcat">True to delete partial files if a final concatenation is performed</param>
         /// <param name="bufferSize">The buffer size to use when reading and writing. If unsure use <see cref="TusDiskBufferSize.Default"/>.</param>
         /// <param name="fileIdProvider">The provider that generates ids for files. If unsure use <see cref="GuidFileIdProvider"/>.</param>
-        public TusDiskStore(string directoryPath, bool deletePartialFilesOnConcat, TusDiskBufferSize bufferSize, ITusFileIdProvider fileIdProvider)
+        public TusDiskStore(
+            string directoryPath,
+            bool deletePartialFilesOnConcat,
+            TusDiskBufferSize bufferSize,
+            ITusFileIdProvider fileIdProvider
+        )
         {
             _directoryPath = directoryPath;
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
@@ -104,26 +114,34 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public async Task<bool> FileExistAsync(string fileId, CancellationToken _)
         {
-            return _fileRepFactory.Data(await InternalFileId.Parse(_fileIdProvider, fileId)).Exist();
+            return _fileRepFactory
+                .Data(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .Exist();
         }
 
         /// <inheritdoc />
         public async Task<long?> GetUploadLengthAsync(string fileId, CancellationToken _)
         {
-            var firstLine = _fileRepFactory.UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId)).ReadFirstLine(true);
-            return firstLine == null
-                ? (long?)null
-                : long.Parse(firstLine);
+            var firstLine = _fileRepFactory
+                .UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .ReadFirstLine(true);
+            return firstLine == null ? (long?)null : long.Parse(firstLine);
         }
 
         /// <inheritdoc />
         public async Task<long> GetUploadOffsetAsync(string fileId, CancellationToken _)
         {
-            return _fileRepFactory.Data(await InternalFileId.Parse(_fileIdProvider, fileId)).GetLength();
+            return _fileRepFactory
+                .Data(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .GetLength();
         }
 
         /// <inheritdoc />
-        public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+        public async Task<string> CreateFileAsync(
+            long uploadLength,
+            string metadata,
+            CancellationToken cancellationToken
+        )
         {
             var fileId = await InternalFileId.CreateNew(_fileIdProvider, metadata);
             new FileStream(_fileRepFactory.Data(fileId).Path, FileMode.CreateNew).Dispose();
@@ -138,7 +156,9 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public async Task<string> GetUploadMetadataAsync(string fileId, CancellationToken _)
         {
-            var firstLine = _fileRepFactory.Metadata(await InternalFileId.Parse(_fileIdProvider, fileId)).ReadFirstLine(true);
+            var firstLine = _fileRepFactory
+                .Metadata(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .ReadFirstLine(true);
             return string.IsNullOrEmpty(firstLine) ? null : firstLine;
         }
 
@@ -169,7 +189,6 @@ namespace tusdotnet.Stores
             });
         }
 
-        
         /// <inheritdoc />
         public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken _)
         {
@@ -177,11 +196,20 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public async Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken _)
+        public async Task<bool> VerifyChecksumAsync(
+            string fileId,
+            string algorithm,
+            byte[] checksum,
+            CancellationToken _
+        )
         {
             var valid = false;
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
-            using (var dataStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
+            using (
+                var dataStream = _fileRepFactory
+                    .Data(internalFileId)
+                    .GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read)
+            )
             {
                 var chunkPositionFile = _fileRepFactory.ChunkStartPosition(internalFileId);
                 var chunkStartPosition = chunkPositionFile.ReadFirstLineAsLong(true, 0);
@@ -190,7 +218,10 @@ namespace tusdotnet.Stores
                 // Only verify the checksum if the entire lastest chunk has been written.
                 // If not, just discard the last chunk as it won't match the checksum anyway.
                 // If the client has provided a faulty checksum-trailer we should also just discard the chunk.
-                if (chunkCompleteFile.Exist() && !ChecksumTrailerHelper.IsFallback(algorithm, checksum))
+                if (
+                    chunkCompleteFile.Exist()
+                    && !ChecksumTrailerHelper.IsFallback(algorithm, checksum)
+                )
                 {
                     var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
                     valid = checksum.SequenceEqual(calculateSha1);
@@ -209,27 +240,39 @@ namespace tusdotnet.Stores
         /// <inheritdoc />
         public async Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken _)
         {
-            var firstLine = _fileRepFactory.UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId)).ReadFirstLine(true);
-            return string.IsNullOrWhiteSpace(firstLine)
-                ? null
-                : new UploadConcat(firstLine).Type;
+            var firstLine = _fileRepFactory
+                .UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .ReadFirstLine(true);
+            return string.IsNullOrWhiteSpace(firstLine) ? null : new UploadConcat(firstLine).Type;
         }
 
         /// <inheritdoc />
-        public async Task<string> CreatePartialFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+        public async Task<string> CreatePartialFileAsync(
+            long uploadLength,
+            string metadata,
+            CancellationToken cancellationToken
+        )
         {
             var fileId = await CreateFileAsync(uploadLength, metadata, cancellationToken);
-            _fileRepFactory.UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId)).Write(new FileConcatPartial().GetHeader());
+            _fileRepFactory
+                .UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .Write(new FileConcatPartial().GetHeader());
             return fileId;
         }
 
         /// <inheritdoc />
-        public async Task<string> CreateFinalFileAsync(string[] partialFiles, string metadata, CancellationToken cancellationToken)
+        public async Task<string> CreateFinalFileAsync(
+            string[] partialFiles,
+            string metadata,
+            CancellationToken cancellationToken
+        )
         {
             InternalFileRep[] partialInternalFileReps = new InternalFileRep[partialFiles.Length];
             for (int i = 0; i < partialFiles.Length; i++)
             {
-                partialInternalFileReps[i] = _fileRepFactory.Data(await InternalFileId.Parse(_fileIdProvider, partialFiles[i]));
+                partialInternalFileReps[i] = _fileRepFactory.Data(
+                    await InternalFileId.Parse(_fileIdProvider, partialFiles[i])
+                );
 
                 if (!partialInternalFileReps[i].Exist())
                 {
@@ -243,39 +286,59 @@ namespace tusdotnet.Stores
 
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
 
-            _fileRepFactory.UploadConcat(internalFileId).Write(new FileConcatFinal(partialFiles).GetHeader());
+            _fileRepFactory
+                .UploadConcat(internalFileId)
+                .Write(new FileConcatFinal(partialFiles).GetHeader());
 
-            using (var finalFile = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Open, FileAccess.Write, FileShare.None))
+            using (
+                var finalFile = _fileRepFactory
+                    .Data(internalFileId)
+                    .GetStream(FileMode.Open, FileAccess.Write, FileShare.None)
+            )
             {
                 foreach (var partialFile in partialInternalFileReps)
                 {
-                    using var partialStream = partialFile.GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
+                    using var partialStream = partialFile.GetStream(
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read
+                    );
                     await partialStream.CopyToAsync(finalFile);
                 }
             }
 
             if (_deletePartialFilesOnConcat)
             {
-                await Task.WhenAll(partialInternalFileReps.Select(f => DeleteFileAsync(f.FileId, cancellationToken)));
+                await Task.WhenAll(
+                    partialInternalFileReps.Select(f =>
+                        DeleteFileAsync(f.FileId, cancellationToken)
+                    )
+                );
             }
 
             return fileId;
         }
 
         /// <inheritdoc />
-        public async Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken _)
+        public async Task SetExpirationAsync(
+            string fileId,
+            DateTimeOffset expires,
+            CancellationToken _
+        )
         {
-            _fileRepFactory.Expiration(await InternalFileId.Parse(_fileIdProvider, fileId)).Write(expires.ToString("O"));
+            _fileRepFactory
+                .Expiration(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .Write(expires.ToString("O"));
         }
 
         /// <inheritdoc />
         public async Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken _)
         {
-            var expiration = _fileRepFactory.Expiration(await InternalFileId.Parse(_fileIdProvider, fileId)).ReadFirstLine(true);
+            var expiration = _fileRepFactory
+                .Expiration(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .ReadFirstLine(true);
 
-            return expiration == null
-                ? null
-                : DateTimeOffset.ParseExact(expiration, "O", null);
+            return expiration == null ? null : DateTimeOffset.ParseExact(expiration, "O", null);
         }
 
         /// <inheritdoc />
@@ -284,7 +347,10 @@ namespace tusdotnet.Stores
             var expiredFiles = new List<string>();
             foreach (var file in Directory.EnumerateFiles(_directoryPath, "*.expiration"))
             {
-                var f = await InternalFileId.Parse(_fileIdProvider, Path.GetFileNameWithoutExtension(file));
+                var f = await InternalFileId.Parse(
+                    _fileIdProvider,
+                    Path.GetFileNameWithoutExtension(file)
+                );
                 if (FileHasExpired(f, _fileRepFactory) && FileIsIncomplete(f, _fileRepFactory))
                 {
                     expiredFiles.Add(f);
@@ -293,16 +359,24 @@ namespace tusdotnet.Stores
 
             return expiredFiles;
 
-            static bool FileHasExpired(InternalFileId fileId, InternalFileRep.FileRepFactory fileRepFactory)
+            static bool FileHasExpired(
+                InternalFileId fileId,
+                InternalFileRep.FileRepFactory fileRepFactory
+            )
             {
                 var firstLine = fileRepFactory.Expiration(fileId).ReadFirstLine();
                 return !string.IsNullOrWhiteSpace(firstLine)
-                       && DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
+                    && DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
             }
 
-            static bool FileIsIncomplete(InternalFileId fileId, InternalFileRep.FileRepFactory fileRepFactory)
+            static bool FileIsIncomplete(
+                InternalFileId fileId,
+                InternalFileRep.FileRepFactory fileRepFactory
+            )
             {
-                var uploadLength = fileRepFactory.UploadLength(fileId).ReadFirstLineAsLong(fileIsOptional: true, defaultValue: long.MinValue);
+                var uploadLength = fileRepFactory
+                    .UploadLength(fileId)
+                    .ReadFirstLineAsLong(fileIsOptional: true, defaultValue: long.MinValue);
 
                 if (uploadLength == long.MinValue)
                 {
@@ -324,7 +398,9 @@ namespace tusdotnet.Stores
         public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
         {
             var expiredFiles = await GetExpiredFilesAsync(cancellationToken);
-            var deleteFileTasks = expiredFiles.Select(file => DeleteFileAsync(file, cancellationToken)).ToList();
+            var deleteFileTasks = expiredFiles
+                .Select(file => DeleteFileAsync(file, cancellationToken))
+                .ToList();
 
             await Task.WhenAll(deleteFileTasks);
 
@@ -332,16 +408,27 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public async Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken _)
+        public async Task SetUploadLengthAsync(
+            string fileId,
+            long uploadLength,
+            CancellationToken _
+        )
         {
-            _fileRepFactory.UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId)).Write(uploadLength.ToString());
+            _fileRepFactory
+                .UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId))
+                .Write(uploadLength.ToString());
         }
 
-        private InternalFileRep InitializeChunk(InternalFileId internalFileId, long totalDiskFileLength)
+        private InternalFileRep InitializeChunk(
+            InternalFileId internalFileId,
+            long totalDiskFileLength
+        )
         {
             var chunkComplete = _fileRepFactory.ChunkComplete(internalFileId);
             chunkComplete.Delete();
-            _fileRepFactory.ChunkStartPosition(internalFileId).Write(totalDiskFileLength.ToString());
+            _fileRepFactory
+                .ChunkStartPosition(internalFileId)
+                .Write(totalDiskFileLength.ToString());
 
             return chunkComplete;
         }

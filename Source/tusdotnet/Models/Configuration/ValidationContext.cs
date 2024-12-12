@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿#pragma warning disable CS0419 // Ambiguous reference in cref attribute
+using System.Net;
 
 namespace tusdotnet.Models.Configuration
 {
@@ -6,20 +7,21 @@ namespace tusdotnet.Models.Configuration
     /// Base context for all contexts that can be validated
     /// </summary>
     /// <typeparam name="TSelf">The type of the derived class inheriting the EventContext</typeparam>
-    public abstract class ValidationContext<TSelf> : EventContext<TSelf> where TSelf : EventContext<TSelf>, new()
+    public abstract class ValidationContext<TSelf> : EventContext<TSelf>
+        where TSelf : EventContext<TSelf>, new()
     {
         /// <summary>
-        /// Error message set using <code>FailRequest</code>
+        /// Error message set using <see cref="FailRequest" />
         /// </summary>
         public string ErrorMessage { get; private set; }
 
         /// <summary>
-        /// Http status code set using <code>FailRequest</code>. Defaults to 400 (Bad request).
+        /// Http status code set using <see cref="FailRequest" />. Defaults to 400 (Bad request).
         /// </summary>
         internal HttpStatusCode StatusCode { get; private set; }
 
         /// <summary>
-        /// True if <code>FailRequest</code> has been called
+        /// True if <see cref="FailRequest"/> has been called
         /// </summary>
         public bool HasFailed { get; private set; }
 
