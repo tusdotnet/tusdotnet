@@ -3,10 +3,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using System;
-using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
+using tusdotnet.ExternalMiddleware.Core;
 using tusdotnet.Models;
 
 namespace tusdotnet
@@ -33,9 +33,18 @@ namespace tusdotnet
 
             var urlPath = GetUrlPath(context);
             var request = CreateRequestAdapter(context);
-            var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : null;
+            var pathBase = context.Request.PathBase.HasValue
+                ? context.Request.PathBase.Value
+                : null;
 
-            var contextAdapter = new ContextAdapter(urlPath, pathBase, EndpointUrlHelper.Instance, request, config, context);
+            var contextAdapter = new ContextAdapter(
+                urlPath,
+                pathBase,
+                EndpointUrlHelper.Instance,
+                request,
+                config,
+                context
+            );
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
@@ -74,7 +83,10 @@ namespace tusdotnet
 
         private static RequestAdapter CreateRequestAdapter(HttpContext context)
         {
-            return DotnetCoreAdapterFactory.CreateRequestAdapter(context, DotnetCoreAdapterFactory.GetRequestUri(context));
+            return DotnetCoreAdapterFactory.CreateRequestAdapter(
+                context,
+                DotnetCoreRequestUriFactory.GetRequestUri(context)
+            );
         }
 
         private static string GetUrlPath(HttpContext httpContext)
@@ -86,7 +98,6 @@ namespace tusdotnet
 
             var path = httpContext.Request.Path.Value.AsSpan();
             return path[..(path.LastIndexOf('/') + 1)].ToString();
-
         }
     }
 }

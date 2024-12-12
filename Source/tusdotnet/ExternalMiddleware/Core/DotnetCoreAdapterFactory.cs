@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
+﻿using System;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
 using tusdotnet.Adapters;
 
 namespace tusdotnet
@@ -11,22 +11,20 @@ namespace tusdotnet
         {
             return new RequestAdapter()
             {
-                Headers = RequestHeaders.FromDictionary(context.Request.Headers.ToDictionary(
+                Headers = RequestHeaders.FromDictionary(
+                    context.Request.Headers.ToDictionary(
                         f => f.Key,
                         f => f.Value.FirstOrDefault(),
-                        StringComparer.OrdinalIgnoreCase)),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                ),
                 Body = context.Request.Body,
 #if pipelines
                 BodyReader = context.Request.BodyReader,
 #endif
                 Method = context.Request.Method,
-                RequestUri = GetRequestUri(context)
+                RequestUri = requestUri
             };
-        }
-
-        internal static Uri GetRequestUri(HttpContext context)
-        {
-            return new Uri($"{context.Request.Scheme}://{context.Request.Host}{context.Request.PathBase}{context.Request.Path}");
         }
     }
 }

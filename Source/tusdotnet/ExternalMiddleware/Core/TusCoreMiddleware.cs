@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions;
+using tusdotnet.ExternalMiddleware.Core;
 using tusdotnet.Models;
 
 // ReSharper disable once CheckNamespace
@@ -20,7 +21,10 @@ namespace tusdotnet
         /// <summary>Creates a new instance of TusCoreMiddleware.</summary>
         /// <param name="next"></param>
         /// <param name="configFactory"></param>
-        public TusCoreMiddleware(RequestDelegate next, Func<HttpContext, Task<DefaultTusConfiguration>> configFactory)
+        public TusCoreMiddleware(
+            RequestDelegate next,
+            Func<HttpContext, Task<DefaultTusConfiguration>> configFactory
+        )
         {
             _next = next;
             _configFactory = configFactory;
@@ -43,7 +47,7 @@ namespace tusdotnet
 
             MiddlewareConfigurationValidator.Instance.Validate(config);
 
-            var requestUri = DotnetCoreAdapterFactory.GetRequestUri(httpContext);
+            var requestUri = DotnetCoreRequestUriFactory.GetRequestUri(httpContext);
 
             if (!RequestIsForTusEndpoint(requestUri, config.UrlPath))
             {
@@ -55,7 +59,14 @@ namespace tusdotnet
 
             // Note: When using the middleware one must prefix the UrlPath with the base path so no need to provide it here.
             // This is done for backwards compatibility.
-            var contextAdapter = new ContextAdapter(config.UrlPath, requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, httpContext);
+            var contextAdapter = new ContextAdapter(
+                config.UrlPath,
+                requestPathBase: null,
+                MiddlewareUrlHelper.Instance,
+                request,
+                config,
+                httpContext
+            );
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 
