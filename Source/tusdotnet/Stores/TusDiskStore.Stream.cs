@@ -16,11 +16,31 @@ namespace tusdotnet.Stores
 
             var httpReadBuffer = _bufferPool.Rent(_maxReadBufferSize);
             var fileWriteBuffer = _bufferPool.Rent(Math.Max(_maxWriteBufferSize, _maxReadBufferSize));
+            FileStream diskFileStream = null;
 
             try
             {
                 var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken);
-                using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
+
+                Exception openException = null;
+                for (int i = 0; i < 10; i++)
+                {
+                    try
+                    {
+                        diskFileStream = _fileRepFactory
+                            .Data(internalFileId)
+                            .GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        openException = e;
+                        await Task.Delay(1000);
+                    }
+                }
+
+                if (diskFileStream is null)
+                    throw openException;
 
                 var totalDiskFileLength = diskFileStream.Length;
                 if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
@@ -84,6 +104,8 @@ namespace tusdotnet.Stores
             }
             finally
             {
+                diskFileStream?.Dispose();
+
                 _bufferPool.Return(httpReadBuffer);
                 _bufferPool.Return(fileWriteBuffer);
             }
