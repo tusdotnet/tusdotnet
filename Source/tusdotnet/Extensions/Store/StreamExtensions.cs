@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿#nullable enable
+using System.IO;
 using tusdotnet.Models.Streams;
 
 namespace tusdotnet.Extensions.Store
@@ -15,7 +16,7 @@ namespace tusdotnet.Extensions.Store
         /// </summary>
         /// <param name="stream">The Stream provided to AppendDataAsync</param>
         /// <returns>Information about the Upload-Checksum header or null</returns>
-        public static ChecksumInfo GetUploadChecksumInfo(this Stream stream)
+        public static ChecksumInfo? GetUploadChecksumInfo(this Stream stream)
         {
             return stream is ChecksumAwareStream checksumStream
                 ? new() { Algorithm = checksumStream.Checksum.Algorithm }

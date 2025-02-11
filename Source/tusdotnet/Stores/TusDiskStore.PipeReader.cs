@@ -16,14 +16,29 @@ namespace tusdotnet.Stores
     public partial class TusDiskStore
     {
         /// <inheritdoc />
-        public async Task<long> AppendDataAsync(string fileId, PipeReader reader, CancellationToken cancellationToken)
+        public async Task<long> AppendDataAsync(
+            string fileId,
+            PipeReader reader,
+            CancellationToken cancellationToken
+        )
         {
             const int JUST_BELOW_LOH_BYTE_LIMIT = 84 * 1024;
 
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
 
-            var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken);
-            using var diskFileStream = _fileRepFactory.Data(internalFileId).GetStream(FileMode.Append, FileAccess.Write, FileShare.None, bufferSize: JUST_BELOW_LOH_BYTE_LIMIT);
+            var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(
+                fileId,
+                cancellationToken
+            );
+
+            using var diskFileStream = _fileRepFactory
+                .Data(internalFileId)
+                .GetStream(
+                    FileMode.Append,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: JUST_BELOW_LOH_BYTE_LIMIT
+                );
 
             var fileSizeOnDisk = diskFileStream.Length;
             if (fileUploadLengthProvidedDuringCreate == fileSizeOnDisk)
@@ -47,7 +62,11 @@ namespace tusdotnet.Stores
                     result = await reader.ReadAsync(cancellationToken);
                     clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
 
-                    AssertNotToMuchData(fileSizeOnDisk, result.Buffer.Length, fileUploadLengthProvidedDuringCreate);
+                    AssertNotToMuchData(
+                        fileSizeOnDisk,
+                        result.Buffer.Length,
+                        fileUploadLengthProvidedDuringCreate
+                    );
 
                     if (result.Buffer.Length >= _maxWriteBufferSize)
                     {
@@ -73,7 +92,11 @@ namespace tusdotnet.Stores
 
                 if (!latestDataHasBeenFlushedToDisk && result.Buffer.Length > 0)
                 {
-                    AssertNotToMuchData(fileSizeOnDisk, result.Buffer.Length, fileUploadLengthProvidedDuringCreate);
+                    AssertNotToMuchData(
+                        fileSizeOnDisk,
+                        result.Buffer.Length,
+                        fileUploadLengthProvidedDuringCreate
+                    );
 
                     bytesWrittenThisRequest += result.Buffer.Length;
                     await diskFileStream.FlushToDisk(result.Buffer);
@@ -91,39 +114,47 @@ namespace tusdotnet.Stores
                     reader.AdvanceTo(result.Buffer.End);
                     await reader.CompleteAsync();
                 }
-                catch { /* Ignore if we cannot complete the reader so that the real exception will propagate. */ }
+                catch
+                {
+                    /* Ignore if we cannot complete the reader so that the real exception will propagate. */
+                }
 
                 throw;
             }
 
             if (!clientDisconnectedDuringRead)
             {
-                var finalChecksum = hasher.GetHashAndReset();
-                if (finalChecksum is not null)
-                {
-                    _fileRepFactory.ChunkChecksum(internalFileId).Write(finalChecksum);
-                }
-
-                MarkChunkComplete(chunkCompleteFile);
+                MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
             }
 
             return bytesWrittenThisRequest;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool PipeReadingIsDone(ReadResult result, CancellationToken cancellationToken)
+        private static bool PipeReadingIsDone(
+            ReadResult result,
+            CancellationToken cancellationToken
+        )
         {
-            return cancellationToken.IsCancellationRequested || result.IsCanceled || result.IsCompleted;
+            return cancellationToken.IsCancellationRequested
+                || result.IsCanceled
+                || result.IsCompleted;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void AssertNotToMuchData(long originalDiskFileLength, long numberOfBytesReadFromClient, long? fileUploadLengthProvidedDuringCreate)
+        private static void AssertNotToMuchData(
+            long originalDiskFileLength,
+            long numberOfBytesReadFromClient,
+            long? fileUploadLengthProvidedDuringCreate
+        )
         {
             var newDiskFileLength = originalDiskFileLength + numberOfBytesReadFromClient;
 
             if (newDiskFileLength > fileUploadLengthProvidedDuringCreate)
             {
-                throw new TusStoreException($"Request contains more data than the file's upload length. Request data: {newDiskFileLength}, upload length: {fileUploadLengthProvidedDuringCreate}.");
+                throw new TusStoreException(
+                    $"Request contains more data than the file's upload length. Request data: {newDiskFileLength}, upload length: {fileUploadLengthProvidedDuringCreate}."
+                );
             }
         }
     }

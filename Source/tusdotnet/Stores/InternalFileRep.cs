@@ -45,13 +45,8 @@ namespace tusdotnet.Stores
             return defaultValue;
         }
 
-        public byte[] ReadBytes(bool fileIsOptional)
+        public byte[] ReadBytes()
         {
-            if (fileIsOptional && !File.Exists(Path))
-            {
-                return null;
-            }
-
             using var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
             var data = new byte[stream.Length];
             stream.Read(data, 0, data.Length);
@@ -71,9 +66,21 @@ namespace tusdotnet.Stores
             return sr.ReadLine();
         }
 
-        public FileStream GetStream(FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
+        public FileStream GetStream(
+            FileMode mode,
+            FileAccess access,
+            FileShare share,
+            int bufferSize = 4096
+        )
         {
-            return new FileStream(Path, mode, access, share, bufferSize, FileOptions.SequentialScan | FileOptions.Asynchronous);
+            return new FileStream(
+                Path,
+                mode,
+                access,
+                share,
+                bufferSize,
+                FileOptions.SequentialScan | FileOptions.Asynchronous
+            );
         }
 
         public long GetLength()
@@ -92,19 +99,22 @@ namespace tusdotnet.Stores
 
             public InternalFileRep Data(InternalFileId fileId) => Create(fileId, "");
 
-            public InternalFileRep UploadLength(InternalFileId fileId) => Create(fileId, "uploadlength");
+            public InternalFileRep UploadLength(InternalFileId fileId) =>
+                Create(fileId, "uploadlength");
 
-            public InternalFileRep UploadConcat(InternalFileId fileId) => Create(fileId, "uploadconcat");
+            public InternalFileRep UploadConcat(InternalFileId fileId) =>
+                Create(fileId, "uploadconcat");
 
             public InternalFileRep Metadata(InternalFileId fileId) => Create(fileId, "metadata");
 
-            public InternalFileRep Expiration(InternalFileId fileId) => Create(fileId, "expiration");
+            public InternalFileRep Expiration(InternalFileId fileId) =>
+                Create(fileId, "expiration");
 
-            public InternalFileRep ChunkStartPosition(InternalFileId fileId) => Create(fileId, "chunkstart");
+            public InternalFileRep ChunkStartPosition(InternalFileId fileId) =>
+                Create(fileId, "chunkstart");
 
-            public InternalFileRep ChunkComplete(InternalFileId fileId) => Create(fileId, "chunkcomplete");
-
-            public InternalFileRep ChunkChecksum(InternalFileId fileId) => Create(fileId, "chunkchecksum");
+            public InternalFileRep ChunkComplete(InternalFileId fileId) =>
+                Create(fileId, "chunkcomplete");
 
             private InternalFileRep Create(InternalFileId fileId, string extension)
             {
@@ -114,7 +124,10 @@ namespace tusdotnet.Stores
                     fileName += "." + extension;
                 }
 
-                return new InternalFileRep(fileId, System.IO.Path.Combine(_directoryPath, fileName));
+                return new InternalFileRep(
+                    fileId,
+                    System.IO.Path.Combine(_directoryPath, fileName)
+                );
             }
         }
     }

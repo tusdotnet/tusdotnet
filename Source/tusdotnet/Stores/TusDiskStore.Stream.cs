@@ -42,6 +42,11 @@ namespace tusdotnet.Stores
                     return 0;
                 }
 
+                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(
+                    fileId,
+                    cancellationToken
+                );
+
                 var totalDiskFileLength = diskFileStream.Length;
                 if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
                 {
@@ -72,6 +77,7 @@ namespace tusdotnet.Stores
                         _maxReadBufferSize,
                         cancellationToken
                     );
+
                     clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
 
                     totalDiskFileLength += numberOfbytesReadFromClient;
@@ -120,13 +126,7 @@ namespace tusdotnet.Stores
 
                 if (!clientDisconnectedDuringRead)
                 {
-                    var finalChecksum = hasher.GetHashAndReset();
-                    if (finalChecksum is not null)
-                    {
-                        _fileRepFactory.ChunkChecksum(internalFileId).Write(finalChecksum);
-                    }
-
-                    MarkChunkComplete(chunkCompleteFile);
+                    MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
                 }
 
                 return bytesWrittenThisRequest;
