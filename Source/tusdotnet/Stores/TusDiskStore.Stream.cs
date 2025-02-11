@@ -10,37 +10,35 @@ namespace tusdotnet.Stores
     public partial class TusDiskStore
     {
         /// <inheritdoc />
-        public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
+        public async Task<long> AppendDataAsync(
+            string fileId,
+            Stream stream,
+            CancellationToken cancellationToken
+        )
         {
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
 
             var httpReadBuffer = _bufferPool.Rent(_maxReadBufferSize);
-            var fileWriteBuffer = _bufferPool.Rent(Math.Max(_maxWriteBufferSize, _maxReadBufferSize));
-            FileStream diskFileStream = null;
+            var fileWriteBuffer = _bufferPool.Rent(
+                Math.Max(_maxWriteBufferSize, _maxReadBufferSize)
+            );
 
             try
             {
-                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(fileId, cancellationToken);
+                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(
+                    fileId,
+                    cancellationToken
+                );
 
-                Exception openException = null;
-                for (int i = 0; i < 10; i++)
-                {
-                    try
-                    {
-                        diskFileStream = _fileRepFactory
-                            .Data(internalFileId)
-                            .GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
-                        break;
-                    }
-                    catch (Exception e)
-                    {
-                        openException = e;
-                        await Task.Delay(1000);
-                    }
-                }
+                var diskFileStream = await TryOpenStreamDueToNetFxAndNetworkShareIssue(
+                    internalFileId,
+                    cancellationToken
+                );
 
                 if (diskFileStream is null)
-                    throw openException;
+                {
+                    return 0;
+                }
 
                 var totalDiskFileLength = diskFileStream.Length;
                 if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
@@ -62,20 +60,33 @@ namespace tusdotnet.Stores
                         break;
                     }
 
-                    numberOfbytesReadFromClient = await stream.ReadAsync(httpReadBuffer, 0, _maxReadBufferSize, cancellationToken);
+                    numberOfbytesReadFromClient = await stream.ReadAsync(
+                        httpReadBuffer,
+                        0,
+                        _maxReadBufferSize,
+                        cancellationToken
+                    );
                     clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
 
                     totalDiskFileLength += numberOfbytesReadFromClient;
 
                     if (totalDiskFileLength > fileUploadLengthProvidedDuringCreate)
                     {
-                        throw new TusStoreException($"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength}, upload length: {fileUploadLengthProvidedDuringCreate}.");
+                        throw new TusStoreException(
+                            $"Stream contains more data than the file's upload length. Stream data: {totalDiskFileLength}, upload length: {fileUploadLengthProvidedDuringCreate}."
+                        );
                     }
 
                     // Can we fit the read data into the write buffer? If not flush it now.
-                    if (writeBufferNextFreeIndex + numberOfbytesReadFromClient > _maxWriteBufferSize)
+                    if (
+                        writeBufferNextFreeIndex + numberOfbytesReadFromClient
+                        > _maxWriteBufferSize
+                    )
                     {
-                        await diskFileStream.FlushFileToDisk(fileWriteBuffer, writeBufferNextFreeIndex);
+                        await diskFileStream.FlushFileToDisk(
+                            fileWriteBuffer,
+                            writeBufferNextFreeIndex
+                        );
                         writeBufferNextFreeIndex = 0;
                     }
 
@@ -84,11 +95,11 @@ namespace tusdotnet.Stores
                         sourceIndex: 0,
                         destinationArray: fileWriteBuffer,
                         destinationIndex: writeBufferNextFreeIndex,
-                        length: numberOfbytesReadFromClient);
+                        length: numberOfbytesReadFromClient
+                    );
 
                     writeBufferNextFreeIndex += numberOfbytesReadFromClient;
                     bytesWrittenThisRequest += numberOfbytesReadFromClient;
-
                 } while (numberOfbytesReadFromClient != 0);
 
                 // Flush the remaining buffer to disk.
@@ -104,11 +115,72 @@ namespace tusdotnet.Stores
             }
             finally
             {
-                diskFileStream?.Dispose();
-
                 _bufferPool.Return(httpReadBuffer);
                 _bufferPool.Return(fileWriteBuffer);
             }
         }
+
+#if netfull
+
+        private async Task<FileStream> TryOpenStreamDueToNetFxAndNetworkShareIssue(
+            InternalFileId internalFileId,
+            CancellationToken cancellationToken
+        )
+        {
+            // Work around for issue described in this PR: https://github.com/tusdotnet/tusdotnet/pull/228
+
+            const int MAX_ATTEMPTS = 10;
+            const int RETRY_DELAY_MS = 1_000;
+
+            Exception openException = null;
+            FileStream diskFileStream = null;
+
+            for (int i = 0; i < MAX_ATTEMPTS; i++)
+            {
+                try
+                {
+                    diskFileStream = _fileRepFactory
+                        .Data(internalFileId)
+                        .GetStream(FileMode.Append, FileAccess.Write, FileShare.None);
+
+                    break;
+                }
+                catch (Exception e)
+                {
+                    openException = e;
+                    try
+                    {
+                        await Task.Delay(RETRY_DELAY_MS, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return null;
+                    }
+                }
+            }
+
+            if (diskFileStream is null)
+            {
+                throw openException;
+            }
+
+            return diskFileStream;
+        }
+
+#else
+
+        private Task<FileStream> TryOpenStreamDueToNetFxAndNetworkShareIssue(
+            InternalFileId internalFileId,
+            CancellationToken _
+        )
+        {
+            return Task.FromResult(
+                _fileRepFactory
+                    .Data(internalFileId)
+                    .GetStream(FileMode.Append, FileAccess.Write, FileShare.None)
+            );
+        }
+
+#endif
     }
 }
