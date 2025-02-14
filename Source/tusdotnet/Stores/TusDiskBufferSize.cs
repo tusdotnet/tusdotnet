@@ -47,7 +47,7 @@ namespace tusdotnet.Stores
         /// Initializes a new instance of the <see cref="TusDiskBufferSize"/> class using the provided write and read buffer sizes.
         /// </summary>
         /// <param name="writeBufferSizeInBytes">The number of bytes to keep in memory before flushing data to disk. A higher value requires more RAM but uses less CPU and IO</param>
-        /// <param name="readBufferSizeInBytes">The number of bytes to read at the time from the request. The lower the value, the less data needs to be re-submitted on errors. However, the lower the value, the slower the operation is. Please note that changing this value does nothing if using the request's PipeReader by setting <see cref="DefaultTusConfiguration.UsePipelinesIfAvailable" /> is true as it will always use the default PipeReader segment limit (4096 bytes)</param>
+        /// <param name="readBufferSizeInBytes">The number of bytes to read at the time from the request. The lower the value, the less data needs to be re-submitted on errors. However, the lower the value, the slower the operation is. Please note that changing this value does nothing if using the request's PipeReader by setting DefaultTusConfiguration.UsePipelinesIfAvailable to true as it will always use the default PipeReader segment limit (4096 bytes)</param>
         public TusDiskBufferSize(int writeBufferSizeInBytes, int readBufferSizeInBytes)
         {
             WriteBufferSizeInBytes = AssertNonNegativeNumber(
