@@ -30,7 +30,7 @@ namespace tusdotnet.Stores
                     cancellationToken
                 );
 
-                var diskFileStream = await TryOpenStreamDueToNetFxAndNetworkShareIssue(
+                using var diskFileStream = await TryOpenStreamDueToNetFxAndNetworkShareIssue(
                     internalFileId,
                     cancellationToken
                 );

@@ -19,8 +19,8 @@ Function RunTests([string]$sdkVersion, [string[]]$runtimes)
    Remove-Item -Force .\global.json | Out-Null
 }
 
-# Build all once as this will still build for all runtimes. Ignore warning that some runtimes are EOL.
-dotnet build -c release -v q -nowarn:NETSDK1138
+# Build all once as this will still build for all runtimes. Ignore warning that some runtimes are EOL, contains known issues and that .NET Standard 1.3 is not recommended.
+dotnet build -c release -v q -nowarn:NETSDK1138 -nowarn:NU1902 -nowarn:NU1903 -nowarn:NETSDK1215
 
 # We need to run this on .NET 6.x as the .NET7 SDK does not work with running older netcoreapp (<3.0): Unhandled Exception: System.IO.FileLoadException: Could not load file or assembly 'System.Runtime, Version=4.2.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'. The located assembly's manifest definition does not match the assembly reference. (Exception from HRESULT: 0x80131040)
 RunTests $net6sdk $runtimesOnNet6;
