@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-#if pipelines
-using System.IO.Pipelines;
-#endif
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,10 +12,14 @@ using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Streams;
 using tusdotnet.Stores;
 using tusdotnet.test.Helpers;
 using Xunit;
 using Xunit.Abstractions;
+#if pipelines
+using System.IO.Pipelines;
+#endif
 
 namespace tusdotnet.test.Tests
 {
@@ -51,10 +52,18 @@ namespace tusdotnet.test.Tests
 
             var customFileId = 0;
             var createIdCalls = 0;
-            customProvider.CreateId(null).ReturnsForAnyArgs(_ => (++customFileId).ToString()).AndDoes(_ => createIdCalls++);
+            customProvider
+                .CreateId(null)
+                .ReturnsForAnyArgs(_ => (++customFileId).ToString())
+                .AndDoes(_ => createIdCalls++);
             customProvider.ValidateId(null).ReturnsForAnyArgs(true);
 
-            var store = new TusDiskStore(_fixture.Path, true, TusDiskBufferSize.Default, customProvider);
+            var store = new TusDiskStore(
+                _fixture.Path,
+                true,
+                TusDiskBufferSize.Default,
+                customProvider
+            );
 
             for (var i = 0; i < 10; i++)
             {
@@ -76,18 +85,29 @@ namespace tusdotnet.test.Tests
             nonUniqueFileIdProvider.CreateId(null).ReturnsForAnyArgs(expectedFileId);
             nonUniqueFileIdProvider.ValidateId(null).ReturnsForAnyArgs(true);
 
-            var store = new TusDiskStore(_fixture.Path, false, TusDiskBufferSize.Default, nonUniqueFileIdProvider);
+            var store = new TusDiskStore(
+                _fixture.Path,
+                false,
+                TusDiskBufferSize.Default,
+                nonUniqueFileIdProvider
+            );
 
             var fileId = await store.CreateFileAsync(1, null, CancellationToken.None);
             fileId.ShouldBe(expectedFileId);
 
-            await store.AppendDataAsync(fileId, new MemoryStream(new[] { (byte)1 }), CancellationToken.None);
+            await store.AppendDataAsync(
+                fileId,
+                new MemoryStream(new[] { (byte)1 }),
+                CancellationToken.None
+            );
 
             var filePath = Path.Combine(_fixture.Path, fileId);
             File.Exists(filePath).ShouldBeTrue();
             new FileInfo(filePath).Length.ShouldBe(1);
 
-            await Assert.ThrowsAnyAsync<Exception>(async () => await store.CreateFileAsync(1, null, CancellationToken.None));
+            await Assert.ThrowsAnyAsync<Exception>(
+                async () => await store.CreateFileAsync(1, null, CancellationToken.None)
+            );
             File.Exists(filePath).ShouldBeTrue();
             new FileInfo(filePath).Length.ShouldBe(1);
         }
@@ -104,7 +124,10 @@ namespace tusdotnet.test.Tests
 
             for (var i = 0; i < 10; i++)
             {
-                var exist = await _fixture.Store.FileExistAsync(Guid.NewGuid().ToString("n"), CancellationToken.None);
+                var exist = await _fixture.Store.FileExistAsync(
+                    Guid.NewGuid().ToString("n"),
+                    CancellationToken.None
+                );
                 exist.ShouldBeFalse();
             }
         }
@@ -116,7 +139,10 @@ namespace tusdotnet.test.Tests
             var length = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
             length.ShouldBe(3000);
 
-            length = await _fixture.Store.GetUploadLengthAsync(Guid.NewGuid().ToString("n"), CancellationToken.None);
+            length = await _fixture.Store.GetUploadLengthAsync(
+                Guid.NewGuid().ToString("n"),
+                CancellationToken.None
+            );
             length.ShouldBeNull();
 
             File.Delete(Path.Combine(_fixture.Path, fileId + ".uploadlength"));
@@ -136,7 +162,11 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
             var stream = new MemoryStream(new UTF8Encoding(false).GetBytes("Test content"));
-            var bytesWritten = await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+            var bytesWritten = await _fixture.Store.AppendDataAsync(
+                fileId,
+                stream,
+                CancellationToken.None
+            );
             bytesWritten.ShouldBe(stream.Length);
 
             var offset = await _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None);
@@ -152,12 +182,19 @@ namespace tusdotnet.test.Tests
 
             // 5 MB
             const int fileSize = 5 * 1024 * 1024;
-            var fileId = await _fixture.Store.CreateFileAsync(fileSize, null, cancellationToken.Token);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                fileSize,
+                null,
+                cancellationToken.Token
+            );
 
             var buffer = new SlowMemoryStream(new byte[fileSize]);
 
-            var appendTask = _fixture.Store
-                .AppendDataAsync(fileId, buffer, cancellationToken.Token);
+            var appendTask = _fixture.Store.AppendDataAsync(
+                fileId,
+                buffer,
+                cancellationToken.Token
+            );
 
             await Task.Delay(150, CancellationToken.None);
 
@@ -177,7 +214,10 @@ namespace tusdotnet.test.Tests
                 // If this happens just ignore the error and verify that the file has been written properly below.
             }
 
-            var fileOffset = await _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None);
+            var fileOffset = await _fixture.Store.GetUploadOffsetAsync(
+                fileId,
+                CancellationToken.None
+            );
             if (bytesWritten != -1)
             {
                 fileOffset.ShouldBe(bytesWritten);
@@ -199,19 +239,35 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
             var storeException = await Should.ThrowAsync<TusStoreException>(
-                async () => await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(new byte[101]), CancellationToken.None));
+                async () =>
+                    await _fixture.Store.AppendDataAsync(
+                        fileId,
+                        new MemoryStream(new byte[101]),
+                        CancellationToken.None
+                    )
+            );
 
-            storeException.Message.ShouldBe("Stream contains more data than the file's upload length. Stream data: 101, upload length: 100.");
+            storeException.Message.ShouldBe(
+                "Stream contains more data than the file's upload length. Stream data: 101, upload length: 100."
+            );
         }
 
         [Fact]
         public async Task AppendDataAsync_Returns_Zero_If_File_Is_Already_Complete()
         {
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
-            var length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(100)), CancellationToken.None);
+            var length = await _fixture.Store.AppendDataAsync(
+                fileId,
+                new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(100)),
+                CancellationToken.None
+            );
             length.ShouldBe(100);
 
-            length = await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(1)), CancellationToken.None);
+            length = await _fixture.Store.AppendDataAsync(
+                fileId,
+                new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(1)),
+                CancellationToken.None
+            );
             length.ShouldBe(0);
         }
 
@@ -222,11 +278,21 @@ namespace tusdotnet.test.Tests
         [InlineData(10240, 102400, 307201, 4, 31)]
         [InlineData(51200, 52428800, 157286405, 4, 3073)]
         [InlineData(50, 100, 400, 4, 8)]
-        public async Task AppendDataAsync_Uses_The_Read_And_Write_Buffers_Correctly(int readBufferSize, int writeBufferSize, int fileSize, int expectedNumberOfWrites, int expectedNumberOfReads)
+        public async Task AppendDataAsync_Uses_The_Read_And_Write_Buffers_Correctly(
+            int readBufferSize,
+            int writeBufferSize,
+            int fileSize,
+            int expectedNumberOfWrites,
+            int expectedNumberOfReads
+        )
         {
             int numberOfReadsPerWrite = (int)Math.Ceiling((double)writeBufferSize / readBufferSize);
 
-            var store = new TusDiskStore(_fixture.Path, false, new TusDiskBufferSize(writeBufferSize, readBufferSize));
+            var store = new TusDiskStore(
+                _fixture.Path,
+                false,
+                new TusDiskBufferSize(writeBufferSize, readBufferSize)
+            );
 
             var totalNumberOfWrites = 0;
             var totalNumberOfReads = 0;
@@ -235,39 +301,52 @@ namespace tusdotnet.test.Tests
 
             var fileId = await store.CreateFileAsync(fileSize, null, CancellationToken.None);
 
-            var requestStream = new RequestStreamFake(async (RequestStreamFake stream,
-                                                        byte[] bufferToFill,
-                                                        int offset,
-                                                        int count,
-                                                        CancellationToken cancellationToken)
-                                                        =>
-            {
-                count.ShouldBe(readBufferSize);
-
-                var bytesReadFromStream = await stream.ReadBackingStreamAsync(bufferToFill, offset, count, cancellationToken);
-
-                // There should have been a write after the previous read.
-                if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
+            var requestStream = new RequestStreamFake(
+                async (
+                    RequestStreamFake stream,
+                    byte[] bufferToFill,
+                    int offset,
+                    int count,
+                    CancellationToken cancellationToken
+                ) =>
                 {
-                    // Calculate the amount of data that should have been written to disk so far.
-                    var expectedFileSizeRightNow = TusDiskStoreTests.CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
+                    count.ShouldBe(readBufferSize);
 
-                    // Assert that the size on disk is correct.
-                    GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
+                    var bytesReadFromStream = await stream.ReadBackingStreamAsync(
+                        bufferToFill,
+                        offset,
+                        count,
+                        cancellationToken
+                    );
 
-                    totalNumberOfWrites++;
+                    // There should have been a write after the previous read.
+                    if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
+                    {
+                        // Calculate the amount of data that should have been written to disk so far.
+                        var expectedFileSizeRightNow = TusDiskStoreTests.CalculateExpectedFileSize(
+                            totalNumberOfReads,
+                            readBufferSize,
+                            writeBufferSize
+                        );
 
-                    // Set to one as the write happened on the previous write, making this the second read since that write.
-                    numberOfReadsSinceLastWrite = 1;
-                }
+                        // Assert that the size on disk is correct.
+                        GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
 
-                numberOfReadsSinceLastWrite++;
-                totalNumberOfReads++;
+                        totalNumberOfWrites++;
 
-                totalBytesWritten += bytesReadFromStream;
+                        // Set to one as the write happened on the previous write, making this the second read since that write.
+                        numberOfReadsSinceLastWrite = 1;
+                    }
 
-                return bytesReadFromStream;
-            }, new byte[fileSize]);
+                    numberOfReadsSinceLastWrite++;
+                    totalNumberOfReads++;
+
+                    totalBytesWritten += bytesReadFromStream;
+
+                    return bytesReadFromStream;
+                },
+                new byte[fileSize]
+            );
 
             await store.AppendDataAsync(fileId, requestStream, CancellationToken.None);
 
@@ -285,7 +364,11 @@ namespace tusdotnet.test.Tests
             }
         }
 
-        private static long CalculateExpectedFileSize(int totalNumberOfReads, int readBufferSize, int writeBufferSize)
+        private static long CalculateExpectedFileSize(
+            int totalNumberOfReads,
+            int readBufferSize,
+            int writeBufferSize
+        )
         {
             var expectedFileSizeRightNow = 0;
             var writeBufferPosition = 0;
@@ -314,17 +397,27 @@ namespace tusdotnet.test.Tests
 
             // 5 MB
             const int fileSize = 5 * 1024 * 1024;
-            var fileId = await _fixture.Store.CreateFileAsync(fileSize, null, cancellationToken.Token);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                fileSize,
+                null,
+                cancellationToken.Token
+            );
 
             var pipeReader = PipeReader.Create(new SlowMemoryStream(new byte[fileSize]));
 
-            _ = Task.Delay(150, CancellationToken.None).ContinueWith(x => cancellationToken.Cancel());
+            _ = Task.Delay(150, CancellationToken.None)
+                .ContinueWith(x => cancellationToken.Cancel());
 
             long bytesWritten = -1;
 
             try
             {
-                bytesWritten = await _fixture.Store.AppendDataAsync(fileId, pipeReader, cancellationToken.Token); ;
+                bytesWritten = await _fixture.Store.AppendDataAsync(
+                    fileId,
+                    pipeReader,
+                    cancellationToken.Token
+                );
+                ;
                 // Should have written something but should not have completed.
                 bytesWritten.ShouldBeInRange(1, 10240000);
             }
@@ -334,7 +427,10 @@ namespace tusdotnet.test.Tests
                 // If this happens just ignore the error and verify that the file has been written properly below.
             }
 
-            var fileOffset = await _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None);
+            var fileOffset = await _fixture.Store.GetUploadOffsetAsync(
+                fileId,
+                CancellationToken.None
+            );
             if (bytesWritten != -1)
             {
                 fileOffset.ShouldBe(bytesWritten);
@@ -356,19 +452,39 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
             var storeException = await Should.ThrowAsync<TusStoreException>(
-                async () => await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(new byte[101])), CancellationToken.None));
+                async () =>
+                    await _fixture.Store.AppendDataAsync(
+                        fileId,
+                        PipeReader.Create(new MemoryStream(new byte[101])),
+                        CancellationToken.None
+                    )
+            );
 
-            storeException.Message.ShouldBe("Request contains more data than the file's upload length. Request data: 101, upload length: 100.");
+            storeException.Message.ShouldBe(
+                "Request contains more data than the file's upload length. Request data: 101, upload length: 100."
+            );
         }
 
         [Fact]
         public async Task AppendDataAsync_With_PipeReader_Returns_Zero_If_File_Is_Already_Complete()
         {
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
-            var length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(100))), CancellationToken.None);
+            var length = await _fixture.Store.AppendDataAsync(
+                fileId,
+                PipeReader.Create(
+                    new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(100))
+                ),
+                CancellationToken.None
+            );
             length.ShouldBe(100);
 
-            length = await _fixture.Store.AppendDataAsync(fileId, PipeReader.Create(new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(1))), CancellationToken.None);
+            length = await _fixture.Store.AppendDataAsync(
+                fileId,
+                PipeReader.Create(
+                    new MemoryStream(TusDiskStoreFixture.CreateByteArrayWithRandomData(1))
+                ),
+                CancellationToken.None
+            );
             length.ShouldBe(0);
         }
 
@@ -380,15 +496,24 @@ namespace tusdotnet.test.Tests
         [InlineData(8192, 16384, 2)]
         [InlineData(41943040, 209715200, 5)]
         [InlineData(52428800, 157286405, 4)]
-        public async Task AppendDataAsync_With_PipeReader_Uses_The_Write_Buffer_Correctly(int writeBufferSize, int fileSize, int expectedNumberOfWrites)
+        public async Task AppendDataAsync_With_PipeReader_Uses_The_Write_Buffer_Correctly(
+            int writeBufferSize,
+            int fileSize,
+            int expectedNumberOfWrites
+        )
         {
             // Default value for pipe reader
             const int READ_BUFFER_SIZE = 4096;
 
-            int numberOfReadsPerWrite = (int)Math.Ceiling((double)writeBufferSize / READ_BUFFER_SIZE);
+            int numberOfReadsPerWrite = (int)
+                Math.Ceiling((double)writeBufferSize / READ_BUFFER_SIZE);
 
             // Note: Read buffer size is set in the pipe reader and not in the disk store so just use the TusDiskBufferSize that only sets the write buffer size.
-            var store = new TusDiskStore(_fixture.Path, false, new TusDiskBufferSize(writeBufferSize));
+            var store = new TusDiskStore(
+                _fixture.Path,
+                false,
+                new TusDiskBufferSize(writeBufferSize)
+            );
 
             var totalNumberOfWrites = 0;
             var totalNumberOfReads = 0;
@@ -397,37 +522,46 @@ namespace tusdotnet.test.Tests
 
             var fileId = await store.CreateFileAsync(fileSize, null, CancellationToken.None);
 
-            var requestStream = new RequestStreamFake(async (RequestStreamFake stream,
-                                                        byte[] bufferToFill,
-                                                        int offset,
-                                                        int count,
-                                                        CancellationToken cancellationToken)
-                                                        =>
-            {
-                var bytesReadFromStream = await stream.ReadBackingStreamAsync(bufferToFill, offset, count, cancellationToken);
-
-                // There should have been a write after the previous read.
-                if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
+            var requestStream = new RequestStreamFake(
+                async (
+                    RequestStreamFake stream,
+                    byte[] bufferToFill,
+                    int offset,
+                    int count,
+                    CancellationToken cancellationToken
+                ) =>
                 {
-                    // Calculate the amount of data that should have been written to disk so far.
-                    var expectedFileSizeRightNow = (totalNumberOfReads - 1) * READ_BUFFER_SIZE; //CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
+                    var bytesReadFromStream = await stream.ReadBackingStreamAsync(
+                        bufferToFill,
+                        offset,
+                        count,
+                        cancellationToken
+                    );
 
-                    // Assert that the size on disk is correct.
-                    GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
+                    // There should have been a write after the previous read.
+                    if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
+                    {
+                        // Calculate the amount of data that should have been written to disk so far.
+                        var expectedFileSizeRightNow = (totalNumberOfReads - 1) * READ_BUFFER_SIZE; //CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
 
-                    totalNumberOfWrites++;
+                        // Assert that the size on disk is correct.
+                        GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
 
-                    // Set to one as the write happened on the previous write, making this the second read since that write.
-                    numberOfReadsSinceLastWrite = 1;
-                }
+                        totalNumberOfWrites++;
 
-                numberOfReadsSinceLastWrite++;
-                totalNumberOfReads++;
+                        // Set to one as the write happened on the previous write, making this the second read since that write.
+                        numberOfReadsSinceLastWrite = 1;
+                    }
 
-                totalBytesWritten += bytesReadFromStream;
+                    numberOfReadsSinceLastWrite++;
+                    totalNumberOfReads++;
 
-                return bytesReadFromStream;
-            }, new byte[fileSize]);
+                    totalBytesWritten += bytesReadFromStream;
+
+                    return bytesReadFromStream;
+                },
+                new byte[fileSize]
+            );
 
             var pipeReader = PipeReader.Create(requestStream);
 
@@ -444,7 +578,6 @@ namespace tusdotnet.test.Tests
                 return new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;
             }
         }
-
 #endif
 
         [Fact]
@@ -454,7 +587,11 @@ namespace tusdotnet.test.Tests
 
             var content = Enumerable.Range(0, 100).Select(f => (byte)f).ToArray();
 
-            await _fixture.Store.AppendDataAsync(fileId, new MemoryStream(content), CancellationToken.None);
+            await _fixture.Store.AppendDataAsync(
+                fileId,
+                new MemoryStream(content),
+                CancellationToken.None
+            );
 
             var file = await _fixture.Store.GetFileAsync(fileId, CancellationToken.None);
 
@@ -475,14 +612,21 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task GetFileAsync_Returns_Null_If_The_File_Does_Not_Exist()
         {
-            var file = await _fixture.Store.GetFileAsync(Guid.NewGuid().ToString("n"), CancellationToken.None);
+            var file = await _fixture.Store.GetFileAsync(
+                Guid.NewGuid().ToString("n"),
+                CancellationToken.None
+            );
             file.ShouldBeNull();
         }
 
         [Fact]
         public async Task CreateFileAsync_Creates_Metadata_Properly()
         {
-            var fileId = await _fixture.Store.CreateFileAsync(1, "key wrbDgMSaxafMsw==", CancellationToken.None);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                1,
+                "key wrbDgMSaxafMsw==",
+                CancellationToken.None
+            );
             fileId.ShouldNotBeNull();
 
             var file = await _fixture.Store.GetFileAsync(fileId, CancellationToken.None);
@@ -492,16 +636,25 @@ namespace tusdotnet.test.Tests
             metadata["key"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
             // Wrong encoding just to test that the result is different.
             metadata["key"].GetString(new ASCIIEncoding()).ShouldBe("??????????");
-            metadata["key"].GetBytes().ShouldBe(new byte[] { 194, 182, 195, 128, 196, 154, 197, 167, 204, 179 });
+            metadata["key"]
+                .GetBytes()
+                .ShouldBe(new byte[] { 194, 182, 195, 128, 196, 154, 197, 167, 204, 179 });
         }
 
         [Fact]
         public async Task GetUploadMetadataAsync()
         {
             const string metadataConst = "key wrbDgMSaxafMsw==";
-            var fileId = await _fixture.Store.CreateFileAsync(1, metadataConst, CancellationToken.None);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                1,
+                metadataConst,
+                CancellationToken.None
+            );
 
-            var metadata = await _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None);
+            var metadata = await _fixture.Store.GetUploadMetadataAsync(
+                fileId,
+                CancellationToken.None
+            );
             metadata.ShouldBe(metadataConst);
 
             fileId = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
@@ -519,7 +672,11 @@ namespace tusdotnet.test.Tests
             const string metadataConst = "key wrbDgMSaxafMsw==";
             for (var i = 0; i < 10; i++)
             {
-                var fileId = await _fixture.Store.CreateFileAsync(i + 1, i % 2 == 0 ? null : metadataConst, CancellationToken.None);
+                var fileId = await _fixture.Store.CreateFileAsync(
+                    i + 1,
+                    i % 2 == 0 ? null : metadataConst,
+                    CancellationToken.None
+                );
                 var exist = await _fixture.Store.FileExistAsync(fileId, CancellationToken.None);
                 exist.ShouldBeTrue();
 
@@ -543,7 +700,9 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task GetSupportedAlgorithmsAsync()
         {
-            var algorithms = await _fixture.Store.GetSupportedAlgorithmsAsync(CancellationToken.None);
+            var algorithms = await _fixture.Store.GetSupportedAlgorithmsAsync(
+                CancellationToken.None
+            );
             // ReSharper disable PossibleMultipleEnumeration
             algorithms.ShouldNotBeNull();
             algorithms.Count().ShouldBe(1);
@@ -558,14 +717,22 @@ namespace tusdotnet.test.Tests
             const string message = "Hello World 12345!!@@åäö";
             var buffer = new UTF8Encoding(false).GetBytes(message);
 
-            var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, CancellationToken.None);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                buffer.Length,
+                null,
+                CancellationToken.None
+            );
             using (var stream = new MemoryStream(buffer))
             {
                 await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
             }
 
-            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum),
-                CancellationToken.None);
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(
+                fileId,
+                "sha1",
+                Convert.FromBase64String(checksum),
+                CancellationToken.None
+            );
 
             checksumOk.ShouldBeTrue();
         }
@@ -579,14 +746,33 @@ namespace tusdotnet.test.Tests
 
             var buffer = new UTF8Encoding(false).GetBytes(message);
 
-            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), CancellationToken.None);
+            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(
+                TimeSpan.FromSeconds(10),
+                CancellationToken.None
+            );
 
-            var fileId = await _fixture.Store.CreateFileAsync(buffer.Length, null, clientDisconnectGuard.GuardedToken);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                buffer.Length,
+                null,
+                clientDisconnectGuard.GuardedToken
+            );
 
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(buffer), clientDisconnectGuard);
-            await _fixture.Store.AppendDataAsync(fileId, guardedStream, clientDisconnectGuard.GuardedToken);
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                new MemoryStream(buffer),
+                clientDisconnectGuard
+            );
+            await _fixture.Store.AppendDataAsync(
+                fileId,
+                guardedStream,
+                clientDisconnectGuard.GuardedToken
+            );
 
-            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(incorrectChecksum), clientDisconnectGuard.GuardedToken);
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(
+                fileId,
+                "sha1",
+                Convert.FromBase64String(incorrectChecksum),
+                clientDisconnectGuard.GuardedToken
+            );
 
             // File should not have been saved.
             checksumOk.ShouldBeFalse();
@@ -599,14 +785,22 @@ namespace tusdotnet.test.Tests
             var chunks = new[]
             {
                 new Tuple<string, string, bool>("Hello ", "lka6E6To6r7KT1JZv9faQdNooaY=", true),
-                new Tuple<string, string, bool > ("World ", "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=", true),
-                new Tuple<string, string, bool > ("12345!!@@åäö", "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=", false)
+                new Tuple<string, string, bool>("World ", "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=", true),
+                new Tuple<string, string, bool>(
+                    "12345!!@@åäö",
+                    "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=",
+                    false
+                )
             };
 
             var encoding = new UTF8Encoding(false);
             var totalSize = 0;
 
-            var fileId = await _fixture.Store.CreateFileAsync(chunks.Sum(f => encoding.GetBytes(f.Item1).Length), null, CancellationToken.None);
+            var fileId = await _fixture.Store.CreateFileAsync(
+                chunks.Sum(f => encoding.GetBytes(f.Item1).Length),
+                null,
+                CancellationToken.None
+            );
             var filePath = Path.Combine(_fixture.Path, fileId);
 
             foreach (var chunk in chunks)
@@ -618,13 +812,24 @@ namespace tusdotnet.test.Tests
 
                 // Create a new store and cancellation token source on each request as one would do in a real scenario.
                 _fixture.CreateNewStore();
-                var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), CancellationToken.None);
+                var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(
+                    TimeSpan.FromSeconds(10),
+                    CancellationToken.None
+                );
                 var token = clientDisconnectGuard.GuardedToken;
 
-                var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(dataBuffer), clientDisconnectGuard);
+                var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                    new MemoryStream(dataBuffer),
+                    clientDisconnectGuard
+                );
                 await _fixture.Store.AppendDataAsync(fileId, guardedStream, token);
 
-                var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum), token);
+                var checksumOk = await _fixture.Store.VerifyChecksumAsync(
+                    fileId,
+                    "sha1",
+                    Convert.FromBase64String(checksum),
+                    token
+                );
 
                 checksumOk.ShouldBe(isValidChecksum);
 
@@ -644,7 +849,10 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(6, null, CancellationToken.None);
 
             var cts = new CancellationTokenSource();
-            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), cts.Token);
+            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(
+                TimeSpan.FromSeconds(10),
+                cts.Token
+            );
 
             var requestStream = new RequestStreamFake(
                 (stream, bufferToFill, offset, _, cancellationToken) =>
@@ -656,15 +864,33 @@ namespace tusdotnet.test.Tests
                         cts.Token.ThrowIfCancellationRequested();
                     }
 
-                    return stream.ReadBackingStreamAsync(bufferToFill, offset, 2, cancellationToken);
+                    return stream.ReadBackingStreamAsync(
+                        bufferToFill,
+                        offset,
+                        2,
+                        cancellationToken
+                    );
                 },
-                dataBuffer);
+                dataBuffer
+            );
 
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(requestStream, clientDisconnectGuard);
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                requestStream,
+                clientDisconnectGuard
+            );
 
-            await _fixture.Store.AppendDataAsync(fileId, guardedStream, clientDisconnectGuard.GuardedToken);
+            await _fixture.Store.AppendDataAsync(
+                fileId,
+                guardedStream,
+                clientDisconnectGuard.GuardedToken
+            );
 
-            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum), cts.Token);
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(
+                fileId,
+                "sha1",
+                Convert.FromBase64String(checksum),
+                cts.Token
+            );
 
             checksumOk.ShouldBeFalse();
 
@@ -681,35 +907,100 @@ namespace tusdotnet.test.Tests
             var fileId = await _fixture.Store.CreateFileAsync(6, null, CancellationToken.None);
 
             var cts = new CancellationTokenSource();
-            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(TimeSpan.FromSeconds(10), cts.Token);
+            var clientDisconnectGuard = new ClientDisconnectGuardWithTimeout(
+                TimeSpan.FromSeconds(10),
+                cts.Token
+            );
 
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(dataBuffer), clientDisconnectGuard);
-            await _fixture.Store.AppendDataAsync(fileId, guardedStream, clientDisconnectGuard.GuardedToken);
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                new MemoryStream(dataBuffer),
+                clientDisconnectGuard
+            );
+            await _fixture.Store.AppendDataAsync(
+                fileId,
+                guardedStream,
+                clientDisconnectGuard.GuardedToken
+            );
 
             // Emulate client disconnect after entire stream has been read
             cts.Cancel();
 
-            var checksumOk = await _fixture.Store.VerifyChecksumAsync(fileId, "sha1", Convert.FromBase64String(checksum), cts.Token);
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(
+                fileId,
+                "sha1",
+                Convert.FromBase64String(checksum),
+                cts.Token
+            );
 
             checksumOk.ShouldBeTrue();
 
             new FileInfo(Path.Combine(_fixture.Path, fileId)).Length.ShouldBe(6);
         }
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task VerifyChecksumAsync_Uses_Checksum_File_If_Conditions_Are_Met(
+            bool useChecksumAwareStream
+        )
+        {
+            var checksumBytes = Convert.FromBase64String("9jSJuBxGMnq4UffwNYM8ct1tYQQ=");
+            var buffer = new UTF8Encoding(false).GetBytes("Hello World 12345!!@@åäö");
+
+            var fileId = await _fixture.Store.CreateFileAsync(
+                buffer.Length,
+                null,
+                CancellationToken.None
+            );
+
+            // The condition is that we have a checksum aware stream.
+            using Stream stream = useChecksumAwareStream
+                ? new ChecksumAwareStream(
+                    new MemoryStream(buffer),
+                    new Checksum("sha1", checksumBytes)
+                )
+                : new MemoryStream(buffer);
+
+            await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
+
+            // Break the data file. If the checksum matches we know we used the checksum in chunkcomplete.
+            // If not we recalculated using the data file.
+            File.WriteAllBytes(Path.Combine(_fixture.Path, fileId), []);
+
+            var checksumOk = await _fixture.Store.VerifyChecksumAsync(
+                fileId,
+                "sha1",
+                checksumBytes,
+                CancellationToken.None
+            );
+
+            checksumOk.ShouldBe(useChecksumAwareStream);
+        }
+
         [Fact]
         public async Task CreatePartialFileAsync()
         {
-            var fileId = await _fixture.Store.CreatePartialFileAsync(100, "key wrbDgMSaxafMsw==", CancellationToken.None);
+            var fileId = await _fixture.Store.CreatePartialFileAsync(
+                100,
+                "key wrbDgMSaxafMsw==",
+                CancellationToken.None
+            );
             fileId.ShouldNotBeNullOrEmpty();
             var file = await _fixture.Store.GetFileAsync(fileId, CancellationToken.None);
             var metadata = await file.GetMetadataAsync(CancellationToken.None);
             metadata.ContainsKey("key").ShouldBeTrue();
             metadata["key"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
 
-            var uploadSize = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
+            var uploadSize = await _fixture.Store.GetUploadLengthAsync(
+                fileId,
+                CancellationToken.None
+            );
             uploadSize.ShouldBe(100);
 
-            var uploadConcat = await _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None);
+            var uploadConcat = await _fixture.Store.GetUploadConcatAsync(
+                fileId,
+                CancellationToken.None
+            );
             uploadConcat.ShouldBeOfType(typeof(FileConcatPartial));
         }
 
@@ -717,21 +1008,40 @@ namespace tusdotnet.test.Tests
         public async Task CreateFinalFileAsync()
         {
             // Create partial files
-            var partial1Id = await _fixture.Store.CreatePartialFileAsync(100, null, CancellationToken.None);
-            var partial2Id = await _fixture.Store.CreatePartialFileAsync(100, null, CancellationToken.None);
+            var partial1Id = await _fixture.Store.CreatePartialFileAsync(
+                100,
+                null,
+                CancellationToken.None
+            );
+            var partial2Id = await _fixture.Store.CreatePartialFileAsync(
+                100,
+                null,
+                CancellationToken.None
+            );
 
-            await _fixture.Store.AppendDataAsync(partial1Id,
-                new MemoryStream(Enumerable.Range(1, 100).Select(_ => (byte)1).ToArray()), CancellationToken.None);
-            await _fixture.Store.AppendDataAsync(partial2Id,
-            new MemoryStream(Enumerable.Range(1, 100).Select(_ => (byte)2).ToArray()), CancellationToken.None);
+            await _fixture.Store.AppendDataAsync(
+                partial1Id,
+                new MemoryStream(Enumerable.Range(1, 100).Select(_ => (byte)1).ToArray()),
+                CancellationToken.None
+            );
+            await _fixture.Store.AppendDataAsync(
+                partial2Id,
+                new MemoryStream(Enumerable.Range(1, 100).Select(_ => (byte)2).ToArray()),
+                CancellationToken.None
+            );
 
             // Create final file
-            var finalFileId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id }, null,
-                CancellationToken.None);
+            var finalFileId = await _fixture.Store.CreateFinalFileAsync(
+                new[] { partial1Id, partial2Id },
+                null,
+                CancellationToken.None
+            );
             finalFileId.ShouldNotBeNullOrWhiteSpace();
 
             // Check file
-            var finalConcat = await _fixture.Store.GetUploadConcatAsync(finalFileId, CancellationToken.None) as FileConcatFinal;
+            var finalConcat =
+                await _fixture.Store.GetUploadConcatAsync(finalFileId, CancellationToken.None)
+                as FileConcatFinal;
             finalConcat.ShouldNotBeNull();
             // ReSharper disable once PossibleNullReferenceException
             finalConcat.Files.Length.ShouldBe(2);
@@ -756,23 +1066,48 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task CreateFinalFileAsync_Metadata_From_Partial_Files_Is_Not_Transferred_To_Final_File()
         {
-            var partial1Id = await _fixture.Store.CreatePartialFileAsync(1, "key1 cGFydGlhbDFtZXRhZGF0YQ==",
-                CancellationToken.None);
-            var partial2Id = await _fixture.Store.CreatePartialFileAsync(1, "key2 bWV0YWRhdGFmb3JwYXJ0aWFsMg==",
-                CancellationToken.None);
+            var partial1Id = await _fixture.Store.CreatePartialFileAsync(
+                1,
+                "key1 cGFydGlhbDFtZXRhZGF0YQ==",
+                CancellationToken.None
+            );
+            var partial2Id = await _fixture.Store.CreatePartialFileAsync(
+                1,
+                "key2 bWV0YWRhdGFmb3JwYXJ0aWFsMg==",
+                CancellationToken.None
+            );
 
             await Task.WhenAll(
-                _fixture.Store.AppendDataAsync(partial1Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None),
-                _fixture.Store.AppendDataAsync(partial2Id, new MemoryStream(new byte[] { 1 }), CancellationToken.None));
+                _fixture.Store.AppendDataAsync(
+                    partial1Id,
+                    new MemoryStream(new byte[] { 1 }),
+                    CancellationToken.None
+                ),
+                _fixture.Store.AppendDataAsync(
+                    partial2Id,
+                    new MemoryStream(new byte[] { 1 }),
+                    CancellationToken.None
+                )
+            );
 
             // Create final file with no metadata
-            var finalId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id }, null, CancellationToken.None);
+            var finalId = await _fixture.Store.CreateFinalFileAsync(
+                new[] { partial1Id, partial2Id },
+                null,
+                CancellationToken.None
+            );
 
-            var metadata = await _fixture.Store.GetUploadMetadataAsync(finalId, CancellationToken.None);
+            var metadata = await _fixture.Store.GetUploadMetadataAsync(
+                finalId,
+                CancellationToken.None
+            );
             metadata.ShouldBeNull();
 
-            finalId = await _fixture.Store.CreateFinalFileAsync(new[] { partial1Id, partial2Id },
-                "finalkey c29tZWZpbmFsbWV0YWRhdGE=", CancellationToken.None);
+            finalId = await _fixture.Store.CreateFinalFileAsync(
+                new[] { partial1Id, partial2Id },
+                "finalkey c29tZWZpbmFsbWV0YWRhdGE=",
+                CancellationToken.None
+            );
 
             metadata = await _fixture.Store.GetUploadMetadataAsync(finalId, CancellationToken.None);
             metadata.ShouldNotBeNullOrWhiteSpace();
@@ -794,8 +1129,16 @@ namespace tusdotnet.test.Tests
             var p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
             var p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
 
-            await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
-            await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
+            await store.AppendDataAsync(
+                p1,
+                new MemoryStream(new byte[] { 1 }),
+                CancellationToken.None
+            );
+            await store.AppendDataAsync(
+                p2,
+                new MemoryStream(new byte[] { 2 }),
+                CancellationToken.None
+            );
 
             _ = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
@@ -807,8 +1150,16 @@ namespace tusdotnet.test.Tests
             p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
             p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
 
-            await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
-            await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
+            await store.AppendDataAsync(
+                p1,
+                new MemoryStream(new byte[] { 1 }),
+                CancellationToken.None
+            );
+            await store.AppendDataAsync(
+                p2,
+                new MemoryStream(new byte[] { 2 }),
+                CancellationToken.None
+            );
 
             _ = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeFalse();
@@ -827,8 +1178,16 @@ namespace tusdotnet.test.Tests
             p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
             p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
 
-            await store.AppendDataAsync(p1, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
-            await store.AppendDataAsync(p2, new MemoryStream(new byte[] { 2 }), CancellationToken.None);
+            await store.AppendDataAsync(
+                p1,
+                new MemoryStream(new byte[] { 1 }),
+                CancellationToken.None
+            );
+            await store.AppendDataAsync(
+                p2,
+                new MemoryStream(new byte[] { 2 }),
+                CancellationToken.None
+            );
 
             _ = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
@@ -840,12 +1199,20 @@ namespace tusdotnet.test.Tests
         {
             var p1 = await _fixture.Store.CreatePartialFileAsync(1, null, CancellationToken.None);
             var nonexistingfileid = Guid.NewGuid().ToString("n");
-            await _fixture.Store.AppendDataAsync(p1, new MemoryStream(new byte[] { 0 }), CancellationToken.None);
+            await _fixture.Store.AppendDataAsync(
+                p1,
+                new MemoryStream(new byte[] { 0 }),
+                CancellationToken.None
+            );
 
-            var exception =
-                await Should.ThrowAsync<TusStoreException>(
-                    async () =>
-                        await _fixture.Store.CreateFinalFileAsync(new[] { p1, nonexistingfileid }, null, CancellationToken.None));
+            var exception = await Should.ThrowAsync<TusStoreException>(
+                async () =>
+                    await _fixture.Store.CreateFinalFileAsync(
+                        new[] { p1, nonexistingfileid },
+                        null,
+                        CancellationToken.None
+                    )
+            );
 
             exception.Message.ShouldBe($"File {nonexistingfileid} does not exist");
         }
@@ -901,11 +1268,17 @@ namespace tusdotnet.test.Tests
 
             // Completed files should not be removed.
             var file4 = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
-            await _fixture.Store.AppendDataAsync(file4, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+            await _fixture.Store.AppendDataAsync(
+                file4,
+                new MemoryStream(new byte[] { 1 }),
+                CancellationToken.None
+            );
             expires = DateTimeOffset.UtcNow.AddSeconds(-10);
             await _fixture.Store.SetExpirationAsync(file4, expires, CancellationToken.None);
 
-            var expiredFiles = (await _fixture.Store.GetExpiredFilesAsync(CancellationToken.None)).ToList();
+            var expiredFiles = (
+                await _fixture.Store.GetExpiredFilesAsync(CancellationToken.None)
+            ).ToList();
             expiredFiles.Count.ShouldBe(2);
             expiredFiles.Contains(file1).ShouldBeTrue();
             expiredFiles.Contains(file2).ShouldBeTrue();
@@ -928,7 +1301,11 @@ namespace tusdotnet.test.Tests
 
             // Completed files should not be removed.
             var file4 = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
-            await _fixture.Store.AppendDataAsync(file4, new MemoryStream(new byte[] { 1 }), CancellationToken.None);
+            await _fixture.Store.AppendDataAsync(
+                file4,
+                new MemoryStream(new byte[] { 1 }),
+                CancellationToken.None
+            );
             expires = DateTimeOffset.UtcNow.AddSeconds(-10);
             await _fixture.Store.SetExpirationAsync(file4, expires, CancellationToken.None);
 
@@ -946,7 +1323,8 @@ namespace tusdotnet.test.Tests
 
             void AssertExpirationFileExist(string fileId, bool shouldExist)
             {
-                File.Exists(Path.Combine(_fixture.Path, $"{fileId}.expiration")).ShouldBe(shouldExist);
+                File.Exists(Path.Combine(_fixture.Path, $"{fileId}.expiration"))
+                    .ShouldBe(shouldExist);
             }
         }
 
@@ -955,16 +1333,22 @@ namespace tusdotnet.test.Tests
         {
             var fileId = await _fixture.Store.CreateFileAsync(-1, null, CancellationToken.None);
 
-            var uploadLength = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
+            var uploadLength = await _fixture.Store.GetUploadLengthAsync(
+                fileId,
+                CancellationToken.None
+            );
             uploadLength.ShouldBeNull();
 
             await _fixture.Store.SetUploadLengthAsync(fileId, 100, CancellationToken.None);
 
-            uploadLength = await _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None);
+            uploadLength = await _fixture.Store.GetUploadLengthAsync(
+                fileId,
+                CancellationToken.None
+            );
             uploadLength.ShouldBe(100);
         }
 
-#pragma warning disable xUnit1004 // Test methods should not be skipped - This test method should ;) 
+#pragma warning disable xUnit1004 // Test methods should not be skipped - This test method should ;)
         [Fact(Skip = "No need to run it each time")]
 #pragma warning restore xUnit1004 // Test methods should not be skipped
         public async Task RemoveExpiredFilesAsync_PerformanceTest()
@@ -975,11 +1359,11 @@ namespace tusdotnet.test.Tests
             for (var i = 0; i < numberOfFilesToCreate; i++)
             {
                 var file = await _fixture.Store.CreateFileAsync(300, null, CancellationToken.None);
-                await _fixture.Store.SetExpirationAsync(file,
-                    i % 2 == 0
-                        ? DateTimeOffset.MaxValue
-                        : DateTimeOffset.UtcNow.AddSeconds(-1),
-                    CancellationToken.None);
+                await _fixture.Store.SetExpirationAsync(
+                    file,
+                    i % 2 == 0 ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow.AddSeconds(-1),
+                    CancellationToken.None
+                );
                 ids.Add(file);
             }
 
@@ -989,9 +1373,14 @@ namespace tusdotnet.test.Tests
 
             watch.Stop();
 
-            var removed = ids.Where(f => !_fixture.Store.FileExistAsync(f, CancellationToken.None).Result).ToList();
+            var removed = ids.Where(f =>
+                    !_fixture.Store.FileExistAsync(f, CancellationToken.None).Result
+                )
+                .ToList();
 
-            _output.WriteLine($"Deleted {removed.Count} of {numberOfFilesToCreate} files in {watch.ElapsedMilliseconds} ms");
+            _output.WriteLine(
+                $"Deleted {removed.Count} of {numberOfFilesToCreate} files in {watch.ElapsedMilliseconds} ms"
+            );
         }
 
         [Theory]
@@ -1007,24 +1396,71 @@ namespace tusdotnet.test.Tests
         [InlineData("6938f0ff94344f4d8f9c7a1e38ec9f7a", true)]
         public void FileId_Is_Validated_Before_Being_Used(string fileId, bool isValid)
         {
-            // No need to test CreateFileAsync, CreatePartialFileAsync, GetExpiredFilesAsync, RemovedExpiredFilesAsync 
+            // No need to test CreateFileAsync, CreatePartialFileAsync, GetExpiredFilesAsync, RemovedExpiredFilesAsync
             // as these does not take a file id as a parameter
 
             var allAsserted = new List<Task<Exception>>(13)
             {
-                AssertFileIdForMethod(() => _fixture.Store.AppendDataAsync(fileId, new MemoryStream(), CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.CreateFinalFileAsync(new[] { fileId }, null, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.FileExistAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.GetExpirationAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.GetFileAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.SetExpirationAsync(fileId, DateTimeOffset.MaxValue, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.SetUploadLengthAsync(fileId, 1, CancellationToken.None)),
-                AssertFileIdForMethod(() => _fixture.Store.VerifyChecksumAsync(fileId, "sha1", new byte[] { 1 }, CancellationToken.None))
+                AssertFileIdForMethod(
+                    () =>
+                        _fixture.Store.AppendDataAsync(
+                            fileId,
+                            new MemoryStream(),
+                            CancellationToken.None
+                        )
+                ),
+                AssertFileIdForMethod(
+                    () =>
+                        _fixture.Store.CreateFinalFileAsync(
+                            new[] { fileId },
+                            null,
+                            CancellationToken.None
+                        )
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.FileExistAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.GetExpirationAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.GetFileAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () =>
+                        _fixture.Store.SetExpirationAsync(
+                            fileId,
+                            DateTimeOffset.MaxValue,
+                            CancellationToken.None
+                        )
+                ),
+                AssertFileIdForMethod(
+                    () => _fixture.Store.SetUploadLengthAsync(fileId, 1, CancellationToken.None)
+                ),
+                AssertFileIdForMethod(
+                    () =>
+                        _fixture.Store.VerifyChecksumAsync(
+                            fileId,
+                            "sha1",
+                            new byte[] { 1 },
+                            CancellationToken.None
+                        )
+                )
             };
 
             allAsserted.All(f => isValid ? f.Result == null : f.Result != null).ShouldBeTrue();
@@ -1063,7 +1499,10 @@ namespace tusdotnet.test.Tests
 
         public TusDiskStoreFixture()
         {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.IO.Path.GetTempFileName().Replace(".", ""));
+            Path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                System.IO.Path.GetTempFileName().Replace(".", "")
+            );
             ClearPath();
 
             CreateNewStore();

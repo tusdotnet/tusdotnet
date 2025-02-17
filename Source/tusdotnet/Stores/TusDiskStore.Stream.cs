@@ -27,11 +27,6 @@ namespace tusdotnet.Stores
 
             try
             {
-                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(
-                    fileId,
-                    cancellationToken
-                );
-
                 using var diskFileStream = await TryOpenStreamDueToNetFxAndNetworkShareIssue(
                     internalFileId,
                     cancellationToken
