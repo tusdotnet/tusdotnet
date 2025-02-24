@@ -44,7 +44,7 @@ namespace tusdotnet.Stores
 
         private static readonly GuidFileIdProvider _defaultFileIdProvider = new();
 
-        private static readonly IEnumerable<string> _supportedAlgorithms = new[] { "sha1" };
+        private static readonly IEnumerable<string> _supportedAlgorithms = ["sha1"];
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TusDiskStore"/> class.
@@ -102,8 +102,7 @@ namespace tusdotnet.Stores
             _deletePartialFilesOnConcat = deletePartialFilesOnConcat;
             _fileRepFactory = new InternalFileRep.FileRepFactory(_directoryPath);
 
-            if (bufferSize == null)
-                bufferSize = TusDiskBufferSize.Default;
+            bufferSize ??= TusDiskBufferSize.Default;
 
             _maxWriteBufferSize = bufferSize.WriteBufferSizeInBytes;
             _maxReadBufferSize = bufferSize.ReadBufferSizeInBytes;
@@ -125,7 +124,7 @@ namespace tusdotnet.Stores
             var firstLine = _fileRepFactory
                 .UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId))
                 .ReadFirstLine(true);
-            return firstLine == null ? (long?)null : long.Parse(firstLine);
+            return firstLine == null ? null : long.Parse(firstLine);
         }
 
         /// <inheritdoc />
@@ -140,14 +139,14 @@ namespace tusdotnet.Stores
         public async Task<string> CreateFileAsync(
             long uploadLength,
             string metadata,
-            CancellationToken cancellationToken
+            CancellationToken _
         )
         {
             var fileId = await InternalFileId.CreateNew(_fileIdProvider, metadata);
             new FileStream(_fileRepFactory.Data(fileId).Path, FileMode.CreateNew).Dispose();
             if (uploadLength != -1)
             {
-                await SetUploadLengthAsync(fileId, uploadLength, cancellationToken);
+                await SetUploadLengthAsync(fileId, uploadLength, CancellationToken.None);
             }
             _fileRepFactory.Metadata(fileId).Write(metadata);
             return fileId;
@@ -177,16 +176,19 @@ namespace tusdotnet.Stores
         public async Task DeleteFileAsync(string fileId, CancellationToken _)
         {
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
-            await Task.Run(() =>
-            {
-                _fileRepFactory.Data(internalFileId).Delete();
-                _fileRepFactory.UploadLength(internalFileId).Delete();
-                _fileRepFactory.Metadata(internalFileId).Delete();
-                _fileRepFactory.UploadConcat(internalFileId).Delete();
-                _fileRepFactory.ChunkStartPosition(internalFileId).Delete();
-                _fileRepFactory.ChunkComplete(internalFileId).Delete();
-                _fileRepFactory.Expiration(internalFileId).Delete();
-            });
+            await Task.Run(
+                () =>
+                {
+                    _fileRepFactory.Data(internalFileId).Delete();
+                    _fileRepFactory.UploadLength(internalFileId).Delete();
+                    _fileRepFactory.Metadata(internalFileId).Delete();
+                    _fileRepFactory.UploadConcat(internalFileId).Delete();
+                    _fileRepFactory.ChunkStartPosition(internalFileId).Delete();
+                    _fileRepFactory.ChunkComplete(internalFileId).Delete();
+                    _fileRepFactory.Expiration(internalFileId).Delete();
+                },
+                CancellationToken.None
+            );
         }
 
         /// <inheritdoc />
@@ -205,33 +207,36 @@ namespace tusdotnet.Stores
         {
             var valid = false;
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
-            using (
-                var dataStream = _fileRepFactory
-                    .Data(internalFileId)
-                    .GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read)
-            )
+
+            using var dataStream = _fileRepFactory
+                .Data(internalFileId)
+                .GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+
+            var chunkStartPosition = _fileRepFactory
+                .ChunkStartPosition(internalFileId)
+                .ReadFirstLineAsLong(true, 0);
+
+            var chunkCompleteFile = _fileRepFactory.ChunkComplete(internalFileId);
+
+            // If the client has provided a faulty checksum-trailer we should just discard the chunk.
+            // Otherwise only verify the checksum if the entire lastest chunk has been written.
+            // If not, just discard the last chunk as it won't match the checksum anyway.
+            if (!ChecksumTrailerHelper.IsFallback(algorithm, checksum) && chunkCompleteFile.Exist())
             {
-                var chunkPositionFile = _fileRepFactory.ChunkStartPosition(internalFileId);
-                var chunkStartPosition = chunkPositionFile.ReadFirstLineAsLong(true, 0);
-                var chunkCompleteFile = _fileRepFactory.ChunkComplete(internalFileId);
+                var calculatedChecksum = chunkCompleteFile.ReadBytes();
 
-                // Only verify the checksum if the entire lastest chunk has been written.
-                // If not, just discard the last chunk as it won't match the checksum anyway.
-                // If the client has provided a faulty checksum-trailer we should also just discard the chunk.
-                if (
-                    chunkCompleteFile.Exist()
-                    && !ChecksumTrailerHelper.IsFallback(algorithm, checksum)
-                )
+                // If we don't have the optimized checksum file calculate it from the file stream.
+                if (calculatedChecksum is { Length: 1 })
                 {
-                    var calculateSha1 = dataStream.CalculateSha1(chunkStartPosition);
-                    valid = checksum.SequenceEqual(calculateSha1);
+                    calculatedChecksum = dataStream.CalculateSha1(chunkStartPosition);
                 }
 
-                if (!valid)
-                {
-                    dataStream.Seek(0, SeekOrigin.Begin);
-                    dataStream.SetLength(chunkStartPosition);
-                }
+                valid = checksum.SequenceEqual(calculatedChecksum);
+            }
+
+            if (!valid)
+            {
+                dataStream.SetLength(chunkStartPosition);
             }
 
             return valid;
@@ -250,10 +255,10 @@ namespace tusdotnet.Stores
         public async Task<string> CreatePartialFileAsync(
             long uploadLength,
             string metadata,
-            CancellationToken cancellationToken
+            CancellationToken _
         )
         {
-            var fileId = await CreateFileAsync(uploadLength, metadata, cancellationToken);
+            var fileId = await CreateFileAsync(uploadLength, metadata, CancellationToken.None);
             _fileRepFactory
                 .UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId))
                 .Write(new FileConcatPartial().GetHeader());
@@ -264,7 +269,7 @@ namespace tusdotnet.Stores
         public async Task<string> CreateFinalFileAsync(
             string[] partialFiles,
             string metadata,
-            CancellationToken cancellationToken
+            CancellationToken _
         )
         {
             InternalFileRep[] partialInternalFileReps = new InternalFileRep[partialFiles.Length];
@@ -282,7 +287,7 @@ namespace tusdotnet.Stores
 
             var length = partialInternalFileReps.Sum(f => f.GetLength());
 
-            var fileId = await CreateFileAsync(length, metadata, cancellationToken);
+            var fileId = await CreateFileAsync(length, metadata, CancellationToken.None);
 
             var internalFileId = await InternalFileId.Parse(_fileIdProvider, fileId);
 
@@ -303,6 +308,7 @@ namespace tusdotnet.Stores
                         FileAccess.Read,
                         FileShare.Read
                     );
+
                     await partialStream.CopyToAsync(finalFile);
                 }
             }
@@ -311,7 +317,7 @@ namespace tusdotnet.Stores
             {
                 await Task.WhenAll(
                     partialInternalFileReps.Select(f =>
-                        DeleteFileAsync(f.FileId, cancellationToken)
+                        DeleteFileAsync(f.FileId, CancellationToken.None)
                     )
                 );
             }
@@ -395,11 +401,11 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
+        public async Task<int> RemoveExpiredFilesAsync(CancellationToken _)
         {
-            var expiredFiles = await GetExpiredFilesAsync(cancellationToken);
+            var expiredFiles = await GetExpiredFilesAsync(CancellationToken.None);
             var deleteFileTasks = expiredFiles
-                .Select(file => DeleteFileAsync(file, cancellationToken))
+                .Select(file => DeleteFileAsync(file, CancellationToken.None))
                 .ToList();
 
             await Task.WhenAll(deleteFileTasks);
@@ -426,6 +432,7 @@ namespace tusdotnet.Stores
         {
             var chunkComplete = _fileRepFactory.ChunkComplete(internalFileId);
             chunkComplete.Delete();
+
             _fileRepFactory
                 .ChunkStartPosition(internalFileId)
                 .Write(totalDiskFileLength.ToString());
@@ -433,9 +440,12 @@ namespace tusdotnet.Stores
             return chunkComplete;
         }
 
-        private static void MarkChunkComplete(InternalFileRep chunkComplete)
+        private static void MarkChunkComplete(InternalFileRep chunkComplete, byte[] checksum)
         {
-            chunkComplete.Write("1");
+            chunkComplete.Write(checksum ?? DefaultValueForChunkComplete);
         }
+
+        // The string "1" due to backwards compatibility. Keep as static byte[] to not reallocate.
+        private static readonly byte[] DefaultValueForChunkComplete = [49];
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
@@ -59,7 +60,7 @@ namespace tusdotnet.test
                 app.Run(ctx =>
                 {
                     onForwarded();
-                    return Task.FromResult(0);
+                    return TaskHelper.Completed;
                 });
             });
         }

@@ -9,7 +9,6 @@ namespace tusdotnet.benchmark
     {
         public static void Main()
         {
-            //var summary = BenchmarkRunner.Run<CreateAndWriteFile>();
             //var summary = BenchmarkRunner.Run<NoTusResumableHeader>();
             //var summary = BenchmarkRunner.Run<RequestIsNotForTusEndpoint>();
 

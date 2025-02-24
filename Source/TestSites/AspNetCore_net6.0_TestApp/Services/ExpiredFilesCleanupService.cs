@@ -27,7 +27,7 @@ public sealed class ExpiredFilesCleanupService : IHostedService, IDisposable
         }
 
         await RunCleanup(cancellationToken);
-        _timer = new Timer(async (e) => await RunCleanup((CancellationToken)e), cancellationToken, TimeSpan.Zero, _expiration.Timeout);
+        _timer = new Timer(async (e) => await RunCleanup((CancellationToken)e!), cancellationToken, TimeSpan.Zero, _expiration.Timeout);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

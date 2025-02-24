@@ -139,29 +139,6 @@ namespace tusdotnet.IntentHandlers
             return TaskHelper.Completed;
         }
 
-        //private Task<bool> IsPartialUpload()
-        //{
-        //    if (!StoreAdapter.Extensions.Concatenation)
-        //    {
-        //        return Task.FromResult(false);
-        //    }
-
-        //    return IsPartialUploadLocal();
-
-        //    async Task<bool> IsPartialUploadLocal()
-        //    {
-        //        var concat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
-
-        //        return concat is FileConcatPartial;
-        //    }
-        //}
-
-        //private async Task<bool> FileIsComplete(string fileId, long fileOffset, long bytesWritten)
-        //{
-        //    var fileUploadLength = await Store.GetUploadLengthAsync(fileId, CancellationToken);
-        //    return fileOffset + bytesWritten == fileUploadLength;
-        //}
-
         private Requirement[] GetListOfRequirements()
         {
             var contentTypeRequirement = new ContentType();
@@ -172,17 +149,15 @@ namespace tusdotnet.IntentHandlers
             // Initiated using creation-with-upload meaning that we can guarantee that the file already exist, the offset is correct etc.
             if (_initiatedFromCreationWithUpload)
             {
-                return new Requirement[]
-                {
+                return [
                     contentTypeRequirement,
                     uploadLengthRequirement,
                     uploadChecksumRequirement,
                     fileHasNotExpired
-                };
+                ];
             }
 
-            return new Requirement[]
-            {
+            return [
                 new FileExist(),
                 contentTypeRequirement,
                 uploadLengthRequirement,
@@ -192,7 +167,7 @@ namespace tusdotnet.IntentHandlers
                 fileHasNotExpired,
                 new RequestOffsetMatchesFileOffset(),
                 new FileIsNotCompleted()
-            };
+            ];
         }
     }
 }

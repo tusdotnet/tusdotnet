@@ -3,7 +3,9 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Extensions;
+using tusdotnet.Extensions.Store;
 using tusdotnet.Models;
+using tusdotnet.Stores.Hashers;
 
 namespace tusdotnet.Stores
 {
@@ -25,11 +27,6 @@ namespace tusdotnet.Stores
 
             try
             {
-                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(
-                    fileId,
-                    cancellationToken
-                );
-
                 using var diskFileStream = await TryOpenStreamDueToNetFxAndNetworkShareIssue(
                     internalFileId,
                     cancellationToken
@@ -40,11 +37,20 @@ namespace tusdotnet.Stores
                     return 0;
                 }
 
+                var fileUploadLengthProvidedDuringCreate = await GetUploadLengthAsync(
+                    fileId,
+                    cancellationToken
+                );
+
                 var totalDiskFileLength = diskFileStream.Length;
                 if (fileUploadLengthProvidedDuringCreate == totalDiskFileLength)
                 {
                     return 0;
                 }
+
+                using var hasher = TusDiskStoreHasher.Create(
+                    stream.GetUploadChecksumInfo()?.Algorithm
+                );
 
                 var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
 
@@ -66,6 +72,7 @@ namespace tusdotnet.Stores
                         _maxReadBufferSize,
                         cancellationToken
                     );
+
                     clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
 
                     totalDiskFileLength += numberOfbytesReadFromClient;
@@ -87,6 +94,9 @@ namespace tusdotnet.Stores
                             fileWriteBuffer,
                             writeBufferNextFreeIndex
                         );
+
+                        hasher.Append(fileWriteBuffer, writeBufferNextFreeIndex);
+
                         writeBufferNextFreeIndex = 0;
                     }
 
@@ -104,11 +114,14 @@ namespace tusdotnet.Stores
 
                 // Flush the remaining buffer to disk.
                 if (writeBufferNextFreeIndex != 0)
+                {
                     await diskFileStream.FlushFileToDisk(fileWriteBuffer, writeBufferNextFreeIndex);
+                    hasher.Append(fileWriteBuffer, writeBufferNextFreeIndex);
+                }
 
                 if (!clientDisconnectedDuringRead)
                 {
-                    MarkChunkComplete(chunkCompleteFile);
+                    MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
                 }
 
                 return bytesWrittenThisRequest;
