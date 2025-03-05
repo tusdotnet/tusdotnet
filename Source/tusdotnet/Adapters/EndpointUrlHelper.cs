@@ -8,9 +8,7 @@ namespace tusdotnet.Adapters
     {
         public static EndpointUrlHelper Instance { get; } = new();
 
-        private EndpointUrlHelper()
-        {
-        }
+        private EndpointUrlHelper() { }
 
         public string ParseFileId(ContextAdapter context)
         {
@@ -19,7 +17,9 @@ namespace tusdotnet.Adapters
 
         public bool UrlMatchesFileIdUrl(ContextAdapter context)
         {
-            return context.HttpContext.Request.RouteValues.ContainsKey(EndpointRouteConstants.FileId);
+            return context.HttpContext.Request.RouteValues.ContainsKey(
+                EndpointRouteConstants.FileId
+            );
         }
 
         public bool UrlMatchesUrlPath(ContextAdapter context)

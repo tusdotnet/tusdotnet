@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace AspNetCore_net6._0_TestApp.Authentication;
 
@@ -21,7 +21,8 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
         ILoggerFactory logger,
         UrlEncoder encoder,
         ISystemClock clock,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor
+    )
         : base(options, logger, encoder, clock)
     {
         _httpContextAccessor = httpContextAccessor;
@@ -31,13 +32,16 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
     {
         var shouldAuthorize = HasAuthorizeAttribute();
 
-        if(!shouldAuthorize)
+        if (!shouldAuthorize)
             return Task.FromResult(AuthenticateResult.NoResult());
 
         if (!Request.Headers.ContainsKey("Authorization"))
         {
             // Force browser to display login prompt.
-            _httpContextAccessor.HttpContext!.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-net6"));
+            _httpContextAccessor.HttpContext!.Response.Headers.Add(
+                "WWW-Authenticate",
+                new StringValues("Basic realm=tusdotnet-test-net6")
+            );
             return Task.FromResult(AuthenticateResult.Fail("No header provided"));
         }
 
@@ -45,7 +49,9 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
         try
         {
             var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
-            var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader.Parameter!)).Split(':');
+            var credentials = Encoding
+                .UTF8.GetString(Convert.FromBase64String(authHeader.Parameter!))
+                .Split(':');
             isAuthenticated = Authenticate(credentials[0], credentials[1]);
         }
         catch
@@ -56,12 +62,20 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
         if (!isAuthenticated)
             return Task.FromResult(AuthenticateResult.Fail("Invalid Username or Password"));
 
-        var claims = new[] {
-                new Claim(ClaimTypes.NameIdentifier, Username),
-                new Claim(ClaimTypes.Name, Username),
-            };
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, Username),
+            new Claim(ClaimTypes.Name, Username),
+        };
 
-        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
+        return Task.FromResult(
+            AuthenticateResult.Success(
+                new AuthenticationTicket(
+                    new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)),
+                    Scheme.Name
+                )
+            )
+        );
     }
 
     private bool HasAuthorizeAttribute()

@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 
 namespace AspNetCore_netcoreapp3_0_TestApp.Middleware
 {
@@ -27,7 +27,10 @@ namespace AspNetCore_netcoreapp3_0_TestApp.Middleware
             {
                 _logger.LogError(exc, exc.Message);
                 context.Response.StatusCode = 500;
-                await context.Response.WriteAsync("An internal server error has occurred", context.RequestAborted);
+                await context.Response.WriteAsync(
+                    "An internal server error has occurred",
+                    context.RequestAborted
+                );
             }
         }
     }
@@ -39,7 +42,9 @@ namespace AspNetCore_netcoreapp3_0_TestApp.Middleware
         /// </summary>
         /// <param name="builder"></param>
         /// <returns></returns>
-        public static IApplicationBuilder UseSimpleExceptionHandler(this IApplicationBuilder builder)
+        public static IApplicationBuilder UseSimpleExceptionHandler(
+            this IApplicationBuilder builder
+        )
         {
             return builder.UseMiddleware<SimpleExceptionHandlerMiddleware>();
         }

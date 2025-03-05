@@ -8,7 +8,10 @@ namespace tusdotnet.test.Data
 
         public Exception ExceptionThatIsThrown { get; set; }
 
-        public DisconnectPipelineEmulationInfo(bool flagsCancellationTokenAsCancelled, Exception exceptionThatIsThrown)
+        public DisconnectPipelineEmulationInfo(
+            bool flagsCancellationTokenAsCancelled,
+            Exception exceptionThatIsThrown
+        )
         {
             FlagsCancellationTokenAsCancelled = flagsCancellationTokenAsCancelled;
             ExceptionThatIsThrown = exceptionThatIsThrown;

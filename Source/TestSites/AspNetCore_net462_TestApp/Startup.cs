@@ -32,22 +32,28 @@ namespace AspNetCore_Net462_TestApp
             app.UseDefaultFiles();
             app.UseStaticFiles();
 
-            app.UseCors(builder => builder
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowAnyOrigin()
-                .WithExposedHeaders(CorsHelper.GetExposedHeaders()));
+            app.UseCors(builder =>
+                builder
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowAnyOrigin()
+                    .WithExposedHeaders(CorsHelper.GetExposedHeaders())
+            );
 
             app.UseSimpleExceptionHandler();
 
             // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
             // In this case we just return the same configuration for everyone.
-            app.UseTus(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
+            app.UseTus(httpContext =>
+                Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>())
+            );
 
             // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
-            // This is done because the file's metadata is domain specific and thus cannot be handled 
+            // This is done because the file's metadata is domain specific and thus cannot be handled
             // in a generic way by tusdotnet.
-            app.UseSimpleDownloadMiddleware(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
+            app.UseSimpleDownloadMiddleware(httpContext =>
+                Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>())
+            );
 
             // Start cleanup job to remove incomplete expired files.
             var cleanupService = app.ApplicationServices.GetService<ExpiredFilesCleanupService>();
@@ -79,7 +85,10 @@ namespace AspNetCore_Net462_TestApp
                             ctx.FailRequest("name metadata must be specified. ");
                         }
 
-                        if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
+                        if (
+                            !ctx.Metadata.ContainsKey("contentType")
+                            || ctx.Metadata["contentType"].HasEmptyValue
+                        )
                         {
                             ctx.FailRequest("contentType metadata must be specified. ");
                         }
@@ -88,7 +97,9 @@ namespace AspNetCore_Net462_TestApp
                     },
                     OnCreateCompleteAsync = ctx =>
                     {
-                        logger.LogInformation($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        logger.LogInformation(
+                            $"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                        );
                         return Task.CompletedTask;
                     },
                     OnBeforeDeleteAsync = ctx =>
@@ -98,12 +109,16 @@ namespace AspNetCore_Net462_TestApp
                     },
                     OnDeleteCompleteAsync = ctx =>
                     {
-                        logger.LogInformation($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        logger.LogInformation(
+                            $"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                        );
                         return Task.CompletedTask;
                     },
                     OnFileCompleteAsync = ctx =>
                     {
-                        logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");
+                        logger.LogInformation(
+                            $"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}"
+                        );
                         // If the store implements ITusReadableStore one could access the completed file here.
                         // The default TusDiskStore implements this interface:
                         //var file = await ctx.GetFileAsync();

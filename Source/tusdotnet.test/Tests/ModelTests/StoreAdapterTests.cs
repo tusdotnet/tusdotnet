@@ -1,11 +1,11 @@
-﻿using NSubstitute;
-using Shouldly;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using NSubstitute;
+using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Stores;
@@ -20,14 +20,22 @@ namespace tusdotnet.test.Tests.ModelTests
         public async Task Forwards_Each_Call_To_The_Store()
         {
             // Create a mock store and save stores for later use.
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusTerminationStore, ITusReadableStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusTerminationStore,
+                ITusReadableStore
+            >();
             var creationStore = (ITusCreationStore)store;
             var terminationStore = (ITusTerminationStore)store;
             var readableStore = (ITusReadableStore)store;
 
             // Mock calls to store to be able to use Received() later.
-            creationStore.CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
-            terminationStore.DeleteFileAsync(default, default).ReturnsForAnyArgs(Task.FromResult(false));
+            creationStore
+                .CreateFileAsync(default, default, default)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            terminationStore
+                .DeleteFileAsync(default, default)
+                .ReturnsForAnyArgs(Task.FromResult(false));
             var tusFile = Substitute.For<ITusFile>();
             readableStore.GetFileAsync(default, default).ReturnsForAnyArgs(tusFile);
 
@@ -57,14 +65,26 @@ namespace tusdotnet.test.Tests.ModelTests
 
             var storeAdapter = new StoreAdapter(store, TusExtensions.All);
 
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.CreateFileAsync(default, default, default));
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.VerifyChecksumAsync(default, default, default, default));
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.DeleteFileAsync(default, default));
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () => await storeAdapter.CreateFileAsync(default, default, default)
+            );
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () =>
+                    await storeAdapter.VerifyChecksumAsync(default, default, default, default)
+            );
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () => await storeAdapter.DeleteFileAsync(default, default)
+            );
 
             store = MockStoreHelper.CreateWithExtensions<ITusTerminationStore>();
             storeAdapter = new StoreAdapter(store, TusExtensions.All);
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.CreateFileAsync(default, default, default));
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.VerifyChecksumAsync(default, default, default, default));
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () => await storeAdapter.CreateFileAsync(default, default, default)
+            );
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () =>
+                    await storeAdapter.VerifyChecksumAsync(default, default, default, default)
+            );
 
             try
             {
@@ -72,7 +92,10 @@ namespace tusdotnet.test.Tests.ModelTests
             }
             catch (InvalidOperationException)
             {
-                true.ShouldBe(false, "Call to DeleteFileAsync caused a InvalidOperationException but should not have");
+                true.ShouldBe(
+                    false,
+                    "Call to DeleteFileAsync caused a InvalidOperationException but should not have"
+                );
             }
             catch
             {
@@ -83,7 +106,11 @@ namespace tusdotnet.test.Tests.ModelTests
         [Fact]
         public async Task Does_Not_Throw_InvalidOperationException_If_Store_Support_The_Extension_But_The_Extension_Has_Been_Disabled()
         {
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusChecksumStore, ITusTerminationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusChecksumStore,
+                ITusTerminationStore
+            >();
 
             var storeAdapter = new StoreAdapter(store, TusExtensions.None);
 
@@ -91,12 +118,17 @@ namespace tusdotnet.test.Tests.ModelTests
             {
                 await storeAdapter.CreateFileAsync(default, default, default);
                 await storeAdapter.VerifyChecksumAsync(default, default, default, default);
-                await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.DeleteFileAsync(default, default));
+                await Should.ThrowAsync<InvalidOperationException>(
+                    async () => await storeAdapter.DeleteFileAsync(default, default)
+                );
                 await storeAdapter.DeleteFileAsync(default, default);
             }
             catch (InvalidOperationException)
             {
-                true.ShouldBe(false, "Call to DeleteFileAsync caused a InvalidOperationException but should not have");
+                true.ShouldBe(
+                    false,
+                    "Call to DeleteFileAsync caused a InvalidOperationException but should not have"
+                );
             }
             catch
             {
@@ -109,25 +141,48 @@ namespace tusdotnet.test.Tests.ModelTests
         {
             var store = new TusDiskStore(System.IO.Path.GetTempPath());
             var storeAdapter = new StoreAdapter(store, TusExtensions.All);
-            IEnumerable<PropertyInfo> extensionProperties = storeAdapter.Extensions.GetType().GetProperties();
+            IEnumerable<PropertyInfo> extensionProperties = storeAdapter
+                .Extensions.GetType()
+                .GetProperties();
 
-            extensionProperties = OnlyPlatformSupportedExtensions(storeAdapter.Extensions, extensionProperties);
+            extensionProperties = OnlyPlatformSupportedExtensions(
+                storeAdapter.Extensions,
+                extensionProperties
+            );
 
             AssertAllProperties(extensionProperties, storeAdapter.Extensions, true);
 
-            storeAdapter = new(store, TusExtensions.All.Except(TusExtensions.Expiration, TusExtensions.CreationWithUpload, TusExtensions.ChecksumTrailer));
+            storeAdapter = new(
+                store,
+                TusExtensions.All.Except(
+                    TusExtensions.Expiration,
+                    TusExtensions.CreationWithUpload,
+                    TusExtensions.ChecksumTrailer
+                )
+            );
             extensionProperties = storeAdapter.Extensions.GetType().GetProperties();
 
-            var disabled = extensionProperties.Where(x => x.Name is nameof(TusExtensions.Expiration) or nameof(TusExtensions.CreationWithUpload) or nameof(TusExtensions.ChecksumTrailer));
+            var disabled = extensionProperties.Where(x =>
+                x.Name
+                    is nameof(TusExtensions.Expiration)
+                        or nameof(TusExtensions.CreationWithUpload)
+                        or nameof(TusExtensions.ChecksumTrailer)
+            );
             var allOthers = extensionProperties.Except(disabled);
 
             AssertAllProperties(disabled, storeAdapter.Extensions, false);
 
-            extensionProperties = OnlyPlatformSupportedExtensions(storeAdapter.Extensions, extensionProperties);
+            extensionProperties = OnlyPlatformSupportedExtensions(
+                storeAdapter.Extensions,
+                extensionProperties
+            );
 
             AssertAllProperties(allOthers, storeAdapter.Extensions, true);
 
-            static IEnumerable<PropertyInfo> OnlyPlatformSupportedExtensions(StoreExtensions storeExtensions, IEnumerable<PropertyInfo> extensions)
+            static IEnumerable<PropertyInfo> OnlyPlatformSupportedExtensions(
+                StoreExtensions storeExtensions,
+                IEnumerable<PropertyInfo> extensions
+            )
             {
 #if !trailingheaders
                 storeExtensions.ChecksumTrailer.ShouldBeFalse();
@@ -145,11 +200,20 @@ namespace tusdotnet.test.Tests.ModelTests
 
             var storeAdapter = new StoreAdapter(store, TusExtensions.All);
 
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.GetFileAsync(default, default));
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () => await storeAdapter.GetFileAsync(default, default)
+            );
 
 #if pipelines
 
-            await Should.ThrowAsync<InvalidOperationException>(async () => await storeAdapter.AppendDataAsync(default, (System.IO.Pipelines.PipeReader)default, default));
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () =>
+                    await storeAdapter.AppendDataAsync(
+                        default,
+                        (System.IO.Pipelines.PipeReader)default,
+                        default
+                    )
+            );
 
 #endif
         }
@@ -161,19 +225,30 @@ namespace tusdotnet.test.Tests.ModelTests
             var storeAdapter = new StoreAdapter(store, TusExtensions.All);
 
             AssertAllProperties(
-                OnlyPlatformSupportedFeatures(storeAdapter.Features.GetType().GetProperties(), storeAdapter.Features),
+                OnlyPlatformSupportedFeatures(
+                    storeAdapter.Features.GetType().GetProperties(),
+                    storeAdapter.Features
+                ),
                 storeAdapter.Features,
-                true);
+                true
+            );
 
             store = Substitute.For<ITusStore>();
             storeAdapter = new(store, TusExtensions.All);
 
             AssertAllProperties(
-                OnlyPlatformSupportedFeatures(storeAdapter.Features.GetType().GetProperties(), storeAdapter.Features),
+                OnlyPlatformSupportedFeatures(
+                    storeAdapter.Features.GetType().GetProperties(),
+                    storeAdapter.Features
+                ),
                 storeAdapter.Features,
-                false);
+                false
+            );
 
-            static IEnumerable<PropertyInfo> OnlyPlatformSupportedFeatures(IEnumerable<PropertyInfo> features, StoreFeatures storeFeatures)
+            static IEnumerable<PropertyInfo> OnlyPlatformSupportedFeatures(
+                IEnumerable<PropertyInfo> features,
+                StoreFeatures storeFeatures
+            )
             {
 #if !pipelines
                 return features.Where(f => f.Name is not nameof(StoreFeatures.Pipelines));
@@ -185,7 +260,7 @@ namespace tusdotnet.test.Tests.ModelTests
 
         /*
          * Using ShouldAllBe fails the test:
-            Message: 
+            Message:
                 Shouldly.ShouldAssertException : x
                     should satisfy the condition
                 false
@@ -193,7 +268,11 @@ namespace tusdotnet.test.Tests.ModelTests
                 [False, False]
                     do not
          */
-        private static void AssertAllProperties(IEnumerable<PropertyInfo> properties, object sourceObject, bool expected)
+        private static void AssertAllProperties(
+            IEnumerable<PropertyInfo> properties,
+            object sourceObject,
+            bool expected
+        )
         {
             foreach (var item in properties)
             {

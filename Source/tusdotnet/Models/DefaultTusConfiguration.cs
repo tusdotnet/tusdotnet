@@ -29,8 +29,15 @@ namespace tusdotnet.Models
         /// This callback is called only once after the last bytes have been written to the store.
         /// It will not be called for any subsequent upload requests for already completed files.
         /// </summary>
-        [Obsolete("This callback is obsolete. Use DefaultTusConfiguration.Events.OnFileCompleteAsync instead.")]
-        public virtual Func<string, ITusStore, CancellationToken, Task> OnUploadCompleteAsync { get; set; }
+        [Obsolete(
+            "This callback is obsolete. Use DefaultTusConfiguration.Events.OnFileCompleteAsync instead."
+        )]
+        public virtual Func<
+            string,
+            ITusStore,
+            CancellationToken,
+            Task
+        > OnUploadCompleteAsync { get; set; }
 
         /// <summary>
         /// Lock provider to use when locking to prevent files from being accessed while the file is still in use.
@@ -64,7 +71,6 @@ namespace tusdotnet.Models
         /// This is only available on .NET Core 3.1 or later and if the store supports it through the ITusPipelineStore interface.
         /// </summary>
         public virtual bool UsePipelinesIfAvailable { get; set; }
-
 #endif
 
         /// <summary>
@@ -90,7 +96,7 @@ namespace tusdotnet.Models
 
 #if pipelines
         /// <summary>
-        /// Timeout to wait for data from the client. 
+        /// Timeout to wait for data from the client.
         /// The timeout is applied from the moment the store starts reading from the client until it has filled its internal read buffer.
         /// Once the buffer is filled, the timeout is reset and restarted on the next read.
         /// When <see cref="UsePipelinesIfAvailable" /> is enabled, the internal read buffer is always 4 KiB. When false, it is determined by the store.
@@ -99,7 +105,7 @@ namespace tusdotnet.Models
         /// </summary>
 #else
         /// <summary>
-        /// Timeout to wait for data from the client. 
+        /// Timeout to wait for data from the client.
         /// The timeout is applied from the moment the store starts reading from the client until it has filled its internal read buffer.
         /// Once the buffer is filled, the timeout is reset and restarted on the next read. The buffer size is determined by the store.
         /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abrubtly disconnects due to network loss or similar.

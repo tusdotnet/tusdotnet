@@ -17,7 +17,8 @@ namespace AspNetCore_net462_TestApp.Services
         public ExpiredFilesCleanupService(
             IApplicationLifetime applicationLifetime,
             DefaultTusConfiguration tusConfiguration,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory
+        )
         {
             _applicationLifetime = applicationLifetime;
             _expirationStore = (ITusExpirationStore)tusConfiguration.Store;
@@ -34,20 +35,26 @@ namespace AspNetCore_net462_TestApp.Services
             }
 
             var onAppDisposingToken = _applicationLifetime.ApplicationStopping;
-            Task.Run(async () =>
-            {
-                while (!onAppDisposingToken.IsCancellationRequested)
+            Task.Run(
+                async () =>
                 {
-                    _logger.LogInformation("Running cleanup job...");
+                    while (!onAppDisposingToken.IsCancellationRequested)
+                    {
+                        _logger.LogInformation("Running cleanup job...");
 
-                    var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(onAppDisposingToken);
+                        var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
+                            onAppDisposingToken
+                        );
 
-                    _logger.LogInformation(
-                        $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms");
+                        _logger.LogInformation(
+                            $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
+                        );
 
-                    await Task.Delay(_expiration.Timeout, onAppDisposingToken);
-                }
-            }, onAppDisposingToken);
+                        await Task.Delay(_expiration.Timeout, onAppDisposingToken);
+                    }
+                },
+                onAppDisposingToken
+            );
         }
     }
 }

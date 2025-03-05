@@ -9,7 +9,11 @@ namespace tusdotnet.Helpers
 {
     internal static class EventHelper
     {
-        internal static async Task<ResultType> Validate<T>(ContextAdapter context, Action<T> configure = null) where T : ValidationContext<T>, new()
+        internal static async Task<ResultType> Validate<T>(
+            ContextAdapter context,
+            Action<T> configure = null
+        )
+            where T : ValidationContext<T>, new()
         {
             var handler = GetHandlerFromEvents<T>(context.Configuration.Events);
 
@@ -28,14 +32,19 @@ namespace tusdotnet.Helpers
                 {
                     includeTusResumableHeaderInResponse = false;
                 }
-                context.Response.Error(eventContext.StatusCode, eventContext.ErrorMessage, includeTusResumableHeaderInResponse);
+                context.Response.Error(
+                    eventContext.StatusCode,
+                    eventContext.ErrorMessage,
+                    includeTusResumableHeaderInResponse
+                );
                 return ResultType.StopExecution;
             }
 
             return ResultType.ContinueExecution;
         }
 
-        internal static async Task Notify<T>(ContextAdapter context, Action<T> configure = null) where T : EventContext<T>, new()
+        internal static async Task Notify<T>(ContextAdapter context, Action<T> configure = null)
+            where T : EventContext<T>, new()
         {
             var handler = GetHandlerFromEvents<T>(context.Configuration.Events);
 
@@ -49,7 +58,8 @@ namespace tusdotnet.Helpers
             await handler(eventContext);
         }
 
-        private static Func<T, Task> GetHandlerFromEvents<T>(Events events) where T : EventContext<T>, new()
+        private static Func<T, Task> GetHandlerFromEvents<T>(Events events)
+            where T : EventContext<T>, new()
         {
             if (events == null)
             {
@@ -76,10 +86,16 @@ namespace tusdotnet.Helpers
             return null;
         }
 
-        internal static async Task NotifyFileComplete(ContextAdapter context, Action<FileCompleteContext> configure = null)
+        internal static async Task NotifyFileComplete(
+            ContextAdapter context,
+            Action<FileCompleteContext> configure = null
+        )
         {
 #pragma warning disable CS0618 // Type or member is obsolete
-            if (context.Configuration.OnUploadCompleteAsync == null && context.Configuration.Events?.OnFileCompleteAsync == null)
+            if (
+                context.Configuration.OnUploadCompleteAsync == null
+                && context.Configuration.Events?.OnFileCompleteAsync == null
+            )
             {
                 return;
             }
@@ -88,7 +104,11 @@ namespace tusdotnet.Helpers
 
             if (context.Configuration.OnUploadCompleteAsync != null)
             {
-                await context.Configuration.OnUploadCompleteAsync(eventContext.FileId, eventContext.Store, eventContext.CancellationToken);
+                await context.Configuration.OnUploadCompleteAsync(
+                    eventContext.FileId,
+                    eventContext.Store,
+                    eventContext.CancellationToken
+                );
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 

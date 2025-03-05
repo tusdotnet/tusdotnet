@@ -8,46 +8,54 @@ namespace tusdotnet.Runners.Events
 {
     internal class CreateFileHandlerWithEvents : IntentHandlerWithEvents
     {
-        public CreateFileHandlerWithEvents(IntentHandler handler) : base(handler)
-        {
-        }
+        public CreateFileHandlerWithEvents(IntentHandler handler)
+            : base(handler) { }
 
         internal override async Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
-            {
-                ctx.Intent = IntentType.CreateFile;
-            });
+            return await EventHelper.Validate<AuthorizeContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.Intent = IntentType.CreateFile;
+                }
+            );
         }
 
         internal override async Task NotifyAfterAction()
         {
-            await EventHelper.Notify<CreateCompleteContext>(Context, ctx =>
-            {
-                ctx.FileId = Context.FileId;
-                ctx.FileConcatenation = null;
-                ctx.Metadata = Context.Cache.Metadata;
-                ctx.UploadLength = Context.Request.Headers.UploadLength;
-                ctx.Context = Context;
-            });
+            await EventHelper.Notify<CreateCompleteContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.FileId = Context.FileId;
+                    ctx.FileConcatenation = null;
+                    ctx.Metadata = Context.Cache.Metadata;
+                    ctx.UploadLength = Context.Request.Headers.UploadLength;
+                    ctx.Context = Context;
+                }
+            );
 
             var isEmptyFile = Context.Request.Headers.UploadLength == 0;
 
             if (isEmptyFile)
             {
-                // Normally we would call NotifyFileComplete from WriteFileHandler but since we never use 
-                // WriteFileContextForCreationWithUpload if the file is empty, nor allow PATCH requests for the file, we need to trigger the event here. 
+                // Normally we would call NotifyFileComplete from WriteFileHandler but since we never use
+                // WriteFileContextForCreationWithUpload if the file is empty, nor allow PATCH requests for the file, we need to trigger the event here.
                 await EventHelper.NotifyFileComplete(Context);
             }
         }
 
         internal override async Task<ResultType> ValidateBeforeAction()
         {
-            var result = await EventHelper.Validate<BeforeCreateContext>(Context, ctx =>
-            {
-                ctx.Metadata = Context.Cache.Metadata;
-                ctx.UploadLength = Context.Request.Headers.UploadLength;
-            });
+            var result = await EventHelper.Validate<BeforeCreateContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.Metadata = Context.Cache.Metadata;
+                    ctx.UploadLength = Context.Request.Headers.UploadLength;
+                }
+            );
 
             return result;
         }

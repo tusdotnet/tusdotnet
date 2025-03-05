@@ -5,7 +5,7 @@ using tusdotnet.Helpers;
 
 namespace tusdotnet.Validation.Requirements
 {
-    internal class FileHasNotExpired  : Requirement
+    internal class FileHasNotExpired : Requirement
     {
         public override Task Validate(ContextAdapter context)
         {
@@ -19,7 +19,10 @@ namespace tusdotnet.Validation.Requirements
 
         private async Task ValidateInternal(ContextAdapter context)
         {
-            var expires = await context.StoreAdapter.GetExpirationAsync(context.FileId, context.CancellationToken);
+            var expires = await context.StoreAdapter.GetExpirationAsync(
+                context.FileId,
+                context.CancellationToken
+            );
             if (expires?.HasPassed() == true)
             {
                 await NotFound();

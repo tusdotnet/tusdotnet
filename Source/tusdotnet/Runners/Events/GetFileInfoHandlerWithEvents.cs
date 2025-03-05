@@ -8,16 +8,18 @@ namespace tusdotnet.Runners.Events
 {
     internal class GetFileInfoHandlerWithEvents : IntentHandlerWithEvents
     {
-        public GetFileInfoHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
-        {
-        }
+        public GetFileInfoHandlerWithEvents(IntentHandler intentHandler)
+            : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
-            {
-                ctx.Intent = IntentType.GetFileInfo;
-            });
+            return await EventHelper.Validate<AuthorizeContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.Intent = IntentType.GetFileInfo;
+                }
+            );
         }
 
         internal override Task NotifyAfterAction()

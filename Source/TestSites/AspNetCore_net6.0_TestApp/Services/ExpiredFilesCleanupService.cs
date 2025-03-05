@@ -11,7 +11,10 @@ public sealed class ExpiredFilesCleanupService : IHostedService, IDisposable
     private readonly ILogger<ExpiredFilesCleanupService> _logger;
     private Timer? _timer;
 
-    public ExpiredFilesCleanupService(ILogger<ExpiredFilesCleanupService> logger, DefaultTusConfiguration config)
+    public ExpiredFilesCleanupService(
+        ILogger<ExpiredFilesCleanupService> logger,
+        DefaultTusConfiguration config
+    )
     {
         _logger = logger;
         _expirationStore = (ITusExpirationStore)config.Store;
@@ -27,7 +30,12 @@ public sealed class ExpiredFilesCleanupService : IHostedService, IDisposable
         }
 
         await RunCleanup(cancellationToken);
-        _timer = new Timer(async (e) => await RunCleanup((CancellationToken)e!), cancellationToken, TimeSpan.Zero, _expiration.Timeout);
+        _timer = new Timer(
+            async (e) => await RunCleanup((CancellationToken)e!),
+            cancellationToken,
+            TimeSpan.Zero,
+            _expiration.Timeout
+        );
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
@@ -46,8 +54,12 @@ public sealed class ExpiredFilesCleanupService : IHostedService, IDisposable
         try
         {
             _logger.LogInformation("Running cleanup job...");
-            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(cancellationToken);
-            _logger.LogInformation($"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms");
+            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
+                cancellationToken
+            );
+            _logger.LogInformation(
+                $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
+            );
         }
         catch (Exception exc)
         {

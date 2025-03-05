@@ -10,7 +10,10 @@ namespace Owin_net452_TestApp.Extensions
 {
     public static class CleanupJobIAppBuilderExtensions
     {
-        public static void StartCleanupJob(this IAppBuilder app, DefaultTusConfiguration tusConfiguration)
+        public static void StartCleanupJob(
+            this IAppBuilder app,
+            DefaultTusConfiguration tusConfiguration
+        )
         {
             var expiration = tusConfiguration.Expiration;
 
@@ -21,21 +24,29 @@ namespace Owin_net452_TestApp.Extensions
             }
 
             var expirationStore = (ITusExpirationStore)tusConfiguration.Store;
-            var onAppDisposingToken = new OwinContext(app.Properties).Get<CancellationToken>("host.OnAppDisposing");
-            Task.Run(async () =>
-            {
-                while (!onAppDisposingToken.IsCancellationRequested)
+            var onAppDisposingToken = new OwinContext(app.Properties).Get<CancellationToken>(
+                "host.OnAppDisposing"
+            );
+            Task.Run(
+                async () =>
                 {
-                    Console.WriteLine("Running cleanup job...");
+                    while (!onAppDisposingToken.IsCancellationRequested)
+                    {
+                        Console.WriteLine("Running cleanup job...");
 
-                    var numberOfRemovedFiles = await expirationStore.RemoveExpiredFilesAsync(onAppDisposingToken);
+                        var numberOfRemovedFiles = await expirationStore.RemoveExpiredFilesAsync(
+                            onAppDisposingToken
+                        );
 
-                    Console.WriteLine(
-                        $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {expiration.Timeout.TotalMilliseconds} ms");
+                        Console.WriteLine(
+                            $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {expiration.Timeout.TotalMilliseconds} ms"
+                        );
 
-                    await Task.Delay(expiration.Timeout, onAppDisposingToken);
-                }
-            }, onAppDisposingToken);
+                        await Task.Delay(expiration.Timeout, onAppDisposingToken);
+                    }
+                },
+                onAppDisposingToken
+            );
         }
     }
 }

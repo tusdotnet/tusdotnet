@@ -24,7 +24,10 @@ namespace tusdotnet.Helpers
             _getSystemTime = context.Configuration.GetSystemTime;
         }
 
-        internal async Task<DateTimeOffset?> SetExpirationIfSupported(string fileId, CancellationToken cancellationToken)
+        internal async Task<DateTimeOffset?> SetExpirationIfSupported(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
             if (!_isSupported)
             {
@@ -37,7 +40,10 @@ namespace tusdotnet.Helpers
             return expires;
         }
 
-        internal Task<DateTimeOffset?> GetExpirationIfSupported(string fileId, CancellationToken cancellationToken)
+        internal Task<DateTimeOffset?> GetExpirationIfSupported(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
             if (!_isSupported)
             {

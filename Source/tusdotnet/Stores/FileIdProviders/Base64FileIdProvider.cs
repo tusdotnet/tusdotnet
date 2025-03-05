@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using tusdotnet.Interfaces;
 
 namespace tusdotnet.Stores.FileIdProviders
@@ -84,7 +84,8 @@ namespace tusdotnet.Stores.FileIdProviders
                     return Task.FromResult(false);
             }
 
-            if (realIdLength != _idLength) return Task.FromResult(false);
+            if (realIdLength != _idLength)
+                return Task.FromResult(false);
             return Task.FromResult(true);
         }
     }

@@ -8,16 +8,18 @@ namespace tusdotnet.Runners.Events
 {
     internal class DeleteFileHandlerWithEvents : IntentHandlerWithEvents
     {
-        public DeleteFileHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
-        {
-        }
+        public DeleteFileHandlerWithEvents(IntentHandler intentHandler)
+            : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
-            {
-                ctx.Intent = IntentType.DeleteFile;
-            });
+            return await EventHelper.Validate<AuthorizeContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.Intent = IntentType.DeleteFile;
+                }
+            );
         }
 
         internal override async Task NotifyAfterAction()

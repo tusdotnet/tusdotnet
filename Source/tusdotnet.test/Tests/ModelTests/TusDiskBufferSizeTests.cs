@@ -1,5 +1,5 @@
-﻿using Shouldly;
-using System;
+﻿using System;
+using Shouldly;
 using tusdotnet.Models;
 using tusdotnet.Stores;
 using Xunit;
@@ -19,7 +19,9 @@ namespace tusdotnet.test.Tests.ModelTests
             var bufferSize = new TusDiskBufferSize(writeBufferSize);
 
             bufferSize.WriteBufferSizeInBytes.ShouldBe(writeBufferSize);
-            bufferSize.ReadBufferSizeInBytes.ShouldBe(TusDiskBufferSize.DefaultReadBufferSizeInBytes);
+            bufferSize.ReadBufferSizeInBytes.ShouldBe(
+                TusDiskBufferSize.DefaultReadBufferSizeInBytes
+            );
         }
 
         [Fact]
@@ -41,14 +43,18 @@ namespace tusdotnet.test.Tests.ModelTests
         [InlineData(0, 1, true)]
         [InlineData(-1, 1, true)]
         [InlineData(1, -1, true)]
-        public void It_Throws_Exception_For_Invalid_Values(int writeBufferSize, int readBufferSize, bool shouldThrowException)
+        public void It_Throws_Exception_For_Invalid_Values(
+            int writeBufferSize,
+            int readBufferSize,
+            bool shouldThrowException
+        )
         {
             try
             {
                 var bufferSize = new TusDiskBufferSize(writeBufferSize, readBufferSize);
                 Assert.False(shouldThrowException);
             }
-            catch(TusConfigurationException)
+            catch (TusConfigurationException)
             {
                 Assert.True(shouldThrowException);
             }

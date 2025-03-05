@@ -8,17 +8,14 @@
             TusMaxSize
         }
 
-        internal MaxReadSizeExceededException(SizeSourceType sizeSource) 
-            : base(GetMessage(sizeSource))
-        {
-        }
+        internal MaxReadSizeExceededException(SizeSourceType sizeSource)
+            : base(GetMessage(sizeSource)) { }
 
         private static string GetMessage(SizeSourceType sizeSource)
         {
-            return sizeSource == SizeSourceType.UploadLength 
+            return sizeSource == SizeSourceType.UploadLength
                 ? "Request contains more data than the file's upload length"
                 : "Request exceeds the server's max file size";
-
         }
     }
 }

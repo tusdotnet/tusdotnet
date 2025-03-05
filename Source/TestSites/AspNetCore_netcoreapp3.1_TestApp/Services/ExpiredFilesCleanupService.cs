@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Expiration;
@@ -16,7 +16,10 @@ namespace AspNetCore_netcoreapp3_1_TestApp.Services
         private readonly ILogger<ExpiredFilesCleanupService> _logger;
         private Timer _timer;
 
-        public ExpiredFilesCleanupService(ILogger<ExpiredFilesCleanupService> logger, DefaultTusConfiguration config)
+        public ExpiredFilesCleanupService(
+            ILogger<ExpiredFilesCleanupService> logger,
+            DefaultTusConfiguration config
+        )
         {
             _logger = logger;
             _expirationStore = (ITusExpirationStore)config.Store;
@@ -32,7 +35,12 @@ namespace AspNetCore_netcoreapp3_1_TestApp.Services
             }
 
             await RunCleanup(cancellationToken);
-            _timer = new Timer(async (e) => await RunCleanup((CancellationToken)e), cancellationToken, TimeSpan.Zero, _expiration.Timeout);
+            _timer = new Timer(
+                async (e) => await RunCleanup((CancellationToken)e),
+                cancellationToken,
+                TimeSpan.Zero,
+                _expiration.Timeout
+            );
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -51,8 +59,12 @@ namespace AspNetCore_netcoreapp3_1_TestApp.Services
             try
             {
                 _logger.LogInformation("Running cleanup job...");
-                var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(cancellationToken);
-                _logger.LogInformation($"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms");
+                var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
+                    cancellationToken
+                );
+                _logger.LogInformation(
+                    $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
+                );
             }
             catch (Exception exc)
             {

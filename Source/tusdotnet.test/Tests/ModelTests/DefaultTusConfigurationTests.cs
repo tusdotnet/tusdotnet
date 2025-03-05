@@ -11,12 +11,11 @@ namespace tusdotnet.test.Tests.ModelTests
         [Fact]
         public void Validate_Throws_A_TusConfigurationException_If_Store_Is_Missing()
         {
-            var config = new DefaultTusConfiguration
-            {
-                UrlPath = "/files"
-            };
+            var config = new DefaultTusConfiguration { UrlPath = "/files" };
 
-            var exception = Assert.Throws<TusConfigurationException>(() => MiddlewareConfigurationValidator.Instance.Validate(config));
+            var exception = Assert.Throws<TusConfigurationException>(
+                () => MiddlewareConfigurationValidator.Instance.Validate(config)
+            );
             Assert.Equal("Store cannot be null.", exception.Message);
         }
 
@@ -24,7 +23,9 @@ namespace tusdotnet.test.Tests.ModelTests
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Validate_Throws_A_TusConfigurationException_If_UrlPath_Is_Missing(string urlPath)
+        public void Validate_Throws_A_TusConfigurationException_If_UrlPath_Is_Missing(
+            string urlPath
+        )
         {
             var config = new DefaultTusConfiguration
             {
@@ -32,7 +33,9 @@ namespace tusdotnet.test.Tests.ModelTests
                 UrlPath = urlPath
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(() => MiddlewareConfigurationValidator.Instance.Validate(config));
+            var exception = Assert.Throws<TusConfigurationException>(
+                () => MiddlewareConfigurationValidator.Instance.Validate(config)
+            );
             Assert.Equal("UrlPath cannot be empty.", exception.Message);
         }
 
@@ -40,7 +43,9 @@ namespace tusdotnet.test.Tests.ModelTests
         [InlineData(-1)]
         [InlineData(int.MaxValue)]
         [InlineData(int.MinValue)]
-        public void Validate_Throws_A_TusConfigurationException_If_MetadataParsingStrategy_Is_Invalid(int metadataParsingStrategyAsInt)
+        public void Validate_Throws_A_TusConfigurationException_If_MetadataParsingStrategy_Is_Invalid(
+            int metadataParsingStrategyAsInt
+        )
         {
             var config = new DefaultTusConfiguration
             {
@@ -49,7 +54,9 @@ namespace tusdotnet.test.Tests.ModelTests
                 MetadataParsingStrategy = (MetadataParsingStrategy)metadataParsingStrategyAsInt
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(() => MiddlewareConfigurationValidator.Instance.Validate(config));
+            var exception = Assert.Throws<TusConfigurationException>(
+                () => MiddlewareConfigurationValidator.Instance.Validate(config)
+            );
             Assert.Equal("MetadataParsingStrategy is not a valid value.", exception.Message);
         }
     }

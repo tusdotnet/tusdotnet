@@ -1,16 +1,16 @@
-﻿using System.Net;
+﻿using System;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
-using tusdotnet.Models.Configuration;
-using System;
-using System.Linq;
 #if netfull
 using Owin;
 #endif
@@ -29,18 +29,24 @@ namespace tusdotnet.test.Tests
 
         public OptionsTests()
         {
-            var store = (ITusStore)Substitute.For(new[]
-            {
-                typeof(ITusStore),
-                typeof(ITusCreationStore),
-                typeof(ITusTerminationStore),
-                typeof(ITusChecksumStore),
-                typeof(ITusConcatenationStore),
-                typeof(ITusExpirationStore),
-                typeof(ITusCreationDeferLengthStore)
-            }, new object[0]);
+            var store = (ITusStore)
+                Substitute.For(
+                    new[]
+                    {
+                        typeof(ITusStore),
+                        typeof(ITusCreationStore),
+                        typeof(ITusTerminationStore),
+                        typeof(ITusChecksumStore),
+                        typeof(ITusConcatenationStore),
+                        typeof(ITusExpirationStore),
+                        typeof(ITusCreationDeferLengthStore)
+                    },
+                    new object[0]
+                );
 
-            ((ITusChecksumStore)store).GetSupportedAlgorithmsAsync(CancellationToken.None).ReturnsForAnyArgs(new[] { "sha1" });
+            ((ITusChecksumStore)store)
+                .GetSupportedAlgorithmsAsync(CancellationToken.None)
+                .ReturnsForAnyArgs(new[] { "sha1" });
 
             _mockTusConfiguration = new DefaultTusConfiguration
             {
@@ -61,7 +67,11 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
+            using var server = TestServerFactory.CreateWithForwarding(
+                Substitute.For<ITusStore>(),
+                () => _onAuthorizeWasCalled = true,
+                () => _callForwarded = true
+            );
 
             await server.CreateTusResumableRequest("/files").SendAsync("OPTIONS");
             AssertForwardCall(false);
@@ -175,14 +185,17 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
-            using var server = TestServerFactory.Create(_mockTusConfiguration.Store, new Events
-            {
-                OnAuthorizeAsync = ctx =>
+            using var server = TestServerFactory.Create(
+                _mockTusConfiguration.Store,
+                new Events
                 {
-                    ctx.FailRequest(HttpStatusCode.Unauthorized);
-                    return Task.FromResult(0);
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        ctx.FailRequest(HttpStatusCode.Unauthorized);
+                        return Task.FromResult(0);
+                    }
                 }
-            });
+            );
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 
@@ -192,7 +205,8 @@ namespace tusdotnet.test.Tests
                 "Tus-Version",
                 "Tus-Extension",
                 "Tus-Checksum-Algorithm",
-                "Content-Type");
+                "Content-Type"
+            );
         }
 
         [Theory]
@@ -206,9 +220,13 @@ namespace tusdotnet.test.Tests
         [InlineData(typeof(ITusConcatenationStore), "concatenation")]
         [InlineData(typeof(ITusExpirationStore), "expiration")]
         [InlineData(typeof(ITusCreationDeferLengthStore), "creation-defer-length")]
-        public async Task Extensions_Depend_On_What_The_Store_Supports(Type storeInterfaceType, string expectedExtensions)
+        public async Task Extensions_Depend_On_What_The_Store_Supports(
+            Type storeInterfaceType,
+            string expectedExtensions
+        )
         {
-            var store = (ITusStore)Substitute.For(new[] { typeof(ITusStore), storeInterfaceType }, null);
+            var store = (ITusStore)
+                Substitute.For(new[] { typeof(ITusStore), storeInterfaceType }, null);
 
             using var server = TestServerFactory.Create(store);
 
@@ -219,24 +237,66 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory]
-        [InlineData(nameof(TusExtensions.CreationWithUpload), "creation,creation-defer-length", typeof(ITusCreationStore), typeof(ITusCreationDeferLengthStore))]
-        [InlineData(nameof(TusExtensions.CreationDeferLength), "creation,creation-with-upload", typeof(ITusCreationStore), typeof(ITusCreationDeferLengthStore))]
-        [InlineData(nameof(TusExtensions.Termination), "creation,creation-with-upload", typeof(ITusCreationStore), typeof(ITusTerminationStore))]
+        [InlineData(
+            nameof(TusExtensions.CreationWithUpload),
+            "creation,creation-defer-length",
+            typeof(ITusCreationStore),
+            typeof(ITusCreationDeferLengthStore)
+        )]
+        [InlineData(
+            nameof(TusExtensions.CreationDeferLength),
+            "creation,creation-with-upload",
+            typeof(ITusCreationStore),
+            typeof(ITusCreationDeferLengthStore)
+        )]
+        [InlineData(
+            nameof(TusExtensions.Termination),
+            "creation,creation-with-upload",
+            typeof(ITusCreationStore),
+            typeof(ITusTerminationStore)
+        )]
         [InlineData(nameof(TusExtensions.Termination), null, typeof(ITusTerminationStore))]
         [InlineData(nameof(TusExtensions.Checksum), null, typeof(ITusChecksumStore))]
 #if trailingheaders
         [InlineData(nameof(TusExtensions.ChecksumTrailer), "checksum", typeof(ITusChecksumStore))]
 #endif
-        [InlineData(nameof(TusExtensions.Concatenation), "termination", typeof(ITusTerminationStore), typeof(ITusConcatenationStore))]
-        [InlineData(nameof(TusExtensions.Expiration), "termination", typeof(ITusTerminationStore), typeof(ITusExpirationStore))]
-        [InlineData(nameof(TusExtensions.All), null, typeof(ITusCreationStore), typeof(ITusTerminationStore), typeof(ITusChecksumStore), typeof(ITusConcatenationStore), typeof(ITusExpirationStore), typeof(ITusCreationDeferLengthStore))]
-        public async Task Extensions_Depend_On_What_Extension_Are_Enabled(string disabledExtension, string expectedExtensions, params Type[] storeInterfaceTypes)
+        [InlineData(
+            nameof(TusExtensions.Concatenation),
+            "termination",
+            typeof(ITusTerminationStore),
+            typeof(ITusConcatenationStore)
+        )]
+        [InlineData(
+            nameof(TusExtensions.Expiration),
+            "termination",
+            typeof(ITusTerminationStore),
+            typeof(ITusExpirationStore)
+        )]
+        [InlineData(
+            nameof(TusExtensions.All),
+            null,
+            typeof(ITusCreationStore),
+            typeof(ITusTerminationStore),
+            typeof(ITusChecksumStore),
+            typeof(ITusConcatenationStore),
+            typeof(ITusExpirationStore),
+            typeof(ITusCreationDeferLengthStore)
+        )]
+        public async Task Extensions_Depend_On_What_Extension_Are_Enabled(
+            string disabledExtension,
+            string expectedExtensions,
+            params Type[] storeInterfaceTypes
+        )
         {
             var interfaces = new[] { typeof(ITusStore) }.Concat(storeInterfaceTypes).ToArray();
             var store = (ITusStore)Substitute.For(interfaces, null);
-            var disabledExtensionType = (TusExtensions)typeof(TusExtensions).GetProperty(disabledExtension).GetValue(null);
+            var disabledExtensionType = (TusExtensions)
+                typeof(TusExtensions).GetProperty(disabledExtension).GetValue(null);
 
-            using var server = TestServerFactory.Create(store, allowedExtensions: TusExtensions.All.Except(disabledExtensionType));
+            using var server = TestServerFactory.Create(
+                store,
+                allowedExtensions: TusExtensions.All.Except(disabledExtensionType)
+            );
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 
@@ -248,7 +308,9 @@ namespace tusdotnet.test.Tests
                 response.ShouldNotContainHeaders("Tus-Extension");
         }
 
-        private static void AssertContainsDefaultSuccessfulHeaders(System.Net.Http.HttpResponseMessage response)
+        private static void AssertContainsDefaultSuccessfulHeaders(
+            System.Net.Http.HttpResponseMessage response
+        )
         {
 #if trailingheaders
             const bool pipelineSupportsChecksumTrailer = true;

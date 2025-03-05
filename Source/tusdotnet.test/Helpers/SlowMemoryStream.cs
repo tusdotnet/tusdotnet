@@ -18,7 +18,11 @@ namespace tusdotnet.test.Helpers
         /// Default constructor.
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
-        public SlowMemoryStream(byte[] buffer, int delayPerReadInMs = 100, bool allowCancellation = false)
+        public SlowMemoryStream(
+            byte[] buffer,
+            int delayPerReadInMs = 100,
+            bool allowCancellation = false
+        )
         {
             _stream = new MemoryStream(buffer);
             _delayPerReadInMs = delayPerReadInMs;
@@ -39,7 +43,12 @@ namespace tusdotnet.test.Helpers
             set { _stream.Position = value; }
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             await Task.Delay(_delayPerReadInMs);
 
@@ -52,7 +61,10 @@ namespace tusdotnet.test.Helpers
 
 #if netstandard
 
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default
+        )
         {
             await Task.Delay(_delayPerReadInMs);
 
@@ -62,17 +74,18 @@ namespace tusdotnet.test.Helpers
             var ct = _allowCancellation ? cancellationToken : CancellationToken.None;
             return await _stream.ReadAsync(buffer, ct);
         }
-
 #endif
 
         public override long Seek(long offset, SeekOrigin origin) => _stream.Seek(offset, origin);
 
-        public override int Read(byte[] buffer, int offset, int count) => throw new NotImplementedException();
+        public override int Read(byte[] buffer, int offset, int count) =>
+            throw new NotImplementedException();
 
         public override void SetLength(long value) => throw new NotImplementedException();
 
         public override void Flush() => throw new NotImplementedException();
 
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotImplementedException();
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new NotImplementedException();
     }
 }

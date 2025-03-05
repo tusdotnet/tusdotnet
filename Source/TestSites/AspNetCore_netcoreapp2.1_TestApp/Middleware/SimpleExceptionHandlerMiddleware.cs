@@ -27,7 +27,10 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Middleware
             {
                 _logger.LogError(exc, exc.Message);
                 context.Response.StatusCode = 500;
-                await context.Response.WriteAsync("An internal server error has occurred", context.RequestAborted);
+                await context.Response.WriteAsync(
+                    "An internal server error has occurred",
+                    context.RequestAborted
+                );
             }
         }
     }
@@ -39,7 +42,9 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Middleware
         /// </summary>
         /// <param name="builder"></param>
         /// <returns></returns>
-        public static IApplicationBuilder UseSimpleExceptionHandler(this IApplicationBuilder builder)
+        public static IApplicationBuilder UseSimpleExceptionHandler(
+            this IApplicationBuilder builder
+        )
         {
             return builder.UseMiddleware<SimpleExceptionHandlerMiddleware>();
         }

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading;
 using Microsoft.AspNetCore.Http;
-using tusdotnet.Models;
 using tusdotnet.Helpers;
+using tusdotnet.Models;
 #if netfull
 using Microsoft.Owin;
 #endif
@@ -27,7 +27,6 @@ namespace tusdotnet.Adapters
 #if netfull
 
         public IOwinContext OwinContext { get; }
-
 #endif
 
         public ContextCache Cache { get; }
@@ -39,7 +38,10 @@ namespace tusdotnet.Adapters
         {
             get
             {
-                return _storeAdapter ??= new StoreAdapter(Configuration.Store, Configuration.AllowedExtensions);
+                return _storeAdapter ??= new StoreAdapter(
+                    Configuration.Store,
+                    Configuration.AllowedExtensions
+                );
             }
             set
             {
@@ -53,14 +55,8 @@ namespace tusdotnet.Adapters
         /// </summary>
         public string FileId
         {
-            get
-            {
-                return _fileId ??= UrlHelper.ParseFileId(this);
-            }
-            set
-            {
-                _fileId = value;
-            }
+            get { return _fileId ??= UrlHelper.ParseFileId(this); }
+            set { _fileId = value; }
         }
         private string _fileId;
 
@@ -74,12 +70,13 @@ namespace tusdotnet.Adapters
         public IUrlHelper UrlHelper { get; }
 
         public ContextAdapter(
-            string configUrlPath, 
+            string configUrlPath,
             string requestPathBase,
-            IUrlHelper urlHelper, 
-            RequestAdapter request, 
-            DefaultTusConfiguration config, 
-            HttpContext httpContext)
+            IUrlHelper urlHelper,
+            RequestAdapter request,
+            DefaultTusConfiguration config,
+            HttpContext httpContext
+        )
         {
             _configUrlPath = configUrlPath;
             _requestPathBase = requestPathBase;
@@ -95,7 +92,6 @@ namespace tusdotnet.Adapters
                 SetupClientDisconnectGuard(httpContext.RequestAborted, config.ClientReadTimeout);
                 httpContext.RequestAborted = ClientDisconnectGuard.GuardedToken;
             }
-            
         }
 
 #if netfull
@@ -105,15 +101,22 @@ namespace tusdotnet.Adapters
             IUrlHelper urlHelper,
             RequestAdapter request,
             DefaultTusConfiguration config,
-            IOwinContext owinContext)
-            : this(configUrlPath, requestPathBase: null, urlHelper, request, config, null as HttpContext)
+            IOwinContext owinContext
+        )
+            : this(
+                configUrlPath,
+                requestPathBase: null,
+                urlHelper,
+                request,
+                config,
+                null as HttpContext
+            )
         {
             OwinContext = owinContext;
 
             SetupClientDisconnectGuard(owinContext.Request.CallCancelled, config.ClientReadTimeout);
             owinContext.Request.CallCancelled = ClientDisconnectGuard.GuardedToken;
         }
-
 #endif
 
         public string CreateFileLocation(string fileId)
@@ -129,12 +132,18 @@ namespace tusdotnet.Adapters
             return $"{_requestPathBase.TrimEnd('/')}/{_configUrlPath.Trim('/')}";
         }
 
-        private void SetupClientDisconnectGuard(CancellationToken? tokenToMonitor, TimeSpan executionTimeout)
+        private void SetupClientDisconnectGuard(
+            CancellationToken? tokenToMonitor,
+            TimeSpan executionTimeout
+        )
         {
             if (tokenToMonitor is null)
                 return;
 
-            ClientDisconnectGuard = new ClientDisconnectGuardWithTimeout(executionTimeout, tokenToMonitor.Value);
+            ClientDisconnectGuard = new ClientDisconnectGuardWithTimeout(
+                executionTimeout,
+                tokenToMonitor.Value
+            );
         }
     }
 }

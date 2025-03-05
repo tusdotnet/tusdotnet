@@ -9,7 +9,7 @@ namespace tusdotnet.Adapters
     /// Response wrapper that handles different pipeline responses.
     /// </summary>
     internal class ResponseAdapter
-	{
+    {
         internal ResponseAdapter()
         {
             Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

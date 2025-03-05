@@ -8,7 +8,10 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
 {
     internal class UploadConcatParserStringBased
     {
-        internal static UploadConcatParserResult ParseAndValidate(string uploadConcatHeader, string urlPath)
+        internal static UploadConcatParserResult ParseAndValidate(
+            string uploadConcatHeader,
+            string urlPath
+        )
         {
             var temp = uploadConcatHeader.Split(';');
 
@@ -18,7 +21,10 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
             {
                 "partial" => UploadConcatParserResult.FromResult(new FileConcatPartial()),
                 "final" => ParseFinal(temp, urlPath),
-                _ => UploadConcatParserResult.FromError(UploadConcatParserErrorTexts.HEADER_IS_INVALID),
+                _
+                    => UploadConcatParserResult.FromError(
+                        UploadConcatParserErrorTexts.HEADER_IS_INVALID
+                    ),
             };
         }
 
@@ -34,7 +40,9 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
         {
             if (parts.Length < 2)
             {
-                return UploadConcatParserResult.FromError(UploadConcatParserErrorTexts.HEADER_IS_INVALID);
+                return UploadConcatParserResult.FromError(
+                    UploadConcatParserErrorTexts.HEADER_IS_INVALID
+                );
             }
 
             var fileUris = parts[1].Split(' ');
@@ -42,18 +50,23 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
 
             foreach (var fileUri in fileUris)
             {
-                if (string.IsNullOrWhiteSpace(fileUri) || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out Uri uri))
+                if (
+                    string.IsNullOrWhiteSpace(fileUri)
+                    || !Uri.TryCreate(fileUri, UriKind.RelativeOrAbsolute, out Uri uri)
+                )
                 {
-                    return UploadConcatParserResult.FromError(UploadConcatParserErrorTexts.HEADER_IS_INVALID);
+                    return UploadConcatParserResult.FromError(
+                        UploadConcatParserErrorTexts.HEADER_IS_INVALID
+                    );
                 }
 
-                var localPath = uri.IsAbsoluteUri
-                    ? uri.LocalPath
-                    : uri.ToString();
+                var localPath = uri.IsAbsoluteUri ? uri.LocalPath : uri.ToString();
 
                 if (!localPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    return UploadConcatParserResult.FromError(UploadConcatParserErrorTexts.HEADER_IS_INVALID);
+                    return UploadConcatParserResult.FromError(
+                        UploadConcatParserErrorTexts.HEADER_IS_INVALID
+                    );
                 }
 
                 fileIds.Add(localPath.Substring(urlPath.Length).Trim('/'));

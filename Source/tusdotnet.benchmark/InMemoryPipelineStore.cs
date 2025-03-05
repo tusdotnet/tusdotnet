@@ -9,13 +9,19 @@ namespace tusdotnet.benchmark
 {
     public class InMemoryPipelineStore : InMemoryStore, ITusPipelineStore
     {
-        public async Task<long> AppendDataAsync(string fileId, PipeReader pipeReader, CancellationToken cancellationToken)
+        public async Task<long> AppendDataAsync(
+            string fileId,
+            PipeReader pipeReader,
+            CancellationToken cancellationToken
+        )
         {
             long bytesWritten = 0;
 
             while (true)
             {
-                ReadResult result = await pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                ReadResult result = await pipeReader
+                    .ReadAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 ReadOnlySequence<byte> buffer = result.Buffer;
                 SequencePosition position = buffer.Start;
                 SequencePosition consumed = position;
@@ -29,7 +35,9 @@ namespace tusdotnet.benchmark
 
                     while (buffer.TryGet(ref position, out ReadOnlyMemory<byte> memory))
                     {
-                        await Data[fileId].WriteAsync(memory, cancellationToken).ConfigureAwait(false);
+                        await Data[fileId]
+                            .WriteAsync(memory, cancellationToken)
+                            .ConfigureAwait(false);
 
                         bytesWritten += memory.Length;
                         consumed = position;

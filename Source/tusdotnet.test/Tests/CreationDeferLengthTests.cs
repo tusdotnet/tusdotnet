@@ -4,15 +4,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
-using Xunit;
 using tusdotnet.test.Helpers;
-using tusdotnet.Helpers;
-
+using Xunit;
 #if netfull
 using Owin;
 #endif
@@ -46,7 +45,8 @@ namespace tusdotnet.test.Tests
                 });
             });
 
-            await server.CreateRequest("/files")
+            await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")
@@ -56,16 +56,25 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task File_Is_Created_With_Minus_One_As_UploadLength_If_UploadDeferLength_Is_Set(string methodToUse)
+        public async Task File_Is_Created_With_Minus_One_As_UploadLength_If_UploadDeferLength_Is_Set(
+            string methodToUse
+        )
         {
             var fileId = Guid.NewGuid().ToString();
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             var creationStore = (ITusCreationStore)store;
-            creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            creationStore
+                .CreateFileAsync(0, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")
@@ -75,28 +84,38 @@ namespace tusdotnet.test.Tests
             response.ShouldContainTusResumableHeader();
             response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
 
-            var createFileAsyncCall = creationStore.GetSingleMethodCall(nameof(creationStore.CreateFileAsync));
+            var createFileAsyncCall = creationStore.GetSingleMethodCall(
+                nameof(creationStore.CreateFileAsync)
+            );
             createFileAsyncCall.ShouldNotBeNull();
             var uploadLength = (long)createFileAsyncCall.GetArguments()[0];
             uploadLength.ShouldBe(-1);
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task UploadLength_Is_Set_On_Patch_If_UploadDeferLength_Is_Set(string methodToUse)
+        public async Task UploadLength_Is_Set_On_Patch_If_UploadDeferLength_Is_Set(
+            string methodToUse
+        )
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs((long?)null);
             store.GetUploadOffsetAsync(null, CancellationToken.None).ReturnsForAnyArgs(0);
             store.AppendDataAsync(null, null, CancellationToken.None).ReturnsForAnyArgs(3);
 
             var deferLengthStore = (ITusCreationDeferLengthStore)store;
-            deferLengthStore.SetUploadLengthAsync(null, 0, CancellationToken.None)
+            deferLengthStore
+                .SetUploadLengthAsync(null, 0, CancellationToken.None)
                 .ReturnsForAnyArgs(Task.FromResult(true));
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateRequest("/files/filedeferlength")
+            var response = await server
+                .CreateRequest("/files/filedeferlength")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
                 .AddHeader("Upload-Offset", "0")
@@ -106,8 +125,9 @@ namespace tusdotnet.test.Tests
 
             response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-            var setUploadLengthAsyncCall =
-                deferLengthStore.GetSingleMethodCall(nameof(deferLengthStore.SetUploadLengthAsync));
+            var setUploadLengthAsyncCall = deferLengthStore.GetSingleMethodCall(
+                nameof(deferLengthStore.SetUploadLengthAsync)
+            );
 
             setUploadLengthAsyncCall.ShouldNotBeNull();
             var uploadLength = (long)setUploadLengthAsyncCall.GetArguments()[1];
@@ -115,33 +135,52 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_400_BadRequest_If_UploadDeferLength_Extension_Is_Disabled(string methodToUse)
+        public async Task Returns_400_BadRequest_If_UploadDeferLength_Extension_Is_Disabled(
+            string methodToUse
+        )
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
 
-            using var server = TestServerFactory.Create(store, allowedExtensions: TusExtensions.All.Except(TusExtensions.CreationDeferLength));
+            using var server = TestServerFactory.Create(
+                store,
+                allowedExtensions: TusExtensions.All.Except(TusExtensions.CreationDeferLength)
+            );
 
-            var response = await server.CreateTusResumableRequest("/files")
+            var response = await server
+                .CreateTusResumableRequest("/files")
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")
                 .SendAsync(methodToUse);
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Header Upload-Defer-Length is not supported");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "Header Upload-Defer-Length is not supported"
+            );
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_400_BadRequest_If_Store_Does_Not_Support_UploadDeferLength(string methodToUse)
+        public async Task Returns_400_BadRequest_If_Store_Does_Not_Support_UploadDeferLength(
+            string methodToUse
+        )
         {
             var store = Substitute.For<ITusStore, ITusCreationStore>();
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateTusResumableRequest("/files")
+            var response = await server
+                .CreateTusResumableRequest("/files")
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")
                 .SendAsync(methodToUse);
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Header Upload-Defer-Length is not supported");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "Header Upload-Defer-Length is not supported"
+            );
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -149,52 +188,75 @@ namespace tusdotnet.test.Tests
         {
             var invalidDeferLengthValues = new[] { "2", Guid.NewGuid().ToString(), "hello world" };
 
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
 
             using var server = TestServerFactory.Create(store);
 
             foreach (var deferLength in invalidDeferLengthValues)
             {
-                var response = await server.CreateRequest("/files")
+                var response = await server
+                    .CreateRequest("/files")
                     .AddTusResumableHeader()
                     .OverrideHttpMethodIfNeeded("POST", methodToUse)
                     .AddHeader("Upload-Defer-Length", deferLength)
                     .SendAsync(methodToUse);
 
-                await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                    "Header Upload-Defer-Length must have the value '1' or be omitted");
+                await response.ShouldBeErrorResponse(
+                    HttpStatusCode.BadRequest,
+                    "Header Upload-Defer-Length must have the value '1' or be omitted"
+                );
             }
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_400_BadRequest_If_Both_UploadLength_And_UploadDeferLength_Is_Set(string methodToUse)
+        public async Task Returns_400_BadRequest_If_Both_UploadLength_And_UploadDeferLength_Is_Set(
+            string methodToUse
+        )
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Length", "1")
                 .AddHeader("Upload-Defer-Length", "1")
                 .SendAsync(methodToUse);
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request"
+            );
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task UploadDeferLength_Work_With_Partial_Files(string methodToUse)
         {
             var fileId = Guid.NewGuid().ToString();
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             var creationStore = (ITusCreationStore)store;
-            creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            creationStore
+                .CreateFileAsync(0, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")
@@ -205,16 +267,24 @@ namespace tusdotnet.test.Tests
             response.ShouldContainTusResumableHeader();
             response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
 
-            var createFileAsyncCall = creationStore.GetSingleMethodCall(nameof(creationStore.CreateFileAsync));
+            var createFileAsyncCall = creationStore.GetSingleMethodCall(
+                nameof(creationStore.CreateFileAsync)
+            );
             createFileAsyncCall.ShouldNotBeNull();
             var uploadLength = (long)createFileAsyncCall.GetArguments()[0];
             uploadLength.ShouldBe(-1);
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Head_Returns_UploadDeferLength_If_No_UploadLength_Has_Been_Set(string methodToUse)
+        public async Task Head_Returns_UploadDeferLength_If_No_UploadLength_Has_Been_Set(
+            string methodToUse
+        )
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs((long?)null);
 
@@ -239,17 +309,27 @@ namespace tusdotnet.test.Tests
             var uploadOffset = 0;
             long? uploadLength = null;
 
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             store
                 .WithExistingFile(fileId, null)
-                .WithAppendDataCallback(fileId, _ =>
-                {
-                    uploadOffset++;
-                    return Task.FromResult(1L);
-                }); // Each request writes one byte.
+                .WithAppendDataCallback(
+                    fileId,
+                    _ =>
+                    {
+                        uploadOffset++;
+                        return Task.FromResult(1L);
+                    }
+                ); // Each request writes one byte.
 
-            store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadOffset);
-            store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadLength);
+            store
+                .GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>())
+                .Returns(_ => uploadOffset);
+            store
+                .GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>())
+                .Returns(_ => uploadLength);
             ((ITusCreationDeferLengthStore)store)
                 .SetUploadLengthAsync(fileId, Arg.Any<long>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult(0))
@@ -283,10 +363,10 @@ namespace tusdotnet.test.Tests
 
             // Include Upload-Length here to finish the upload.
             var requestWithUploadLength = server
-                    .CreateTusResumableRequest($"/files/{fileId}")
-                    .AddBody(1)
-                    .AddHeader("Upload-Offset", uploadOffset.ToString())
-                    .AddHeader("Upload-Length", "8");
+                .CreateTusResumableRequest($"/files/{fileId}")
+                .AddBody(1)
+                .AddHeader("Upload-Offset", uploadOffset.ToString())
+                .AddHeader("Upload-Length", "8");
 
             var responseWithUploadLength = await requestWithUploadLength.SendAsync("PATCH");
 
@@ -308,23 +388,32 @@ namespace tusdotnet.test.Tests
         {
             await Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_Internal(true);
         }
-
 #endif
 
-        private async Task Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_Internal(bool usePipelinesIfAvailable)
+        private async Task Tus_Max_Size_Is_Respected_When_Using_UploadDeferLength_Internal(
+            bool usePipelinesIfAvailable
+        )
         {
             var fileId = Guid.NewGuid().ToString();
 
 #if pipelines
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore, ITusPipelineStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore,
+                ITusPipelineStore
+            >();
 #else
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
 #endif
-            store.WithExistingFile(fileId, null)
-                 .WithAppendDataDrainingTheRequestBody(fileId);
+            store.WithExistingFile(fileId, null).WithAppendDataDrainingTheRequestBody(fileId);
 
             var uploadOffset = 0;
-            store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ => uploadOffset);
+            store
+                .GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>())
+                .Returns(_ => uploadOffset);
 
             var onFileCompleteAsyncCallCount = 0;
             var events = new Events
@@ -338,16 +427,18 @@ namespace tusdotnet.test.Tests
 
             using var server = TestServerFactory.Create(app =>
             {
-                app.UseTus(_ => new()
-                {
-                    MaxAllowedUploadSizeInBytesLong = 5,
-                    Events = events,
-                    Store = store,
-                    UrlPath = "/files",
+                app.UseTus(_ =>
+                    new()
+                    {
+                        MaxAllowedUploadSizeInBytesLong = 5,
+                        Events = events,
+                        Store = store,
+                        UrlPath = "/files",
 #if pipelines
-                    UsePipelinesIfAvailable = usePipelinesIfAvailable
+                        UsePipelinesIfAvailable = usePipelinesIfAvailable
 #endif
-                });
+                    }
+                );
             });
 
             for (int i = 0; i < 6; i++)
@@ -360,7 +451,8 @@ namespace tusdotnet.test.Tests
                 var response = await request.SendAsync("PATCH");
 
                 // Last request should fail as there is to much data.
-                var expectedStatus = i == 5 ? HttpStatusCode.RequestEntityTooLarge : HttpStatusCode.NoContent;
+                var expectedStatus =
+                    i == 5 ? HttpStatusCode.RequestEntityTooLarge : HttpStatusCode.NoContent;
 
                 response.StatusCode.ShouldBe(expectedStatus);
                 uploadOffset++;
@@ -384,7 +476,9 @@ namespace tusdotnet.test.Tests
         }
 #endif
 
-        private static async Task UploadLength_Is_Respected_When_Using_UploadDeferLength_Internal(bool usePipelinesIfAvailable)
+        private static async Task UploadLength_Is_Respected_When_Using_UploadDeferLength_Internal(
+            bool usePipelinesIfAvailable
+        )
         {
             var fileId = Guid.NewGuid().ToString();
 
@@ -393,16 +487,25 @@ namespace tusdotnet.test.Tests
             var currentRequestOffset = 0;
 
 #if pipelines
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore, ITusPipelineStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore,
+                ITusPipelineStore
+            >();
 #else
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
 #endif
-            store.WithExistingFile(
+            store
+                .WithExistingFile(
                     fileId,
                     uploadLength: _ => uploadLength,
-                    uploadOffset: _ => currentUploadOffset)
-                 .WithAppendDataDrainingTheRequestBody(fileId)
-                 .WithSetUploadLengthCallback(fileId, size => uploadLength = size);
+                    uploadOffset: _ => currentUploadOffset
+                )
+                .WithAppendDataDrainingTheRequestBody(fileId)
+                .WithSetUploadLengthCallback(fileId, size => uploadLength = size);
 
             var onFileCompleteAsyncCallCount = 0;
             var events = new Events
@@ -415,7 +518,10 @@ namespace tusdotnet.test.Tests
             };
 
 #if pipelines
-            using var server = TestServerFactory.Create(store, usePipelinesIfAvailable: usePipelinesIfAvailable);
+            using var server = TestServerFactory.Create(
+                store,
+                usePipelinesIfAvailable: usePipelinesIfAvailable
+            );
 #else
             using var server = TestServerFactory.Create(store);
 #endif
@@ -439,12 +545,18 @@ namespace tusdotnet.test.Tests
                 // Request number 2 should fail due to the file being to large from the specified Upload-Length.
                 if (i == 2)
                 {
-                    await response.ShouldBeErrorResponse(HttpStatusCode.RequestEntityTooLarge, "Request contains more data than the file's upload length");
+                    await response.ShouldBeErrorResponse(
+                        HttpStatusCode.RequestEntityTooLarge,
+                        "Request contains more data than the file's upload length"
+                    );
                 }
                 // The rest should fail for invalid offset
                 else if (i > 2)
                 {
-                    await response.ShouldBeErrorResponse(HttpStatusCode.Conflict, $"Offset does not match file. File offset: {currentUploadOffset}. Request offset: {currentRequestOffset}");
+                    await response.ShouldBeErrorResponse(
+                        HttpStatusCode.Conflict,
+                        $"Offset does not match file. File offset: {currentUploadOffset}. Request offset: {currentRequestOffset}"
+                    );
                 }
                 else
                 {
@@ -461,30 +573,44 @@ namespace tusdotnet.test.Tests
         [Theory, XHttpMethodOverrideData]
         public async Task UploadLength_Must_Not_Be_Changed_Once_Set(string methodToUse)
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             store.FileExistAsync(null, CancellationToken.None).ReturnsForAnyArgs(true);
             store.GetUploadLengthAsync(null, CancellationToken.None).ReturnsForAnyArgs(100);
 
             using var server = TestServerFactory.Create(store);
 
-            var response = await server.CreateRequest($"/files/{Guid.NewGuid()}")
+            var response = await server
+                .CreateRequest($"/files/{Guid.NewGuid()}")
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Length", "10")
                 .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
                 .And(m => m.AddBody())
                 .SendAsync(methodToUse);
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                "Upload-Length cannot be updated once set");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "Upload-Length cannot be updated once set"
+            );
         }
 
         [Theory, XHttpMethodOverrideData]
         public async Task OnBeforeCreateAsync_Receives_UploadLengthIsDeferred_True_If_UploadDeferLength_Has_Been_Set(
-            string methodToUse)
+            string methodToUse
+        )
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             var creationStore = (ITusCreationStore)store;
-            creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            creationStore
+                .CreateFileAsync(0, null, CancellationToken.None)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
             bool uploadIsDeferred = false;
             var events = new Events
@@ -498,7 +624,8 @@ namespace tusdotnet.test.Tests
 
             using var server = TestServerFactory.Create(store, events);
 
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")
@@ -510,11 +637,18 @@ namespace tusdotnet.test.Tests
 
         [Theory, XHttpMethodOverrideData]
         public async Task OnCreateCompleteAsync_Receives_UploadLengthIsDeferred_True_If_UploadDeferLength_Has_Been_Set(
-            string methodToUse)
+            string methodToUse
+        )
         {
-            var store = Substitute.For<ITusStore, ITusCreationStore, ITusCreationDeferLengthStore>();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
             var creationStore = (ITusCreationStore)store;
-            creationStore.CreateFileAsync(0, null, CancellationToken.None).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            creationStore
+                .CreateFileAsync(0, null, CancellationToken.None)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
             bool uploadIsDeferred = false;
             var events = new Events
@@ -528,7 +662,8 @@ namespace tusdotnet.test.Tests
 
             using var server = TestServerFactory.Create(store, events);
 
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .AddHeader("Upload-Defer-Length", "1")

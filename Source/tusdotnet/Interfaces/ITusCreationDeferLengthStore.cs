@@ -15,6 +15,10 @@ namespace tusdotnet.Interfaces
         /// <param name="uploadLength">The length of the upload in bytes</param>
         /// <param name="cancellationToken">Cancellation token to use when cancelling</param>
         /// <returns>Task</returns>
-        Task SetUploadLengthAsync(string fileId, long uploadLength, CancellationToken cancellationToken);
+        Task SetUploadLengthAsync(
+            string fileId,
+            long uploadLength,
+            CancellationToken cancellationToken
+        );
     }
 }

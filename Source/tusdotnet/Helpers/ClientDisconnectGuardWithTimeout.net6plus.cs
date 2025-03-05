@@ -23,7 +23,7 @@ namespace tusdotnet.Helpers
             var res = await guardFromClientDisconnect();
             _cts.TryReset();
             return res;
-        }        
+        }
     }
 }
 

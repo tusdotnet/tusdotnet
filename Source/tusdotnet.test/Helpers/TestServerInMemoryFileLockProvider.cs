@@ -20,7 +20,10 @@ namespace tusdotnet.test.Helpers
 
             private bool _hasLock;
 
-            public TestServerInMemoryFileLock(string fileId, TestServerInMemoryFileLockProvider provider)
+            public TestServerInMemoryFileLock(
+                string fileId,
+                TestServerInMemoryFileLockProvider provider
+            )
             {
                 _fileId = fileId;
                 _provider = provider;

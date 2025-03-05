@@ -9,8 +9,14 @@ namespace tusdotnet.Validation.Requirements
         {
             var fileId = context.FileId;
 
-            var fileUploadLength = context.StoreAdapter.GetUploadLengthAsync(fileId, context.CancellationToken);
-            var fileOffset = context.StoreAdapter.Store.GetUploadOffsetAsync(fileId, context.CancellationToken);
+            var fileUploadLength = context.StoreAdapter.GetUploadLengthAsync(
+                fileId,
+                context.CancellationToken
+            );
+            var fileOffset = context.StoreAdapter.Store.GetUploadOffsetAsync(
+                fileId,
+                context.CancellationToken
+            );
 
             await Task.WhenAll(fileUploadLength, fileOffset);
 

@@ -38,9 +38,10 @@ namespace tusdotnet.Extensions.Internal
 
         internal static bool HasDeclaredTrailingUploadChecksumHeader(this ContextAdapter context)
         {
-            return context.HttpContext.Request.GetDeclaredTrailers().Any(x => x == HeaderConstants.UploadChecksum);
+            return context
+                .HttpContext.Request.GetDeclaredTrailers()
+                .Any(x => x == HeaderConstants.UploadChecksum);
         }
-
 #endif
 
         private static ITusFileLockProvider GetLockProvider(ContextAdapter context)
@@ -54,7 +55,10 @@ namespace tusdotnet.Extensions.Internal
             var previouslyRead = context.Request.Headers.UploadOffset;
             var sizeSource = MaxReadSizeExceededException.SizeSourceType.UploadLength;
 
-            var maxLength = await context.StoreAdapter.GetUploadLengthAsync(context.FileId, context.CancellationToken);
+            var maxLength = await context.StoreAdapter.GetUploadLengthAsync(
+                context.FileId,
+                context.CancellationToken
+            );
             if (maxLength == null)
             {
                 maxLength = context.Configuration.GetMaxAllowedUploadSizeInBytes();

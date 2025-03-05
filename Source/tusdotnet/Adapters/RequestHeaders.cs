@@ -40,10 +40,7 @@ namespace tusdotnet.Adapters
 
         public string this[string key]
         {
-            get
-            {
-                return _headers.ContainsKey(key) ? _headers[key] : null;
-            }
+            get { return _headers.ContainsKey(key) ? _headers[key] : null; }
             set { _headers[key] = value; }
         }
 
@@ -63,6 +60,5 @@ namespace tusdotnet.Adapters
             var headers = new RequestHeaders(dictionary);
             return headers;
         }
-
     }
 }

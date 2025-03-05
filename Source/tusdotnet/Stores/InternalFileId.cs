@@ -13,7 +13,10 @@ namespace tusdotnet.Stores
             _fileId = fileId;
         }
 
-        public static async Task<InternalFileId> CreateNew(ITusFileIdProvider provider, string metadata)
+        public static async Task<InternalFileId> CreateNew(
+            ITusFileIdProvider provider,
+            string metadata
+        )
         {
             var fileId = await provider.CreateId(metadata);
             return new InternalFileId(fileId);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
+
 //using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark

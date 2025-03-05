@@ -15,9 +15,9 @@ namespace tusdotnet.Parsers
         public string ErrorMessage { get; }
 
         /// <summary>
-		/// The type of concatenation used. Is null if no concatenation info was provided or if the info is invalid.
-		/// </summary>
-		public FileConcat Type { get; }
+        /// The type of concatenation used. Is null if no concatenation info was provided or if the info is invalid.
+        /// </summary>
+        public FileConcat Type { get; }
 
         private UploadConcatParserResult(bool success, string errorMessage, FileConcat type)
         {

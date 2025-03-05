@@ -22,23 +22,44 @@ namespace tusdotnet.test.Tests
 {
     public class CreationWithUploadPipelinesTests
     {
-        public static IEnumerable<object[]> UploadConcatHeadersForNonFinalFiles => new List<object[]> { new object[] { null /* not using concat at all */ }, new object[] { "partial" } };
+        public static IEnumerable<object[]> UploadConcatHeadersForNonFinalFiles =>
+            new List<object[]>
+            {
+                new object[]
+                {
+                    null /* not using concat at all */
+                },
+                new object[] { "partial" }
+            };
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task Data_Is_Written_And_201_Created_Is_Returned_If_Request_Contains_A_Body(string uploadConcatHeader)
+        public async Task Data_Is_Written_And_201_Created_Is_Returned_If_Request_Contains_A_Body(
+            string uploadConcatHeader
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
 
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
-            tusStore.AppendDataAsync(fileId, Arg.Any<PipeReader>(), Arg.Any<CancellationToken>()).Returns(3);
+            tusStore
+                .AppendDataAsync(fileId, Arg.Any<PipeReader>(), Arg.Any<CancellationToken>())
+                .Returns(3);
             tusStore.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
             tusStore.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(100);
 
@@ -53,26 +74,40 @@ namespace tusdotnet.test.Tests
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
             response.ShouldContainHeader("Upload-Offset", "3");
 
-            await tusStore.Received().AppendDataAsync(fileId, Arg.Any<PipeReader>(), Arg.Any<CancellationToken>());
+            await tusStore
+                .Received()
+                .AppendDataAsync(fileId, Arg.Any<PipeReader>(), Arg.Any<CancellationToken>());
         }
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_If_CreationWithUpload_Extension_Is_Disabled(string uploadConcatHeader)
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_If_CreationWithUpload_Extension_Is_Disabled(
+            string uploadConcatHeader
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             using var server = TestServerFactory.Create(
                 tusStore,
                 allowedExtensions: TusExtensions.All.Except(TusExtensions.CreationWithUpload),
-                usePipelinesIfAvailable: true);
+                usePipelinesIfAvailable: true
+            );
 
             var response = await server
                 .CreateTusResumableRequest("/files")
@@ -88,16 +123,27 @@ namespace tusdotnet.test.Tests
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_If_Request_Body_Is_Empty(string uploadConcatHeader)
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_If_Request_Body_Is_Empty(
+            string uploadConcatHeader
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             using var server = TestServerFactory.Create(tusStore, usePipelinesIfAvailable: true);
             var response = await server
@@ -114,18 +160,29 @@ namespace tusdotnet.test.Tests
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task OnAuthorizeAsync_Is_Called_Twice_If_Request_Contains_A_Body(string uploadConcatHeader)
+        public async Task OnAuthorizeAsync_Is_Called_Twice_If_Request_Contains_A_Body(
+            string uploadConcatHeader
+        )
         {
             var shouldUseConcatenation = !string.IsNullOrEmpty(uploadConcatHeader);
 
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             tusStore.WithExistingFile(fileId);
 
@@ -141,7 +198,11 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using var server = TestServerFactory.Create(tusStore, events, usePipelinesIfAvailable: true);
+            using var server = TestServerFactory.Create(
+                tusStore,
+                events,
+                usePipelinesIfAvailable: true
+            );
             var response = await server
                 .CreateTusResumableRequest("/files")
                 .AddHeader("Upload-Length", "100")
@@ -151,28 +212,43 @@ namespace tusdotnet.test.Tests
 
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-            var authorizeIntentToCreateFile = shouldUseConcatenation ? IntentType.ConcatenateFiles : IntentType.CreateFile;
+            var authorizeIntentToCreateFile = shouldUseConcatenation
+                ? IntentType.ConcatenateFiles
+                : IntentType.CreateFile;
 
             intents.Count.ShouldBe(2);
             intents[0].ShouldBe(authorizeIntentToCreateFile);
             intents[1].ShouldBe(IntentType.WriteFile);
 
             authorizeEventFileConcatenations.Count.ShouldBe(2);
-            authorizeEventFileConcatenations.ShouldAllBe(fc => shouldUseConcatenation ? fc is FileConcatPartial : fc == null);
+            authorizeEventFileConcatenations.ShouldAllBe(fc =>
+                shouldUseConcatenation ? fc is FileConcatPartial : fc == null
+            );
         }
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_OnAuthorizeAsync_Fails_For_Write_File_Intent(string uploadConcatHeader)
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_OnAuthorizeAsync_Fails_For_Write_File_Intent(
+            string uploadConcatHeader
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var events = new Events
             {
@@ -187,7 +263,11 @@ namespace tusdotnet.test.Tests
                 }
             };
 
-            using var server = TestServerFactory.Create(tusStore, events, usePipelinesIfAvailable: true);
+            using var server = TestServerFactory.Create(
+                tusStore,
+                events,
+                usePipelinesIfAvailable: true
+            );
             var response = await server
                 .CreateTusResumableRequest("/files")
                 .AddHeader("Upload-Length", "100")
@@ -206,17 +286,31 @@ namespace tusdotnet.test.Tests
         [InlineData(null, "Upload-Checksum", "asdf1234")]
         [InlineData("partial", "Content-Type", "text/plain")]
         [InlineData("partial", "Upload-Checksum", "asdf1234")]
-        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_Write_File_Validation_Fails(string uploadConcatHeader, string headerName, string invalidValueForHeaderName)
+        public async Task No_Data_Is_Written_And_201_Created_Is_Returned_With_Upload_Offset_Zero_If_Write_File_Validation_Fails(
+            string uploadConcatHeader,
+            string headerName,
+            string invalidValueForHeaderName
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
 
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusChecksumStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusChecksumStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(10, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(10, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             tusStore.WithExistingFile(fileId, 10, 0);
 
@@ -227,7 +321,8 @@ namespace tusdotnet.test.Tests
                 .AddHeaderIfNotEmpty("Upload-Concat", uploadConcatHeader)
                 .AddHeader(headerName, invalidValueForHeaderName);
 
-            requestBuilder = headerName == "Content-Type"
+            requestBuilder =
+                headerName == "Content-Type"
                     ? requestBuilder.AddBody(invalidValueForHeaderName)
                     : requestBuilder.AddBody();
 
@@ -244,19 +339,32 @@ namespace tusdotnet.test.Tests
         [InlineData(null, typeof(TusStoreException))]
         [InlineData("partial", typeof(Exception))]
         [InlineData("partial", typeof(TusStoreException))]
-        public async Task Returns_201_Created_With_The_Correct_Upload_Offset_If_Writing_Of_File_Fails(string uploadConcatHeader, Type typeOfExceptionThrownByStore)
+        public async Task Returns_201_Created_With_The_Correct_Upload_Offset_If_Writing_Of_File_Fails(
+            string uploadConcatHeader,
+            Type typeOfExceptionThrownByStore
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(100, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(100, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             // Emulate that we could write 1 byte before an exception occurred.
-            var exception = (Exception)Activator.CreateInstance(typeOfExceptionThrownByStore, new[] { "Test message" });
+            var exception = (Exception)
+                Activator.CreateInstance(typeOfExceptionThrownByStore, new[] { "Test message" });
             tusStore.AppendDataAsync(default, default, default).ThrowsForAnyArgs(exception);
             tusStore.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
             tusStore.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(100);
@@ -272,20 +380,34 @@ namespace tusdotnet.test.Tests
             response.StatusCode.ShouldBe(HttpStatusCode.Created, response.StatusCode.ToString());
             response.ShouldContainHeader("Upload-Offset", "1");
 
-            await tusStore.Received().AppendDataAsync(fileId, Arg.Any<PipeReader>(), Arg.Any<CancellationToken>());
+            await tusStore
+                .Received()
+                .AppendDataAsync(fileId, Arg.Any<PipeReader>(), Arg.Any<CancellationToken>());
         }
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task No_Data_Is_Written_And_400_Bad_Request_Is_Returned_Without_Upload_Offset_If_UploadDeferLength_Is_Used_With_UploadLength(string uploadConcatHeader)
+        public async Task No_Data_Is_Written_And_400_Bad_Request_Is_Returned_Without_Upload_Offset_If_UploadDeferLength_Is_Used_With_UploadLength(
+            string uploadConcatHeader
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusCreationDeferLengthStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusCreationDeferLengthStore,
+                    ITusPipelineStore
+                >();
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             using var server = TestServerFactory.Create(tusStore, usePipelinesIfAvailable: true);
             var response = await server
@@ -296,7 +418,10 @@ namespace tusdotnet.test.Tests
                 .AddBody()
                 .PostAsync();
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "Headers Upload-Length and Upload-Defer-Length are mutually exclusive and cannot be used in the same request"
+            );
             response.ShouldNotContainHeaders("Upload-Offset");
 
             await tusStore.DidNotReceiveWithAnyArgs().AppendDataAsync(default, default, default);
@@ -304,16 +429,28 @@ namespace tusdotnet.test.Tests
 
         [Theory]
         [MemberData(nameof(UploadConcatHeadersForNonFinalFiles))]
-        public async Task Expiration_Is_Updated_After_File_Write_If_Sliding_Expiration_Is_Used(string uploadConcatHeader)
+        public async Task Expiration_Is_Updated_After_File_Write_If_Sliding_Expiration_Is_Used(
+            string uploadConcatHeader
+        )
         {
             var fileId = Guid.NewGuid().ToString("n");
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusExpirationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusExpirationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
 
             var tusCreationStore = (ITusCreationStore)tusStore;
-            tusCreationStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusCreationStore
+                .CreateFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreatePartialFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs(fileId);
+            tusConcatenationStore
+                .CreatePartialFileAsync(1, null, CancellationToken.None)
+                .ReturnsForAnyArgs(fileId);
 
             tusStore.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
             tusStore.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(1);
@@ -359,7 +496,13 @@ namespace tusdotnet.test.Tests
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
             // Once for file creation, once for writing the data.
-            await ((ITusExpirationStore)tusStore).Received(2).SetExpirationAsync(fileId, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+            await ((ITusExpirationStore)tusStore)
+                .Received(2)
+                .SetExpirationAsync(
+                    fileId,
+                    Arg.Any<DateTimeOffset>(),
+                    Arg.Any<CancellationToken>()
+                );
 
             response.ShouldContainHeader("Upload-Expires", uploadExpiresAt.Value.ToString("R"));
         }
@@ -371,9 +514,16 @@ namespace tusdotnet.test.Tests
             var partialId1 = Guid.NewGuid().ToString();
             var partialId2 = Guid.NewGuid().ToString();
 
-            var tusStore = (ITusPipelineStore)MockStoreHelper.CreateWithExtensions<ITusCreationStore, ITusConcatenationStore, ITusPipelineStore>();
+            var tusStore = (ITusPipelineStore)
+                MockStoreHelper.CreateWithExtensions<
+                    ITusCreationStore,
+                    ITusConcatenationStore,
+                    ITusPipelineStore
+                >();
             var tusConcatenationStore = (ITusConcatenationStore)tusStore;
-            tusConcatenationStore.CreateFinalFileAsync(default, default, default).ReturnsForAnyArgs(finalFileId);
+            tusConcatenationStore
+                .CreateFinalFileAsync(default, default, default)
+                .ReturnsForAnyArgs(finalFileId);
 
             tusStore
                 .WithExistingPartialFile(partialId1, 100, 100)
@@ -403,33 +553,41 @@ namespace tusdotnet.test.Tests
             var onFileCompleteAsyncCallbackCounts = 0;
 
             var store = Substitute.For<ITusStore, ITusCreationStore>();
-            ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            ((ITusCreationStore)store)
+                .CreateFileAsync(default, default, default)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
             store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(0);
             store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(0);
 
-            using var server = TestServerFactory.Create(new DefaultTusConfiguration
-            {
-                Store = store,
-                UrlPath = "/files",
-                UsePipelinesIfAvailable = true,
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files",
+                    UsePipelinesIfAvailable = true,
 #pragma warning disable CS0618 // Type or member is obsolete
-                OnUploadCompleteAsync = (__, ___, ____) =>
+                    OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
-                {
-                    onUploadCompleteCallCounts++;
-                    return Task.FromResult(true);
-                },
-                Events = new Events
-                {
-                    OnFileCompleteAsync = __ =>
                     {
-                        onFileCompleteAsyncCallbackCounts++;
+                        onUploadCompleteCallCounts++;
                         return Task.FromResult(true);
+                    },
+                    Events = new Events
+                    {
+                        OnFileCompleteAsync = __ =>
+                        {
+                            onFileCompleteAsyncCallbackCounts++;
+                            return Task.FromResult(true);
+                        }
                     }
                 }
-            });
+            );
 
-            var response = await server.CreateTusResumableRequest("/files/").AddHeader("Upload-Length", "0").AddBody().SendAsync("POST");
+            var response = await server
+                .CreateTusResumableRequest("/files/")
+                .AddHeader("Upload-Length", "0")
+                .AddBody()
+                .SendAsync("POST");
 
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
@@ -446,7 +604,11 @@ namespace tusdotnet.test.Tests
         [InlineData(500, 498, false)]
         [InlineData(10_000, 10_000, true)]
         [InlineData(10_000, 9_000, false)]
-        public async Task Runs_OnFileCompleteAsync_And_OnUploadCompleteAsync_When_Upload_Is_Complete_If_Upload_Length_Is_Not_Zero_And_Entire_Body_Is_Provided(int uploadLength, int bytesInRequestBody, bool shouldRunCallbacks)
+        public async Task Runs_OnFileCompleteAsync_And_OnUploadCompleteAsync_When_Upload_Is_Complete_If_Upload_Length_Is_Not_Zero_And_Entire_Body_Is_Provided(
+            int uploadLength,
+            int bytesInRequestBody,
+            bool shouldRunCallbacks
+        )
         {
             // Old callback handler
             var onUploadCompleteCallCounts = 0;
@@ -457,37 +619,45 @@ namespace tusdotnet.test.Tests
             var offsetToReturn = 0;
 
             ITusStore store = Substitute.For<ITusStore, ITusCreationStore>();
-            ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            ((ITusCreationStore)store)
+                .CreateFileAsync(default, default, default)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
             store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
-            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(_ => offsetToReturn).AndDoes(_ => offsetToReturn = bytesInRequestBody);
+            store
+                .GetUploadOffsetAsync(default, default)
+                .ReturnsForAnyArgs(_ => offsetToReturn)
+                .AndDoes(_ => offsetToReturn = bytesInRequestBody);
             store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody);
 
-            using var server = TestServerFactory.Create(new DefaultTusConfiguration
-            {
-                Store = store,
-                UrlPath = "/files",
-                UsePipelinesIfAvailable = true,
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files",
+                    UsePipelinesIfAvailable = true,
 #pragma warning disable CS0618 // Type or member is obsolete
-                OnUploadCompleteAsync = (__, ___, ____) =>
+                    OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
-                {
-                    onUploadCompleteCallCounts++;
-                    return Task.FromResult(true);
-                },
-                Events = new Events
-                {
-                    OnFileCompleteAsync = __ =>
                     {
-                        onFileCompleteAsyncCallbackCounts++;
+                        onUploadCompleteCallCounts++;
                         return Task.FromResult(true);
+                    },
+                    Events = new Events
+                    {
+                        OnFileCompleteAsync = __ =>
+                        {
+                            onFileCompleteAsyncCallbackCounts++;
+                            return Task.FromResult(true);
+                        }
                     }
                 }
-            });
+            );
 
-            var response = await server.CreateTusResumableRequest("/files/")
-                                       .AddHeader("Upload-Length", uploadLength.ToString())
-                                       .AddBody(bytesInRequestBody)
-                                       .SendAsync("POST");
+            var response = await server
+                .CreateTusResumableRequest("/files/")
+                .AddHeader("Upload-Length", uploadLength.ToString())
+                .AddBody(bytesInRequestBody)
+                .SendAsync("POST");
 
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
@@ -499,16 +669,23 @@ namespace tusdotnet.test.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public async Task Returns_An_Error_To_The_Client_If_An_Exception_Is_Thrown_From_OnFileCompleteAsync(bool useLegacyOnFileComplete)
+        public async Task Returns_An_Error_To_The_Client_If_An_Exception_Is_Thrown_From_OnFileCompleteAsync(
+            bool useLegacyOnFileComplete
+        )
         {
             var uploadLength = 100;
             var bytesInRequestBody = 100;
             var offsetToReturn = 0;
 
             ITusStore store = Substitute.For<ITusStore, ITusCreationStore>();
-            ((ITusCreationStore)store).CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            ((ITusCreationStore)store)
+                .CreateFileAsync(default, default, default)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
             store.GetUploadLengthAsync(default, default).ReturnsForAnyArgs(uploadLength);
-            store.GetUploadOffsetAsync(default, default).ReturnsForAnyArgs(_ => offsetToReturn).AndDoes(_ => offsetToReturn = bytesInRequestBody);
+            store
+                .GetUploadOffsetAsync(default, default)
+                .ReturnsForAnyArgs(_ => offsetToReturn)
+                .AndDoes(_ => offsetToReturn = bytesInRequestBody);
             store.AppendDataAsync(default, default, default).ReturnsForAnyArgs(bytesInRequestBody);
 
             var config = new DefaultTusConfiguration
@@ -524,7 +701,6 @@ namespace tusdotnet.test.Tests
                 config.OnUploadCompleteAsync = (_, __, ___) =>
                 {
                     throw new Exception("Test from user code");
-
                 };
 #pragma warning restore CS0618 // Type or member is obsolete
             }
@@ -543,10 +719,11 @@ namespace tusdotnet.test.Tests
 
             var exception = await Should.ThrowAsync<Exception>(() =>
             {
-                return server.CreateTusResumableRequest("/files/")
-                                       .AddHeader("Upload-Length", uploadLength.ToString())
-                                       .AddBody(bytesInRequestBody)
-                                       .SendAsync("POST");
+                return server
+                    .CreateTusResumableRequest("/files/")
+                    .AddHeader("Upload-Length", uploadLength.ToString())
+                    .AddBody(bytesInRequestBody)
+                    .SendAsync("POST");
             });
 
             exception.Message.ShouldBe("Test from user code");

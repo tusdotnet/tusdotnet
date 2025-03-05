@@ -22,7 +22,11 @@ namespace tusdotnet
         /// <summary>Creates a new instance of TusOwinMiddleware.</summary>
         /// <param name="next"></param>
         /// <param name="configFactory"></param>
-        public TusOwinMiddleware(OwinMiddleware next, Func<IOwinRequest, Task<DefaultTusConfiguration>> configFactory) : base(next)
+        public TusOwinMiddleware(
+            OwinMiddleware next,
+            Func<IOwinRequest, Task<DefaultTusConfiguration>> configFactory
+        )
+            : base(next)
         {
             _configFactory = configFactory;
         }
@@ -52,13 +56,25 @@ namespace tusdotnet
 
             var request = new RequestAdapter()
             {
-                Headers = RequestHeaders.FromDictionary(context.Request.Headers.ToDictionary(f => f.Key, f => f.Value.FirstOrDefault(), StringComparer.OrdinalIgnoreCase)),
+                Headers = RequestHeaders.FromDictionary(
+                    context.Request.Headers.ToDictionary(
+                        f => f.Key,
+                        f => f.Value.FirstOrDefault(),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                ),
                 Body = context.Request.Body,
                 Method = context.Request.Method,
                 RequestUri = context.Request.Uri
             };
 
-            var contextAdapter = new ContextAdapter(config.UrlPath, MiddlewareUrlHelper.Instance, request, config, context);
+            var contextAdapter = new ContextAdapter(
+                config.UrlPath,
+                MiddlewareUrlHelper.Instance,
+                request,
+                config,
+                context
+            );
 
             var handled = await TusV1EventRunner.Invoke(contextAdapter);
 

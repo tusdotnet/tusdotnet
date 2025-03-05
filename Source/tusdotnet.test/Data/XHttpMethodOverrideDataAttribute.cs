@@ -6,17 +6,24 @@ using Xunit.Sdk;
 
 namespace tusdotnet.test.Data
 {
-	/// <summary>
-	/// Data attribute to provide all available methods for testing X-Http-Method-Override.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Method, Inherited = false)]
-	internal sealed class XHttpMethodOverrideDataAttribute : DataAttribute
-	{
-		private static readonly string[] AllSupportedMethods = {"options", "head", "patch", "post", "delete"};
+    /// <summary>
+    /// Data attribute to provide all available methods for testing X-Http-Method-Override.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+    internal sealed class XHttpMethodOverrideDataAttribute : DataAttribute
+    {
+        private static readonly string[] AllSupportedMethods =
+        {
+            "options",
+            "head",
+            "patch",
+            "post",
+            "delete"
+        };
 
-		public override IEnumerable<object[]> GetData(MethodInfo testMethod)
-		{
-			return AllSupportedMethods.Select(f => new[] {f}).ToArray();
-		}
-	}
+        public override IEnumerable<object[]> GetData(MethodInfo testMethod)
+        {
+            return AllSupportedMethods.Select(f => new[] { f }).ToArray();
+        }
+    }
 }

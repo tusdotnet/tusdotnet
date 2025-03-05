@@ -12,7 +12,10 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
         private static readonly ReadOnlyMemory<char> _httpsProtocol = "https://".AsMemory();
         private static readonly FileConcatPartial _partial = new();
 
-        internal static UploadConcatParserResult ParseAndValidate(string uploadConcatHeader, string urlPath)
+        internal static UploadConcatParserResult ParseAndValidate(
+            string uploadConcatHeader,
+            string urlPath
+        )
         {
             var span = uploadConcatHeader.AsSpan();
 
@@ -26,10 +29,15 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
                 return ParseFinal(span, urlPath.AsSpan());
             }
 
-            return UploadConcatParserResult.FromError(UploadConcatParserErrorTexts.HEADER_IS_INVALID);
+            return UploadConcatParserResult.FromError(
+                UploadConcatParserErrorTexts.HEADER_IS_INVALID
+            );
         }
 
-        private static UploadConcatParserResult ParseFinal(ReadOnlySpan<char> span, ReadOnlySpan<char> urlPath)
+        private static UploadConcatParserResult ParseFinal(
+            ReadOnlySpan<char> span,
+            ReadOnlySpan<char> urlPath
+        )
         {
             var indexOfFileListStart = span.IndexOf(';') + 1;
 
@@ -48,18 +56,20 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
 
                 if (localPath.IsEmpty || !localPath.StartsWith(urlPath))
                 {
-                    return UploadConcatParserResult.FromError(UploadConcatParserErrorTexts.HEADER_IS_INVALID);
+                    return UploadConcatParserResult.FromError(
+                        UploadConcatParserErrorTexts.HEADER_IS_INVALID
+                    );
                 }
 
                 var fileId = ExtractFileId(localPath, urlPath);
 
                 fileIds[fileIdIndex++] = fileId.ToString();
 
-                span = indexOfSpace == -1 ? ReadOnlySpan<char>.Empty : span[indexOfSpace..].Trim(' ');
+                span =
+                    indexOfSpace == -1 ? ReadOnlySpan<char>.Empty : span[indexOfSpace..].Trim(' ');
             }
 
             return UploadConcatParserResult.FromResult(new FileConcatFinal(fileIds));
-
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -79,14 +89,15 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ReadOnlySpan<char> ExtractFileId(ReadOnlySpan<char> localPath, ReadOnlySpan<char> urlPath)
+        private static ReadOnlySpan<char> ExtractFileId(
+            ReadOnlySpan<char> localPath,
+            ReadOnlySpan<char> urlPath
+        )
         {
             var fileId = localPath[urlPath.Length..].Trim('/');
             var indexOfQuestionMarkOrHash = fileId.IndexOfAny('?', '#');
 
-            return indexOfQuestionMarkOrHash != -1
-                ? fileId[0..indexOfQuestionMarkOrHash]
-                : fileId;
+            return indexOfQuestionMarkOrHash != -1 ? fileId[0..indexOfQuestionMarkOrHash] : fileId;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

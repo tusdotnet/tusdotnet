@@ -16,7 +16,12 @@ namespace tusdotnet.Models
             _preReadByte = preReadByte;
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             if (!_hasWrittenPreReadByte)
             {

@@ -27,6 +27,5 @@
         {
             return new ChecksumParserResult(true, algorithm, hash);
         }
-
     }
 }

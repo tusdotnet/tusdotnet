@@ -15,7 +15,10 @@ namespace tusdotnet.Models
         private readonly ClientDisconnectGuardWithTimeout _clientDisconnectGuard;
         private readonly ReadOnlySequence<byte> _emptySequence = new();
 
-        public ClientDisconnectGuardedPipeReader(PipeReader backingReader, ClientDisconnectGuardWithTimeout clientDisconnectGuard)
+        public ClientDisconnectGuardedPipeReader(
+            PipeReader backingReader,
+            ClientDisconnectGuardWithTimeout clientDisconnectGuard
+        )
         {
             _backingReader = backingReader;
             _clientDisconnectGuard = clientDisconnectGuard;
@@ -23,12 +26,18 @@ namespace tusdotnet.Models
 
         public override void AdvanceTo(SequencePosition consumed)
         {
-            _clientDisconnectGuard.Execute(() => _backingReader.AdvanceTo(consumed), _clientDisconnectGuard.GuardedToken);
+            _clientDisconnectGuard.Execute(
+                () => _backingReader.AdvanceTo(consumed),
+                _clientDisconnectGuard.GuardedToken
+            );
         }
 
         public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
         {
-            _clientDisconnectGuard.Execute(() => _backingReader.AdvanceTo(consumed, examined), _clientDisconnectGuard.GuardedToken);
+            _clientDisconnectGuard.Execute(
+                () => _backingReader.AdvanceTo(consumed, examined),
+                _clientDisconnectGuard.GuardedToken
+            );
         }
 
         public override void CancelPendingRead()
@@ -38,15 +47,23 @@ namespace tusdotnet.Models
 
         public override void Complete(Exception exception = null)
         {
-            _clientDisconnectGuard.Execute(() => _backingReader.Complete(exception), _clientDisconnectGuard.GuardedToken);
+            _clientDisconnectGuard.Execute(
+                () => _backingReader.Complete(exception),
+                _clientDisconnectGuard.GuardedToken
+            );
         }
 
-        public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<ReadResult> ReadAsync(
+            CancellationToken cancellationToken = default
+        )
         {
             return await _clientDisconnectGuard.Execute(
-                guardFromClientDisconnect: async () => await _backingReader.ReadAsync(cancellationToken),
-                getDefaultValue: () => new ReadResult(_emptySequence, isCanceled: true, isCompleted: false),
-                cancellationToken);
+                guardFromClientDisconnect: async () =>
+                    await _backingReader.ReadAsync(cancellationToken),
+                getDefaultValue: () =>
+                    new ReadResult(_emptySequence, isCanceled: true, isCompleted: false),
+                cancellationToken
+            );
         }
 
         public override bool TryRead(out ReadResult result)

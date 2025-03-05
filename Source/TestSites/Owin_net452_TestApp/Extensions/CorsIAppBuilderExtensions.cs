@@ -16,15 +16,20 @@ namespace Owin_net452_TestApp.Extensions
                 AllowAnyOrigin = true
             };
 
-            corsPolicy.GetType().GetProperty(nameof(corsPolicy.ExposedHeaders)).SetValue(corsPolicy, CorsHelper.GetExposedHeaders());
+            corsPolicy
+                .GetType()
+                .GetProperty(nameof(corsPolicy.ExposedHeaders))
+                .SetValue(corsPolicy, CorsHelper.GetExposedHeaders());
 
-            app.UseCors(new CorsOptions
-            {
-                PolicyProvider = new CorsPolicyProvider
+            app.UseCors(
+                new CorsOptions
                 {
-                    PolicyResolver = context => Task.FromResult(corsPolicy)
+                    PolicyProvider = new CorsPolicyProvider
+                    {
+                        PolicyResolver = context => Task.FromResult(corsPolicy)
+                    }
                 }
-            });
+            );
         }
     }
 }

@@ -7,13 +7,14 @@ using Xunit;
 namespace tusdotnet.test.Tests.ExtensionTests
 {
     public class RequestBuilderExtensionsTests
-	{
-		[Fact]
-		public async Task Should_Set_Tus_Resumable_Header_Properly()
-		{
+    {
+        [Fact]
+        public async Task Should_Set_Tus_Resumable_Header_Properly()
+        {
             using var server = TestServerFactory.Create(app => { });
 
-            await server.CreateRequest("/")
+            await server
+                .CreateRequest("/")
                 .And(r => r.Headers.Contains("Tus-Resumable").ShouldBeFalse())
                 .AddTusResumableHeader()
                 .And(r =>
@@ -25,15 +26,16 @@ namespace tusdotnet.test.Tests.ExtensionTests
                 .GetAsync();
         }
 
-		[Theory]
-		[InlineData("a", "b")]
-		[InlineData("b", "a")]
-		[InlineData("a", "a")]
-		public async Task Should_Set_XHttpMethodOverride_Properly(string @override, string method)
-		{
+        [Theory]
+        [InlineData("a", "b")]
+        [InlineData("b", "a")]
+        [InlineData("a", "a")]
+        public async Task Should_Set_XHttpMethodOverride_Properly(string @override, string method)
+        {
             using var server = TestServerFactory.Create(app => { });
 
-            await server.CreateRequest("/")
+            await server
+                .CreateRequest("/")
                 .And(r => r.Headers.Contains("X-Http-Method-Override").ShouldBeFalse())
                 .OverrideHttpMethodIfNeeded(@override, method)
                 .And(r =>
@@ -51,5 +53,5 @@ namespace tusdotnet.test.Tests.ExtensionTests
                 })
                 .GetAsync();
         }
-	}
+    }
 }

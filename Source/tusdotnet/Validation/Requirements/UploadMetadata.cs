@@ -28,7 +28,8 @@ namespace tusdotnet.Validation.Requirements
 
             var metadataParserResult = MetadataParser.ParseAndValidate(
                 context.Configuration.MetadataParsingStrategy,
-                context.Request.Headers.UploadMetadata);
+                context.Request.Headers.UploadMetadata
+            );
 
             if (metadataParserResult.Success)
             {

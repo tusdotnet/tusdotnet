@@ -26,7 +26,10 @@ namespace tusdotnet
             while (multiIntent.MoveNext() && multiIntent.Current is not null)
             {
                 var handler = CreateHandlerWithEvents(multiIntent.Current);
-                var result = await handler.RunWithEvents(context, swallowExceptionsDuringInvoke: multiIntent.Previous is not null);
+                var result = await handler.RunWithEvents(
+                    context,
+                    swallowExceptionsDuringInvoke: multiIntent.Previous is not null
+                );
                 if (result == ResultType.StopExecution)
                     break;
             }
@@ -36,7 +39,11 @@ namespace tusdotnet
             return ResultType.StopExecution;
         }
 
-        private static async Task<ResultType> RunWithEvents(this IntentHandlerWithEvents handler, ContextAdapter context, bool swallowExceptionsDuringInvoke)
+        private static async Task<ResultType> RunWithEvents(
+            this IntentHandlerWithEvents handler,
+            ContextAdapter context,
+            bool swallowExceptionsDuringInvoke
+        )
         {
             var onAuthorizeResult = await handler.Authorize();
 
@@ -45,7 +52,10 @@ namespace tusdotnet
                 return ResultType.StopExecution;
             }
 
-            if (handler.IntentHandler.VerifyTusVersionIfApplicable(context) == ResultType.StopExecution)
+            if (
+                handler.IntentHandler.VerifyTusVersionIfApplicable(context)
+                == ResultType.StopExecution
+            )
             {
                 return ResultType.StopExecution;
             }
@@ -87,7 +97,10 @@ namespace tusdotnet
             }
             catch (MaxReadSizeExceededException readSizeException)
             {
-                context.Response.Error(HttpStatusCode.RequestEntityTooLarge, readSizeException.Message);
+                context.Response.Error(
+                    HttpStatusCode.RequestEntityTooLarge,
+                    readSizeException.Message
+                );
                 return ResultType.StopExecution;
             }
             catch (TusStoreException storeException)

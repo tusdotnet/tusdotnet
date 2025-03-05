@@ -10,38 +10,33 @@ using tusdotnet.Validation.Requirements;
 namespace tusdotnet.IntentHandlers
 {
     /*
-    * The Server MUST always include the Upload-Offset header in the response for a HEAD request, 
-    * even if the offset is 0, or the upload is already considered completed. If the size of the upload is known, 
-    * the Server MUST include the Upload-Length header in the response. 
-    * If the resource is not found, the Server SHOULD return either the 404 Not Found, 410 Gone or 403 Forbidden 
+    * The Server MUST always include the Upload-Offset header in the response for a HEAD request,
+    * even if the offset is 0, or the upload is already considered completed. If the size of the upload is known,
+    * the Server MUST include the Upload-Length header in the response.
+    * If the resource is not found, the Server SHOULD return either the 404 Not Found, 410 Gone or 403 Forbidden
     * status without the Upload-Offset header.
-    * The Server MUST prevent the client and/or proxies from caching the response by adding the 
+    * The Server MUST prevent the client and/or proxies from caching the response by adding the
     * Cache-Control: no-store header to the response.
-    * 
-    * If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+    *
+    * If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header
     * and its value as specified by the Client during the creation.
-    * 
-    * The response to a HEAD request for a final upload SHOULD NOT contain the Upload-Offset header unless the 
-    * concatenation has been successfully finished. After successful concatenation, the Upload-Offset and Upload-Length 
-    * MUST be set and their values MUST be equal. The value of the Upload-Offset header before concatenation is not 
+    *
+    * The response to a HEAD request for a final upload SHOULD NOT contain the Upload-Offset header unless the
+    * concatenation has been successfully finished. After successful concatenation, the Upload-Offset and Upload-Length
+    * MUST be set and their values MUST be equal. The value of the Upload-Offset header before concatenation is not
     * defined for a final upload. The response to a HEAD request for a partial upload MUST contain the Upload-Offset header.
-    * The Upload-Length header MUST be included if the length of the final resource can be calculated at the time of the request. 
-    * Response to HEAD request against partial or final upload MUST include the Upload-Concat header and its value as received 
+    * The Upload-Length header MUST be included if the length of the final resource can be calculated at the time of the request.
+    * Response to HEAD request against partial or final upload MUST include the Upload-Concat header and its value as received
     * in the upload creation request.
     */
 
     internal class GetFileInfoHandler : IntentHandler
     {
-        internal override Requirement[] Requires => new Requirement[]
-        {
-            new FileExist(),
-            new FileHasNotExpired()
-        };
+        internal override Requirement[] Requires =>
+            new Requirement[] { new FileExist(), new FileHasNotExpired() };
 
         public GetFileInfoHandler(ContextAdapter context)
-            : base(context, IntentType.GetFileInfo, LockType.RequiresLock)
-        {
-        }
+            : base(context, IntentType.GetFileInfo, LockType.RequiresLock) { }
 
         internal override async Task Invoke()
         {
@@ -63,7 +58,10 @@ namespace tusdotnet.IntentHandlers
             var addUploadOffset = true;
             if (StoreAdapter.Extensions.Concatenation)
             {
-                uploadConcat = await StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken);
+                uploadConcat = await StoreAdapter.GetUploadConcatAsync(
+                    Context.FileId,
+                    CancellationToken
+                );
 
                 // Only add Upload-Offset to final files if they are complete.
                 if (uploadConcat is FileConcatFinal && uploadLength != uploadOffset)
@@ -79,7 +77,9 @@ namespace tusdotnet.IntentHandlers
 
             if (uploadConcat != null)
             {
-                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(Context.ResolveEndpointUrlWithoutTrailingSlash());
+                (uploadConcat as FileConcatFinal)?.AddUrlPathToFiles(
+                    Context.ResolveEndpointUrlWithoutTrailingSlash()
+                );
                 Response.SetHeader(HeaderConstants.UploadConcat, uploadConcat.GetHeader());
             }
 
@@ -89,7 +89,10 @@ namespace tusdotnet.IntentHandlers
         private Task<string> GetMetadata(ContextAdapter context)
         {
             if (StoreAdapter.Extensions.Creation)
-                return StoreAdapter.GetUploadMetadataAsync(Context.FileId, context.CancellationToken);
+                return StoreAdapter.GetUploadMetadataAsync(
+                    Context.FileId,
+                    context.CancellationToken
+                );
 
             return Task.FromResult<string>(null);
         }
@@ -98,7 +101,10 @@ namespace tusdotnet.IntentHandlers
         {
             if (uploadLength != null)
             {
-                context.Response.SetHeader(HeaderConstants.UploadLength, uploadLength.Value.ToString());
+                context.Response.SetHeader(
+                    HeaderConstants.UploadLength,
+                    uploadLength.Value.ToString()
+                );
             }
             else if (context.StoreAdapter.Extensions.CreationDeferLength)
             {

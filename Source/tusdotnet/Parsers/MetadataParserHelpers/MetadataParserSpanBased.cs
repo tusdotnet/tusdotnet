@@ -42,7 +42,9 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 
                 if (value.IndexOf(' ') > -1)
                 {
-                    return MetadataParserResult.FromError(MetadataParserErrorTexts.INVALID_FORMAT_ALLOW_EMPTY_VALUES);
+                    return MetadataParserResult.FromError(
+                        MetadataParserErrorTexts.INVALID_FORMAT_ALLOW_EMPTY_VALUES
+                    );
                 }
 
                 if (key.IsEmpty)
@@ -54,7 +56,9 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 
                 if (result.ContainsKey(keyString))
                 {
-                    return MetadataParserResult.FromError(MetadataParserErrorTexts.DUPLICATE_KEY_FOUND);
+                    return MetadataParserResult.FromError(
+                        MetadataParserErrorTexts.DUPLICATE_KEY_FOUND
+                    );
                 }
 
                 byte[] decodedValue = null;
@@ -64,13 +68,18 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
                     (validBase64, decodedValue) = value.TryDecodeBase64();
                     if (!validBase64)
                     {
-                        return MetadataParserResult.FromError(MetadataParserErrorTexts.InvalidBase64Value(keyString));
+                        return MetadataParserResult.FromError(
+                            MetadataParserErrorTexts.InvalidBase64Value(keyString)
+                        );
                     }
                 }
 
                 result.Add(keyString, Metadata.FromBytes(decodedValue));
 
-                span = indexOfNextPair == -1 ? ReadOnlySpan<char>.Empty : span[(indexOfNextPair + 1)..];
+                span =
+                    indexOfNextPair == -1
+                        ? ReadOnlySpan<char>.Empty
+                        : span[(indexOfNextPair + 1)..];
             }
 
             return MetadataParserResult.FromResult(result);

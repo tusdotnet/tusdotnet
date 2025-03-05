@@ -5,11 +5,11 @@ using System.Net;
 using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.test.Extensions;
 using Xunit;
-using tusdotnet.Helpers;
 #if netfull
 using Microsoft.Owin.Testing;
 using Microsoft.Owin;
@@ -61,13 +61,19 @@ namespace tusdotnet.test.Tests
             // Test HEAD
             for (var i = 0; i < 3; i++)
             {
-                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD");
+                await server
+                    .CreateRequest("/files/testfile")
+                    .AddTusResumableHeader()
+                    .SendAsync("HEAD");
             }
 
             // Test PATCH
             for (var i = 0; i < 3; i++)
             {
-                await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH");
+                await server
+                    .CreateRequest("/files/testfile")
+                    .AddTusResumableHeader()
+                    .SendAsync("PATCH");
             }
 
             configFunc.ReceivedCalls().Count().ShouldBe(12);
@@ -85,21 +91,14 @@ namespace tusdotnet.test.Tests
             }
 
             // Configuration with only Store specified
-            tusConfiguration = new DefaultTusConfiguration
-            {
-                Store = Substitute.For<ITusStore>()
-            };
+            tusConfiguration = new DefaultTusConfiguration { Store = Substitute.For<ITusStore>() };
             using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
             }
 
             // Configuration with only url path specified
-            tusConfiguration = new DefaultTusConfiguration
-            {
-                UrlPath = "/files",
-                Store = null
-            };
+            tusConfiguration = new DefaultTusConfiguration { UrlPath = "/files", Store = null };
             using (var server = TestServerFactory.Create(tusConfiguration))
             {
                 await AssertRequests(server);
@@ -109,10 +108,19 @@ namespace tusdotnet.test.Tests
             {
                 var funcs = new List<Func<Task>>(4)
                 {
-                    () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
+                    () =>
+                        server.CreateRequest("/files").AddTusResumableHeader().SendAsync("OPTIONS"),
                     () => server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST"),
-                    () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD"),
-                    () => server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("PATCH")
+                    () =>
+                        server
+                            .CreateRequest("/files/testfile")
+                            .AddTusResumableHeader()
+                            .SendAsync("HEAD"),
+                    () =>
+                        server
+                            .CreateRequest("/files/testfile")
+                            .AddTusResumableHeader()
+                            .SendAsync("PATCH")
                 };
 
                 foreach (var func in funcs)
@@ -145,11 +153,14 @@ namespace tusdotnet.test.Tests
 #endif
 
             // Empty configuration
-            using var server = TestServerFactory.CreateWithFactory(async httpContext =>
-            {
-                await Task.Delay(10);
-                return tusConfiguration;
-            }, urlPath);
+            using var server = TestServerFactory.CreateWithFactory(
+                async httpContext =>
+                {
+                    await Task.Delay(10);
+                    return tusConfiguration;
+                },
+                urlPath
+            );
 
             var response = await server.CreateRequest(urlPath).SendAsync("OPTIONS");
             response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -180,7 +191,6 @@ namespace tusdotnet.test.Tests
             // Others will not lock.
             response = await server.CreateTusResumableRequest(urlPath).SendAsync("OPTIONS");
             response = await server.CreateTusResumableRequest(urlPath).SendAsync("POST");
-            
 
             lockProvider.LockCount.ShouldBe(3);
             lockProvider.ReleaseCount.ShouldBe(3);

@@ -1,4 +1,7 @@
-﻿using AspNetCore_netcoreapp2_2_TestApp.Authentication;
+﻿using System;
+using System.Net;
+using System.Threading.Tasks;
+using AspNetCore_netcoreapp2_2_TestApp.Authentication;
 using AspNetCore_netcoreapp2_2_TestApp.Middleware;
 using AspNetCore_netcoreapp2_2_TestApp.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -8,9 +11,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
-using System;
-using System.Net;
-using System.Threading.Tasks;
 using tusdotnet;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
@@ -37,8 +37,12 @@ namespace AspNetCore_netcoreapp2_2_TestApp
             services.AddCors();
             services.AddSingleton(CreateTusConfiguration);
             services.AddHostedService<ExpiredFilesCleanupService>();
-            services.AddAuthentication("BasicAuthentication")
-                    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+            services
+                .AddAuthentication("BasicAuthentication")
+                .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>(
+                    "BasicAuthentication",
+                    null
+                );
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,22 +58,28 @@ namespace AspNetCore_netcoreapp2_2_TestApp
             app.UseDefaultFiles();
             app.UseStaticFiles();
 
-            app.UseCors(builder => builder
-               .AllowAnyHeader()
-               .AllowAnyMethod()
-               .AllowAnyOrigin()
-               .WithExposedHeaders(CorsHelper.GetExposedHeaders()));
+            app.UseCors(builder =>
+                builder
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowAnyOrigin()
+                    .WithExposedHeaders(CorsHelper.GetExposedHeaders())
+            );
 
             app.UseSimpleExceptionHandler();
 
             // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
             // In this case we just return the same configuration for everyone.
-            app.UseTus(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
+            app.UseTus(httpContext =>
+                Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>())
+            );
 
             // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
-            // This is done because the file's metadata is domain specific and thus cannot be handled 
+            // This is done because the file's metadata is domain specific and thus cannot be handled
             // in a generic way by tusdotnet.
-            app.UseSimpleDownloadMiddleware(httpContext => Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>()));
+            app.UseSimpleDownloadMiddleware(httpContext =>
+                Task.FromResult(httpContext.RequestServices.GetService<DefaultTusConfiguration>())
+            );
         }
 
         private DefaultTusConfiguration CreateTusConfiguration(IServiceProvider serviceProvider)
@@ -94,14 +104,20 @@ namespace AspNetCore_netcoreapp2_2_TestApp
 
                         if (!ctx.HttpContext.User.Identity.IsAuthenticated)
                         {
-                            ctx.HttpContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=tusdotnet-test-netcoreapp2.2"));
+                            ctx.HttpContext.Response.Headers.Add(
+                                "WWW-Authenticate",
+                                new StringValues("Basic realm=tusdotnet-test-netcoreapp2.2")
+                            );
                             ctx.FailRequest(HttpStatusCode.Unauthorized);
                             return Task.CompletedTask;
                         }
 
                         if (ctx.HttpContext.User.Identity.Name != "test")
                         {
-                            ctx.FailRequest(HttpStatusCode.Forbidden, "'test' is the only allowed user");
+                            ctx.FailRequest(
+                                HttpStatusCode.Forbidden,
+                                "'test' is the only allowed user"
+                            );
                             return Task.CompletedTask;
                         }
 
@@ -147,7 +163,10 @@ namespace AspNetCore_netcoreapp2_2_TestApp
                             ctx.FailRequest("name metadata must be specified. ");
                         }
 
-                        if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
+                        if (
+                            !ctx.Metadata.ContainsKey("contentType")
+                            || ctx.Metadata["contentType"].HasEmptyValue
+                        )
                         {
                             ctx.FailRequest("contentType metadata must be specified. ");
                         }
@@ -156,7 +175,9 @@ namespace AspNetCore_netcoreapp2_2_TestApp
                     },
                     OnCreateCompleteAsync = ctx =>
                     {
-                        logger.LogInformation($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        logger.LogInformation(
+                            $"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                        );
                         return Task.CompletedTask;
                     },
                     OnBeforeDeleteAsync = ctx =>
@@ -166,12 +187,16 @@ namespace AspNetCore_netcoreapp2_2_TestApp
                     },
                     OnDeleteCompleteAsync = ctx =>
                     {
-                        logger.LogInformation($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        logger.LogInformation(
+                            $"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                        );
                         return Task.CompletedTask;
                     },
                     OnFileCompleteAsync = ctx =>
                     {
-                        logger.LogInformation($"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}");
+                        logger.LogInformation(
+                            $"Upload of {ctx.FileId} completed using {ctx.Store.GetType().FullName}"
+                        );
                         // If the store implements ITusReadableStore one could access the completed file here.
                         // The default TusDiskStore implements this interface:
                         //var file = await ctx.GetFileAsync();

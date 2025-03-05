@@ -19,7 +19,10 @@ namespace tusdotnet.Validation.Requirements
 
         private async Task ValidateForPatch(ContextAdapter context)
         {
-            var uploadConcat = await context.StoreAdapter.GetUploadConcatAsync(context.FileId, context.CancellationToken);
+            var uploadConcat = await context.StoreAdapter.GetUploadConcatAsync(
+                context.FileId,
+                context.CancellationToken
+            );
 
             if (uploadConcat is FileConcatFinal)
             {

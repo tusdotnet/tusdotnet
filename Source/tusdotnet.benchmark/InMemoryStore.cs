@@ -22,13 +22,21 @@ namespace tusdotnet.benchmark
             UploadLength = new Dictionary<string, long>();
         }
 
-        public Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
+        public Task<long> AppendDataAsync(
+            string fileId,
+            Stream stream,
+            CancellationToken cancellationToken
+        )
         {
             stream.CopyTo(Data[fileId]);
             return Task.FromResult(stream.Length);
         }
 
-        public Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
+        public Task<string> CreateFileAsync(
+            long uploadLength,
+            string metadata,
+            CancellationToken cancellationToken
+        )
         {
             var fileId = Guid.NewGuid().ToString();
 
@@ -49,7 +57,10 @@ namespace tusdotnet.benchmark
             return Task.FromResult((long?)UploadLength[fileId]);
         }
 
-        public Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
+        public Task<string> GetUploadMetadataAsync(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
             return Task.FromResult(Metadata[fileId]);
         }

@@ -7,9 +7,10 @@ namespace tusdotnet.Extensions.Internal
 {
     internal static class ReadOnlySpanExtensions
     {
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (bool Success, byte[] DecodedValue) TryDecodeBase64(this ReadOnlySpan<char> value)
+        internal static (bool Success, byte[] DecodedValue) TryDecodeBase64(
+            this ReadOnlySpan<char> value
+        )
         {
             var bytes = new byte[value.GetBase64ByteLength()];
             return (Convert.TryFromBase64Chars(value, bytes, out var _), bytes);

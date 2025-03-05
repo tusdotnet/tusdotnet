@@ -8,16 +8,18 @@ namespace tusdotnet.Runners.Events
 {
     internal class GetOptionsHandlerWithEvents : IntentHandlerWithEvents
     {
-        public GetOptionsHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
-        {
-        }
+        public GetOptionsHandlerWithEvents(IntentHandler intentHandler)
+            : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
-            {
-                ctx.Intent = IntentType.GetOptions;
-            });
+            return await EventHelper.Validate<AuthorizeContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.Intent = IntentType.GetOptions;
+                }
+            );
         }
 
         internal override Task NotifyAfterAction()

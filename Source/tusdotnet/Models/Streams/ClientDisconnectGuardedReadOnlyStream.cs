@@ -9,22 +9,36 @@ namespace tusdotnet.Models
     {
         private readonly ClientDisconnectGuardWithTimeout _clientDisconnectGuard;
 
-        internal ClientDisconnectGuardedReadOnlyStream(Stream backingStream, ClientDisconnectGuardWithTimeout clientDisconnectGuard)
+        internal ClientDisconnectGuardedReadOnlyStream(
+            Stream backingStream,
+            ClientDisconnectGuardWithTimeout clientDisconnectGuard
+        )
             : base(backingStream)
         {
             _clientDisconnectGuard = clientDisconnectGuard;
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             var result = await _clientDisconnectGuard.Execute(
                 guardFromClientDisconnect: async () =>
                 {
-                    var bytesRead = await BackingStream.ReadAsync(buffer, offset, count, cancellationToken);
+                    var bytesRead = await BackingStream.ReadAsync(
+                        buffer,
+                        offset,
+                        count,
+                        cancellationToken
+                    );
                     return new ClientDisconnectGuardReadStreamAsyncResult(false, bytesRead);
                 },
                 getDefaultValue: () => new ClientDisconnectGuardReadStreamAsyncResult(true, 0),
-                cancellationToken);
+                cancellationToken
+            );
 
             return result.BytesRead;
         }

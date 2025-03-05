@@ -17,7 +17,8 @@ namespace tusdotnet
     public static class EndpointConventionBuilderExtensions
     {
         private const string _tusFileIdRoutePart = $"{{{EndpointRouteConstants.FileId}?}}";
-        private const string _tusFileIdRoutePartWithPrefixForwardSlash = $"/{{{EndpointRouteConstants.FileId}?}}";
+        private const string _tusFileIdRoutePartWithPrefixForwardSlash =
+            $"/{{{EndpointRouteConstants.FileId}?}}";
 
         /// <summary>
         /// Adds a tus endpoint for the specified pattern using the specified configuration.
@@ -26,7 +27,11 @@ namespace tusdotnet
         /// <param name="pattern">The route pattern.</param>
         /// <param name="configFactory">The configuration factory to use to construct the configuration for this specific endpoint.</param>
         /// <returns>A Microsoft.AspNetCore.Builder.IEndpointConventionBuilder that can be used to further customize the endpoint.</returns>
-        public static IEndpointConventionBuilder MapTus(this IEndpointRouteBuilder endpoints, string pattern, Func<HttpContext, Task<DefaultTusConfiguration>> configFactory)
+        public static IEndpointConventionBuilder MapTus(
+            this IEndpointRouteBuilder endpoints,
+            string pattern,
+            Func<HttpContext, Task<DefaultTusConfiguration>> configFactory
+        )
         {
             ThrowIfPatternContainsTusFileId(pattern);
 
@@ -57,9 +62,16 @@ namespace tusdotnet
                 return;
 
             var parsedPattern = RoutePatternFactory.Parse(pattern);
-            if (parsedPattern.Parameters.Any(x => x.Name.Equals(EndpointRouteConstants.FileId, StringComparison.OrdinalIgnoreCase)))
+            if (
+                parsedPattern.Parameters.Any(x =>
+                    x.Name.Equals(EndpointRouteConstants.FileId, StringComparison.OrdinalIgnoreCase)
+                )
+            )
             {
-                throw new ArgumentException($"Routing pattern must not contain {EndpointRouteConstants.FileId} parameter", nameof(pattern));
+                throw new ArgumentException(
+                    $"Routing pattern must not contain {EndpointRouteConstants.FileId} parameter",
+                    nameof(pattern)
+                );
             }
         }
     }
