@@ -23,21 +23,25 @@ namespace tusdotnet.test.Tests
 
             var store = Substitute.For<ITusStore, ITusTerminationStore>();
             store.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
-            ((ITusTerminationStore)store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>()).Returns(_ =>
-            {
-                Thread.Sleep(500);
-                return Task.FromResult(0);
-            });
+            ((ITusTerminationStore)store)
+                .DeleteFileAsync(fileId, Arg.Any<CancellationToken>())
+                .Returns(_ =>
+                {
+                    Thread.Sleep(500);
+                    return Task.FromResult(0);
+                });
 
             using var server = TestServerFactory.Create(store);
 
-            var deleteRequest = server.CreateRequest($"/files/{fileId}")
+            var deleteRequest = server
+                .CreateRequest($"/files/{fileId}")
                 .AddTusResumableHeader()
                 .SendAsync("DELETE");
 
             await Task.Delay(50);
 
-            var patchRequest = server.CreateRequest($"/files/{fileId}")
+            var patchRequest = server
+                .CreateRequest($"/files/{fileId}")
                 .AddBody()
                 .AddHeader("Upload-Offset", "0")
                 .AddTusResumableHeader()
@@ -57,18 +61,21 @@ namespace tusdotnet.test.Tests
             store.FileExistAsync(fileId, Arg.Any<CancellationToken>()).Returns(true);
             store.GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>()).Returns(0);
             store.GetUploadLengthAsync(fileId, Arg.Any<CancellationToken>()).Returns(10);
-            store.AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            store
+                .AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>())
                 .Returns(_ =>
                 {
                     Thread.Sleep(5000);
                     return 3;
                 });
-            ((ITusTerminationStore)store).DeleteFileAsync(fileId, Arg.Any<CancellationToken>())
+            ((ITusTerminationStore)store)
+                .DeleteFileAsync(fileId, Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult(0));
 
             using var server = TestServerFactory.Create(store);
 
-            var patchRequest = server.CreateRequest($"/files/{fileId}")
+            var patchRequest = server
+                .CreateRequest($"/files/{fileId}")
                 .AddBody()
                 .AddHeader("Upload-Offset", "0")
                 .AddTusResumableHeader()
@@ -76,7 +83,8 @@ namespace tusdotnet.test.Tests
 
             await Task.Delay(50);
 
-            var deleteRequest = server.CreateRequest($"/files/{fileId}")
+            var deleteRequest = server
+                .CreateRequest($"/files/{fileId}")
                 .AddTusResumableHeader()
                 .SendAsync("DELETE");
 

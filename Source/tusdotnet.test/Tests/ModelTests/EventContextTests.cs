@@ -27,10 +27,7 @@ namespace tusdotnet.test.Tests.ModelTests
         [Fact]
         public async Task GetFileAsync_Returns_Null_If_FileId_Is_Missing()
         {
-            var context = new EventContextForTest
-            {
-                Store = CreateReadableStoreWithExistingFile()
-            };
+            var context = new EventContextForTest { Store = CreateReadableStoreWithExistingFile() };
 
             var file = await context.GetFileAsync();
             file.ShouldBeNull();
@@ -45,19 +42,22 @@ namespace tusdotnet.test.Tests.ModelTests
                 Store = Substitute.For<ITusStore>()
             };
 
-            await Should.ThrowAsync(async () => await context.GetFileAsync(), typeof(InvalidCastException));
+            await Should.ThrowAsync(
+                async () => await context.GetFileAsync(),
+                typeof(InvalidCastException)
+            );
         }
 
         private static ITusStore CreateReadableStoreWithExistingFile()
         {
             var store = Substitute.For<ITusStore, ITusReadableStore>();
             var readableStore = (ITusReadableStore)store;
-            readableStore.GetFileAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Substitute.For<ITusFile>());
+            readableStore
+                .GetFileAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Substitute.For<ITusFile>());
             return store;
         }
 
-        private class EventContextForTest : EventContext<EventContextForTest>
-        {
-        }
+        private class EventContextForTest : EventContext<EventContextForTest> { }
     }
 }

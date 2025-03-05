@@ -16,7 +16,10 @@ namespace tusdotnet.Helpers
         /// <param name="guardFromClientDisconnect">The func to execute</param>
         /// <param name="requestCancellationToken">The cancellation token of the request to monitor for disconnects</param>
         /// <returns>True if the client disconnected, otherwise false</returns>
-        public static async Task<bool> ExecuteAsync(Func<Task> guardFromClientDisconnect, CancellationToken requestCancellationToken)
+        public static async Task<bool> ExecuteAsync(
+            Func<Task> guardFromClientDisconnect,
+            CancellationToken requestCancellationToken
+        )
         {
             try
             {
@@ -35,7 +38,10 @@ namespace tusdotnet.Helpers
         /// <param name="guardFromClientDisconnect">The action to execute</param>
         /// <param name="requestCancellationToken">The cancellation token of the request to monitor for disconnects</param>
         /// <returns>True if the client disconnected, otherwise false</returns>
-        public static bool Execute(Action guardFromClientDisconnect, CancellationToken requestCancellationToken)
+        public static bool Execute(
+            Action guardFromClientDisconnect,
+            CancellationToken requestCancellationToken
+        )
         {
             try
             {
@@ -48,7 +54,13 @@ namespace tusdotnet.Helpers
             }
         }
 
-        internal static async Task<ClientDisconnectGuardReadStreamAsyncResult> ReadStreamAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        internal static async Task<ClientDisconnectGuardReadStreamAsyncResult> ReadStreamAsync(
+            Stream stream,
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             try
             {
@@ -67,7 +79,10 @@ namespace tusdotnet.Helpers
         /// <param name="exception">The exception retrieved from the operation that might have been caused by a client disconnect</param>
         /// <param name="cancellationToken">The client's request cancellation token</param>
         /// <returns>True if the client disconnected, otherwise false</returns>
-        internal static bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
+        internal static bool ClientDisconnected(
+            Exception exception,
+            CancellationToken cancellationToken
+        )
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -76,7 +91,7 @@ namespace tusdotnet.Helpers
 
             var exceptionFullName = exception.GetType().FullName;
 
-            // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1). 
+            // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1).
             // Instead the exception below is thrown.
             if (exceptionFullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException")
             {

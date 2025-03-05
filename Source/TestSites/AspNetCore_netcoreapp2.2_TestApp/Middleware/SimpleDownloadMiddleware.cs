@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
-using System;
+﻿using System;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
@@ -14,7 +14,10 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Middleware
         private readonly RequestDelegate next;
         private readonly Func<HttpContext, Task<DefaultTusConfiguration>> _configFactory;
 
-        public SimpleDownloadMiddleware(RequestDelegate next, Func<HttpContext, Task<DefaultTusConfiguration>> configFactory)
+        public SimpleDownloadMiddleware(
+            RequestDelegate next,
+            Func<HttpContext, Task<DefaultTusConfiguration>> configFactory
+        )
         {
             this.next = next;
             _configFactory = configFactory;
@@ -48,8 +51,10 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Middleware
                     if (file == null)
                     {
                         context.Response.StatusCode = 404;
-                        await context.Response.WriteAsync($"File with id {fileId} was not found.",
-                            context.RequestAborted);
+                        await context.Response.WriteAsync(
+                            $"File with id {fileId} was not found.",
+                            context.RequestAborted
+                        );
                         return;
                     }
 
@@ -64,13 +69,22 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Middleware
 
                     if (metadata.TryGetValue("name", out var nameMeta))
                     {
-                        context.Response.Headers.Add("Content-Disposition",
-                            new[] { $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"" });
+                        context.Response.Headers.Add(
+                            "Content-Disposition",
+                            new[]
+                            {
+                                $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\""
+                            }
+                        );
                     }
 
                     using (fileStream)
                     {
-                        await fileStream.CopyToAsync(context.Response.Body, 81920, context.RequestAborted);
+                        await fileStream.CopyToAsync(
+                            context.Response.Body,
+                            81920,
+                            context.RequestAborted
+                        );
                     }
                 }
             }
@@ -85,7 +99,10 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Middleware
         /// <param name="builder"></param>
         /// <param name="configFactory"></param>
         /// <returns></returns>
-        public static IApplicationBuilder UseSimpleDownloadMiddleware(this IApplicationBuilder builder, Func<HttpContext, Task<DefaultTusConfiguration>> configFactory)
+        public static IApplicationBuilder UseSimpleDownloadMiddleware(
+            this IApplicationBuilder builder,
+            Func<HttpContext, Task<DefaultTusConfiguration>> configFactory
+        )
         {
             return builder.UseMiddleware<SimpleDownloadMiddleware>(configFactory);
         }

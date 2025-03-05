@@ -32,7 +32,12 @@ namespace tusdotnet.test
     {
 #if netstandard
 
-        public static TestServer CreateWithForwarding(ITusStore store, Action onAuthorizeCalled, Action onForwarded, TusExtensions allowedExtensions = null)
+        public static TestServer CreateWithForwarding(
+            ITusStore store,
+            Action onAuthorizeCalled,
+            Action onForwarded,
+            TusExtensions allowedExtensions = null
+        )
         {
             return TestServerFactory.Create(app =>
             {
@@ -65,7 +70,6 @@ namespace tusdotnet.test
             });
         }
 
-
 #if NET6_0_OR_GREATER
 
         public static TestServer Create(Action<IApplicationBuilder> startup)
@@ -84,9 +88,14 @@ namespace tusdotnet.test
             return new TestServer(builder);
         }
 
-        public static TestServer CreateWithFactory(Func<HttpContext, Task<DefaultTusConfiguration>> configurationFactory, string urlPath)
+        public static TestServer CreateWithFactory(
+            Func<HttpContext, Task<DefaultTusConfiguration>> configurationFactory,
+            string urlPath
+        )
         {
-            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, configurationFactory)));
+            return Create(app =>
+                app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, configurationFactory))
+            );
         }
 
         public static TestServer Create(DefaultTusConfiguration config)
@@ -95,9 +104,12 @@ namespace tusdotnet.test
             var urlPath = config.UrlPath;
             config.UrlPath = null;
             config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
-            return Create(app => app.UseEndpoints(endpoints => endpoints.MapTus(urlPath, _ => Task.FromResult(config))));
+            return Create(app =>
+                app.UseEndpoints(endpoints =>
+                    endpoints.MapTus(urlPath, _ => Task.FromResult(config))
+                )
+            );
         }
-
 #else
 
         public static TestServer Create(Action<IApplicationBuilder> startup)
@@ -106,7 +118,10 @@ namespace tusdotnet.test
             return new TestServer(host);
         }
 
-        public static TestServer CreateWithFactory(Func<HttpContext, Task<DefaultTusConfiguration>> configurationFactory, string urlPath)
+        public static TestServer CreateWithFactory(
+            Func<HttpContext, Task<DefaultTusConfiguration>> configurationFactory,
+            string urlPath
+        )
         {
             return Create(app => app.UseTus(configurationFactory));
         }
@@ -116,24 +131,32 @@ namespace tusdotnet.test
             config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
             return Create(app => app.UseTus(_ => config));
         }
-
 #endif
 
-        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues, TusExtensions allowedExtensions = null, bool usePipelinesIfAvailable = false)
+        public static TestServer Create(
+            ITusStore store,
+            Events events = null,
+            MetadataParsingStrategy metadataParsingStrategy =
+                MetadataParsingStrategy.AllowEmptyValues,
+            TusExtensions allowedExtensions = null,
+            bool usePipelinesIfAvailable = false
+        )
         {
-            return Create(new DefaultTusConfiguration
-            {
-                UrlPath = "/files",
-                Store = store,
-                Events = events,
-                MetadataParsingStrategy = metadataParsingStrategy
+            return Create(
+                new DefaultTusConfiguration
+                {
+                    UrlPath = "/files",
+                    Store = store,
+                    Events = events,
+                    MetadataParsingStrategy = metadataParsingStrategy
 #if pipelines
-                ,
-                UsePipelinesIfAvailable = usePipelinesIfAvailable
+                    ,
+                    UsePipelinesIfAvailable = usePipelinesIfAvailable
 #endif
-                ,
-                AllowedExtensions = allowedExtensions ?? TusExtensions.All
-            });
+                    ,
+                    AllowedExtensions = allowedExtensions ?? TusExtensions.All
+                }
+            );
         }
 
 #endif
@@ -151,7 +174,12 @@ namespace tusdotnet.test
             return Create(app => app.UseTus(_ => config));
         }
 
-        public static TestServer CreateWithForwarding(ITusStore store, Action onAuthorizeCalled, Action onForwarded, TusExtensions allowedExtensions = null)
+        public static TestServer CreateWithForwarding(
+            ITusStore store,
+            Action onAuthorizeCalled,
+            Action onForwarded,
+            TusExtensions allowedExtensions = null
+        )
         {
             return Create(app =>
             {
@@ -184,24 +212,34 @@ namespace tusdotnet.test
             });
         }
 
-        public static TestServer CreateWithFactory(Func<IOwinRequest, Task<DefaultTusConfiguration>> configurationFactory, string urlPath)
+        public static TestServer CreateWithFactory(
+            Func<IOwinRequest, Task<DefaultTusConfiguration>> configurationFactory,
+            string urlPath
+        )
         {
             return Create(app => app.UseTus(configurationFactory));
         }
 
-        public static TestServer Create(ITusStore store, Events events = null, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.AllowEmptyValues, TusExtensions allowedExtensions = null)
+        public static TestServer Create(
+            ITusStore store,
+            Events events = null,
+            MetadataParsingStrategy metadataParsingStrategy =
+                MetadataParsingStrategy.AllowEmptyValues,
+            TusExtensions allowedExtensions = null
+        )
         {
-            return Create(new DefaultTusConfiguration
-            {
-                UrlPath = "/files",
-                Store = store,
-                Events = events,
-                MetadataParsingStrategy = metadataParsingStrategy,
-                AllowedExtensions = allowedExtensions ?? TusExtensions.All
-            });
+            return Create(
+                new DefaultTusConfiguration
+                {
+                    UrlPath = "/files",
+                    Store = store,
+                    Events = events,
+                    MetadataParsingStrategy = metadataParsingStrategy,
+                    AllowedExtensions = allowedExtensions ?? TusExtensions.All
+                }
+            );
         }
 
 #endif
-
     }
 }

@@ -6,13 +6,15 @@ namespace tusdotnet.Adapters
     {
         public static MiddlewareUrlHelper Instance { get; } = new();
 
-        private MiddlewareUrlHelper()
-        {
-        }
+        private MiddlewareUrlHelper() { }
 
         public string ParseFileId(ContextAdapter context)
         {
-            var startIndex = context.Request.RequestUri.LocalPath.IndexOf(context.ConfigUrlPath, StringComparison.OrdinalIgnoreCase) + context.ConfigUrlPath.Length;
+            var startIndex =
+                context.Request.RequestUri.LocalPath.IndexOf(
+                    context.ConfigUrlPath,
+                    StringComparison.OrdinalIgnoreCase
+                ) + context.ConfigUrlPath.Length;
 
 #if NETCOREAPP3_1_OR_GREATER
 
@@ -27,7 +29,11 @@ namespace tusdotnet.Adapters
             var requestUri = context.Request.RequestUri;
             var configUrlPath = context.ConfigUrlPath;
 
-            return !UrlMatchesUrlPath(context) && requestUri.LocalPath.StartsWith(configUrlPath, StringComparison.OrdinalIgnoreCase);
+            return !UrlMatchesUrlPath(context)
+                && requestUri.LocalPath.StartsWith(
+                    configUrlPath,
+                    StringComparison.OrdinalIgnoreCase
+                );
         }
 
         public bool UrlMatchesUrlPath(ContextAdapter context)
@@ -35,7 +41,9 @@ namespace tusdotnet.Adapters
             var requestUri = context.Request.RequestUri;
             var configUrlPath = context.ConfigUrlPath;
 
-            return requestUri.LocalPath.TrimEnd('/').Equals(configUrlPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+            return requestUri
+                .LocalPath.TrimEnd('/')
+                .Equals(configUrlPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
         }
     }
 }

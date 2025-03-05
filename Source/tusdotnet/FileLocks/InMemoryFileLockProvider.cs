@@ -13,9 +13,7 @@ namespace tusdotnet.FileLocks
         /// </summary>
         public static ITusFileLockProvider Instance { get; } = new InMemoryFileLockProvider();
 
-        private InMemoryFileLockProvider()
-        {
-        }
+        private InMemoryFileLockProvider() { }
 
         /// <inheritdoc />
         public Task<ITusFileLock> AquireLock(string fileId)

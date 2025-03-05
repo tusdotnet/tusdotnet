@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Models;
-
 #if trailingheaders
 
 using Microsoft.AspNetCore.Http;
@@ -28,11 +27,9 @@ namespace tusdotnet.Helpers
         private bool _checksumOriginatesFromTrailer;
         private ChecksumHelperResult _checksumTrailerParseResult;
         private Checksum _checksum;
-
 #else
 
         private readonly Checksum _checksum;
-
 #endif
 
         public ChecksumHelper(ContextAdapter context)
@@ -56,7 +53,10 @@ namespace tusdotnet.Helpers
             }
         }
 
-        private async Task<List<string>> LoadSupportAlgorithms() => (await _context.StoreAdapter.GetSupportedAlgorithmsAsync(_context.CancellationToken)).ToList();
+        private async Task<List<string>> LoadSupportAlgorithms() =>
+            (
+                await _context.StoreAdapter.GetSupportedAlgorithmsAsync(_context.CancellationToken)
+            ).ToList();
 
         internal bool IsSupported() => _context.StoreAdapter.Extensions.Checksum;
 
@@ -67,12 +67,18 @@ namespace tusdotnet.Helpers
             var hasDeclaredChecksumTrailer = _context.HasDeclaredTrailingUploadChecksumHeader();
             if (_checksum != null && hasDeclaredChecksumTrailer)
             {
-                return new(HttpStatusCode.BadRequest, "Headers Upload-Checksum and trailing header Upload-Checksum are mutually exclusive and cannot be used in the same request");
+                return new(
+                    HttpStatusCode.BadRequest,
+                    "Headers Upload-Checksum and trailing header Upload-Checksum are mutually exclusive and cannot be used in the same request"
+                );
             }
 
             if (hasDeclaredChecksumTrailer && !_context.HttpContext.Request.SupportsTrailers())
             {
-                return new(HttpStatusCode.BadRequest, "Trailing header Upload-Checksum has been specified but http request does not support trailing headers");
+                return new(
+                    HttpStatusCode.BadRequest,
+                    "Trailing header Upload-Checksum has been specified but http request does not support trailing headers"
+                );
             }
 
             return Ok;
@@ -117,12 +123,11 @@ namespace tusdotnet.Helpers
         }
 
         internal bool SupportsChecksumTrailer() => true;
-#else 
+#else
 
         internal ChecksumHelperResult VerifyStateForChecksumTrailer() => Ok;
 
         internal bool SupportsChecksumTrailer() => false;
-
 #endif
 
         internal async Task<ChecksumHelperResult> MatchChecksum(bool clientDisconnected)
@@ -132,7 +137,10 @@ namespace tusdotnet.Helpers
                 return Ok;
             }
 
-            var errorResponse = new ChecksumHelperResult((HttpStatusCode)460, "Header Upload-Checksum does not match the checksum of the file");
+            var errorResponse = new ChecksumHelperResult(
+                (HttpStatusCode)460,
+                "Header Upload-Checksum does not match the checksum of the file"
+            );
 
 #if trailingheaders
 
@@ -149,7 +157,12 @@ namespace tusdotnet.Helpers
                 return Ok;
             }
 
-            var result = await _context.StoreAdapter.VerifyChecksumAsync(_context.FileId, _checksum.Algorithm, _checksum.Hash, _context.CancellationToken);
+            var result = await _context.StoreAdapter.VerifyChecksumAsync(
+                _context.FileId,
+                _checksum.Algorithm,
+                _checksum.Hash,
+                _context.CancellationToken
+            );
 
             if (!result)
             {
@@ -170,13 +183,19 @@ namespace tusdotnet.Helpers
 
             if (!providedChecksum.IsValid)
             {
-                return new(HttpStatusCode.BadRequest, $"Could not parse {HeaderConstants.UploadChecksum} header");
+                return new(
+                    HttpStatusCode.BadRequest,
+                    $"Could not parse {HeaderConstants.UploadChecksum} header"
+                );
             }
 
             var checksumAlgorithms = await _supportedAlgorithms.Value;
             if (!checksumAlgorithms.Contains(providedChecksum.Algorithm))
             {
-                return new(HttpStatusCode.BadRequest, $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}");
+                return new(
+                    HttpStatusCode.BadRequest,
+                    $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}"
+                );
             }
 
             return Ok;

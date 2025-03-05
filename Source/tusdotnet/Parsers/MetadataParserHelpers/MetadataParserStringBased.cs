@@ -6,7 +6,10 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 {
     internal class MetadataParserStringBased
     {
-        internal static MetadataParserResult ParseAndValidate(IInternalMetadataParser parser, string uploadMetadataHeaderValue)
+        internal static MetadataParserResult ParseAndValidate(
+            IInternalMetadataParser parser,
+            string uploadMetadataHeaderValue
+        )
         {
             if (string.IsNullOrWhiteSpace(uploadMetadataHeaderValue))
             {

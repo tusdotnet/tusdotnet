@@ -4,14 +4,14 @@ function setVersionInfo() {
 	$assemblyInformationalVersion = git describe --tags --long
 	(Get-Content tusdotnet\Properties\AssemblyInfo.cs) -replace `
 		'(\[assembly: AssemblyInformationalVersion\(")([\w\W]*)("\)])', `
-			"[assembly: AssemblyInformationalVersion(""$assemblyVersion, $assemblyInformationalVersion"")]" `
-		| Out-File tusdotnet\Properties\AssemblyInfo.cs
+		"[assembly: AssemblyInformationalVersion(""$assemblyVersion, $assemblyInformationalVersion"")]" `
+	| Out-File tusdotnet\Properties\AssemblyInfo.cs
 	(Get-Content tusdotnet\Properties\AssemblyInfo.cs) -replace `
 		'(\[assembly: AssemblyVersion\(")([\w\W]*)("\)])', "[assembly: AssemblyVersion(""$assemblyVersion"")]" `
-		| Out-File tusdotnet\Properties\AssemblyInfo.cs
+	| Out-File tusdotnet\Properties\AssemblyInfo.cs
 	(Get-Content tusdotnet\Properties\AssemblyInfo.cs) -replace `
 		'(\[assembly: AssemblyFileVersion\(")([\w\W]*)("\)])', "[assembly: AssemblyFileVersion(""$assemblyVersion"")]" `
-		| Out-File tusdotnet\Properties\AssemblyInfo.cs
+	| Out-File tusdotnet\Properties\AssemblyInfo.cs
 }
 
 function removeInternalVisibleTo() {
@@ -22,8 +22,20 @@ function removeInternalVisibleTo() {
 }
 
 function verifyNuget() {
-	if(![bool](Get-Command dotnet -errorAction SilentlyContinue)) {
+	if (![bool](Get-Command dotnet -errorAction SilentlyContinue)) {
 		Throw "Could not find dotnet command"
+	}
+}
+
+function verifyCode() {
+
+	if ((dotnet tool update csharpier) -like "*updated from version*") {
+		throw "A new version of CSharpier exist and has been automatically installed. Format the code before building the nuget"
+	}
+
+	dotnet csharpier --check .
+	if ($LASTEXITCODE -eq 1) {
+		throw "CSharpier check failed"
 	}
 }
 
@@ -48,6 +60,8 @@ $toolsLocation = Get-Location
 verifyNuget
 Write-Host Moving to source folder for build...
 Set-Location ..\Source\
+Write-Host Verifying source using CSharpier...
+verifyCode
 Write-Host Setting version info...
 setVersionInfo
 Write-Host Version info set

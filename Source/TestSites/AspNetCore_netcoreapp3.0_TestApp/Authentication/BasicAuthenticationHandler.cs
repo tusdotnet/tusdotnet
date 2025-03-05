@@ -20,10 +20,9 @@ namespace AspNetCore_netcoreapp3_0_TestApp.Authentication
             IOptionsMonitor<AuthenticationSchemeOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
-            ISystemClock clock)
-            : base(options, logger, encoder, clock)
-        {
-        }
+            ISystemClock clock
+        )
+            : base(options, logger, encoder, clock) { }
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
@@ -34,7 +33,9 @@ namespace AspNetCore_netcoreapp3_0_TestApp.Authentication
             try
             {
                 var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
-                var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader.Parameter)).Split(':');
+                var credentials = Encoding
+                    .UTF8.GetString(Convert.FromBase64String(authHeader.Parameter))
+                    .Split(':');
                 isAuthenticated = Authenticate(credentials[0], credentials[1]);
             }
             catch
@@ -45,12 +46,20 @@ namespace AspNetCore_netcoreapp3_0_TestApp.Authentication
             if (!isAuthenticated)
                 return Task.FromResult(AuthenticateResult.Fail("Invalid Username or Password"));
 
-            var claims = new[] {
+            var claims = new[]
+            {
                 new Claim(ClaimTypes.NameIdentifier, Username),
                 new Claim(ClaimTypes.Name, Username),
             };
 
-            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
+            return Task.FromResult(
+                AuthenticateResult.Success(
+                    new AuthenticationTicket(
+                        new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)),
+                        Scheme.Name
+                    )
+                )
+            );
         }
 
         private bool Authenticate(string username, string password)

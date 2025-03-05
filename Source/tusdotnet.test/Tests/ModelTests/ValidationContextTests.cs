@@ -14,7 +14,8 @@ namespace tusdotnet.test.Tests.ModelTests
 {
     public class ValidationContextTests
     {
-        private ValidationContextForTest SUT { get; } = ValidationContextForTest.Create(GetContext());
+        private ValidationContextForTest SUT { get; } =
+            ValidationContextForTest.Create(GetContext());
 
         [Fact]
         public void Message_Is_Concatenated_If_FailRequest_Is_Called_Multiple_Times_With_Message()
@@ -74,7 +75,10 @@ namespace tusdotnet.test.Tests.ModelTests
             AssertStatusAndMessage(HttpStatusCode.Ambiguous, null);
         }
 
-        private void AssertStatusAndMessage(HttpStatusCode expectedStatusCode, string expectedMessage)
+        private void AssertStatusAndMessage(
+            HttpStatusCode expectedStatusCode,
+            string expectedMessage
+        )
         {
             SUT.StatusCode.ShouldBe(expectedStatusCode);
             SUT.ErrorMessage.ShouldBe(expectedMessage);
@@ -96,11 +100,16 @@ namespace tusdotnet.test.Tests.ModelTests
                 UrlPath = "/files",
             };
 
-            return new ContextAdapter("/files", requestPathBase: null, MiddlewareUrlHelper.Instance, request, config, new DefaultHttpContext());
+            return new ContextAdapter(
+                "/files",
+                requestPathBase: null,
+                MiddlewareUrlHelper.Instance,
+                request,
+                config,
+                new DefaultHttpContext()
+            );
         }
 
-        private class ValidationContextForTest : ValidationContext<ValidationContextForTest>
-        {
-        }
+        private class ValidationContextForTest : ValidationContext<ValidationContextForTest> { }
     }
 }

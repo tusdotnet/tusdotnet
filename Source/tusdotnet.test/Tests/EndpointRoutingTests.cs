@@ -32,12 +32,17 @@ namespace tusdotnet.test.Tests
         [InlineData("")]
         [InlineData("/")]
         [InlineData("/files/a/b/c")]
-        public void TusFileId_Is_Automatically_Included_In_Route_Pattern_As_Optional_Parameter(string pattern)
+        public void TusFileId_Is_Automatically_Included_In_Route_Pattern_As_Optional_Parameter(
+            string pattern
+        )
         {
-            using var server = CreateTestServer(endpoints => endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig())));
+            using var server = CreateTestServer(endpoints =>
+                endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig()))
+            );
 
             var expectedPatternWithTusFileId = pattern.TrimEnd('/') + "/{TusFileId?}";
-            var endpoint = (RouteEndpoint)server.Services.GetService<EndpointDataSource>().Endpoints[0];
+            var endpoint = (RouteEndpoint)
+                server.Services.GetService<EndpointDataSource>().Endpoints[0];
             endpoint.RoutePattern.RawText.ShouldBe(expectedPatternWithTusFileId);
             endpoint.DisplayName.ShouldBe("tus: " + expectedPatternWithTusFileId);
         }
@@ -52,7 +57,9 @@ namespace tusdotnet.test.Tests
         {
             Should.Throw<ArgumentException>(() =>
             {
-                using var server = CreateTestServer(endpoints => endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig())));
+                using var server = CreateTestServer(endpoints =>
+                    endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig()))
+                );
             });
         }
 
@@ -60,9 +67,12 @@ namespace tusdotnet.test.Tests
         public async Task The_Endpoint_Configuration_Factory_Is_Used()
         {
             var endpointFactoryUsed = false;
-            Func<HttpContext, Task<DefaultTusConfiguration>> endpointFactory = _ => Task.FromResult(CreateConfig(() => endpointFactoryUsed = true));
+            Func<HttpContext, Task<DefaultTusConfiguration>> endpointFactory = _ =>
+                Task.FromResult(CreateConfig(() => endpointFactoryUsed = true));
 
-            using var server = await CreateTestServerAndSendOptionsRequest(app => app.MapTus("/", endpointFactory));
+            using var server = await CreateTestServerAndSendOptionsRequest(app =>
+                app.MapTus("/", endpointFactory)
+            );
             endpointFactoryUsed.ShouldBeTrue();
         }
 
@@ -70,18 +80,24 @@ namespace tusdotnet.test.Tests
         [InlineData("/files", HttpStatusCode.Created)]
         [InlineData("/otherfiles", HttpStatusCode.NotFound)]
         [InlineData("/files/testfile", HttpStatusCode.NotFound)]
-        public async Task Ignores_Request_If_Url_Does_Not_Match(string path, HttpStatusCode expectedStatusCode)
+        public async Task Ignores_Request_If_Url_Does_Not_Match(
+            string path,
+            HttpStatusCode expectedStatusCode
+        )
         {
             // Pretend that all files exist so that we do not send 404 for that reason.
             var config = CreateConfig();
             config.Store.FileExistAsync(default, default).ReturnsForAnyArgs(true);
 
-            using var server = CreateTestServer(endpoints => endpoints.MapTus("/files", _ => Task.FromResult(config)));
+            using var server = CreateTestServer(endpoints =>
+                endpoints.MapTus("/files", _ => Task.FromResult(config))
+            );
 
-            var response = await server.CreateRequest(path)
-                 .AddTusResumableHeader()
-                 .AddHeader("Upload-Length", "100")
-                 .SendAsync("POST");
+            var response = await server
+                .CreateRequest(path)
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "100")
+                .SendAsync("POST");
 
             response.StatusCode.ShouldBe(expectedStatusCode);
         }
@@ -91,20 +107,26 @@ namespace tusdotnet.test.Tests
         [InlineData("/files")]
         [InlineData("/mybase/files", "final;/mybase/files/file1 /mybase/files/file1")]
         [InlineData("/files", "final;/files/file1 /files/file1")]
-        public async Task Includes_PathBase_In_Location_When_Creating_A_File_If_UsePathBase_Is_Set(string path, string uploadConcatHeader = null)
+        public async Task Includes_PathBase_In_Location_When_Creating_A_File_If_UsePathBase_Is_Set(
+            string path,
+            string uploadConcatHeader = null
+        )
         {
             // Pretend that all files exist so that we do not send 404 for that reason.
             var config = CreateConfig();
             config.Store.FileExistAsync(default, default).ReturnsForAnyArgs(true);
             config.Store.WithExistingFile("file1", 100, 100);
 
-            ((ITusConcatenationStore)config.Store).GetUploadConcatAsync(default, default).ReturnsForAnyArgs(new FileConcatPartial());
+            ((ITusConcatenationStore)config.Store)
+                .GetUploadConcatAsync(default, default)
+                .ReturnsForAnyArgs(new FileConcatPartial());
 
             using var server = CreateTestServer(null, ConfigureServer);
 
-            var request = server.CreateRequest(path)
-                 .AddTusResumableHeader()
-                 .AddHeader("Upload-Length", "100");
+            var request = server
+                .CreateRequest(path)
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "100");
 
             if (!string.IsNullOrEmpty(uploadConcatHeader))
             {
@@ -113,9 +135,14 @@ namespace tusdotnet.test.Tests
 
             var response = await request.SendAsync("POST");
 
-            response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+            response.StatusCode.ShouldBe(
+                HttpStatusCode.Created,
+                await response.Content.ReadAsStringAsync()
+            );
 
-            response.Headers.TryGetValues(HeaderConstants.Location, out var location).ShouldBeTrue();
+            response
+                .Headers.TryGetValues(HeaderConstants.Location, out var location)
+                .ShouldBeTrue();
             location.First().ShouldStartWith(path);
 
             void ConfigureServer(IApplicationBuilder app)
@@ -129,21 +156,30 @@ namespace tusdotnet.test.Tests
         [Theory]
         [InlineData("/mybase/files")]
         [InlineData("/files")]
-        public async Task Includes_PathBase_In_Upload_Concat_Header_When_Getting_Final_File_Info_If_UsePathBase_Is_Set(string path)
+        public async Task Includes_PathBase_In_Upload_Concat_Header_When_Getting_Final_File_Info_If_UsePathBase_Is_Set(
+            string path
+        )
         {
             // Pretend that all files exist so that we do not send 404 for that reason.
             var config = CreateConfig();
             config.Store.FileExistAsync(default, default).ReturnsForAnyArgs(true);
 
             var concatStore = (ITusConcatenationStore)config.Store;
-            concatStore.GetUploadConcatAsync(default, default).ReturnsForAnyArgs(new FileConcatFinal("partial1", "partial2"));
+            concatStore
+                .GetUploadConcatAsync(default, default)
+                .ReturnsForAnyArgs(new FileConcatFinal("partial1", "partial2"));
 
             using var server = CreateTestServer(null, ConfigureServer);
 
-            var response = await server.CreateRequest(path + "/finalfile").AddTusResumableHeader().SendAsync("HEAD");
+            var response = await server
+                .CreateRequest(path + "/finalfile")
+                .AddTusResumableHeader()
+                .SendAsync("HEAD");
 
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
-            response.Headers.TryGetValues(HeaderConstants.UploadConcat, out var uploadConcatHeader).ShouldBeTrue();
+            response
+                .Headers.TryGetValues(HeaderConstants.UploadConcat, out var uploadConcatHeader)
+                .ShouldBeTrue();
 
             var uploadConcat = new UploadConcat(uploadConcatHeader.First());
             uploadConcat.IsValid.ShouldBeTrue();
@@ -162,25 +198,28 @@ namespace tusdotnet.test.Tests
             }
         }
 
-        private static TestServer CreateTestServer(Action<IEndpointRouteBuilder> endpoints, Action<IApplicationBuilder> configure = null)
+        private static TestServer CreateTestServer(
+            Action<IEndpointRouteBuilder> endpoints,
+            Action<IApplicationBuilder> configure = null
+        )
         {
             var builder = new WebHostBuilder()
-            .ConfigureServices(services =>
-            {
-                services.AddRouting();
-            })
-            .Configure(app =>
-            {
-                if (configure is not null)
+                .ConfigureServices(services =>
                 {
-                    configure.Invoke(app);
-                }
-                else
+                    services.AddRouting();
+                })
+                .Configure(app =>
                 {
-                    app.UseRouting();
-                    app.UseEndpoints(endpoints);
-                }
-            });
+                    if (configure is not null)
+                    {
+                        configure.Invoke(app);
+                    }
+                    else
+                    {
+                        app.UseRouting();
+                        app.UseEndpoints(endpoints);
+                    }
+                });
 
             var server = new TestServer(builder);
             return server;
@@ -208,7 +247,9 @@ namespace tusdotnet.test.Tests
             return client.SendAsync(new HttpRequestMessage(HttpMethod.Options, "/"));
         }
 
-        private static async Task<TestServer> CreateTestServerAndSendOptionsRequest(Action<IEndpointRouteBuilder> endpoints)
+        private static async Task<TestServer> CreateTestServerAndSendOptionsRequest(
+            Action<IEndpointRouteBuilder> endpoints
+        )
         {
             TestServer server = CreateTestServer(endpoints);
 

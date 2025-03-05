@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using tusdotnet.Adapters;
 using tusdotnet.Interfaces;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
 #if netfull
 using Microsoft.Owin;
 #endif
@@ -14,7 +14,8 @@ namespace tusdotnet.Models.Configuration
     /// Base context for all events in tusdotnet
     /// </summary>
     /// <typeparam name="TSelf">The type of the derived class inheriting the EventContext</typeparam>
-    public abstract class EventContext<TSelf> where TSelf : EventContext<TSelf>, new()
+    public abstract class EventContext<TSelf>
+        where TSelf : EventContext<TSelf>, new()
     {
         /// <summary>
         /// The id of the file that was completed
@@ -37,8 +38,8 @@ namespace tusdotnet.Models.Configuration
         /// The OWIN context for the current request
         /// </summary>
         public IOwinContext OwinContext { get; private set; }
-
 #endif
+
         /// <summary>
         /// The http context for the current request
         /// </summary>
@@ -46,12 +47,12 @@ namespace tusdotnet.Models.Configuration
 
         /// <summary>
         /// Get the file with the id specified in the <see cref="FileId"/> property.
-		/// Returns null if there is no file id or if the file was not found.
+        /// Returns null if there is no file id or if the file was not found.
         /// </summary>
         /// <returns>The file or null</returns>
         public Task<ITusFile> GetFileAsync()
         {
-            if(string.IsNullOrEmpty(FileId))
+            if (string.IsNullOrEmpty(FileId))
                 return Task.FromResult<ITusFile>(null);
 
             return ((ITusReadableStore)Store).GetFileAsync(FileId, CancellationToken);

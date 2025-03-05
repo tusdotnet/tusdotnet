@@ -21,10 +21,14 @@ namespace tusdotnet.performance
 
         public static async Task Main()
         {
-            Console.WriteLine($"Starting performance test using {NUMBER_OF_CLIENTS} clients and {NUMBER_OF_FILES_TO_UPLOAD} files each.");
+            Console.WriteLine(
+                $"Starting performance test using {NUMBER_OF_CLIENTS} clients and {NUMBER_OF_FILES_TO_UPLOAD} files each."
+            );
             Console.WriteLine("Server base url is " + SERVER_URL);
             Console.WriteLine();
-            Console.WriteLine("NOTE: This app will not output anything until completed to not impact performance. See log from server for trace.");
+            Console.WriteLine(
+                "NOTE: This app will not output anything until completed to not impact performance. See log from server for trace."
+            );
             Console.WriteLine();
 
             for (int testRunIndex = 0; testRunIndex < NUMBER_OF_TEST_RUNS; testRunIndex++)
@@ -42,7 +46,9 @@ namespace tusdotnet.performance
 
                 sw.Stop();
 
-                Console.WriteLine($"Time taken for run {testRunIndex + 1}: {sw.ElapsedMilliseconds} ms");
+                Console.WriteLine(
+                    $"Time taken for run {testRunIndex + 1}: {sw.ElapsedMilliseconds} ms"
+                );
 
                 Cleanup();
             }
@@ -53,7 +59,11 @@ namespace tusdotnet.performance
 
         private static void Cleanup()
         {
-            foreach (var fileName in System.IO.Directory.EnumerateFiles(DISK_STORE_PATH_TO_CLEAN_AFTER_EACH_RUN))
+            foreach (
+                var fileName in System.IO.Directory.EnumerateFiles(
+                    DISK_STORE_PATH_TO_CLEAN_AFTER_EACH_RUN
+                )
+            )
             {
                 System.IO.File.Delete(fileName);
             }
@@ -61,10 +71,7 @@ namespace tusdotnet.performance
 
         private static async Task RunPerfTest()
         {
-            var httpClient = new HttpClient()
-            {
-                BaseAddress = new Uri(SERVER_URL)
-            };
+            var httpClient = new HttpClient() { BaseAddress = new Uri(SERVER_URL) };
 
             var file = new byte[TEST_FILE_SIZE_IN_BYTES];
             _random.NextBytes(file);
@@ -74,44 +81,71 @@ namespace tusdotnet.performance
             for (int i = 0; i < NUMBER_OF_FILES_TO_UPLOAD; i++)
             {
                 // Create file
-                var response = await httpClient.SendAsync(GetCreateFileRequest(file)).ConfigureAwait(false);
+                var response = await httpClient
+                    .SendAsync(GetCreateFileRequest(file))
+                    .ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 var fileLocation = response.Headers.Location;
 
                 // Send first half of file to emulate a disconnect
-                response = await httpClient.SendAsync(GetWriteFileRequest(file, 0, halfFileSize, fileLocation)).ConfigureAwait(false);
+                response = await httpClient
+                    .SendAsync(GetWriteFileRequest(file, 0, halfFileSize, fileLocation))
+                    .ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 // Get the file info to continue the upload
-                response = await httpClient.SendAsync(CreateTusResumableRequest(HttpMethod.Head, fileLocation)).ConfigureAwait(false);
+                response = await httpClient
+                    .SendAsync(CreateTusResumableRequest(HttpMethod.Head, fileLocation))
+                    .ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 // Upload second half of file
                 var uploadOffset = int.Parse(response.Headers.GetValues("Upload-Offset").First());
-                response = await httpClient.SendAsync(GetWriteFileRequest(file, uploadOffset, file.Length - uploadOffset, fileLocation)).ConfigureAwait(false);
+                response = await httpClient
+                    .SendAsync(
+                        GetWriteFileRequest(
+                            file,
+                            uploadOffset,
+                            file.Length - uploadOffset,
+                            fileLocation
+                        )
+                    )
+                    .ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
             }
         }
 
-        private static HttpRequestMessage GetWriteFileRequest(byte[] file, int offset, int count, Uri fileLocation)
+        private static HttpRequestMessage GetWriteFileRequest(
+            byte[] file,
+            int offset,
+            int count,
+            Uri fileLocation
+        )
         {
             var writeFileRequest = CreateTusResumableRequest(HttpMethod.Patch, fileLocation);
             writeFileRequest.Headers.Add("Upload-Offset", offset.ToString());
             writeFileRequest.Content = new ByteArrayContent(file, offset, count);
-            writeFileRequest.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/offset+octet-stream");
+            writeFileRequest.Content.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue("application/offset+octet-stream");
             return writeFileRequest;
         }
 
         private static HttpRequestMessage GetCreateFileRequest(byte[] file)
         {
-            var createFileRequest = CreateTusResumableRequest(HttpMethod.Post, new Uri("/files", UriKind.Relative));
+            var createFileRequest = CreateTusResumableRequest(
+                HttpMethod.Post,
+                new Uri("/files", UriKind.Relative)
+            );
             createFileRequest.Headers.Add("Upload-Length", file.Length.ToString());
             createFileRequest.Headers.Add("Upload-Metadata", CreateRandomMetadata());
             return createFileRequest;
         }
 
-        private static HttpRequestMessage CreateTusResumableRequest(HttpMethod method, Uri relativeUri)
+        private static HttpRequestMessage CreateTusResumableRequest(
+            HttpMethod method,
+            Uri relativeUri
+        )
         {
             var request = new HttpRequestMessage(method, relativeUri);
             request.Headers.Add("Tus-Resumable", "1.0.0");
@@ -121,8 +155,12 @@ namespace tusdotnet.performance
 
         private static string CreateRandomMetadata()
         {
-            var filename = Convert.ToBase64String(Encoding.UTF8.GetBytes("filename" + Guid.NewGuid().ToString()));
-            var contentType = Convert.ToBase64String(Encoding.UTF8.GetBytes("application/octet-stream"));
+            var filename = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes("filename" + Guid.NewGuid().ToString())
+            );
+            var contentType = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes("application/octet-stream")
+            );
 
             return $"name {filename},contentType {contentType}";
         }

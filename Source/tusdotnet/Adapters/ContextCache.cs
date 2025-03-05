@@ -5,7 +5,9 @@ using tusdotnet.Models.Concatenation;
 
 namespace tusdotnet.Adapters
 {
-    [Obsolete("Remove this entire class and replace it with parsed request headers. UploadOffset can be re-read from storage or fetched from the response")]
+    [Obsolete(
+        "Remove this entire class and replace it with parsed request headers. UploadOffset can be re-read from storage or fetched from the response"
+    )]
     internal class ContextCache
     {
         public Dictionary<string, Metadata> Metadata { get; set; }
@@ -15,6 +17,5 @@ namespace tusdotnet.Adapters
         public Checksum UploadChecksum { get; set; }
 
         public long? UploadOffset { get; set; }
-        
     }
 }

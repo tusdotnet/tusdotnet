@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Expiration;
@@ -14,7 +14,10 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Services
         private readonly ExpirationBase _expiration;
         private readonly ILogger<ExpiredFilesCleanupService> _logger;
 
-        public ExpiredFilesCleanupService(ILogger<ExpiredFilesCleanupService> logger, DefaultTusConfiguration config)
+        public ExpiredFilesCleanupService(
+            ILogger<ExpiredFilesCleanupService> logger,
+            DefaultTusConfiguration config
+        )
         {
             _logger = logger;
             _expirationStore = (ITusExpirationStore)config.Store;
@@ -44,9 +47,12 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Services
         private async Task RunCleanup(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Running cleanup job...");
-            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(cancellationToken);
+            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
+                cancellationToken
+            );
             _logger.LogInformation(
-                $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms");
+                $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
+            );
         }
     }
 }

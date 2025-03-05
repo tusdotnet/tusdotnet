@@ -11,7 +11,8 @@ namespace AspNetCore_netcoreapp2_2_TestApp
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
+            WebHost
+                .CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
                 .ConfigureKestrel(options =>
                 {

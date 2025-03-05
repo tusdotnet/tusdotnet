@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-
+using Xunit.Sdk;
 #if netfull
 using System.Net;
 using System.IO;
@@ -21,8 +21,6 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 #endif
-
-using Xunit.Sdk;
 
 namespace tusdotnet.test.Data
 {
@@ -52,14 +50,15 @@ namespace tusdotnet.test.Data
     {
         public override IEnumerable<object[]> GetData(MethodInfo testMethod) => GetPipelines();
 
-        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new Lazy<Dictionary<string, MethodInfo>>(
-            () =>
-            {
-                return typeof(PipelineDisconnectEmulationDataAttribute)
-                    .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-                    .Where(f => f.ReturnType == typeof(DisconnectPipelineEmulationInfo))
-                    .ToDictionary(f => f.Name, f => f);
-            });
+        private static readonly Lazy<Dictionary<string, MethodInfo>> Methods = new Lazy<
+            Dictionary<string, MethodInfo>
+        >(() =>
+        {
+            return typeof(PipelineDisconnectEmulationDataAttribute)
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(f => f.ReturnType == typeof(DisconnectPipelineEmulationInfo))
+                .ToDictionary(f => f.Name, f => f);
+        });
 
         public static DisconnectPipelineEmulationInfo GetInfo(string pipeline)
         {
@@ -76,28 +75,23 @@ namespace tusdotnet.test.Data
         private static object[][] GetPipelines()
         {
             return new object[]
-                {
-                    nameof(SystemWebWithOwin),
-                    nameof(OwinSelfHost),
-                    nameof(Kestrel),
-                    nameof(KestrelReverseProxy)
-                }
-                .Select(f => new[] { f }).ToArray();
+            {
+                nameof(SystemWebWithOwin),
+                nameof(OwinSelfHost),
+                nameof(Kestrel),
+                nameof(KestrelReverseProxy)
+            }
+                .Select(f => new[] { f })
+                .ToArray();
         }
-
 #else
 
         private static object[][] GetPipelines()
         {
-            return new object[]
-                {
-                    nameof(Kestrel),
-                    nameof(KestrelReverseProxy)
-                }
+            return new object[] { nameof(Kestrel), nameof(KestrelReverseProxy) }
                 .Select(f => new[] { f })
                 .ToArray();
         }
-
 #endif
 
         private static DisconnectPipelineEmulationInfo Kestrel()
@@ -108,7 +102,12 @@ namespace tusdotnet.test.Data
             var badHttpRequestExceptionCtorParams = new object[] { "", -1 };
 #elif NETCOREAPP2_1
             const bool properlyCancelsCancellationToken = true;
-            var badHttpRequestExceptionCtorParams = new object[] { "", -1, RequestRejectionReason.UnexpectedEndOfRequestContent };
+            var badHttpRequestExceptionCtorParams = new object[]
+            {
+                "",
+                -1,
+                RequestRejectionReason.UnexpectedEndOfRequestContent
+            };
 #elif NETCOREAPP2_2_OR_GREATER && !NET6_0
             const bool properlyCancelsCancellationToken = true;
             var exception = new OperationCanceledException();
@@ -122,7 +121,9 @@ namespace tusdotnet.test.Data
 
             // NETCOREAPP2_2 and later does not create a BadHttpRequestException when a client disconnects
 #if !NETCOREAPP2_2_OR_GREATER
-            var ctor = typeof(BadHttpRequestException).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)[0];
+            var ctor = typeof(BadHttpRequestException).GetConstructors(
+                BindingFlags.Instance | BindingFlags.NonPublic
+            )[0];
             var exception = (BadHttpRequestException)ctor.Invoke(badHttpRequestExceptionCtorParams);
 #endif
 
@@ -150,7 +151,10 @@ namespace tusdotnet.test.Data
 
         private static DisconnectPipelineEmulationInfo OwinSelfHost()
         {
-            return new DisconnectPipelineEmulationInfo(true, new IOException("Test", new HttpListenerException()));
+            return new DisconnectPipelineEmulationInfo(
+                true,
+                new IOException("Test", new HttpListenerException())
+            );
         }
 
 #endif

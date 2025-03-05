@@ -22,13 +22,20 @@ namespace tusdotnet.test.Tests.ModelTests
             var uploadConcat = new UploadConcat("partial");
             uploadConcat.IsValid.ShouldBeTrue();
             uploadConcat.Type.ShouldBeOfType(typeof(FileConcatPartial));
-
         }
 
         [Theory]
         [InlineData("final;/files/file1 /files/file2", 2, "file1,file2")]
-        [InlineData("final;/files/file1 http://localhost/files/file2 https://example.org/files/file3?queryparam=123 https://example.org/files/file4?queryparam=123#111 https://example.org/files/file5#123", 5, "file1,file2,file3,file4,file5")]
-        public void Can_Parse_Upload_Concat_Header_For_Final(string uploadConcatHeader, int expectedFileCount, string expectedFileIdCsv)
+        [InlineData(
+            "final;/files/file1 http://localhost/files/file2 https://example.org/files/file3?queryparam=123 https://example.org/files/file4?queryparam=123#111 https://example.org/files/file5#123",
+            5,
+            "file1,file2,file3,file4,file5"
+        )]
+        public void Can_Parse_Upload_Concat_Header_For_Final(
+            string uploadConcatHeader,
+            int expectedFileCount,
+            string expectedFileIdCsv
+        )
         {
             var uploadConcat = new UploadConcat(uploadConcatHeader, "/files");
             uploadConcat.IsValid.ShouldBeTrue();
@@ -50,7 +57,9 @@ namespace tusdotnet.test.Tests.ModelTests
         {
             var uploadConcat = new UploadConcat("somevalue");
             uploadConcat.IsValid.ShouldBeFalse();
-            uploadConcat.ErrorMessage.ShouldBe("Header Upload-Concat: Header is invalid. Valid values are \"partial\" and \"final\" followed by a list of file urls to concatenate");
+            uploadConcat.ErrorMessage.ShouldBe(
+                "Header Upload-Concat: Header is invalid. Valid values are \"partial\" and \"final\" followed by a list of file urls to concatenate"
+            );
         }
 
         [Theory]
@@ -61,15 +70,22 @@ namespace tusdotnet.test.Tests.ModelTests
         {
             var uploadConcat = new UploadConcat(uploadConcatHeader);
             uploadConcat.IsValid.ShouldBeFalse();
-            uploadConcat.ErrorMessage.ShouldBe("Header Upload-Concat: Header is invalid. Valid values are \"partial\" and \"final\" followed by a list of file urls to concatenate");
+            uploadConcat.ErrorMessage.ShouldBe(
+                "Header Upload-Concat: Header is invalid. Valid values are \"partial\" and \"final\" followed by a list of file urls to concatenate"
+            );
         }
 
         [Fact]
         public void Sets_Error_If_Final_Contains_Files_For_Other_UrlPath()
         {
-            var uploadConcat = new UploadConcat("final;/otherfiles/file1 /otherfiles/file2", "/files");
+            var uploadConcat = new UploadConcat(
+                "final;/otherfiles/file1 /otherfiles/file2",
+                "/files"
+            );
             uploadConcat.IsValid.ShouldBeFalse();
-            uploadConcat.ErrorMessage.ShouldBe("Header Upload-Concat: Header is invalid. Valid values are \"partial\" and \"final\" followed by a list of file urls to concatenate");
+            uploadConcat.ErrorMessage.ShouldBe(
+                "Header Upload-Concat: Header is invalid. Valid values are \"partial\" and \"final\" followed by a list of file urls to concatenate"
+            );
         }
     }
 }

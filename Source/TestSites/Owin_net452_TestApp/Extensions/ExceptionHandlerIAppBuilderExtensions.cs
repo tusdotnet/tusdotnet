@@ -11,19 +11,21 @@ namespace Owin_net452_TestApp.Extensions
         /// <param name="app"></param>
         public static void SetupSimpleExceptionHandler(this IAppBuilder app)
         {
-            app.Use(async (context, next) =>
-            {
-                try
+            app.Use(
+                async (context, next) =>
                 {
-                    await next.Invoke();
+                    try
+                    {
+                        await next.Invoke();
+                    }
+                    catch (Exception exc)
+                    {
+                        Console.Error.WriteLine(exc);
+                        context.Response.StatusCode = 500;
+                        await context.Response.WriteAsync("An internal server error has occurred");
+                    }
                 }
-                catch (Exception exc)
-                {
-                    Console.Error.WriteLine(exc);
-                    context.Response.StatusCode = 500;
-                    await context.Response.WriteAsync("An internal server error has occurred");
-                }
-            });
+            );
         }
     }
 }

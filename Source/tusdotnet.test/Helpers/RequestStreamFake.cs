@@ -12,16 +12,23 @@ namespace tusdotnet.test.Helpers
             byte[] bufferToFill,
             int offset,
             int count,
-            CancellationToken cancellationToken);
+            CancellationToken cancellationToken
+        );
 
         private readonly OnReadAsync _onReadAsync;
 
-        public RequestStreamFake(OnReadAsync onReadAsync, byte[] data) : base(data)
+        public RequestStreamFake(OnReadAsync onReadAsync, byte[] data)
+            : base(data)
         {
             _onReadAsync = onReadAsync;
         }
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             return _onReadAsync(this, buffer, offset, count, cancellationToken);
         }
@@ -29,16 +36,29 @@ namespace tusdotnet.test.Helpers
 #if pipelines
 
         // Method use by PipeReader when the store implements ITusPipelinesStore.
-        public override async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> destination,
+            CancellationToken cancellationToken = default
+        )
         {
-            var size = await _onReadAsync(this, destination.ToArray(), 0, destination.Length, cancellationToken);
+            var size = await _onReadAsync(
+                this,
+                destination.ToArray(),
+                0,
+                destination.Length,
+                cancellationToken
+            );
 
             return size;
         }
-
 #endif
 
-        public Task<int> ReadBackingStreamAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public Task<int> ReadBackingStreamAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             return base.ReadAsync(buffer, offset, count, cancellationToken);
         }

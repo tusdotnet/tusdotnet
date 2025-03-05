@@ -14,7 +14,9 @@ namespace AspNetCore_netcoreapp3._0_TestApp
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>().ConfigureKestrel(opt => opt.Limits.MaxRequestBodySize = null);
+                    webBuilder
+                        .UseStartup<Startup>()
+                        .ConfigureKestrel(opt => opt.Limits.MaxRequestBodySize = null);
                 });
     }
 }

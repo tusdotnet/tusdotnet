@@ -7,26 +7,31 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 {
     internal class OriginalMetadataParserStringBased : IInternalMetadataParser
     {
-        internal static OriginalMetadataParserStringBased Instance { get; } = new OriginalMetadataParserStringBased();
+        internal static OriginalMetadataParserStringBased Instance { get; } =
+            new OriginalMetadataParserStringBased();
 
-        private const string EMPTY_HEADER_RESULT = $"Header {HeaderConstants.UploadMetadata} must consist of one or more comma-separated key-value pairs";
+        private const string EMPTY_HEADER_RESULT =
+            $"Header {HeaderConstants.UploadMetadata} must consist of one or more comma-separated key-value pairs";
 
-        private OriginalMetadataParserStringBased()
-        {
-        }
+        private OriginalMetadataParserStringBased() { }
 
         public MetadataParserResult GetResultForEmptyHeader()
         {
             return MetadataParserResult.FromError(EMPTY_HEADER_RESULT);
         }
 
-        public MetadataParserResult ParseSingleItem(string metadataItem, ICollection<string> existingKeys)
+        public MetadataParserResult ParseSingleItem(
+            string metadataItem,
+            ICollection<string> existingKeys
+        )
         {
             var pairParts = metadataItem.Split(new[] { ' ' });
 
             if (pairParts.Length != 2)
             {
-                return MetadataParserResult.FromError(MetadataParserErrorTexts.INVALID_FORMAT_ORIGINAL);
+                return MetadataParserResult.FromError(
+                    MetadataParserErrorTexts.INVALID_FORMAT_ORIGINAL
+                );
             }
 
             var key = pairParts[0];
@@ -42,11 +47,16 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 
             try
             {
-                return MetadataParserResult.FromResult(key, Metadata.FromBytes(Convert.FromBase64String(pairParts[1])));
+                return MetadataParserResult.FromResult(
+                    key,
+                    Metadata.FromBytes(Convert.FromBase64String(pairParts[1]))
+                );
             }
             catch (FormatException)
             {
-                return MetadataParserResult.FromError(MetadataParserErrorTexts.InvalidBase64Value(key));
+                return MetadataParserResult.FromError(
+                    MetadataParserErrorTexts.InvalidBase64Value(key)
+                );
             }
         }
     }

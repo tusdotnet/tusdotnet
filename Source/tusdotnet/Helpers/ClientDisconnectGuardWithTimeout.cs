@@ -11,7 +11,10 @@ namespace tusdotnet.Helpers
 
         internal CancellationToken GuardedToken { get; }
 
-        internal ClientDisconnectGuardWithTimeout(TimeSpan executionTimeout, CancellationToken tokenToMonitor)
+        internal ClientDisconnectGuardWithTimeout(
+            TimeSpan executionTimeout,
+            CancellationToken tokenToMonitor
+        )
         {
             _cts = CancellationTokenSource.CreateLinkedTokenSource(tokenToMonitor);
             _executionTimeout = executionTimeout;
@@ -33,10 +36,13 @@ namespace tusdotnet.Helpers
                 return true;
             }
         }
-
 #endif
 
-        internal async Task<T> Execute<T>(Func<Task<T>> guardFromClientDisconnect, Func<T> getDefaultValue, CancellationToken guardedToken)
+        internal async Task<T> Execute<T>(
+            Func<Task<T>> guardFromClientDisconnect,
+            Func<T> getDefaultValue,
+            CancellationToken guardedToken
+        )
         {
             try
             {
@@ -63,7 +69,7 @@ namespace tusdotnet.Helpers
 
             var exceptionFullName = exception.GetType().FullName;
 
-            // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1). 
+            // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1).
             // Instead the exception below is thrown.
             if (exceptionFullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException")
             {

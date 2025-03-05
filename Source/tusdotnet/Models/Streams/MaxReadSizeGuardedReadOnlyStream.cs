@@ -11,17 +11,24 @@ namespace tusdotnet.Models
         private long _totalReadBytes;
 
         public MaxReadSizeGuardedReadOnlyStream(
-            Stream backingStream, 
-            long startCountingFrom, 
+            Stream backingStream,
+            long startCountingFrom,
             long maxSizeToRead,
-            MaxReadSizeExceededException.SizeSourceType sizeSource) : base(backingStream)
+            MaxReadSizeExceededException.SizeSourceType sizeSource
+        )
+            : base(backingStream)
         {
             _maxSizeToRead = maxSizeToRead;
             _sizeSource = sizeSource;
             _totalReadBytes = startCountingFrom;
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             var read = await BackingStream.ReadAsync(buffer, offset, count, cancellationToken);
 

@@ -11,19 +11,19 @@ namespace tusdotnet.Extensions
     {
 #if netfull
 
-		public static byte[] CalculateSha1(this FileStream fileStream, long chunkStartPosition)
-		{
-			byte[] fileHash;
-			using (var sha1 = new SHA1Managed())
-			{
-			    var originalPos = fileStream.Position;
-			    fileStream.Seek(chunkStartPosition, SeekOrigin.Begin);
-				fileHash = sha1.ComputeHash(fileStream);
-			    fileStream.Seek(originalPos, SeekOrigin.Begin);
-			}
+        public static byte[] CalculateSha1(this FileStream fileStream, long chunkStartPosition)
+        {
+            byte[] fileHash;
+            using (var sha1 = new SHA1Managed())
+            {
+                var originalPos = fileStream.Position;
+                fileStream.Seek(chunkStartPosition, SeekOrigin.Begin);
+                fileHash = sha1.ComputeHash(fileStream);
+                fileStream.Seek(originalPos, SeekOrigin.Begin);
+            }
 
-			return fileHash;
-		}
+            return fileHash;
+        }
 
 #endif
 
@@ -57,15 +57,22 @@ namespace tusdotnet.Extensions
 
             await stream.FlushAsync();
         }
-
 #endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static async Task FlushFileToDisk(this FileStream fileStream, byte[] fileWriteBuffer, int writeBufferNextFreeIndex)
+        public static async Task FlushFileToDisk(
+            this FileStream fileStream,
+            byte[] fileWriteBuffer,
+            int writeBufferNextFreeIndex
+        )
         {
-            await fileStream.WriteAsync(fileWriteBuffer, 0, writeBufferNextFreeIndex, CancellationToken.None);
+            await fileStream.WriteAsync(
+                fileWriteBuffer,
+                0,
+                writeBufferNextFreeIndex,
+                CancellationToken.None
+            );
             await fileStream.FlushAsync();
         }
-
     }
 }

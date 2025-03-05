@@ -39,7 +39,9 @@ namespace tusdotnet.Models.PipeReaders
             _backingReader.Complete(exception);
         }
 
-        public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
+        public override ValueTask<ReadResult> ReadAsync(
+            CancellationToken cancellationToken = default
+        )
         {
             return _backingReader.ReadAsync(cancellationToken);
         }

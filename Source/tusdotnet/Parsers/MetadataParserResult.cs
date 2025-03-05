@@ -23,7 +23,11 @@ namespace tusdotnet.Parsers
         /// </summary>
         public Dictionary<string, Metadata> Metadata { get; }
 
-        private MetadataParserResult(bool success, string errorMessage, Dictionary<string, Metadata> metadata)
+        private MetadataParserResult(
+            bool success,
+            string errorMessage,
+            Dictionary<string, Metadata> metadata
+        )
         {
             Success = success;
             ErrorMessage = errorMessage;
@@ -32,7 +36,11 @@ namespace tusdotnet.Parsers
 
         internal static MetadataParserResult FromError(string errorMessage)
         {
-            return new MetadataParserResult(success: false, errorMessage, new Dictionary<string, Metadata>());
+            return new MetadataParserResult(
+                success: false,
+                errorMessage,
+                new Dictionary<string, Metadata>()
+            );
         }
 
         internal static MetadataParserResult FromResult(Dictionary<string, Metadata> metadata)
@@ -42,10 +50,7 @@ namespace tusdotnet.Parsers
 
         internal static MetadataParserResult FromResult(string key, Metadata metadata)
         {
-            return FromResult(new Dictionary<string, Metadata>
-            {
-                { key, metadata }
-            });
+            return FromResult(new Dictionary<string, Metadata> { { key, metadata } });
         }
     }
 }

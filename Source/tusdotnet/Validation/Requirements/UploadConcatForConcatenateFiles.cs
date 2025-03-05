@@ -29,24 +29,36 @@ namespace tusdotnet.Validation.Requirements
             }
         }
 
-        private async Task ValidateFinalFileCreation(FileConcatFinal finalConcat, ContextAdapter context)
+        private async Task ValidateFinalFileCreation(
+            FileConcatFinal finalConcat,
+            ContextAdapter context
+        )
         {
-            var filesExist = await Task.WhenAll(finalConcat.Files.Select(f =>
-                context.StoreAdapter.FileExistAsync(f, context.CancellationToken)));
+            var filesExist = await Task.WhenAll(
+                finalConcat.Files.Select(f =>
+                    context.StoreAdapter.FileExistAsync(f, context.CancellationToken)
+                )
+            );
 
             if (filesExist.Any(f => !f))
             {
                 await BadRequest(
-                    $"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}");
+                    $"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}"
+                );
                 return;
             }
 
             var filesArePartial = await Task.WhenAll(
-                finalConcat.Files.Select(f => context.StoreAdapter.GetUploadConcatAsync(f, context.CancellationToken)));
+                finalConcat.Files.Select(f =>
+                    context.StoreAdapter.GetUploadConcatAsync(f, context.CancellationToken)
+                )
+            );
 
             if (filesArePartial.Any(f => f is not FileConcatPartial))
             {
-                await BadRequest($"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}");
+                await BadRequest(
+                    $"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}"
+                );
                 return;
             }
 
@@ -54,8 +66,14 @@ namespace tusdotnet.Validation.Requirements
             var totalSize = 0L;
             foreach (var file in finalConcat.Files)
             {
-                var length = context.StoreAdapter.GetUploadLengthAsync(file, context.CancellationToken);
-                var offset = context.StoreAdapter.GetUploadOffsetAsync(file, context.CancellationToken);
+                var length = context.StoreAdapter.GetUploadLengthAsync(
+                    file,
+                    context.CancellationToken
+                );
+                var offset = context.StoreAdapter.GetUploadOffsetAsync(
+                    file,
+                    context.CancellationToken
+                );
                 await Task.WhenAll(length, offset);
 
                 if (length.Result != null)
@@ -72,13 +90,16 @@ namespace tusdotnet.Validation.Requirements
             if (incompleteFiles.Count > 0)
             {
                 await BadRequest(
-                    $"Some of the files supplied for concatenation are not finished and can not be concatenated: {string.Join(", ", incompleteFiles)}");
+                    $"Some of the files supplied for concatenation are not finished and can not be concatenated: {string.Join(", ", incompleteFiles)}"
+                );
                 return;
             }
 
             if (totalSize > context.Configuration.GetMaxAllowedUploadSizeInBytes())
             {
-                await RequestEntityTooLarge("The concatenated file exceeds the server's max file size.");
+                await RequestEntityTooLarge(
+                    "The concatenated file exceeds the server's max file size."
+                );
             }
         }
     }

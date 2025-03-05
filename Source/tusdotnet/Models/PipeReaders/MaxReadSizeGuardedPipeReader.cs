@@ -19,7 +19,8 @@ namespace tusdotnet.Models.PipeReaders
             PipeReader backingReader,
             long startCountingFrom,
             long maxSizeToRead,
-            MaxReadSizeExceededException.SizeSourceType sizeSource)
+            MaxReadSizeExceededException.SizeSourceType sizeSource
+        )
         {
             _backingReader = backingReader;
             _totalCommittedBytes = startCountingFrom;
@@ -49,7 +50,9 @@ namespace tusdotnet.Models.PipeReaders
             _backingReader.Complete(exception);
         }
 
-        public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<ReadResult> ReadAsync(
+            CancellationToken cancellationToken = default
+        )
         {
             var result = await _backingReader.ReadAsync(cancellationToken);
 

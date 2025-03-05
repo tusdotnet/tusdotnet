@@ -19,11 +19,15 @@ namespace tusdotnet
         /// </summary>
         /// <param name="builder">The IAppBuilder passed to your configuration method</param>
         /// <param name="configFactory">Factory for creating the configuration for tusdotnet</param>
-        public static IAppBuilder UseTus(this IAppBuilder builder, Func<IOwinRequest, DefaultTusConfiguration> configFactory)
+        public static IAppBuilder UseTus(
+            this IAppBuilder builder,
+            Func<IOwinRequest, DefaultTusConfiguration> configFactory
+        )
         {
             return builder.UseTus((Func<IOwinRequest, Task<DefaultTusConfiguration>>)AsyncFactory);
 
-            Task<DefaultTusConfiguration> AsyncFactory(IOwinRequest ctx) => Task.FromResult(configFactory(ctx));
+            Task<DefaultTusConfiguration> AsyncFactory(IOwinRequest ctx) =>
+                Task.FromResult(configFactory(ctx));
         }
 
         /// <summary>
@@ -31,7 +35,10 @@ namespace tusdotnet
         /// </summary>
         /// <param name="builder">The IAppBuilder passed to your configuration method</param>
         /// <param name="configFactory">Factory for creating the configuration for tusdotnet</param>
-        public static IAppBuilder UseTus(this IAppBuilder builder, Func<IOwinRequest, Task<DefaultTusConfiguration>> configFactory)
+        public static IAppBuilder UseTus(
+            this IAppBuilder builder,
+            Func<IOwinRequest, Task<DefaultTusConfiguration>> configFactory
+        )
         {
             return builder.Use<TusOwinMiddleware>(configFactory);
         }

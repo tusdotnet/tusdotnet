@@ -25,19 +25,25 @@ namespace tusdotnet
             return new(context, firstIntent, secondIntent);
         }
 
-        private static async Task<IntentHandler?> IntentIncludesCreationWithUpload(IntentHandler firstIntent, ContextAdapter context)
+        private static async Task<IntentHandler?> IntentIncludesCreationWithUpload(
+            IntentHandler firstIntent,
+            ContextAdapter context
+        )
         {
             if (firstIntent is not CreateFileHandler and not ConcatenateFilesHandler)
                 return null;
 
             // Final files does not support writing.
-            if (firstIntent is ConcatenateFilesHandler concatenateFilesHandler && concatenateFilesHandler.UploadConcat.Type is FileConcatFinal)
+            if (
+                firstIntent is ConcatenateFilesHandler concatenateFilesHandler
+                && concatenateFilesHandler.UploadConcat.Type is FileConcatFinal
+            )
                 return null;
 
             try
             {
-
-                var writeFileContext = await WriteFileContextForCreationWithUpload.FromCreationContext(context);
+                var writeFileContext =
+                    await WriteFileContextForCreationWithUpload.FromCreationContext(context);
                 if (!writeFileContext.FileContentIsAvailable)
                     return null;
 
@@ -128,7 +134,9 @@ namespace tusdotnet
             if (!context.StoreAdapter.Extensions.Creation)
                 return IntentHandler.NotApplicable;
 
-            var hasUploadConcatHeader = context.Request.Headers.ContainsKey(HeaderConstants.UploadConcat);
+            var hasUploadConcatHeader = context.Request.Headers.ContainsKey(
+                HeaderConstants.UploadConcat
+            );
 
             if (context.StoreAdapter.Extensions.Concatenation && hasUploadConcatHeader)
             {

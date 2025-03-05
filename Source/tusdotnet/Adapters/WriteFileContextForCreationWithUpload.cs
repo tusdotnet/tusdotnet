@@ -11,7 +11,9 @@ namespace tusdotnet.Adapters
         internal Stream Body { get; }
 
 #if pipelines
-        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext)
+        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(
+            ContextAdapter creationContext
+        )
         {
             if (!creationContext.StoreAdapter.Extensions.CreationWithUpload)
                 return new WriteFileContextForCreationWithUpload(creationContext, false, null);
@@ -25,7 +27,8 @@ namespace tusdotnet.Adapters
                 bool hasData;
                 try
                 {
-                    System.IO.Pipelines.ReadResult result = await creationContext.Request.BodyReader.ReadAsync();
+                    System.IO.Pipelines.ReadResult result =
+                        await creationContext.Request.BodyReader.ReadAsync();
                     if (result.Buffer.IsEmpty)
                     {
                         hasData = false;
@@ -34,7 +37,10 @@ namespace tusdotnet.Adapters
                     {
                         hasData = !result.IsCanceled && result.Buffer.Length > 0;
                         // Advance to "examined" which will cause the pipe reader to keep the data in its internal buffer.
-                        creationContext.Request.BodyReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
+                        creationContext.Request.BodyReader.AdvanceTo(
+                            result.Buffer.Start,
+                            result.Buffer.End
+                        );
                     }
                 }
                 catch
@@ -50,14 +56,25 @@ namespace tusdotnet.Adapters
                 // TODO: Grab the array from the array pool instead of creating it.
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
-                var hasData = await creationContext.Request.Body.ReadAsync(buffer, 0, 1, System.Threading.CancellationToken.None) > 0;
+                var hasData =
+                    await creationContext.Request.Body.ReadAsync(
+                        buffer,
+                        0,
+                        1,
+                        System.Threading.CancellationToken.None
+                    ) > 0;
 
-                return new WriteFileContextForCreationWithUpload(creationContext, hasData, buffer[0]);
+                return new WriteFileContextForCreationWithUpload(
+                    creationContext,
+                    hasData,
+                    buffer[0]
+                );
             }
         }
-
 #else
-        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(ContextAdapter creationContext)
+        internal static async Task<WriteFileContextForCreationWithUpload> FromCreationContext(
+            ContextAdapter creationContext
+        )
         {
             if (!creationContext.StoreAdapter.Extensions.CreationWithUpload)
                 return new WriteFileContextForCreationWithUpload(creationContext, false, null);
@@ -73,12 +90,19 @@ namespace tusdotnet.Adapters
         }
 #endif
 
-        private WriteFileContextForCreationWithUpload(ContextAdapter creationContext, bool hasData, byte? preReadByteFromStream)
+        private WriteFileContextForCreationWithUpload(
+            ContextAdapter creationContext,
+            bool hasData,
+            byte? preReadByteFromStream
+        )
         {
             FileContentIsAvailable = hasData;
             Body = preReadByteFromStream.HasValue
-                    ? new ReadOnlyStreamWithPreReadByte(creationContext.Request.Body, preReadByteFromStream.Value)
-                    : creationContext.Request.Body;
+                ? new ReadOnlyStreamWithPreReadByte(
+                    creationContext.Request.Body,
+                    preReadByteFromStream.Value
+                )
+                : creationContext.Request.Body;
         }
     }
 }

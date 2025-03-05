@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Owin;
 using Owin;
-using Owin_net452_TestApp.Extensions;
 using OwinTestApp;
+using Owin_net452_TestApp.Extensions;
 using tusdotnet;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -24,7 +24,9 @@ namespace OwinTestApp
         {
             // Change the value of EnableOnAuthorize in app.config to enable or disable
             // the new authorization event.
-            var enableAuthorize = Convert.ToBoolean(ConfigurationManager.AppSettings["EnableOnAuthorize"]);
+            var enableAuthorize = Convert.ToBoolean(
+                ConfigurationManager.AppSettings["EnableOnAuthorize"]
+            );
 
             var tusConfiguration = CreateTusConfiguration(enableAuthorize);
 
@@ -42,7 +44,7 @@ namespace OwinTestApp
             app.UseTus(owinRequest => tusConfiguration);
 
             // All GET requests to tusdotnet are forwarded so that you can handle file downloads.
-            // This is done because the file's metadata is domain specific and thus cannot be handled 
+            // This is done because the file's metadata is domain specific and thus cannot be handled
             // in a generic way by tusdotnet.
             app.SetupDownloadFeature(tusConfiguration);
 
@@ -68,14 +70,20 @@ namespace OwinTestApp
 
                         if (ctx.OwinContext.Authentication.User?.Identity?.IsAuthenticated != true)
                         {
-                            ctx.OwinContext.Response.Headers.Add("WWW-Authenticate", new StringValues("Basic realm=\"tusdotnet-test-owin\""));
+                            ctx.OwinContext.Response.Headers.Add(
+                                "WWW-Authenticate",
+                                new StringValues("Basic realm=\"tusdotnet-test-owin\"")
+                            );
                             ctx.FailRequest(HttpStatusCode.Unauthorized);
                             return completedTask;
                         }
 
                         if (ctx.OwinContext.Authentication.User.Identity.Name != "test")
                         {
-                            ctx.FailRequest(HttpStatusCode.Forbidden, "'test' is the only allowed user");
+                            ctx.FailRequest(
+                                HttpStatusCode.Forbidden,
+                                "'test' is the only allowed user"
+                            );
                             return completedTask;
                         }
 
@@ -121,7 +129,10 @@ namespace OwinTestApp
                             ctx.FailRequest("name metadata must be specified. ");
                         }
 
-                        if (!ctx.Metadata.ContainsKey("contentType") || ctx.Metadata["contentType"].HasEmptyValue)
+                        if (
+                            !ctx.Metadata.ContainsKey("contentType")
+                            || ctx.Metadata["contentType"].HasEmptyValue
+                        )
                         {
                             ctx.FailRequest("contentType metadata must be specified. ");
                         }
@@ -130,7 +141,9 @@ namespace OwinTestApp
                     },
                     OnCreateCompleteAsync = ctx =>
                     {
-                        Console.WriteLine($"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        Console.WriteLine(
+                            $"Created file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                        );
                         return Task.FromResult(true);
                     },
                     OnBeforeDeleteAsync = ctx =>
@@ -140,13 +153,16 @@ namespace OwinTestApp
                     },
                     OnDeleteCompleteAsync = ctx =>
                     {
-                        Console.WriteLine($"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}");
+                        Console.WriteLine(
+                            $"Deleted file {ctx.FileId} using {ctx.Store.GetType().FullName}"
+                        );
                         return Task.FromResult(true);
                     },
                     OnFileCompleteAsync = ctx =>
                     {
                         Console.WriteLine(
-                            $"Upload of {ctx.FileId} is complete. Callback also got a store of type {ctx.Store.GetType().FullName}");
+                            $"Upload of {ctx.FileId} is complete. Callback also got a store of type {ctx.Store.GetType().FullName}"
+                        );
                         // If the store implements ITusReadableStore one could access the completed file here.
                         // The default TusDiskStore implements this interface:
                         //var file = await ctx.GetFileAsync();

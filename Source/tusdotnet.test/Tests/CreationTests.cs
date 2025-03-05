@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,13 +8,11 @@ using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Concatenation;
+using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
-using System;
-using System.Collections.Generic;
-using tusdotnet.Models.Concatenation;
-using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
@@ -30,17 +30,27 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore, ITusCreationStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
+            using var server = TestServerFactory.CreateWithForwarding(
+                Substitute.For<ITusStore, ITusCreationStore>(),
+                () => _onAuthorizeWasCalled = true,
+                () => _callForwarded = true
+            );
 
             await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("POST");
 
             AssertAndResetForwardCall(false);
 
-            await server.CreateRequest("/otherfiles").AddHeader("Tus-Resumable", "1.0.0").SendAsync("POST");
+            await server
+                .CreateRequest("/otherfiles")
+                .AddHeader("Tus-Resumable", "1.0.0")
+                .SendAsync("POST");
 
             AssertAndResetForwardCall(true);
 
-            await server.CreateRequest("/files/testfile").AddHeader("Tus-Resumable", "1.0.0").SendAsync("POST");
+            await server
+                .CreateRequest("/files/testfile")
+                .AddHeader("Tus-Resumable", "1.0.0")
+                .SendAsync("POST");
 
             AssertAndResetForwardCall(true);
         }
@@ -48,7 +58,11 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Forwards_Calls_If_The_Store_Does_Not_Support_Creation()
         {
-            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
+            using var server = TestServerFactory.CreateWithForwarding(
+                Substitute.For<ITusStore>(),
+                () => _onAuthorizeWasCalled = true,
+                () => _callForwarded = true
+            );
 
             await server.CreateRequest("/files").PostAsync();
             AssertAndResetForwardCall(true);
@@ -59,7 +73,12 @@ namespace tusdotnet.test.Tests
         {
             var store = Substitute.For<ITusStore, ITusCreationStore>();
             var allowedExtensions = TusExtensions.All.Except(TusExtensions.Creation);
-            using var server = TestServerFactory.CreateWithForwarding(store, () => _onAuthorizeWasCalled = true, () => _callForwarded = true, allowedExtensions);
+            using var server = TestServerFactory.CreateWithForwarding(
+                store,
+                () => _onAuthorizeWasCalled = true,
+                () => _callForwarded = true,
+                allowedExtensions
+            );
 
             await server.CreateRequest("/files").PostAsync();
             AssertAndResetForwardCall(true);
@@ -68,22 +87,39 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Not_Specified()
         {
-            using var server = TestServerFactory.Create(Substitute.For<ITusStore, ITusCreationStore>());
+            using var server = TestServerFactory.Create(
+                Substitute.For<ITusStore, ITusCreationStore>()
+            );
             var response = await server.CreateRequest("/files").AddTusResumableHeader().PostAsync();
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, "Missing Upload-Length header");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "Missing Upload-Length header"
+            );
         }
 
         [Theory]
         [InlineData("uploadlength", "Could not parse Upload-Length")]
         [InlineData("0.1", "Could not parse Upload-Length")]
         [InlineData("-100", "Header Upload-Length must be a positive number")]
-        public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Invalid(string uploadLength, string expectedServerErrorMessage)
+        public async Task Returns_400_Bad_Request_If_Upload_Length_Is_Invalid(
+            string uploadLength,
+            string expectedServerErrorMessage
+        )
         {
-            using var server = TestServerFactory.Create(Substitute.For<ITusStore, ITusCreationStore>());
-            var response = await server.CreateRequest("/files").AddTusResumableHeader().AddHeader("Upload-Length", uploadLength).PostAsync();
+            using var server = TestServerFactory.Create(
+                Substitute.For<ITusStore, ITusCreationStore>()
+            );
+            var response = await server
+                .CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", uploadLength)
+                .PostAsync();
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, expectedServerErrorMessage);
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                expectedServerErrorMessage
+            );
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -125,7 +161,8 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task UploadMetadata_Is_Saved_If_Provided()
         {
-            const string metadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
+            const string metadata =
+                "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
 
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
@@ -189,12 +226,15 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_Empty_And_Original_Parsing_Strategy_Is_Used()
         {
-            // The Upload-Metadata request and response header MUST consist of one or more comma-separated key-value pairs. 
+            // The Upload-Metadata request and response header MUST consist of one or more comma-separated key-value pairs.
 
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using var server = TestServerFactory.Create((ITusStore)tusStore, metadataParsingStrategy: MetadataParsingStrategy.Original);
+            using var server = TestServerFactory.Create(
+                (ITusStore)tusStore,
+                metadataParsingStrategy: MetadataParsingStrategy.Original
+            );
             // Check empty header
             var response = await server
                 .CreateRequest("/files")
@@ -204,28 +244,39 @@ namespace tusdotnet.test.Tests
                 .PostAsync();
 
             response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-            response.Content
-                .ReadAsStringAsync()
-                .Result
-                .ShouldBe("Header Upload-Metadata must consist of one or more comma-separated key-value pairs");
+            response
+                .Content.ReadAsStringAsync()
+                .Result.ShouldBe(
+                    "Header Upload-Metadata must consist of one or more comma-separated key-value pairs"
+                );
         }
 #endif
 
         [Theory]
         [InlineData("somekey")]
-        [InlineData("somekey c29tZXZhbHVl, someotherkey", "Header Upload-Metadata: Key must not be empty")]
+        [InlineData(
+            "somekey c29tZXZhbHVl, someotherkey",
+            "Header Upload-Metadata: Key must not be empty"
+        )]
         [InlineData("   c29tZXZhbHVl")]
         [InlineData("somekey c29tZXZhbHVl someotherkey")]
         [InlineData("somekey c29tZXZhbHVl - someotherkey")]
-        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format_Using_Original_Metadata_Parsing_Strategy(string uploadHeader, string expectedErrorMessage = "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique.")
+        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format_Using_Original_Metadata_Parsing_Strategy(
+            string uploadHeader,
+            string expectedErrorMessage =
+                "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique."
+        )
         {
             // The key and value MUST be separated by a space.
-            // The key MUST NOT contain spaces and commas and MUST NOT be empty. 
+            // The key MUST NOT contain spaces and commas and MUST NOT be empty.
 
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using var server = TestServerFactory.Create((ITusStore)tusStore, metadataParsingStrategy: MetadataParsingStrategy.Original);
+            using var server = TestServerFactory.Create(
+                (ITusStore)tusStore,
+                metadataParsingStrategy: MetadataParsingStrategy.Original
+            );
             // Check header with only a key and no value
             var response = await server
                 .CreateRequest("/files")
@@ -240,22 +291,32 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory]
-        [InlineData("somekey c29tZXZhbHVl, someotherkey", "Header Upload-Metadata: Key must not be empty")]
+        [InlineData(
+            "somekey c29tZXZhbHVl, someotherkey",
+            "Header Upload-Metadata: Key must not be empty"
+        )]
         [InlineData("   c29tZXZhbHVl")]
         [InlineData(" c29tZXZhbHVl", "Header Upload-Metadata: Key must not be empty")]
         [InlineData("somekey c29tZXZhbHVl someotherkey")]
         [InlineData("somekey c29tZXZhbHVl - someotherkey")]
-        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format_Using_AllowEmptyValues_Metadata_Parsing_Strategy(string uploadHeader, string expectedErrorMessage = "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique. The value MAY be empty. In these cases, the space, which would normally separate the key and the value, MAY be left out.")
+        public async Task Returns_400_Bad_Request_If_UploadMetadata_Is_In_An_Incorrect_Format_Using_AllowEmptyValues_Metadata_Parsing_Strategy(
+            string uploadHeader,
+            string expectedErrorMessage =
+                "Header Upload-Metadata: The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs. The key and value MUST be separated by a space.The key MUST NOT contain spaces and commas and MUST NOT be empty. The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique. The value MAY be empty. In these cases, the space, which would normally separate the key and the value, MAY be left out."
+        )
         {
             // The key and value MUST be separated by a space.
-            // The key MUST NOT contain spaces and commas and MUST NOT be empty. 
-            // The value MAY be empty. 
+            // The key MUST NOT contain spaces and commas and MUST NOT be empty.
+            // The value MAY be empty.
             // In these cases, the space, which would normally separate the key and the value, MAY be left out.
 
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using var server = TestServerFactory.Create((ITusStore)tusStore, metadataParsingStrategy: MetadataParsingStrategy.AllowEmptyValues);
+            using var server = TestServerFactory.Create(
+                (ITusStore)tusStore,
+                metadataParsingStrategy: MetadataParsingStrategy.AllowEmptyValues
+            );
             // Check header with only a key and no value
             var response = await server
                 .CreateRequest("/files")
@@ -303,8 +364,10 @@ namespace tusdotnet.test.Tests
                 .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Length", "1")
-                .AddHeader("Upload-Metadata",
-                    "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,filename dHVzZG90bmV0X2RvbWluYXRpb25fcGxhbi5wZGY=")
+                .AddHeader(
+                    "Upload-Metadata",
+                    "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,filename dHVzZG90bmV0X2RvbWluYXRpb25fcGxhbi5wZGY="
+                )
                 .PostAsync();
 
             response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -318,12 +381,14 @@ namespace tusdotnet.test.Tests
             var tusStore = Substitute.For<ITusCreationStore, ITusStore>();
             tusStore.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using var server = TestServerFactory.Create(new DefaultTusConfiguration
-            {
-                Store = (ITusStore)tusStore,
-                UrlPath = "/files",
-                MaxAllowedUploadSizeInBytes = 100
-            });
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    Store = (ITusStore)tusStore,
+                    UrlPath = "/files",
+                    MaxAllowedUploadSizeInBytes = 100
+                }
+            );
 
             var response = await server
                 .CreateRequest("/files")
@@ -331,7 +396,10 @@ namespace tusdotnet.test.Tests
                 .AddHeader("Upload-Length", "101")
                 .PostAsync();
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.RequestEntityTooLarge, "Header Upload-Length exceeds the server's max file size.");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.RequestEntityTooLarge,
+                "Header Upload-Length exceeds the server's max file size."
+            );
 
             response = await server
                 .CreateRequest("/files")
@@ -355,7 +423,9 @@ namespace tusdotnet.test.Tests
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
             var fileId = Guid.NewGuid().ToString();
-            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+            store
+                .CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(fileId);
 
             long? uploadLength = null;
             bool? uploadLengthIsDeferred = null;
@@ -376,10 +446,14 @@ namespace tusdotnet.test.Tests
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Length", "1")
-                .AddHeader("Upload-Metadata", "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh")
+                .AddHeader(
+                    "Upload-Metadata",
+                    "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh"
+                )
                 .OverrideHttpMethodIfNeeded("POST", method)
                 .SendAsync(method);
 
@@ -395,11 +469,15 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_400_Bad_Request_If_OnBeforeCreateAsync_Fails_The_Request(string method)
+        public async Task Returns_400_Bad_Request_If_OnBeforeCreateAsync_Fails_The_Request(
+            string method
+        )
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
             var fileId = Guid.NewGuid().ToString();
-            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+            store
+                .CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(fileId);
 
             var events = new Events
             {
@@ -411,14 +489,17 @@ namespace tusdotnet.test.Tests
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Length", "1")
                 .OverrideHttpMethodIfNeeded("POST", method)
                 .SendAsync(method);
 
-            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest,
-                "The request failed with custom error message");
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.BadRequest,
+                "The request failed with custom error message"
+            );
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -427,7 +508,9 @@ namespace tusdotnet.test.Tests
             var store = Substitute.For<ITusCreationStore, ITusStore>();
             var fileId = Guid.NewGuid().ToString();
 
-            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+            store
+                .CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(fileId);
 
             long? uploadLength = null;
             bool? uploadLengthIsDeferred = null;
@@ -451,10 +534,14 @@ namespace tusdotnet.test.Tests
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Length", "1")
-                .AddHeader("Upload-Metadata", "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh")
+                .AddHeader(
+                    "Upload-Metadata",
+                    "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh"
+                )
                 .OverrideHttpMethodIfNeeded("POST", method)
                 .SendAsync(method);
 
@@ -470,13 +557,17 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_The_Correct_Location_Header_If_OnCreateCompleteAsync_Modifies_It(string method)
+        public async Task Returns_The_Correct_Location_Header_If_OnCreateCompleteAsync_Modifies_It(
+            string method
+        )
         {
             var store = Substitute.For<ITusCreationStore, ITusStore>();
             var fileId = Guid.NewGuid().ToString();
             var randomUrl = "https://example.org/" + Guid.NewGuid();
 
-            store.CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(fileId);
+            store
+                .CreateFileAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(fileId);
 
             var events = new Events
             {
@@ -488,10 +579,14 @@ namespace tusdotnet.test.Tests
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
-            var response = await server.CreateRequest("/files")
+            var response = await server
+                .CreateRequest("/files")
                 .AddTusResumableHeader()
                 .AddHeader("Upload-Length", "1")
-                .AddHeader("Upload-Metadata", "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh")
+                .AddHeader(
+                    "Upload-Metadata",
+                    "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh"
+                )
                 .OverrideHttpMethodIfNeeded("POST", method)
                 .SendAsync(method);
 
@@ -508,17 +603,24 @@ namespace tusdotnet.test.Tests
             var store = Substitute.For<ITusCreationStore, ITusStore>();
             store.CreateFileAsync(1, null, CancellationToken.None).ReturnsForAnyArgs("fileId");
 
-            using var server = TestServerFactory.Create((ITusStore)store, new Events
-            {
-                OnAuthorizeAsync = ctx =>
+            using var server = TestServerFactory.Create(
+                (ITusStore)store,
+                new Events
                 {
-                    onAuthorizeWasCalled = true;
-                    intentProvidedToOnAuthorize = ctx.Intent;
-                    return Task.FromResult(0);
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        onAuthorizeWasCalled = true;
+                        intentProvidedToOnAuthorize = ctx.Intent;
+                        return Task.FromResult(0);
+                    }
                 }
-            });
+            );
 
-            var response = await server.CreateRequest("/files").AddTusResumableHeader().AddHeader("Upload-Length", "1").SendAsync("POST");
+            var response = await server
+                .CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "1")
+                .SendAsync("POST");
 
             onAuthorizeWasCalled.ShouldBeTrue();
             intentProvidedToOnAuthorize.ShouldBe(IntentType.CreateFile);
@@ -528,16 +630,23 @@ namespace tusdotnet.test.Tests
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             var store = Substitute.For<ITusStore, ITusCreationStore>();
-            using var server = TestServerFactory.Create(store, new Events
-            {
-                OnAuthorizeAsync = ctx =>
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
                 {
-                    ctx.FailRequest(HttpStatusCode.Unauthorized);
-                    return Task.FromResult(0);
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        ctx.FailRequest(HttpStatusCode.Unauthorized);
+                        return Task.FromResult(0);
+                    }
                 }
-            });
+            );
 
-            var response = await server.CreateRequest("/files").AddTusResumableHeader().AddHeader("Upload-Length", "1").SendAsync("POST");
+            var response = await server
+                .CreateRequest("/files")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", "1")
+                .SendAsync("POST");
 
             response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
             response.ShouldNotContainHeaders("Tus-Resumable", "Location", "Content-Type");
@@ -553,30 +662,37 @@ namespace tusdotnet.test.Tests
             var onFileCompleteAsyncCallbackCounts = 0;
 
             var store = Substitute.For<ITusCreationStore, ITusStore>();
-            store.CreateFileAsync(default, default, default).ReturnsForAnyArgs(Guid.NewGuid().ToString());
+            store
+                .CreateFileAsync(default, default, default)
+                .ReturnsForAnyArgs(Guid.NewGuid().ToString());
 
-            using var server = TestServerFactory.Create(new DefaultTusConfiguration
-            {
-                Store = (ITusStore)store,
-                UrlPath = "/files",
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    Store = (ITusStore)store,
+                    UrlPath = "/files",
 #pragma warning disable CS0618 // Type or member is obsolete
-                OnUploadCompleteAsync = (__, ___, ____) =>
+                    OnUploadCompleteAsync = (__, ___, ____) =>
 #pragma warning restore CS0618 // Type or member is obsolete
-                {
-                    onUploadCompleteCallCounts++;
-                    return Task.FromResult(true);
-                },
-                Events = new Events
-                {
-                    OnFileCompleteAsync = __ =>
                     {
-                        onFileCompleteAsyncCallbackCounts++;
+                        onUploadCompleteCallCounts++;
                         return Task.FromResult(true);
+                    },
+                    Events = new Events
+                    {
+                        OnFileCompleteAsync = __ =>
+                        {
+                            onFileCompleteAsyncCallbackCounts++;
+                            return Task.FromResult(true);
+                        }
                     }
                 }
-            });
+            );
 
-            var response = await server.CreateTusResumableRequest("/files/").AddHeader("Upload-Length", "0").SendAsync("POST");
+            var response = await server
+                .CreateTusResumableRequest("/files/")
+                .AddHeader("Upload-Length", "0")
+                .SendAsync("POST");
 
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
 

@@ -5,10 +5,10 @@ using NSubstitute;
 using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
 using Xunit;
-using tusdotnet.Models.Configuration;
 #if netfull
 using Owin;
 #endif
@@ -26,7 +26,11 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Ignores_Request_If_Url_Does_Not_Match()
         {
-            using var server = TestServerFactory.CreateWithForwarding(Substitute.For<ITusStore>(), () => _onAuthorizeWasCalled = true, () => _callForwarded = true);
+            using var server = TestServerFactory.CreateWithForwarding(
+                Substitute.For<ITusStore>(),
+                () => _onAuthorizeWasCalled = true,
+                () => _callForwarded = true
+            );
 
             await server.CreateRequest("/files").AddTusResumableHeader().SendAsync("HEAD");
             AssertForwardCall(true);
@@ -34,7 +38,10 @@ namespace tusdotnet.test.Tests
             await server.CreateRequest("/files/testfile").AddTusResumableHeader().SendAsync("HEAD");
             AssertForwardCall(false);
 
-            await server.CreateRequest("/otherfiles/testfile").AddTusResumableHeader().SendAsync("HEAD");
+            await server
+                .CreateRequest("/otherfiles/testfile")
+                .AddTusResumableHeader()
+                .SendAsync("HEAD");
             AssertForwardCall(true);
         }
 
@@ -59,7 +66,9 @@ namespace tusdotnet.test.Tests
             store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
             store.FileExistAsync("otherfile", Arg.Any<CancellationToken>()).Returns(true);
             store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(100);
-            store.GetUploadLengthAsync("otherfile", Arg.Any<CancellationToken>()).Returns(null as long?);
+            store
+                .GetUploadLengthAsync("otherfile", Arg.Any<CancellationToken>())
+                .Returns(null as long?);
 
             using var server = TestServerFactory.Create(store);
 
@@ -98,10 +107,11 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Response_Contains_UploadMetadata_If_Metadata_Exists_For_File()
         {
-            // If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+            // If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header
             // and its value as specified by the Client during the creation.
 
-            const string metadata = "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
+            const string metadata =
+                "filename d29ybGRfZG9taW5hdGlvbl9wbGFuLnBkZg==,othermeta c29tZSBvdGhlciBkYXRh";
 
             using var server = TestServerFactory.Create(CreateMockStore(metadata));
 
@@ -116,7 +126,7 @@ namespace tusdotnet.test.Tests
         [Fact]
         public async Task Response_Does_Not_Contain_UploadMetadata_If_Metadata_Does_Not_Exist_For_File()
         {
-            // If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header 
+            // If an upload contains additional metadata, responses to HEAD requests MUST include the Upload-Metadata header
             // and its value as specified by the Client during the creation.
 
             using var server = TestServerFactory.Create(CreateMockStore());
@@ -135,15 +145,18 @@ namespace tusdotnet.test.Tests
             var onAuthorizeWasCalled = false;
             IntentType? intentProvidedToOnAuthorize = null;
 
-            using var server = TestServerFactory.Create(CreateMockStore(), new Events
-            {
-                OnAuthorizeAsync = ctx =>
+            using var server = TestServerFactory.Create(
+                CreateMockStore(),
+                new Events
                 {
-                    onAuthorizeWasCalled = true;
-                    intentProvidedToOnAuthorize = ctx.Intent;
-                    return Task.FromResult(0);
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        onAuthorizeWasCalled = true;
+                        intentProvidedToOnAuthorize = ctx.Intent;
+                        return Task.FromResult(0);
+                    }
                 }
-            });
+            );
 
             var response = await server
                 .CreateRequest("/files/testfile")
@@ -163,14 +176,17 @@ namespace tusdotnet.test.Tests
         public async Task Request_Is_Cancelled_If_OnAuthorized_Fails_The_Request()
         {
             var store = Substitute.For<ITusStore, ITusCreationStore>();
-            using var server = TestServerFactory.Create(store, new Events
-            {
-                OnAuthorizeAsync = ctx =>
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
                 {
-                    ctx.FailRequest(HttpStatusCode.Unauthorized);
-                    return Task.FromResult(0);
+                    OnAuthorizeAsync = ctx =>
+                    {
+                        ctx.FailRequest(HttpStatusCode.Unauthorized);
+                        return Task.FromResult(0);
+                    }
                 }
-            });
+            );
 
             var response = await server
                 .CreateRequest("/files/testfile")
@@ -183,7 +199,8 @@ namespace tusdotnet.test.Tests
                 "Upload-Length",
                 "Upload-Offset",
                 "Cache-Control",
-                "Content-Type");
+                "Content-Type"
+            );
         }
 
         private static ITusStore CreateMockStore(string metadata = null)
@@ -192,7 +209,9 @@ namespace tusdotnet.test.Tests
             store.FileExistAsync("testfile", Arg.Any<CancellationToken>()).Returns(true);
             store.GetUploadLengthAsync("testfile", Arg.Any<CancellationToken>()).Returns(100);
             store.GetUploadOffsetAsync("testfile", Arg.Any<CancellationToken>()).Returns(50);
-            ((ITusCreationStore)store).GetUploadMetadataAsync("testfile", Arg.Any<CancellationToken>()).Returns(metadata);
+            ((ITusCreationStore)store)
+                .GetUploadMetadataAsync("testfile", Arg.Any<CancellationToken>())
+                .Returns(metadata);
             return store;
         }
 

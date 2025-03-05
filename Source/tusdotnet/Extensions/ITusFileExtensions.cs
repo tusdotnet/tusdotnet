@@ -16,7 +16,11 @@ namespace tusdotnet.Extensions
         /// <param name="store">The store responsible for handling the file</param>
         /// <param name="cancellationToken">The cancellation token to use when cancelling</param>
         /// <returns>True if the file is completed, otherwise false</returns>
-        public static async Task<bool> IsCompleteAsync(this ITusFile file, ITusStore store, CancellationToken cancellationToken)
+        public static async Task<bool> IsCompleteAsync(
+            this ITusFile file,
+            ITusStore store,
+            CancellationToken cancellationToken
+        )
         {
             var length = store.GetUploadLengthAsync(file.Id, cancellationToken);
             var offset = store.GetUploadOffsetAsync(file.Id, cancellationToken);

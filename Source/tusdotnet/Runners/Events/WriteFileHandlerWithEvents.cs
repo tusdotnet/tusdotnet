@@ -10,30 +10,43 @@ namespace tusdotnet.Runners.Events
 {
     internal class WriteFileHandlerWithEvents : IntentHandlerWithEvents
     {
-        public WriteFileHandlerWithEvents(IntentHandler intentHandler) : base(intentHandler)
-        {
-        }
+        public WriteFileHandlerWithEvents(IntentHandler intentHandler)
+            : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(Context, ctx =>
-            {
-                ctx.Intent = IntentType.WriteFile;
-                ctx.FileConcatenation = Context.Cache?.UploadConcat?.Type;
-            });
+            return await EventHelper.Validate<AuthorizeContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.Intent = IntentType.WriteFile;
+                    ctx.FileConcatenation = Context.Cache?.UploadConcat?.Type;
+                }
+            );
         }
 
         internal override async Task NotifyAfterAction()
         {
-            var offset = Context.Cache.UploadOffset ?? await Context.StoreAdapter.GetUploadOffsetAsync(Context.FileId, CancellationToken.None);
-            var length = await Context.StoreAdapter.GetUploadLengthAsync(Context.FileId, CancellationToken.None);
+            var offset =
+                Context.Cache.UploadOffset
+                ?? await Context.StoreAdapter.GetUploadOffsetAsync(
+                    Context.FileId,
+                    CancellationToken.None
+                );
+            var length = await Context.StoreAdapter.GetUploadLengthAsync(
+                Context.FileId,
+                CancellationToken.None
+            );
 
             if (offset != length)
                 return;
 
             if (Context.StoreAdapter.Extensions.Concatenation)
             {
-                var fileConcat = await Context.StoreAdapter.GetUploadConcatAsync(Context.FileId, CancellationToken.None);
+                var fileConcat = await Context.StoreAdapter.GetUploadConcatAsync(
+                    Context.FileId,
+                    CancellationToken.None
+                );
                 if (fileConcat is FileConcatPartial)
                     return;
             }

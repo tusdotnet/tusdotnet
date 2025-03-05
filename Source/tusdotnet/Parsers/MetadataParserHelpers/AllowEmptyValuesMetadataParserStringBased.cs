@@ -10,24 +10,28 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 {
     internal class AllowEmptyValuesMetadataParserStringBased : IInternalMetadataParser
     {
-        internal static AllowEmptyValuesMetadataParserStringBased Instance { get; } = new AllowEmptyValuesMetadataParserStringBased();
+        internal static AllowEmptyValuesMetadataParserStringBased Instance { get; } =
+            new AllowEmptyValuesMetadataParserStringBased();
 
-        private AllowEmptyValuesMetadataParserStringBased()
-        {
-        }
+        private AllowEmptyValuesMetadataParserStringBased() { }
 
         public MetadataParserResult GetResultForEmptyHeader()
         {
             return MetadataParserResult.FromResult(new Dictionary<string, Metadata>());
         }
 
-        public MetadataParserResult ParseSingleItem(string metadataItem, ICollection<string> existingKeys)
+        public MetadataParserResult ParseSingleItem(
+            string metadataItem,
+            ICollection<string> existingKeys
+        )
         {
             var pairParts = metadataItem.TrimEnd(' ').Split(new[] { ' ' });
 
             if (pairParts.Length < 1 || pairParts.Length > 2)
             {
-                return MetadataParserResult.FromError(MetadataParserErrorTexts.INVALID_FORMAT_ALLOW_EMPTY_VALUES);
+                return MetadataParserResult.FromError(
+                    MetadataParserErrorTexts.INVALID_FORMAT_ALLOW_EMPTY_VALUES
+                );
             }
 
             var key = pairParts[0];
@@ -47,7 +51,9 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
             }
             catch (FormatException)
             {
-                return MetadataParserResult.FromError(MetadataParserErrorTexts.InvalidBase64Value(key));
+                return MetadataParserResult.FromError(
+                    MetadataParserErrorTexts.InvalidBase64Value(key)
+                );
             }
         }
 

@@ -61,7 +61,7 @@ namespace tusdotnet.Models
 
         /// <summary>
         /// Parse the provided Upload-Metadata header into a data structure
-        /// more suitable for code. 
+        /// more suitable for code.
         /// <para>
         /// NOTE: This methods uses the original parsing strategy. To allow empty values use <see cref="MetadataParser.ParseAndValidate(MetadataParsingStrategy, string)"/>
         /// </para>
@@ -71,13 +71,16 @@ namespace tusdotnet.Models
         public static Dictionary<string, Metadata> Parse(string uploadMetadata)
         {
             /* Cannot return Dictionary<string, string> here as the metadata might not be a string:
-			 * "Yes, the value, which is going to be Base64 encoded, does not necessarily have to be an UTF8 (or similar) string. 
-			 * Theoretically, it can also be raw binary data, as you asked. 
-			 * In the end, it's still the server which decides whether it's going to use it or not."
-			 * Source: https://tus.io/protocols/resumable-upload.html#comment-2893439572
-			 * */
+             * "Yes, the value, which is going to be Base64 encoded, does not necessarily have to be an UTF8 (or similar) string.
+             * Theoretically, it can also be raw binary data, as you asked.
+             * In the end, it's still the server which decides whether it's going to use it or not."
+             * Source: https://tus.io/protocols/resumable-upload.html#comment-2893439572
+             * */
 
-            var result = MetadataParser.ParseAndValidate(MetadataParsingStrategy.Original, uploadMetadata);
+            var result = MetadataParser.ParseAndValidate(
+                MetadataParsingStrategy.Original,
+                uploadMetadata
+            );
             return result.Metadata;
         }
 
@@ -92,13 +95,16 @@ namespace tusdotnet.Models
         /// <returns>An error message or null if the validation passes</returns>
         public static string ValidateMetadataHeader(string metadata)
         {
-            /* 
+            /*
              * The Upload-Metadata request and response header MUST consist of one or more comma - separated key - value pairs.
              * The key and value MUST be separated by a space. The key MUST NOT contain spaces and commas and MUST NOT be empty.
              * The key SHOULD be ASCII encoded and the value MUST be Base64 encoded. All keys MUST be unique.
              * */
 
-            var result = MetadataParser.ParseAndValidate(MetadataParsingStrategy.Original, metadata);
+            var result = MetadataParser.ParseAndValidate(
+                MetadataParsingStrategy.Original,
+                metadata
+            );
             return result.ErrorMessage;
         }
 
@@ -108,7 +114,6 @@ namespace tusdotnet.Models
         {
             return new Metadata(decodedValue: null);
         }
-
 #endif
 
         internal static Metadata FromBytes(byte[] decodedValue)

@@ -43,7 +43,11 @@ namespace tusdotnet.IntentHandlers
 
             return true;
 
-            static void ModifyContextForNextIntent(ContextAdapter context, IntentHandler? previous, IntentHandler next)
+            static void ModifyContextForNextIntent(
+                ContextAdapter context,
+                IntentHandler? previous,
+                IntentHandler next
+            )
             {
                 if (previous is not CreateFileHandler and not ConcatenateFilesHandler)
                     return;
@@ -70,10 +74,20 @@ namespace tusdotnet.IntentHandlers
                 secondResponse = _responseAdapters[1];
             }
 
-            _context.Response = await GetFinalResponse(firstHandler, firstResponse, secondHandler, secondResponse);
+            _context.Response = await GetFinalResponse(
+                firstHandler,
+                firstResponse,
+                secondHandler,
+                secondResponse
+            );
         }
 
-        private static async Task<ResponseAdapter> GetFinalResponse(IntentHandler firstHandler, ResponseAdapter firstResponse, IntentHandler? secondHandler, ResponseAdapter? secondResponse)
+        private static async Task<ResponseAdapter> GetFinalResponse(
+            IntentHandler firstHandler,
+            ResponseAdapter firstResponse,
+            IntentHandler? secondHandler,
+            ResponseAdapter? secondResponse
+        )
         {
             if (firstHandler is not CreateFileHandler and not ConcatenateFilesHandler)
             {
@@ -88,29 +102,48 @@ namespace tusdotnet.IntentHandlers
             if (firstResponse.Status != System.Net.HttpStatusCode.Created)
             {
                 return firstResponse;
-            };
+            }
+            ;
 
             await ModifyFirstResponse(firstResponse, secondHandler, secondResponse);
 
             return firstResponse;
         }
 
-        private static async Task ModifyFirstResponse(ResponseAdapter firstResponse, IntentHandler secondHandler, ResponseAdapter secondResponse)
+        private static async Task ModifyFirstResponse(
+            ResponseAdapter firstResponse,
+            IntentHandler secondHandler,
+            ResponseAdapter secondResponse
+        )
         {
             var uploadOffset = await GetUploadOffset(secondResponse, secondHandler.Context);
             firstResponse.SetHeader(HeaderConstants.UploadOffset, uploadOffset.ToString());
 
-            if (secondResponse.Headers.TryGetValue(HeaderConstants.UploadExpires, out var uploadExpires))
+            if (
+                secondResponse.Headers.TryGetValue(
+                    HeaderConstants.UploadExpires,
+                    out var uploadExpires
+                )
+            )
             {
                 firstResponse.SetHeader(HeaderConstants.UploadExpires, uploadExpires);
             }
         }
 
-        private static async Task<long> GetUploadOffset(ResponseAdapter secondResponse, ContextAdapter context)
+        private static async Task<long> GetUploadOffset(
+            ResponseAdapter secondResponse,
+            ContextAdapter context
+        )
         {
-            return secondResponse.Headers.TryGetValue(HeaderConstants.UploadOffset, out var uploadOffsetString)
+            return secondResponse.Headers.TryGetValue(
+                HeaderConstants.UploadOffset,
+                out var uploadOffsetString
+            )
                 ? long.Parse(uploadOffsetString)
-                : await context.StoreAdapter.GetUploadOffsetAsync(context.FileId, context.CancellationToken);
+                : await context.StoreAdapter.GetUploadOffsetAsync(
+                    context.FileId,
+                    context.CancellationToken
+                );
         }
     }
 }

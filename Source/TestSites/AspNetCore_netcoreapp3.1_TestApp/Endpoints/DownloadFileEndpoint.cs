@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 
@@ -25,7 +25,10 @@ namespace AspNetCore_netcoreapp3._1_TestApp.Endpoints
             if (file == null)
             {
                 context.Response.StatusCode = 404;
-                await context.Response.WriteAsync($"File with id {fileId} was not found.", context.RequestAborted);
+                await context.Response.WriteAsync(
+                    $"File with id {fileId} was not found.",
+                    context.RequestAborted
+                );
                 return;
             }
 
@@ -37,8 +40,10 @@ namespace AspNetCore_netcoreapp3._1_TestApp.Endpoints
 
             if (metadata.TryGetValue("name", out var nameMeta))
             {
-                context.Response.Headers.Add("Content-Disposition",
-                    new[] { $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"" });
+                context.Response.Headers.Add(
+                    "Content-Disposition",
+                    new[] { $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"" }
+                );
             }
 
             using (fileStream)

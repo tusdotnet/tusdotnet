@@ -8,8 +8,8 @@ using tusdotnet.Validation;
 namespace tusdotnet.IntentHandlers
 {
     /*
-    * An OPTIONS request MAY be used to gather information about the Server’s current configuration. 
-    * A successful response indicated by the 204 No Content status MUST contain the Tus-Version header. 
+    * An OPTIONS request MAY be used to gather information about the Server’s current configuration.
+    * A successful response indicated by the 204 No Content status MUST contain the Tus-Version header.
     * It MAY include the Tus-Extension and Tus-Max-Size headers.
     * The Client SHOULD NOT include the Tus-Resumable header in the request and the Server MUST discard it.
     */
@@ -19,9 +19,7 @@ namespace tusdotnet.IntentHandlers
         internal override Requirement[] Requires => NoRequirements;
 
         public GetOptionsHandler(ContextAdapter context)
-            : base(context, IntentType.GetOptions, LockType.NoLock)
-        {
-        }
+            : base(context, IntentType.GetOptions, LockType.NoLock) { }
 
         internal override async Task Invoke()
         {
@@ -45,8 +43,13 @@ namespace tusdotnet.IntentHandlers
 
             if (Context.StoreAdapter.Extensions.Checksum)
             {
-                var checksumAlgorithms = await Context.StoreAdapter.GetSupportedAlgorithmsAsync(Context.CancellationToken);
-                response.SetHeader(HeaderConstants.TusChecksumAlgorithm, string.Join(",", checksumAlgorithms));
+                var checksumAlgorithms = await Context.StoreAdapter.GetSupportedAlgorithmsAsync(
+                    Context.CancellationToken
+                );
+                response.SetHeader(
+                    HeaderConstants.TusChecksumAlgorithm,
+                    string.Join(",", checksumAlgorithms)
+                );
             }
 
             response.SetResponse(HttpStatusCode.NoContent);
