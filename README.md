@@ -33,7 +33,7 @@ See `Source\tusdotnet.test\run-104-upload-resumption-supported-tests.ps1` for so
 `IIS` and `http.sys` does not support sending 1xx responses and thus there is no support for feature detection for these web servers/stacks. 
 Running **directly on Kestrel** or behind a **nginx reverse proxy** works as expected.
 
-For `IIS`/`http.sys` the client is required to perform a POST request with `Upload-Incomplete: true` and an empty body to get the upload url.
+For `IIS`/`http.sys` the client is required to perform a POST request with `Upload-Complete: ?0` and an empty body to get the upload url.
 
 See Github issues:
 * https://github.com/dotnet/aspnetcore/issues/4249#issuecomment-726266302
@@ -45,7 +45,7 @@ Clone this branch and include it in your project. All classes related to tus2 ar
 
 ## Run
 
-Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp` (runs on .NET8):
+Navigate to `Source\TestSites\AspNetCore_netcoreapp3.1_TestApp` (runs on **.NET8**):
 
 `dotnet run`
 
