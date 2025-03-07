@@ -1,25 +1,29 @@
 ﻿#nullable disable
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Http;
 using System;
+using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using System.Reflection;
-using System.Collections.Generic;
 
 namespace tusdotnet.Tus2
 {
     internal static class InformationalResponseSender
     {
-        public static async Task Send104UploadResumptionSupported(this HttpContext httpContext, string location, TusHandlerLimits? limits)
+        public static async Task Send104UploadResumptionSupported(
+            this HttpContext httpContext,
+            string location,
+            TusHandlerLimits? limits
+        )
         {
             var headers = new Dictionary<string, string>
             {
                 { "Location", location },
-                { "upload-draft-interop-version", "6" }
+                { "upload-draft-interop-version", DraftInteropVersion.Version }
             };
 
             if (limits is not null)
@@ -27,7 +31,8 @@ namespace tusdotnet.Tus2
 
             switch (httpContext.Request.Protocol)
             {
-                case "HTTP/1.0" or "HTTP/1.1":
+                case "HTTP/1.0"
+                or "HTTP/1.1":
                     await Http1xWriter.Send104UploadResumptionSupported(httpContext, headers);
                     break;
                 case "HTTP/2": // or "HTTP/3":
@@ -36,17 +41,21 @@ namespace tusdotnet.Tus2
             }
         }
 
-        public static async Task Send104UploadResumptionSupported(this HttpContext httpContext, long uploadOffset)
+        public static async Task Send104UploadResumptionSupported(
+            this HttpContext httpContext,
+            long uploadOffset
+        )
         {
             var headers = new Dictionary<string, string>
             {
                 { "upload-offset", uploadOffset.ToString() },
-                { "upload-draft-interop-version", "6" }
+                { "upload-draft-interop-version", DraftInteropVersion.Version }
             };
 
             switch (httpContext.Request.Protocol)
             {
-                case "HTTP/1.0" or "HTTP/1.1":
+                case "HTTP/1.0"
+                or "HTTP/1.1":
                     await Http1xWriter.Send104UploadResumptionSupported(httpContext, headers);
                     break;
                 case "HTTP/2": // or "HTTP/3":
@@ -57,18 +66,29 @@ namespace tusdotnet.Tus2
 
         private static class Http1xWriter
         {
-            private const string _http10FormatLocation = "HTTP/1.0 104 Upload Resumption Supported\r\n{0}\r\n";
-            private const string _http11FormatLocation = "HTTP/1.1 104 Upload Resumption Supported\r\n{0}\r\n";
+            private const string _http10FormatLocation =
+                "HTTP/1.0 104 Upload Resumption Supported\r\n{0}\r\n";
+            private const string _http11FormatLocation =
+                "HTTP/1.1 104 Upload Resumption Supported\r\n{0}\r\n";
 
-            private delegate ValueTask<FlushResult> WriteDataToPipeAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default);
+            private delegate ValueTask<FlushResult> WriteDataToPipeAsync(
+                ReadOnlySpan<byte> buffer,
+                CancellationToken cancellationToken = default
+            );
 
-            public static async Task Send104UploadResumptionSupported(HttpContext httpContext, Dictionary<string, string> headers)
+            public static async Task Send104UploadResumptionSupported(
+                HttpContext httpContext,
+                Dictionary<string, string> headers
+            )
             {
                 const string outputProducerName = "Output";
                 const string writeDataMethodName = "WriteDataToPipeAsync";
 
                 var httpConnection = httpContext.Features.Get<IHttpConnectionFeature>();
-                var output = httpConnection.GetType().GetProperty(outputProducerName).GetValue(httpConnection);
+                var output = httpConnection
+                    .GetType()
+                    .GetProperty(outputProducerName)
+                    .GetValue(httpConnection);
                 var method = output.GetType().GetMethod(writeDataMethodName);
 
                 var writeToPipe = method.CreateDelegate<WriteDataToPipeAsync>(output);
@@ -79,7 +99,10 @@ namespace tusdotnet.Tus2
                 await writeToPipe(bytes.AsSpan());
             }
 
-            private static string GetMessageToSend(string protocol, Dictionary<string, string> headers)
+            private static string GetMessageToSend(
+                string protocol,
+                Dictionary<string, string> headers
+            )
             {
                 string format;
                 if (protocol == "HTTP/1.0")
@@ -92,7 +115,7 @@ namespace tusdotnet.Tus2
                 }
 
                 var sb = new StringBuilder();
-                foreach(var item in headers)
+                foreach (var item in headers)
                 {
                     sb.Append(item.Key);
                     sb.Append(':');
@@ -106,13 +129,17 @@ namespace tusdotnet.Tus2
 
         private static class Http2And3Writer
         {
-            private const BindingFlags BindingFlagsPrivate = BindingFlags.Instance | BindingFlags.NonPublic;
+            private const BindingFlags BindingFlagsPrivate =
+                BindingFlags.Instance | BindingFlags.NonPublic;
 
             private const int UploadResumptionSupportedHttpStatusCode = 104;
 
             private static readonly object _endHeadersFlag = LoadEndHeadersFlag();
 
-            public static void Send104UploadResumptionSupported(HttpContext httpContext, Dictionary<string, string> headers)
+            public static void Send104UploadResumptionSupported(
+                HttpContext httpContext,
+                Dictionary<string, string> headers
+            )
             {
                 var output = GetOutputProducer(httpContext);
 
@@ -122,10 +149,20 @@ namespace tusdotnet.Tus2
                     internalHeaders.Add(item.Key, new(item.Value));
                 }
 
-                Write(output, UploadResumptionSupportedHttpStatusCode, httpContext.Request.Protocol, internalHeaders);
+                Write(
+                    output,
+                    UploadResumptionSupportedHttpStatusCode,
+                    httpContext.Request.Protocol,
+                    internalHeaders
+                );
             }
 
-            private static void Write(object outputProducer, int statusCode, string httpProtocol, IHeaderDictionary headers)
+            private static void Write(
+                object outputProducer,
+                int statusCode,
+                string httpProtocol,
+                IHeaderDictionary headers
+            )
             {
                 const string FrameWriterName = "_frameWriter";
                 const string WriteResponseHeadersName = "WriteResponseHeaders";
@@ -133,15 +170,23 @@ namespace tusdotnet.Tus2
 
                 var outputProducerType = outputProducer.GetType();
 
-                var writer = outputProducerType.GetField(FrameWriterName, BindingFlagsPrivate).GetValue(outputProducer);
+                var writer = outputProducerType
+                    .GetField(FrameWriterName, BindingFlagsPrivate)
+                    .GetValue(outputProducer);
 
                 // Methods are different between HTTP/2 and HTTP/3.
                 if (httpProtocol == "HTTP/2")
                 {
                     // We need the stream id here while HTTP/3 always writes to the current stream.
-                    var streamId = (int)outputProducerType.GetProperty(StreamIdName, BindingFlagsPrivate).GetValue(outputProducer);
+                    var streamId = (int)
+                        outputProducerType
+                            .GetProperty(StreamIdName, BindingFlagsPrivate)
+                            .GetValue(outputProducer);
                     var writeResponseHeaders = writer.GetType().GetMethod(WriteResponseHeadersName);
-                    writeResponseHeaders.Invoke(writer, new object[] { streamId, statusCode, _endHeadersFlag, headers });
+                    writeResponseHeaders.Invoke(
+                        writer,
+                        new object[] { streamId, statusCode, _endHeadersFlag, headers }
+                    );
                 }
 
                 // TODO: Make it work over HTTP/3...
@@ -158,10 +203,10 @@ namespace tusdotnet.Tus2
                 //}
             }
 
-
             private static IHeaderDictionary GetHeaderDictionary()
             {
-                const string HttpResponseHeadersName = "Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.HttpResponseHeaders";
+                const string HttpResponseHeadersName =
+                    "Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.HttpResponseHeaders";
 
                 var headersType = GetKestrelCoreAssembly().GetType(HttpResponseHeadersName);
                 var ctor = headersType.GetConstructor(new[] { typeof(Func<string, Encoding?>) });
@@ -175,14 +220,18 @@ namespace tusdotnet.Tus2
                 const string OutputProducerName = "Output";
 
                 var httpConnection = httpContext.Features.Get<IHttpConnectionFeature>();
-                var outputProducer = httpConnection.GetType().GetProperty(OutputProducerName)?.GetValue(httpConnection);
+                var outputProducer = httpConnection
+                    .GetType()
+                    .GetProperty(OutputProducerName)
+                    ?.GetValue(httpConnection);
 
                 return outputProducer;
             }
 
             private static object LoadEndHeadersFlag()
             {
-                const string Http2HeadersFrameFlagsName = "Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2HeadersFrameFlags";
+                const string Http2HeadersFrameFlagsName =
+                    "Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2HeadersFrameFlags";
                 const string EndHeadersName = "END_HEADERS";
 
                 var type = GetKestrelCoreAssembly().GetType(Http2HeadersFrameFlagsName);

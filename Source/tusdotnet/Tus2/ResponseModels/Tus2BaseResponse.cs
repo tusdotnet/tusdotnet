@@ -12,8 +12,6 @@ namespace tusdotnet.Tus2
 
         public bool DisconnectClient { get; set; }
 
-        public long? UploadOffset { get; set; }
-
         public bool IsError
         {
             get
@@ -38,18 +36,13 @@ namespace tusdotnet.Tus2
                 httpContext.SetHeader("Cache-Control", "no-store");
             }
 
-            if (UploadOffset != null)
-            {
-                httpContext.SetHeader("Upload-Offset", UploadOffset.ToString());
-            }
-
             if (IsError)
             {
                 await httpContext.Error(Status, ErrorMessage);
                 return;
             }
 
-            httpContext.SetHeader("upload-draft-interop-version", "6");
+            httpContext.SetHeader("upload-draft-interop-version", DraftInteropVersion.Version);
 
             httpContext.Response.StatusCode = (int)Status;
 

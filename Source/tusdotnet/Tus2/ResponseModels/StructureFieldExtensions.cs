@@ -61,7 +61,12 @@ namespace tusdotnet.Tus2
 
             static bool IsBase64Char(char c)
             {
-                return !char.IsWhiteSpace(c) || char.IsAscii(c) || char.IsDigit(c) || c == '+' || c == '/' || c == '=';
+                return !char.IsWhiteSpace(c)
+                    || char.IsAscii(c)
+                    || char.IsDigit(c)
+                    || c == '+'
+                    || c == '/'
+                    || c == '=';
             }
         }
 
@@ -75,7 +80,7 @@ namespace tusdotnet.Tus2
             AppendIfNotNull(sb, "min-size", limits.MinSize);
             AppendIfNotNull(sb, "max-append-size", limits.MaxAppendSize);
             AppendIfNotNull(sb, "min-append-size", limits.MinAppendSize);
-            AppendIfNotNull(sb, "expires", expires);
+            AppendIfNotNull(sb, "max-age", expires);
 
             return sb.ToString().TrimEnd(',');
 

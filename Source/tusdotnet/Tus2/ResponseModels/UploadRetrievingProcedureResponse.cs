@@ -15,6 +15,8 @@ namespace tusdotnet.Tus2
 
         public long? UploadLength { get; set; }
 
+        public long UploadOffset { get; set; }
+
         public UploadRetrievingProcedureResponse()
         {
             NoCache = true;
@@ -24,6 +26,7 @@ namespace tusdotnet.Tus2
         protected override Task WriteResponse(HttpContext context)
         {
             context.SetHeader("Upload-Complete", UploadComplete.ToSfBool());
+            context.SetHeader("Upload-Offset", UploadOffset.ToString());
 
             if (ContentLocation is not null)
                 context.SetHeader("Content-Location", ContentLocation.ToString());

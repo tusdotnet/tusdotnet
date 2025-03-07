@@ -65,15 +65,7 @@ namespace tusdotnet.Tus2
             }
             catch (Tus2AssertRequestException ex)
             {
-                return new()
-                {
-                    Status = ex.Status,
-                    ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await TryGetOffset(
-                        storageFacade.Storage,
-                        context.Headers.ResourceId!
-                    )
-                };
+                return new() { Status = ex.Status, ErrorMessage = ex.ErrorMessage };
             }
         }
 
@@ -123,15 +115,7 @@ namespace tusdotnet.Tus2
             }
             catch (Tus2AssertRequestException ex)
             {
-                return new()
-                {
-                    Status = ex.Status,
-                    ErrorMessage = ex.ErrorMessage,
-                    UploadOffset = await TryGetOffset(
-                        storageFacade.Storage,
-                        context.Headers.ResourceId!
-                    )
-                };
+                return new() { Status = ex.Status, ErrorMessage = ex.ErrorMessage };
             }
         }
 
@@ -308,12 +292,7 @@ namespace tusdotnet.Tus2
             }
             catch (Tus2AssertRequestException exc) when (exc is not Tus2ProblemDetailsException)
             {
-                return new()
-                {
-                    Status = exc.Status,
-                    ErrorMessage = exc.ErrorMessage,
-                    UploadOffset = uploadOffsetFromStorage
-                };
+                return new() { Status = exc.Status, ErrorMessage = exc.ErrorMessage };
             }
         }
 
@@ -354,18 +333,6 @@ namespace tusdotnet.Tus2
                     lastWrite = DateTime.Now;
                 }
             };
-        }
-
-        private static async Task<long?> TryGetOffset(Tus2Storage storage, string uploadToken)
-        {
-            try
-            {
-                return await storage.GetOffset(uploadToken);
-            }
-            catch
-            {
-                return null;
-            }
         }
     }
 }

@@ -72,22 +72,12 @@ namespace tusdotnet.Tus2
 
             if (!uploadComplete)
             {
-                return new()
-                {
-                    Status = HttpStatusCode.Created,
-                    UploadComplete = false,
-                    UploadOffset = uploadOffset
-                };
+                return new() { Status = HttpStatusCode.Created, UploadComplete = false };
             }
 
             await Storage.MarkComplete(context.Headers.ResourceId);
 
-            return new()
-            {
-                Status = HttpStatusCode.Created,
-                UploadComplete = true,
-                UploadOffset = uploadOffset,
-            };
+            return new() { Status = HttpStatusCode.Created, UploadComplete = true };
         }
     }
 }
