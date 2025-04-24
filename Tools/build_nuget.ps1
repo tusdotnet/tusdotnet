@@ -33,7 +33,7 @@ function verifyCode() {
 		throw "A new version of CSharpier exist and has been automatically installed. Format the code before building the nuget"
 	}
 
-	dotnet csharpier --check .
+	dotnet csharpier check .
 	if ($LASTEXITCODE -eq 1) {
 		throw "CSharpier check failed"
 	}
