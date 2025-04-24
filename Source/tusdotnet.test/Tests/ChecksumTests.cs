@@ -146,10 +146,10 @@ namespace tusdotnet.test.Tests
                         },
                     }
                 ),
-                Method = "PATCH"
+                Method = "PATCH",
             };
 
-            var config = new DefaultTusConfiguration { Store = store, UrlPath = "/files", };
+            var config = new DefaultTusConfiguration { Store = store, UrlPath = "/files" };
 
             var context = new ContextAdapter(
                 "/files",
@@ -266,7 +266,7 @@ namespace tusdotnet.test.Tests
                     "Kq5sNclPz7QV2+lfQIuc6R7oRu0=",
                     "sha1 ",
                     "",
-                    "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0"
+                    "sha1 Kq5sNclPz7QV2+lfQIuc6R7oRu0",
                 }
             )
             {

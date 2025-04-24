@@ -310,19 +310,19 @@ namespace tusdotnet.test.Tests
                     {
                         { "Content-Type", "application/offset+octet-stream" },
                         { "Tus-Resumable", "1.0.0" },
-                        { "Upload-Offset", "5" }
+                        { "Upload-Offset", "5" },
                     }
                 ),
                 Method = "PATCH",
                 Body = requestStream,
-                RequestUri = new Uri("https://localhost:8080/files/testfile")
+                RequestUri = new Uri("https://localhost:8080/files/testfile"),
             };
 
             var config = new DefaultTusConfiguration
             {
                 UrlPath = "/files",
                 Store = store,
-                FileLockProvider = new TestServerInMemoryFileLockProvider()
+                FileLockProvider = new TestServerInMemoryFileLockProvider(),
             };
 
             var context = new ContextAdapter(
@@ -465,14 +465,14 @@ namespace tusdotnet.test.Tests
             var onUploadCompleteCallCounts = new Dictionary<string, int>(2)
             {
                 { "file1", 0 },
-                { "file2", 0 }
+                { "file2", 0 },
             };
 
             // New event handler
             var onFileCompleteAsyncCallbackCounts = new Dictionary<string, int>(2)
             {
                 { "file1", 0 },
-                { "file2", 0 }
+                { "file2", 0 },
             };
 
             var firstOffset = 3;
@@ -527,8 +527,8 @@ namespace tusdotnet.test.Tests
                             count++;
                             onFileCompleteAsyncCallbackCounts[ctx.FileId] = count;
                             return Task.FromResult(true);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -592,8 +592,8 @@ namespace tusdotnet.test.Tests
                         {
                             onFileCompleteAsyncCallbackCounts++;
                             return Task.FromResult(true);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -631,7 +631,7 @@ namespace tusdotnet.test.Tests
                         _onAuthorizeWasCalled = true;
                         _onAuthorizeWasCalledWithIntent = ctx.Intent;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
             var response = await server
@@ -664,7 +664,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
             var response = await server
@@ -705,14 +705,13 @@ namespace tusdotnet.test.Tests
 
             using (var server = TestServerFactory.Create(storeWithoutUploadDeferLength))
             {
-                var exception = await Assert.ThrowsAsync<TusConfigurationException>(
-                    async () =>
-                        await server
-                            .CreateTusResumableRequest("/files/testfile")
-                            .AddHeader("Upload-Offset", "0")
-                            .AddHeader("Upload-Length", "100")
-                            .AddBody()
-                            .SendAsync("PATCH")
+                var exception = await Assert.ThrowsAsync<TusConfigurationException>(async () =>
+                    await server
+                        .CreateTusResumableRequest("/files/testfile")
+                        .AddHeader("Upload-Offset", "0")
+                        .AddHeader("Upload-Length", "100")
+                        .AddBody()
+                        .SendAsync("PATCH")
                 );
 
                 exception.Message.ShouldBe(

@@ -13,8 +13,8 @@ namespace tusdotnet.test.Tests.ModelTests
         {
             var config = new DefaultTusConfiguration { UrlPath = "/files" };
 
-            var exception = Assert.Throws<TusConfigurationException>(
-                () => MiddlewareConfigurationValidator.Instance.Validate(config)
+            var exception = Assert.Throws<TusConfigurationException>(() =>
+                MiddlewareConfigurationValidator.Instance.Validate(config)
             );
             Assert.Equal("Store cannot be null.", exception.Message);
         }
@@ -30,11 +30,11 @@ namespace tusdotnet.test.Tests.ModelTests
             var config = new DefaultTusConfiguration
             {
                 Store = Substitute.For<ITusStore>(),
-                UrlPath = urlPath
+                UrlPath = urlPath,
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(
-                () => MiddlewareConfigurationValidator.Instance.Validate(config)
+            var exception = Assert.Throws<TusConfigurationException>(() =>
+                MiddlewareConfigurationValidator.Instance.Validate(config)
             );
             Assert.Equal("UrlPath cannot be empty.", exception.Message);
         }
@@ -51,11 +51,11 @@ namespace tusdotnet.test.Tests.ModelTests
             {
                 Store = Substitute.For<ITusStore>(),
                 UrlPath = "/files",
-                MetadataParsingStrategy = (MetadataParsingStrategy)metadataParsingStrategyAsInt
+                MetadataParsingStrategy = (MetadataParsingStrategy)metadataParsingStrategyAsInt,
             };
 
-            var exception = Assert.Throws<TusConfigurationException>(
-                () => MiddlewareConfigurationValidator.Instance.Validate(config)
+            var exception = Assert.Throws<TusConfigurationException>(() =>
+                MiddlewareConfigurationValidator.Instance.Validate(config)
             );
             Assert.Equal("MetadataParsingStrategy is not a valid value.", exception.Message);
         }

@@ -21,10 +21,9 @@ namespace tusdotnet.Parsers.UploadConcatParserHelpers
             {
                 "partial" => UploadConcatParserResult.FromResult(new FileConcatPartial()),
                 "final" => ParseFinal(temp, urlPath),
-                _
-                    => UploadConcatParserResult.FromError(
-                        UploadConcatParserErrorTexts.HEADER_IS_INVALID
-                    ),
+                _ => UploadConcatParserResult.FromError(
+                    UploadConcatParserErrorTexts.HEADER_IS_INVALID
+                ),
             };
         }
 

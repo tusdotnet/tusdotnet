@@ -65,7 +65,7 @@ namespace tusdotnet
                 ),
                 Body = context.Request.Body,
                 Method = context.Request.Method,
-                RequestUri = context.Request.Uri
+                RequestUri = context.Request.Uri,
             };
 
             var contextAdapter = new ContextAdapter(

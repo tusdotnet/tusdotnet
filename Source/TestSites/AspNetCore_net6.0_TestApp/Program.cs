@@ -77,7 +77,7 @@ static DefaultTusConfiguration CreateTusConfigurationForCleanupService(IServiceP
     return new DefaultTusConfiguration
     {
         Store = new TusDiskStore(path),
-        Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+        Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5)),
     };
 }
 
@@ -209,13 +209,13 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
                 // The default TusDiskStore implements this interface:
                 //var file = await ctx.GetFileAsync();
                 return Task.CompletedTask;
-            }
+            },
         },
         // Set an expiration time where incomplete files can no longer be updated.
         // This value can either be absolute or sliding.
         // Absolute expiration will be saved per file on create
         // Sliding expiration will be saved per file on create and updated on each patch/update.
-        Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+        Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5)),
     };
 
     return Task.FromResult(config);

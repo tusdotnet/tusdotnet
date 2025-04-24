@@ -162,7 +162,7 @@ namespace tusdotnet.test.Tests
                 {
                     UrlPath = "/files",
                     Store = store,
-                    UsePipelinesIfAvailable = usePipelinesInConfig
+                    UsePipelinesIfAvailable = usePipelinesInConfig,
                 }
             );
 

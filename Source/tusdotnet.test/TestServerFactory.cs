@@ -57,8 +57,8 @@ namespace tusdotnet.test
                             {
                                 onAuthorizeCalled();
                                 return Task.FromResult(0);
-                            }
-                        }
+                            },
+                        },
                     };
                 });
 
@@ -154,7 +154,7 @@ namespace tusdotnet.test
                     UsePipelinesIfAvailable = usePipelinesIfAvailable
 #endif
                     ,
-                    AllowedExtensions = allowedExtensions ?? TusExtensions.All
+                    AllowedExtensions = allowedExtensions ?? TusExtensions.All,
                 }
             );
         }
@@ -199,8 +199,8 @@ namespace tusdotnet.test
                             {
                                 onAuthorizeCalled();
                                 return Task.FromResult(0);
-                            }
-                        }
+                            },
+                        },
                     };
                 });
 
@@ -235,7 +235,7 @@ namespace tusdotnet.test
                     Store = store,
                     Events = events,
                     MetadataParsingStrategy = metadataParsingStrategy,
-                    AllowedExtensions = allowedExtensions ?? TusExtensions.All
+                    AllowedExtensions = allowedExtensions ?? TusExtensions.All,
                 }
             );
         }

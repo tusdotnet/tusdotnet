@@ -3,6 +3,6 @@
     internal enum LockType
     {
         NoLock,
-        RequiresLock
+        RequiresLock,
     }
 }

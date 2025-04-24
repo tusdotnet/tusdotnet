@@ -14,7 +14,6 @@ namespace Owin_net452_TestApp.Extensions
         /// </summary>
         /// <param name="app"></param>
         /// <param name="tusConfiguration"></param>
-
         public static void SetupDownloadFeature(
             this IAppBuilder app,
             DefaultTusConfiguration tusConfiguration
@@ -81,7 +80,7 @@ namespace Owin_net452_TestApp.Extensions
                                     "Content-Disposition",
                                     new[]
                                     {
-                                        $"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\""
+                                        $"attachment; filename=\"{nameMetadata.GetString(Encoding.UTF8)}\"",
                                     }
                                 );
                             }

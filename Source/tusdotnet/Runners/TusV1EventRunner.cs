@@ -130,7 +130,7 @@ namespace tusdotnet
                 GetFileInfoHandler => new GetFileInfoHandlerWithEvents(handler),
                 GetOptionsHandler => new GetOptionsHandlerWithEvents(handler),
                 WriteFileHandler => new WriteFileHandlerWithEvents(handler),
-                _ => throw new NotImplementedException()
+                _ => throw new NotImplementedException(),
             };
         }
     }

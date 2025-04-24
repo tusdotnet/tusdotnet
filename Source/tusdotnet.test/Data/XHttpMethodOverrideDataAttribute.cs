@@ -18,7 +18,7 @@ namespace tusdotnet.test.Data
             "head",
             "patch",
             "post",
-            "delete"
+            "delete",
         };
 
         public override IEnumerable<object[]> GetData(MethodInfo testMethod)

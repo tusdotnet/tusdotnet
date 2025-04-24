@@ -33,6 +33,6 @@
         /// <summary>
         /// Intent is to get server options, e.g. what extensions are supported.
         /// </summary>
-        GetOptions
+        GetOptions,
     }
 }

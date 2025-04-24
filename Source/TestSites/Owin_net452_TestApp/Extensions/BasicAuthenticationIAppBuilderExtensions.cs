@@ -49,7 +49,7 @@ namespace Owin_net452_TestApp.Extensions
                         var claims = new[]
                         {
                             new Claim(ClaimTypes.NameIdentifier, Username),
-                            new Claim(ClaimTypes.Name, Username)
+                            new Claim(ClaimTypes.Name, Username),
                         };
                         context.Authentication.User = new ClaimsPrincipal(
                             new ClaimsIdentity(claims, BasicSchemeName)

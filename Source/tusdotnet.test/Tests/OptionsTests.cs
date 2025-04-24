@@ -39,7 +39,7 @@ namespace tusdotnet.test.Tests
                         typeof(ITusChecksumStore),
                         typeof(ITusConcatenationStore),
                         typeof(ITusExpirationStore),
-                        typeof(ITusCreationDeferLengthStore)
+                        typeof(ITusCreationDeferLengthStore),
                     },
                     new object[0]
                 );
@@ -59,8 +59,8 @@ namespace tusdotnet.test.Tests
                         _onAuthorizeWasCalled = true;
                         _onAuthorizeWasCalledWithIntent = ctx.Intent;
                         return Task.FromResult(0);
-                    }
-                }
+                    },
+                },
             };
         }
 
@@ -193,7 +193,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 

@@ -236,8 +236,8 @@ namespace tusdotnet.test.Tests
                     {
                         onAuthorizeCalled?.Invoke();
                         return Task.CompletedTask;
-                    }
-                }
+                    },
+                },
             };
         }
 

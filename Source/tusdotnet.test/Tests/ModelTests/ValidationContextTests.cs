@@ -91,7 +91,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 Body = new MemoryStream(),
                 Headers = new RequestHeaders(),
                 Method = "post",
-                RequestUri = new Uri("https://localhost/files", UriKind.Absolute)
+                RequestUri = new Uri("https://localhost/files", UriKind.Absolute),
             };
 
             var config = new DefaultTusConfiguration

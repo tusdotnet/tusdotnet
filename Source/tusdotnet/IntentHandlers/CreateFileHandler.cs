@@ -39,7 +39,7 @@ namespace tusdotnet.IntentHandlers
             new Requirement[]
             {
                 new UploadLengthForCreateFileAndConcatenateFiles(),
-                new UploadMetadata(metadata => Context.Cache.Metadata = metadata)
+                new UploadMetadata(metadata => Context.Cache.Metadata = metadata),
             };
 
         private readonly ExpirationHelper _expirationHelper;

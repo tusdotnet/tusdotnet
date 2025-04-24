@@ -52,7 +52,7 @@ namespace tusdotnet.test.Tests
             {
                 nameof(GuidFileIdProvider) => new GuidFileIdProvider(),
                 nameof(Base64FileIdProvider) => new Base64FileIdProvider(),
-                _ => throw new ArgumentException("Invalid file id provider type", nameof(type))
+                _ => throw new ArgumentException("Invalid file id provider type", nameof(type)),
             };
         }
     }

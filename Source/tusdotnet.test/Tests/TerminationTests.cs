@@ -179,7 +179,7 @@ namespace tusdotnet.test.Tests
                 {
                     beforeDeleteCalled = true;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(store, events);
@@ -213,7 +213,7 @@ namespace tusdotnet.test.Tests
                 {
                     context.FailRequest("Cannot delete file");
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(store, events);
@@ -258,7 +258,7 @@ namespace tusdotnet.test.Tests
                     callbackFileId = ctx.FileId;
                     callbackStore = ctx.Store;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(store, events);
@@ -289,8 +289,8 @@ namespace tusdotnet.test.Tests
                         _onAuthorizeWasCalled = true;
                         _onAuthorizeWasCalledWithIntent = ctx.Intent;
                         return Task.FromResult(0);
-                    }
-                }
+                    },
+                },
             };
 
             using var server = TestServerFactory.Create(config);
@@ -316,7 +316,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 

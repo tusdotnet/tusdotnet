@@ -79,7 +79,7 @@ namespace tusdotnet.test.Data
                 nameof(SystemWebWithOwin),
                 nameof(OwinSelfHost),
                 nameof(Kestrel),
-                nameof(KestrelReverseProxy)
+                nameof(KestrelReverseProxy),
             }
                 .Select(f => new[] { f })
                 .ToArray();
@@ -106,7 +106,7 @@ namespace tusdotnet.test.Data
             {
                 "",
                 -1,
-                RequestRejectionReason.UnexpectedEndOfRequestContent
+                RequestRejectionReason.UnexpectedEndOfRequestContent,
             };
 #elif NETCOREAPP2_2_OR_GREATER && !NET6_0
             const bool properlyCancelsCancellationToken = true;

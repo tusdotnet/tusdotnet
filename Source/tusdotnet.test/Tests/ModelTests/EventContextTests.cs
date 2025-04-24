@@ -17,7 +17,7 @@ namespace tusdotnet.test.Tests.ModelTests
             var context = new EventContextForTest
             {
                 FileId = Guid.NewGuid().ToString(),
-                Store = CreateReadableStoreWithExistingFile()
+                Store = CreateReadableStoreWithExistingFile(),
             };
 
             var file = await context.GetFileAsync();
@@ -39,7 +39,7 @@ namespace tusdotnet.test.Tests.ModelTests
             var context = new EventContextForTest
             {
                 FileId = Guid.NewGuid().ToString(),
-                Store = Substitute.For<ITusStore>()
+                Store = Substitute.For<ITusStore>(),
             };
 
             await Should.ThrowAsync(

@@ -1,10 +1,10 @@
 using System;
 using System.Net;
 using System.Threading.Tasks;
-using AspNetCore_netcoreapp3._0_TestApp.Endpoints;
 using AspNetCore_netcoreapp3_0_TestApp.Authentication;
 using AspNetCore_netcoreapp3_0_TestApp.Middleware;
 using AspNetCore_netcoreapp3_0_TestApp.Services;
+using AspNetCore_netcoreapp3._0_TestApp.Endpoints;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -219,13 +219,13 @@ namespace AspNetCore_netcoreapp3._0_TestApp
                         // The default TusDiskStore implements this interface:
                         //var file = await ctx.GetFileAsync();
                         return Task.CompletedTask;
-                    }
+                    },
                 },
                 // Set an expiration time where incomplete files can no longer be updated.
                 // This value can either be absolute or sliding.
                 // Absolute expiration will be saved per file on create
                 // Sliding expiration will be saved per file on create and updated on each patch/update.
-                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5)),
             };
         }
     }

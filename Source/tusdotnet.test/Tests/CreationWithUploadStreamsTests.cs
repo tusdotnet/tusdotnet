@@ -25,9 +25,9 @@ namespace tusdotnet.test.Tests
             {
                 new object[]
                 {
-                    null /* not using concat at all */
+                    null, /* not using concat at all */
                 },
-                new object[] { "partial" }
+                new object[] { "partial" },
             };
 
         [Theory]
@@ -187,7 +187,7 @@ namespace tusdotnet.test.Tests
                     intents.Add(authorizeContext.Intent);
                     authorizeEventFileConcatenations.Add(authorizeContext.FileConcatenation);
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(tusStore, events);
@@ -246,7 +246,7 @@ namespace tusdotnet.test.Tests
                     }
 
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(tusStore, events);
@@ -468,7 +468,7 @@ namespace tusdotnet.test.Tests
                     config.MockSystemTime(fakeSystemTime);
                     uploadExpiresAt = fakeSystemTime.Add(expiration.Timeout);
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(config);
@@ -568,8 +568,8 @@ namespace tusdotnet.test.Tests
                         {
                             onFileCompleteAsyncCallbackCounts++;
                             return Task.FromResult(true);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -638,8 +638,8 @@ namespace tusdotnet.test.Tests
                         {
                             onFileCompleteAsyncCallbackCounts++;
                             return Task.FromResult(true);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -703,7 +703,7 @@ namespace tusdotnet.test.Tests
                     OnFileCompleteAsync = _ =>
                     {
                         throw new Exception("Test from user code");
-                    }
+                    },
                 };
             }
 

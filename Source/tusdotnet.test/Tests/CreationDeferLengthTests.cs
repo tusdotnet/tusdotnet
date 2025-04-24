@@ -35,7 +35,7 @@ namespace tusdotnet.test.Tests
                 app.UseTus(context => new DefaultTusConfiguration
                 {
                     UrlPath = "/files",
-                    Store = store
+                    Store = store,
                 });
 
                 app.Run(ctx =>
@@ -342,7 +342,7 @@ namespace tusdotnet.test.Tests
                 {
                     onFileCompleteAsyncCallCount++;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(store, events);
@@ -422,7 +422,7 @@ namespace tusdotnet.test.Tests
                 {
                     onFileCompleteAsyncCallCount++;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(app =>
@@ -514,7 +514,7 @@ namespace tusdotnet.test.Tests
                 {
                     onFileCompleteAsyncCallCount++;
                     return Task.FromResult(0);
-                }
+                },
             };
 
 #if pipelines
@@ -619,7 +619,7 @@ namespace tusdotnet.test.Tests
                 {
                     uploadIsDeferred = ctx.UploadLengthIsDeferred;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(store, events);
@@ -657,7 +657,7 @@ namespace tusdotnet.test.Tests
                 {
                     uploadIsDeferred = ctx.UploadLengthIsDeferred;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create(store, events);

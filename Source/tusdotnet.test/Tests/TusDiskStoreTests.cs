@@ -105,8 +105,8 @@ namespace tusdotnet.test.Tests
             File.Exists(filePath).ShouldBeTrue();
             new FileInfo(filePath).Length.ShouldBe(1);
 
-            await Assert.ThrowsAnyAsync<Exception>(
-                async () => await store.CreateFileAsync(1, null, CancellationToken.None)
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+                await store.CreateFileAsync(1, null, CancellationToken.None)
             );
             File.Exists(filePath).ShouldBeTrue();
             new FileInfo(filePath).Length.ShouldBe(1);
@@ -238,13 +238,12 @@ namespace tusdotnet.test.Tests
 
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
-            var storeException = await Should.ThrowAsync<TusStoreException>(
-                async () =>
-                    await _fixture.Store.AppendDataAsync(
-                        fileId,
-                        new MemoryStream(new byte[101]),
-                        CancellationToken.None
-                    )
+            var storeException = await Should.ThrowAsync<TusStoreException>(async () =>
+                await _fixture.Store.AppendDataAsync(
+                    fileId,
+                    new MemoryStream(new byte[101]),
+                    CancellationToken.None
+                )
             );
 
             storeException.Message.ShouldBe(
@@ -451,13 +450,12 @@ namespace tusdotnet.test.Tests
 
             var fileId = await _fixture.Store.CreateFileAsync(100, null, CancellationToken.None);
 
-            var storeException = await Should.ThrowAsync<TusStoreException>(
-                async () =>
-                    await _fixture.Store.AppendDataAsync(
-                        fileId,
-                        PipeReader.Create(new MemoryStream(new byte[101])),
-                        CancellationToken.None
-                    )
+            var storeException = await Should.ThrowAsync<TusStoreException>(async () =>
+                await _fixture.Store.AppendDataAsync(
+                    fileId,
+                    PipeReader.Create(new MemoryStream(new byte[101])),
+                    CancellationToken.None
+                )
             );
 
             storeException.Message.ShouldBe(
@@ -790,7 +788,7 @@ namespace tusdotnet.test.Tests
                     "12345!!@@åäö",
                     "eh6F0TXbUPbEiz7TtUFJ7WzNb9Q=",
                     false
-                )
+                ),
             };
 
             var encoding = new UTF8Encoding(false);
@@ -1205,13 +1203,12 @@ namespace tusdotnet.test.Tests
                 CancellationToken.None
             );
 
-            var exception = await Should.ThrowAsync<TusStoreException>(
-                async () =>
-                    await _fixture.Store.CreateFinalFileAsync(
-                        new[] { p1, nonexistingfileid },
-                        null,
-                        CancellationToken.None
-                    )
+            var exception = await Should.ThrowAsync<TusStoreException>(async () =>
+                await _fixture.Store.CreateFinalFileAsync(
+                    new[] { p1, nonexistingfileid },
+                    null,
+                    CancellationToken.None
+                )
             );
 
             exception.Message.ShouldBe($"File {nonexistingfileid} does not exist");
@@ -1401,66 +1398,62 @@ namespace tusdotnet.test.Tests
 
             var allAsserted = new List<Task<Exception>>(13)
             {
-                AssertFileIdForMethod(
-                    () =>
-                        _fixture.Store.AppendDataAsync(
-                            fileId,
-                            new MemoryStream(),
-                            CancellationToken.None
-                        )
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.AppendDataAsync(
+                        fileId,
+                        new MemoryStream(),
+                        CancellationToken.None
+                    )
                 ),
-                AssertFileIdForMethod(
-                    () =>
-                        _fixture.Store.CreateFinalFileAsync(
-                            new[] { fileId },
-                            null,
-                            CancellationToken.None
-                        )
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.CreateFinalFileAsync(
+                        new[] { fileId },
+                        null,
+                        CancellationToken.None
+                    )
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.FileExistAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.FileExistAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.GetExpirationAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.GetExpirationAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.GetFileAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.GetFileAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.GetUploadConcatAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.GetUploadLengthAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.GetUploadMetadataAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.GetUploadOffsetAsync(fileId, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () =>
-                        _fixture.Store.SetExpirationAsync(
-                            fileId,
-                            DateTimeOffset.MaxValue,
-                            CancellationToken.None
-                        )
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.SetExpirationAsync(
+                        fileId,
+                        DateTimeOffset.MaxValue,
+                        CancellationToken.None
+                    )
                 ),
-                AssertFileIdForMethod(
-                    () => _fixture.Store.SetUploadLengthAsync(fileId, 1, CancellationToken.None)
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.SetUploadLengthAsync(fileId, 1, CancellationToken.None)
                 ),
-                AssertFileIdForMethod(
-                    () =>
-                        _fixture.Store.VerifyChecksumAsync(
-                            fileId,
-                            "sha1",
-                            new byte[] { 1 },
-                            CancellationToken.None
-                        )
-                )
+                AssertFileIdForMethod(() =>
+                    _fixture.Store.VerifyChecksumAsync(
+                        fileId,
+                        "sha1",
+                        new byte[] { 1 },
+                        CancellationToken.None
+                    )
+                ),
             };
 
             allAsserted.All(f => isValid ? f.Result == null : f.Result != null).ShouldBeTrue();

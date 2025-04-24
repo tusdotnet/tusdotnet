@@ -65,25 +65,23 @@ namespace tusdotnet.test.Tests.ModelTests
 
             var storeAdapter = new StoreAdapter(store, TusExtensions.All);
 
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () => await storeAdapter.CreateFileAsync(default, default, default)
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.CreateFileAsync(default, default, default)
             );
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () =>
-                    await storeAdapter.VerifyChecksumAsync(default, default, default, default)
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.VerifyChecksumAsync(default, default, default, default)
             );
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () => await storeAdapter.DeleteFileAsync(default, default)
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.DeleteFileAsync(default, default)
             );
 
             store = MockStoreHelper.CreateWithExtensions<ITusTerminationStore>();
             storeAdapter = new StoreAdapter(store, TusExtensions.All);
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () => await storeAdapter.CreateFileAsync(default, default, default)
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.CreateFileAsync(default, default, default)
             );
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () =>
-                    await storeAdapter.VerifyChecksumAsync(default, default, default, default)
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.VerifyChecksumAsync(default, default, default, default)
             );
 
             try
@@ -118,8 +116,8 @@ namespace tusdotnet.test.Tests.ModelTests
             {
                 await storeAdapter.CreateFileAsync(default, default, default);
                 await storeAdapter.VerifyChecksumAsync(default, default, default, default);
-                await Should.ThrowAsync<InvalidOperationException>(
-                    async () => await storeAdapter.DeleteFileAsync(default, default)
+                await Should.ThrowAsync<InvalidOperationException>(async () =>
+                    await storeAdapter.DeleteFileAsync(default, default)
                 );
                 await storeAdapter.DeleteFileAsync(default, default);
             }
@@ -200,19 +198,18 @@ namespace tusdotnet.test.Tests.ModelTests
 
             var storeAdapter = new StoreAdapter(store, TusExtensions.All);
 
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () => await storeAdapter.GetFileAsync(default, default)
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.GetFileAsync(default, default)
             );
 
 #if pipelines
 
-            await Should.ThrowAsync<InvalidOperationException>(
-                async () =>
-                    await storeAdapter.AppendDataAsync(
-                        default,
-                        (System.IO.Pipelines.PipeReader)default,
-                        default
-                    )
+            await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await storeAdapter.AppendDataAsync(
+                    default,
+                    (System.IO.Pipelines.PipeReader)default,
+                    default
+                )
             );
 
 #endif

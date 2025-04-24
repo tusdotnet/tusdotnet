@@ -73,7 +73,7 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Middleware
                             "Content-Disposition",
                             new[]
                             {
-                                $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\""
+                                $"attachment; filename=\"{nameMeta.GetString(Encoding.UTF8)}\"",
                             }
                         );
                     }

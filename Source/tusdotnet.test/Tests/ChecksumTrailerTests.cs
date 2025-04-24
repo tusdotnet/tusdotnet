@@ -279,9 +279,9 @@ namespace tusdotnet.test.Tests
                         },
                     }
                 ),
-                Method = "PATCH"
+                Method = "PATCH",
             };
-            var config = new DefaultTusConfiguration { Store = store, UrlPath = "/files", };
+            var config = new DefaultTusConfiguration { Store = store, UrlPath = "/files" };
             var context = new ContextAdapter(
                 "/files",
                 requestPathBase: null,
@@ -339,7 +339,7 @@ namespace tusdotnet.test.Tests
 
                         var trailers = new HeaderDictionary
                         {
-                            { "Upload-Checksum", trailingUploadChecksumValue }
+                            { "Upload-Checksum", trailingUploadChecksumValue },
                         };
                         trailersFeature.Available.ReturnsForAnyArgs(true);
                         trailersFeature.Trailers.ReturnsForAnyArgs(trailers);
@@ -355,7 +355,7 @@ namespace tusdotnet.test.Tests
                     Store = (ITusStore)store,
                     FileLockProvider = new TestServerInMemoryFileLockProvider(),
                     UrlPath = "/files",
-                    AllowedExtensions = allowedExtensions ?? TusExtensions.All
+                    AllowedExtensions = allowedExtensions ?? TusExtensions.All,
                 };
 
 #if NET6_0_OR_GREATER

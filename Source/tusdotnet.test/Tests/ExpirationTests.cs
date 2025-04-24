@@ -40,7 +40,7 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8))
+                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8)),
                 }
             );
 
@@ -81,7 +81,7 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8))
+                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(8)),
                 }
             );
 
@@ -115,7 +115,7 @@ namespace tusdotnet.test.Tests
             {
                 Store = store,
                 UrlPath = "/files",
-                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10)),
             };
 
             config.MockSystemTime(now);
@@ -157,7 +157,7 @@ namespace tusdotnet.test.Tests
             {
                 Store = store,
                 UrlPath = "/files",
-                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10)),
             };
 
             config.MockSystemTime(now);
@@ -214,7 +214,7 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10))
+                    Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(10)),
                 }
             );
 
@@ -276,7 +276,7 @@ namespace tusdotnet.test.Tests
                 {
                     UrlPath = "/files",
                     Store = store,
-                    Expiration = new SlidingExpiration(TimeSpan.FromSeconds(5))
+                    Expiration = new SlidingExpiration(TimeSpan.FromSeconds(5)),
                 }
             );
 
@@ -335,7 +335,7 @@ namespace tusdotnet.test.Tests
                 {
                     UrlPath = "/files",
                     Store = store,
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
+                    Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5)),
                 }
             );
 
@@ -385,7 +385,7 @@ namespace tusdotnet.test.Tests
                 {
                     UrlPath = "/files",
                     Store = store,
-                    Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5))
+                    Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5)),
                 }
             );
 
@@ -425,7 +425,7 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     Store = store,
                     Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5)),
-                    AllowedExtensions = TusExtensions.All.Except(TusExtensions.Expiration)
+                    AllowedExtensions = TusExtensions.All.Except(TusExtensions.Expiration),
                 }
             );
 
@@ -464,7 +464,7 @@ namespace tusdotnet.test.Tests
                     UrlPath = "/files",
                     Store = store,
                     Expiration = new AbsoluteExpiration(TimeSpan.FromSeconds(5)),
-                    AllowedExtensions = TusExtensions.All.Except(TusExtensions.Expiration)
+                    AllowedExtensions = TusExtensions.All.Except(TusExtensions.Expiration),
                 }
             );
 

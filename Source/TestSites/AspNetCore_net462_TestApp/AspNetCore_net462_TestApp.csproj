@@ -1,23 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
     <RootNamespace>AspNetCore_net462_TestApp</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
     <None Include="wwwroot\index.html" />
     <None Include="wwwroot\tus.min.js" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\tusdotnet\tusdotnet.csproj" />
   </ItemGroup>
-
 </Project>

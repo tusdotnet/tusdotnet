@@ -12,8 +12,10 @@ namespace tusdotnet.Helpers
     public static class ChecksumTrailerHelper
     {
         // Use 20 byte array to match the length of a real SHA-1 checksum.
-        internal static readonly Checksum TrailingChecksumToUseIfRealTrailerIsFaulty =
-            new("sha1", new byte[20]);
+        internal static readonly Checksum TrailingChecksumToUseIfRealTrailerIsFaulty = new(
+            "sha1",
+            new byte[20]
+        );
 
 #if trailingheaders
         /// <summary>

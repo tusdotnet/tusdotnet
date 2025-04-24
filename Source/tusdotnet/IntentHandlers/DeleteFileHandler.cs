@@ -22,7 +22,7 @@ namespace tusdotnet.IntentHandlers
             new Requirement[]
             {
                 new Validation.Requirements.FileExist(),
-                new Validation.Requirements.FileHasNotExpired()
+                new Validation.Requirements.FileHasNotExpired(),
             };
 
         internal override async Task Invoke()

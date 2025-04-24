@@ -199,7 +199,7 @@ namespace tusdotnet.test.Tests
                     ctx.Metadata.ShouldNotBeNull();
                     ctx.Metadata.Keys.Count.ShouldBe(0);
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create((ITusStore)tusStore, events);
@@ -386,7 +386,7 @@ namespace tusdotnet.test.Tests
                 {
                     Store = (ITusStore)tusStore,
                     UrlPath = "/files",
-                    MaxAllowedUploadSizeInBytes = 100
+                    MaxAllowedUploadSizeInBytes = 100,
                 }
             );
 
@@ -442,7 +442,7 @@ namespace tusdotnet.test.Tests
                     fileConcat = ctx.FileConcatenation;
                     metadata = ctx.Metadata;
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
@@ -485,7 +485,7 @@ namespace tusdotnet.test.Tests
                 {
                     ctx.FailRequest("The request failed with custom error message");
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
@@ -530,7 +530,7 @@ namespace tusdotnet.test.Tests
                     metadata = ctx.Metadata;
 
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
@@ -575,7 +575,7 @@ namespace tusdotnet.test.Tests
                 {
                     ctx.SetUploadUrl(new Uri(randomUrl));
                     return Task.FromResult(0);
-                }
+                },
             };
 
             using var server = TestServerFactory.Create((ITusStore)store, events);
@@ -612,7 +612,7 @@ namespace tusdotnet.test.Tests
                         onAuthorizeWasCalled = true;
                         intentProvidedToOnAuthorize = ctx.Intent;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -638,7 +638,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -684,8 +684,8 @@ namespace tusdotnet.test.Tests
                         {
                             onFileCompleteAsyncCallbackCounts++;
                             return Task.FromResult(true);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 

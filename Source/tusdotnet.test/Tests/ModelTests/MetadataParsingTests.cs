@@ -62,7 +62,7 @@ namespace tusdotnet.test.Tests.ModelTests
                         46,
                         112,
                         100,
-                        102
+                        102,
                     }
                 );
             meta["filename"].GetString(Encoding.UTF8).ShouldBe("world_domination_plan.pdf");
@@ -86,7 +86,7 @@ namespace tusdotnet.test.Tests.ModelTests
                         100,
                         97,
                         116,
-                        97
+                        97,
                     }
                 );
             meta["othermeta"].GetString(Encoding.UTF8).ShouldBe("some other data");
@@ -191,7 +191,7 @@ namespace tusdotnet.test.Tests.ModelTests
             {
                 new object[] { MetadataParsingStrategy.AllowEmptyValues },
                 new object[] { MetadataParsingStrategy.Original },
-                new object[] { null } // Null as a quick fix to use Metadata.Parse instead of MetadataParser.ParseAndValidate.
+                new object[] { null }, // Null as a quick fix to use Metadata.Parse instead of MetadataParser.ParseAndValidate.
             };
     }
 }

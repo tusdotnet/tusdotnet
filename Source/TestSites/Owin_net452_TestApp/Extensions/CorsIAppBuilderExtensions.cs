@@ -13,7 +13,7 @@ namespace Owin_net452_TestApp.Extensions
             {
                 AllowAnyHeader = true,
                 AllowAnyMethod = true,
-                AllowAnyOrigin = true
+                AllowAnyOrigin = true,
             };
 
             corsPolicy
@@ -26,8 +26,8 @@ namespace Owin_net452_TestApp.Extensions
                 {
                     PolicyProvider = new CorsPolicyProvider
                     {
-                        PolicyResolver = context => Task.FromResult(corsPolicy)
-                    }
+                        PolicyResolver = context => Task.FromResult(corsPolicy),
+                    },
                 }
             );
         }

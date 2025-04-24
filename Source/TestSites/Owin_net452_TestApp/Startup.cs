@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Owin;
 using Owin;
-using OwinTestApp;
 using Owin_net452_TestApp.Extensions;
+using OwinTestApp;
 using tusdotnet;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -167,13 +167,13 @@ namespace OwinTestApp
                         // The default TusDiskStore implements this interface:
                         //var file = await ctx.GetFileAsync();
                         return Task.FromResult(true);
-                    }
+                    },
                 },
                 // Set an expiration time where incomplete files can no longer be updated.
                 // This value can either be absolute or sliding.
                 // Absolute expiration will be saved per file on create
                 // Sliding expiration will be saved per file on create and updated on each patch/update.
-                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5)),
             };
         }
     }

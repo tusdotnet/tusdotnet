@@ -83,7 +83,7 @@ namespace tusdotnet.IntentHandlers
         {
             var requirements = new List<Requirement>(3)
             {
-                new Validation.Requirements.UploadConcatForConcatenateFiles(UploadConcat)
+                new Validation.Requirements.UploadConcatForConcatenateFiles(UploadConcat),
             };
 
             // Only validate upload length for partial files as the length of a final file is implicit.

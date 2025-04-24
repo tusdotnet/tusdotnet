@@ -69,7 +69,7 @@ namespace tusdotnet.Extensions.Internal
             {
                 MaxReadSize = maxLength,
                 PreviouslyRead = previouslyRead,
-                SizeSource = sizeSource
+                SizeSource = sizeSource,
             };
         }
 

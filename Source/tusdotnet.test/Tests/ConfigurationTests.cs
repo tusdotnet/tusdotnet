@@ -29,7 +29,7 @@ namespace tusdotnet.test.Tests
             var tusConfiguration = new DefaultTusConfiguration
             {
                 Store = Substitute.For<ITusStore>(),
-                UrlPath = "/files"
+                UrlPath = "/files",
             };
 
 #if netfull
@@ -120,7 +120,7 @@ namespace tusdotnet.test.Tests
                         server
                             .CreateRequest("/files/testfile")
                             .AddTusResumableHeader()
-                            .SendAsync("PATCH")
+                            .SendAsync("PATCH"),
                 };
 
                 foreach (var func in funcs)
@@ -144,7 +144,7 @@ namespace tusdotnet.test.Tests
             var tusConfiguration = new DefaultTusConfiguration
             {
                 UrlPath = urlPath,
-                Store = Substitute.For<ITusStore>()
+                Store = Substitute.For<ITusStore>(),
             };
 
 #if NET6_0_OR_GREATER
@@ -175,7 +175,7 @@ namespace tusdotnet.test.Tests
             {
                 UrlPath = "/files",
                 Store = Substitute.For<ITusStore, ITusTerminationStore, ITusCreationStore>(),
-                FileLockProvider = lockProvider
+                FileLockProvider = lockProvider,
             };
 
             using var server = TestServerFactory.Create(tusConfiguration);

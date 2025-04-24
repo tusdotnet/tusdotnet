@@ -3,6 +3,6 @@
     internal enum ResultType
     {
         ContinueExecution,
-        StopExecution
+        StopExecution,
     }
 }

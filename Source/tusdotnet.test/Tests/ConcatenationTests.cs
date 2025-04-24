@@ -168,7 +168,7 @@ namespace tusdotnet.test.Tests
                 "final;file1...file2",
                 "final file2;file1;",
                 "final  file1__file2",
-                "final;file1 file2;file3"
+                "final;file1 file2;file3",
             };
 
             foreach (var header in invalidValues)
@@ -527,7 +527,7 @@ namespace tusdotnet.test.Tests
                 {
                     Store = store,
                     UrlPath = "/files",
-                    MaxAllowedUploadSizeInBytes = 25
+                    MaxAllowedUploadSizeInBytes = 25,
                 }
             );
 
@@ -574,8 +574,8 @@ namespace tusdotnet.test.Tests
                             callbackFileId = ctx.FileId;
                             callbackStore = ctx.Store;
                             return Task.FromResult(0);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -636,8 +636,8 @@ namespace tusdotnet.test.Tests
                         {
                             callbackCalled = true;
                             return Task.FromResult(0);
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -688,7 +688,7 @@ namespace tusdotnet.test.Tests
                     {
                         fileConcat = ctx.FileConcatenation;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -718,7 +718,7 @@ namespace tusdotnet.test.Tests
                     {
                         fileConcat = ctx.FileConcatenation;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -750,7 +750,7 @@ namespace tusdotnet.test.Tests
                     {
                         fileConcat = ctx.FileConcatenation;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -780,7 +780,7 @@ namespace tusdotnet.test.Tests
                     {
                         fileConcat = ctx.FileConcatenation;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -813,7 +813,7 @@ namespace tusdotnet.test.Tests
                         intentProvidedToOnAuthorize = ctx.Intent;
                         fileConcatProvidedToOnAuthorize = ctx.FileConcatenation;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -848,7 +848,7 @@ namespace tusdotnet.test.Tests
                         intentProvidedToOnAuthorize = ctx.Intent;
                         fileConcatProvidedToOnAuthorize = ctx.FileConcatenation;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -878,7 +878,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -903,7 +903,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 

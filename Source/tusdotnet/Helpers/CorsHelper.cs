@@ -24,7 +24,7 @@
                 "Upload-Metadata",
                 "Upload-Checksum",
                 "Upload-Concat",
-                "Upload-Expires"
+                "Upload-Expires",
             };
         }
     }

@@ -177,7 +177,7 @@ namespace tusdotnet.IntentHandlers
                     contentTypeRequirement,
                     uploadLengthRequirement,
                     uploadChecksumRequirement,
-                    fileHasNotExpired
+                    fileHasNotExpired,
                 ];
             }
 
@@ -191,7 +191,7 @@ namespace tusdotnet.IntentHandlers
                 uploadChecksumRequirement,
                 fileHasNotExpired,
                 new RequestOffsetMatchesFileOffset(),
-                new FileIsNotCompleted()
+                new FileIsNotCompleted(),
             ];
         }
     }

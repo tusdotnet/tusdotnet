@@ -154,7 +154,7 @@ namespace tusdotnet.test.Tests
                         onAuthorizeWasCalled = true;
                         intentProvidedToOnAuthorize = ctx.Intent;
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 
@@ -184,7 +184,7 @@ namespace tusdotnet.test.Tests
                     {
                         ctx.FailRequest(HttpStatusCode.Unauthorized);
                         return Task.FromResult(0);
-                    }
+                    },
                 }
             );
 

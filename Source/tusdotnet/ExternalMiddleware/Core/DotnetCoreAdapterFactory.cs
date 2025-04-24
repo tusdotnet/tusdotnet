@@ -23,7 +23,7 @@ namespace tusdotnet
                 BodyReader = context.Request.BodyReader,
 #endif
                 Method = context.Request.Method,
-                RequestUri = requestUri
+                RequestUri = requestUri,
             };
         }
     }

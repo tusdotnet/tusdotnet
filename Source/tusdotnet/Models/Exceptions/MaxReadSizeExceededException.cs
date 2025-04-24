@@ -5,7 +5,7 @@
         internal enum SizeSourceType
         {
             UploadLength,
-            TusMaxSize
+            TusMaxSize,
         }
 
         internal MaxReadSizeExceededException(SizeSourceType sizeSource)
