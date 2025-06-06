@@ -9,6 +9,13 @@ namespace tusdotnet.Models.Configuration
     public class Events
     {
         /// <summary>
+        /// Callback ran right before a file upload starts. This callback can be used to validate
+        /// the request before starting the upload. Calling the <see cref="ValidationContext{TSelf}.FailRequest(string)" /> method on the context
+        /// will return a 400 Bad Request to the client.
+        /// </summary>
+        public Func<BeforeWriteContext, Task> OnBeforeWriteAsync { get; set; }
+
+        /// <summary>
         /// Callback ran when a file is completely uploaded.
         /// This callback is called only once after the last bytes have been written to the store or
         /// after a "final" file has been created using the concatenation extension.

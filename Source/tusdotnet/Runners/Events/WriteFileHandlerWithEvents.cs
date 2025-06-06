@@ -54,9 +54,16 @@ namespace tusdotnet.Runners.Events
             await EventHelper.NotifyFileComplete(Context);
         }
 
-        internal override Task<ResultType> ValidateBeforeAction()
+        internal override async Task<ResultType> ValidateBeforeAction()
         {
-            return Task.FromResult(ResultType.ContinueExecution);
+            return await EventHelper.Validate<BeforeWriteContext>(
+                Context,
+                ctx =>
+                {
+                    ctx.UploadLength = Context.Request.Headers.UploadLength;
+                    ctx.UploadOffset = Context.Request.Headers.UploadOffset;
+                }
+            );
         }
     }
 }
