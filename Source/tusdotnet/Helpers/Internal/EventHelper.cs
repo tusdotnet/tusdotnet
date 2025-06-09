@@ -76,6 +76,9 @@ namespace tusdotnet.Helpers
 
             if (t == typeof(CreateCompleteContext))
                 return (Func<T, Task>)events.OnCreateCompleteAsync;
+            
+            if (t == typeof(BeforeWriteContext))
+                return (Func<T, Task>)events.OnBeforeWriteAsync;
 
             if (t == typeof(BeforeDeleteContext))
                 return (Func<T, Task>)events.OnBeforeDeleteAsync;
