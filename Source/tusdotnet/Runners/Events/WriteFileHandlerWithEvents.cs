@@ -60,7 +60,6 @@ namespace tusdotnet.Runners.Events
                 Context,
                 ctx =>
                 {
-                    ctx.UploadLength = Context.Request.Headers.UploadLength;
                     ctx.UploadOffset = Context.Request.Headers.UploadOffset;
                 }
             );
