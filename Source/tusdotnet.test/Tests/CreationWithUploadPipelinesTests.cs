@@ -282,6 +282,53 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory]
+        [InlineData(true, 1)]
+        [InlineData(false, 0)]
+        public async Task OnBeforeWrite_Is_Called_The_Correct_Number_Of_Times(
+            bool includeBody,
+            int expectedNumberOfInvocations
+        )
+        {
+            var numberOfOnBeforeWriteCalls = 0;
+
+            var store = Substitute.For<ITusPipelineStore, ITusCreationStore>();
+            ((ITusCreationStore)store)
+                .CreateFileAsync(0, null, CancellationToken.None)
+                .ReturnsForAnyArgs("testfile");
+            store.WithAppendDataDrainingTheRequestBody("testfile");
+            store.GetUploadLengthAsync(null, default).ReturnsForAnyArgs(100);
+            store.GetUploadOffsetAsync(null, default).ReturnsForAnyArgs(0);
+
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
+                {
+                    OnBeforeWriteAsync = _ =>
+                    {
+                        numberOfOnBeforeWriteCalls++;
+                        return Task.FromResult(0);
+                    },
+                },
+                usePipelinesIfAvailable: true
+            );
+
+            var request = server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Length", "100");
+
+            if (includeBody)
+            {
+                request = request.AddBody();
+            }
+
+            var response = await request.SendAsync("POST");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+            numberOfOnBeforeWriteCalls.ShouldBe(expectedNumberOfInvocations);
+        }
+
+        [Theory]
         [InlineData(null, "Content-Type", "text/plain")]
         [InlineData(null, "Upload-Checksum", "asdf1234")]
         [InlineData("partial", "Content-Type", "text/plain")]

@@ -611,70 +611,6 @@ namespace tusdotnet.test.Tests
             onUploadCompleteCallCounts.ShouldBe(0);
             onFileCompleteAsyncCallbackCounts.ShouldBe(0);
         }
-        
-        [Fact]
-        public async Task OnBeforeWrite_Is_Called()
-        {
-            var onBeforeWriteWasCalled = false;
-            var store = Substitute
-                .For<ITusStore>()
-                .WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
-            store
-                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                .Returns(5);
-
-            using var server = TestServerFactory.Create(
-                store,
-                new Events
-                {
-                    OnBeforeWriteAsync = _ =>
-                    {
-                        onBeforeWriteWasCalled = true;
-                        return Task.FromResult(0);
-                    },
-                }
-            );
-            var response = await server
-                .CreateTusResumableRequest("/files/testfile")
-                .AddHeader("Upload-Offset", "5")
-                .AddBody()
-                .SendAsync("PATCH");
-
-            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-            onBeforeWriteWasCalled.ShouldBeTrue();
-        }
-        
-        [Fact]
-        public async Task Request_Is_Cancelled_If_OnBeforeWrite_Fails_The_Request()
-        {
-            var store = Substitute
-                .For<ITusStore>()
-                .WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
-            store
-                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-                .Returns(5);
-
-            using var server = TestServerFactory.Create(
-                store,
-                new Events
-                {
-                    OnBeforeWriteAsync = ctx =>
-                    {
-                        ctx.FailRequest(HttpStatusCode.BadRequest);
-                        return Task.FromResult(0);
-                    },
-                }
-            );
-            var response = await server
-                .CreateTusResumableRequest("/files/testfile")
-                .AddHeader("Upload-Offset", "5")
-                .AddBody()
-                .SendAsync("PATCH");
-            
-            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-            response.ShouldNotContainHeaders("Upload-Offset");
-        }
 
         [Fact]
         public async Task OnAuthorized_Is_Called()
@@ -739,6 +675,73 @@ namespace tusdotnet.test.Tests
 
             response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
             response.ShouldNotContainHeaders("Tus-Resumable", "Upload-Offset", "Upload-Expires");
+        }
+
+        [Fact]
+        public async Task OnBeforeWrite_Is_Called()
+        {
+            var onBeforeWriteWasCalled = false;
+            var onBeforeWriteUploadOffset = -1L;
+            var store = Substitute
+                .For<ITusStore>()
+                .WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store
+                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(5);
+
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
+                {
+                    OnBeforeWriteAsync = ctx =>
+                    {
+                        onBeforeWriteWasCalled = true;
+                        onBeforeWriteUploadOffset = ctx.UploadOffset;
+                        return Task.FromResult(0);
+                    },
+                }
+            );
+            var response = await server
+                .CreateTusResumableRequest("/files/testfile")
+                .AddHeader("Upload-Offset", "5")
+                .AddBody()
+                .SendAsync("PATCH");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+            onBeforeWriteWasCalled.ShouldBeTrue();
+            onBeforeWriteUploadOffset.ShouldBe(5);
+        }
+
+        [Fact]
+        public async Task Request_Is_Cancelled_If_OnBeforeWrite_Fails_The_Request()
+        {
+            var store = Substitute
+                .For<ITusStore>()
+                .WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store
+                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(5);
+
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
+                {
+                    OnBeforeWriteAsync = ctx =>
+                    {
+                        ctx.FailRequest(HttpStatusCode.BadRequest);
+                        return Task.FromResult(0);
+                    },
+                }
+            );
+            var response = await server
+                .CreateTusResumableRequest("/files/testfile")
+                .AddHeader("Upload-Offset", "5")
+                .AddBody()
+                .SendAsync("PATCH");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            response.ShouldNotContainHeaders("Upload-Offset");
         }
 
         [Fact]
