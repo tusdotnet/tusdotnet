@@ -672,6 +672,74 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
+        public async Task OnBeforeWrite_Is_Called()
+        {
+            var onBeforeWriteWasCalled = false;
+            var onBeforeWriteUploadOffset = -1L;
+            var store = Substitute
+                .For<ITusPipelineStore>()
+                .WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store
+                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(5);
+
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
+                {
+                    OnBeforeWriteAsync = ctx =>
+                    {
+                        onBeforeWriteWasCalled = true;
+                        onBeforeWriteUploadOffset = ctx.UploadOffset;
+                        return Task.FromResult(0);
+                    },
+                },
+                usePipelinesIfAvailable: true
+            );
+            var response = await server
+                .CreateTusResumableRequest("/files/testfile")
+                .AddHeader("Upload-Offset", "5")
+                .AddBody()
+                .SendAsync("PATCH");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+            onBeforeWriteWasCalled.ShouldBeTrue();
+            onBeforeWriteUploadOffset.ShouldBe(5);
+        }
+
+        [Fact]
+        public async Task Request_Is_Cancelled_If_OnBeforeWrite_Fails_The_Request()
+        {
+            var store = Substitute
+                .For<ITusPipelineStore>()
+                .WithExistingFile("testfile", uploadLength: 10, uploadOffset: 5);
+            store
+                .AppendDataAsync("testfile", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(5);
+
+            using var server = TestServerFactory.Create(
+                store,
+                new Events
+                {
+                    OnBeforeWriteAsync = ctx =>
+                    {
+                        ctx.FailRequest(HttpStatusCode.BadRequest);
+                        return Task.FromResult(0);
+                    },
+                }
+            );
+            var response = await server
+                .CreateTusResumableRequest("/files/testfile")
+                .AddHeader("Upload-Offset", "5")
+                .AddBody()
+                .SendAsync("PATCH");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            response.ShouldNotContainHeaders("Upload-Offset");
+        }
+
+        [Fact]
         public async Task A_TusConfigurationException_Is_Thrown_If_File_Was_Created_Using_UploadDeferLength_But_The_Store_Used_For_Writing_Data_Does_Not_Support_UploadDeferLength()
         {
             var creationStoreWithUploadDeferLength = Substitute.For<

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
+using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
@@ -914,6 +915,32 @@ namespace tusdotnet.test.Tests
 
             response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
             response.ShouldNotContainHeaders("Tus-Resumable", "Location", "Content-Type");
+        }
+
+        [Fact]
+        public async Task OnBeforeWrite_Is_Not_Called_For_Final_Files()
+        {
+            var onBeforeWriteCalled = false;
+            using var server = TestServerFactory.Create(
+                CreateStoreForFinalFileConcatenation(),
+                new Events
+                {
+                    OnBeforeWriteAsync = ctx =>
+                    {
+                        onBeforeWriteCalled = true;
+                        return TaskHelper.Completed;
+                    },
+                }
+            );
+
+            var response = await server
+                .CreateTusResumableRequest("/files")
+                .AddHeader("Upload-Concat", "final;/files/partial1 /files/partial2")
+                .SendAsync("POST");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.ShouldContainHeader("Location", "/files/finalId");
+            onBeforeWriteCalled.ShouldBeFalse();
         }
 
         private static ITusStore CreateStoreForFinalFileConcatenation()
