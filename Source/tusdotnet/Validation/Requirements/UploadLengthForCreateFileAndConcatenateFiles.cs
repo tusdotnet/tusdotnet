@@ -10,23 +10,31 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
+            var uploadConcatHeader = context.Request.Headers.UploadConcat;
+        
+            if (!string.IsNullOrEmpty(uploadConcatHeader) && uploadConcatHeader.StartsWith("final", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.CompletedTask;
+            }
+        
             var uploadDeferLengthHeader = context.Request.Headers.UploadDeferLength;
             var uploadLengthHeader = context.Request.Headers[HeaderConstants.UploadLength];
-
+        
             if (uploadLengthHeader != null && uploadDeferLengthHeader != null)
             {
                 return BadRequest(
                     $"Headers {HeaderConstants.UploadLength} and {HeaderConstants.UploadDeferLength} are mutually exclusive and cannot be used in the same request"
                 );
             }
-
+        
             if (uploadDeferLengthHeader == null)
             {
                 return VerifyRequestUploadLength(context, uploadLengthHeader);
             }
-
+        
             return VerifyDeferLength(context.StoreAdapter, uploadDeferLengthHeader);
         }
+
 
         private Task VerifyDeferLength(StoreAdapter storeAdapter, string uploadDeferLengthHeader)
         {
