@@ -4,9 +4,9 @@ This branch is intended for the [IETF "Resumable uploads for http" protocol](htt
 
 Please note that this is a **POC/experimental** implementation and breaking changes will happen.
 
-Current Upload-Draft-Interop-Version: 7
+Current Upload-Draft-Interop-Version: 8
 
-Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/020f9f81345a101bc4b2ef050f876b6c38afde3b
+Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/e399235753e1b7697a9d2b4d13584183a1e2c55d
 
 Other implementations (both server and clients): 
 * https://github.com/tus/draft-example
@@ -19,6 +19,7 @@ curl-8.1.1_1-win64-mingw\bin\curl.exe -v --insecure -H "Content-Type: applicatio
 See `Source\tusdotnet.test\run-104-upload-resumption-supported-tests.ps1` for some more tests.
 
 ## Previous draft versions (Upload-Draft-Interop-Version)
+* Upload-Draft-Interop-Version: 7 - commit: 2654f43141903f24db06cce6caeeabda7d784dac
 * Upload-Draft-Interop-Version: 6 - commit: cc7bea5075d61e8c1b05bfd26932b302074f61f8
 * Upload-Draft-Interop-Version: 5 - commit: 303ef832440c2fe7bba652e11625e8d87f8e6764
 * Upload-Draft-Interop-Version: 3 - commit: 568f9d2e0b794cb9b779944cddadee44d8a0b044

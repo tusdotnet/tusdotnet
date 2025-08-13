@@ -2,6 +2,6 @@
 {
     internal class DraftInteropVersion
     {
-        internal const string Version = "7";
+        internal const string Version = "8";
     }
 }
