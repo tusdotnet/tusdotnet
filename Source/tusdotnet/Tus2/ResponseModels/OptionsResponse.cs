@@ -20,6 +20,7 @@ namespace tusdotnet.Tus2.ResponseModels
             var localLimits = _limits ?? EMPTY_LIMITS;
 
             context.SetHeader("Upload-Limit", localLimits.ToSfDictionary());
+            context.SetHeader("Accept-Patch", "application/partial-upload");
 
             return Task.CompletedTask;
         }
