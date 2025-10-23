@@ -243,14 +243,19 @@ namespace tusdotnet.test.Tests
         public async Task UploadDeferLength_Work_With_Partial_Files(string methodToUse)
         {
             var fileId = Guid.NewGuid().ToString();
-            var store = Substitute.For<
-                ITusStore,
-                ITusCreationStore,
-                ITusCreationDeferLengthStore
-            >();
-            var creationStore = (ITusCreationStore)store;
-            creationStore
-                .CreateFileAsync(0, null, CancellationToken.None)
+            var store = (ITusStore)
+                Substitute.For(
+                    [
+                        typeof(ITusStore),
+                        typeof(ITusCreationStore),
+                        typeof(ITusCreationDeferLengthStore),
+                        typeof(ITusConcatenationStore),
+                    ],
+                    []
+                );
+            var concatenationStore = (ITusConcatenationStore)store;
+            concatenationStore
+                .CreatePartialFileAsync(0, null, CancellationToken.None)
                 .ReturnsForAnyArgs(fileId);
 
             using var server = TestServerFactory.Create(store);
@@ -267,8 +272,8 @@ namespace tusdotnet.test.Tests
             response.ShouldContainTusResumableHeader();
             response.Headers.Location.ToString().ShouldBe($"/files/{fileId}");
 
-            var createFileAsyncCall = creationStore.GetSingleMethodCall(
-                nameof(creationStore.CreateFileAsync)
+            var createFileAsyncCall = concatenationStore.GetSingleMethodCall(
+                nameof(concatenationStore.CreatePartialFileAsync)
             );
             createFileAsyncCall.ShouldNotBeNull();
             var uploadLength = (long)createFileAsyncCall.GetArguments()[0];

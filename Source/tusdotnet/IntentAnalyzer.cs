@@ -33,7 +33,7 @@ namespace tusdotnet
             if (firstIntent is not CreateFileHandler and not ConcatenateFilesHandler)
                 return null;
 
-            // Final files does not support writing.
+            // Final files does not support writing, i.e. we should not do anything as the second intent.
             if (
                 firstIntent is ConcatenateFilesHandler concatenateFilesHandler
                 && concatenateFilesHandler.UploadConcat.Type is FileConcatFinal
@@ -44,6 +44,7 @@ namespace tusdotnet
             {
                 var writeFileContext =
                     await WriteFileContextForCreationWithUpload.FromCreationContext(context);
+
                 if (!writeFileContext.FileContentIsAvailable)
                     return null;
 
@@ -138,9 +139,12 @@ namespace tusdotnet
                 HeaderConstants.UploadConcat
             );
 
-            if (context.StoreAdapter.Extensions.Concatenation && hasUploadConcatHeader)
+            // Client wants to use concatenation but the extension might not be available
+            if (hasUploadConcatHeader)
             {
-                return new ConcatenateFilesHandler(context);
+                return context.StoreAdapter.Extensions.Concatenation
+                    ? new ConcatenateFilesHandler(context)
+                    : IntentHandler.NotApplicable;
             }
 
             return new CreateFileHandler(context);
