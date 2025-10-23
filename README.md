@@ -6,7 +6,7 @@ Please note that this is a **POC/experimental** implementation and breaking chan
 
 Current Upload-Draft-Interop-Version: 8
 
-Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/e399235753e1b7697a9d2b4d13584183a1e2c55d
+Latest implemented spec commit: https://github.com/httpwg/http-extensions/commit/6ebeb43130a67e7d7f9cc165995bb7aedd6e7e81
 
 Other implementations (both server and clients): 
 * https://github.com/tus/draft-example
