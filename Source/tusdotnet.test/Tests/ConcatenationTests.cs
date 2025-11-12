@@ -25,7 +25,7 @@ namespace tusdotnet.test.Tests
     public class ConcatenationTests
     {
         [Theory, XHttpMethodOverrideData]
-        public async Task Creates_A_Normal_File_Instead_Of_A_Partial_One_If_Store_Does_Not_Support_Concatenation(
+        public async Task Returns_404_Not_Found_When_Creating_A_Partial_File_If_Store_Does_Not_Support_Concatenation(
             string methodToUse
         )
         {
@@ -41,11 +41,11 @@ namespace tusdotnet.test.Tests
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .SendAsync(methodToUse);
 
-            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Creates_A_Normal_File_Instead_Of_A_Partial_One_If_Concatenation_Is_Disabled(
+        public async Task Returns_404_Not_Found_When_Creating_A_Partial_File_If_Concatenation_Is_Disabled(
             string methodToUse
         )
         {
@@ -67,11 +67,11 @@ namespace tusdotnet.test.Tests
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .SendAsync(methodToUse);
 
-            response.StatusCode.ShouldBe(HttpStatusCode.Created);
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_400_Bad_Request_When_Creating_A_Final_File_If_Store_Does_Not_Support_Concatenation(
+        public async Task Returns_404_Not_Found_When_Creating_A_Final_File_If_Store_Does_Not_Support_Concatenation(
             string methodToUse
         )
         {
@@ -89,22 +89,24 @@ namespace tusdotnet.test.Tests
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .SendAsync(methodToUse);
 
-            await response.ShouldBeErrorResponse(
-                HttpStatusCode.BadRequest,
-                "Missing Upload-Length header"
-            );
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         }
 
         [Theory, XHttpMethodOverrideData]
-        public async Task Returns_400_Bad_Request_When_Creating_A_Final_File_If_Concatenation_Is_Not_Supported(
+        public async Task Returns_404_Not_Found_When_Creating_A_Final_File_If_Concatenation_Is_Disabled(
             string methodToUse
         )
         {
-            var store = MockStoreHelper.CreateWithExtensions<ITusCreationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusConcatenationStore
+            >();
 
-            using var server = TestServerFactory.Create(store);
+            using var server = TestServerFactory.Create(
+                store,
+                allowedExtensions: TusExtensions.All.Except(TusExtensions.Concatenation)
+            );
 
-            // Create final file
             var response = await server
                 .CreateTusResumableRequest("/files")
                 .AddHeader(
@@ -114,10 +116,7 @@ namespace tusdotnet.test.Tests
                 .OverrideHttpMethodIfNeeded("POST", methodToUse)
                 .SendAsync(methodToUse);
 
-            await response.ShouldBeErrorResponse(
-                HttpStatusCode.BadRequest,
-                "Missing Upload-Length header"
-            );
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         }
 
         [Theory, XHttpMethodOverrideData]
