@@ -55,6 +55,20 @@ namespace tusdotnet.Extensions
                 await stream.WriteAsync(segment);
             }
 
+            // Call FlushAsync() once at the end of all writes for better performance
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static async Task Old_FlushToDisk(
+            this FileStream stream,
+            ReadOnlySequence<byte> buffer
+        )
+        {
+            foreach (var segment in buffer)
+            {
+                await stream.WriteAsync(segment);
+            }
+
             await stream.FlushAsync();
         }
 #endif

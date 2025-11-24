@@ -1,35 +1,24 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
-
-//using tusdotnet.benchmark.Benchmarks;
+using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark
 {
     public static class Program
     {
-        public static void Main()
+        public static void Main(string[] args)
         {
-            //var summary = BenchmarkRunner.Run<NoTusResumableHeader>();
-            //var summary = BenchmarkRunner.Run<RequestIsNotForTusEndpoint>();
+            // Uncomment the benchmark you want to run:
 
-            //new MetadataParser().TestNewWithTextRead();
-            //Test().GetAwaiter().GetResult();
+            // Direct comparison of flush strategies (recommended - fastest to run)
+            var summary = BenchmarkRunner.Run<FlushStrategyBenchmark>();
+
+            // Full TusDiskStore comparison with PipeReader (most realistic)
+            //var summary = BenchmarkRunner.Run<FlushStrategyBenchmark>();
+
+            // Or run with command line args for more control:
+            // dotnet run -c Release -- --filter *DirectFlush*
         }
-
-        //private static async Task Test()
-        //{
-        //    try
-        //    {
-        //        // Call benchmark to debug/test here
-        //    }
-        //    catch (Exception exc)
-        //    {
-        //        Console.Error.Write(exc.ToString());
-        //    }
-
-        //    Console.WriteLine("Press any key to exit");
-        //    Console.ReadKey(true);
-        //}
     }
 }
