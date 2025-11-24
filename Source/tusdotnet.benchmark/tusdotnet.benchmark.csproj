@@ -10,4 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\tusdotnet\tusdotnet.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Benchmarks\" />
+  </ItemGroup>
 </Project>

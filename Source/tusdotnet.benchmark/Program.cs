@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
-using tusdotnet.benchmark.Benchmarks;
+
+//using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark
 {
@@ -10,9 +11,6 @@ namespace tusdotnet.benchmark
         public static void Main(string[] args)
         {
             // Uncomment the benchmark you want to run:
-
-            // Direct comparison of flush strategies (recommended - fastest to run)
-            var summary = BenchmarkRunner.Run<FlushStrategyBenchmark>();
 
             // Full TusDiskStore comparison with PipeReader (most realistic)
             //var summary = BenchmarkRunner.Run<FlushStrategyBenchmark>();
