@@ -11,6 +11,10 @@
     <PackageReleaseNotes>Release notes at https://github.com/tusdotnet/tusdotnet/releases</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/tusdotnet/tusdotnet</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/tusdotnet/tusdotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
@@ -22,6 +26,7 @@
     <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
   <!-- SourceLink -->
   <PropertyGroup>
@@ -38,9 +43,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <None Update="readme.txt">
-      <Pack>true</Pack>
-    </None>
+    <!-- Package icon -->
+    <None Include="..\icon.png" Pack="true" PackagePath="\" />
+    <!-- Package README -->
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <DefineConstants>$(DefineConstants);netfull</DefineConstants>
