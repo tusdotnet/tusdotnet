@@ -53,7 +53,6 @@ namespace tusdotnet.Adapters
             }
             else
             {
-                // TODO: Grab the array from the array pool instead of creating it.
                 // Check if there is any file content available in the request.
                 var buffer = new byte[1];
                 var hasData =
