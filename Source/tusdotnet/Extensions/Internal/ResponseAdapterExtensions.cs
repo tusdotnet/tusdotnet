@@ -49,8 +49,6 @@ namespace tusdotnet.Extensions
             Stream clientResponseStream
         )
         {
-            // TODO: Use predefined byte arrays for known messages to reduce GC pressure.
-
             var bytes = ArrayPool<byte>.Shared.Rent(_utf8Encoding.GetByteCount(response.Message));
 
             try
@@ -65,7 +63,7 @@ namespace tusdotnet.Extensions
 
 #if NETCOREAPP3_1_OR_GREATER
 
-#pragma warning disable CA1835 // Prefer the 'Memory'-based overloads for 'ReadAsync' and 'WriteAsync' - Ignore as it's not supported on netcoreapp3.1 and we write the entire array anyway.
+#pragma warning disable CA1835 // Prefer the 'Memory'-based overloads for 'ReadAsync' and 'WriteAsync' - Ignored as the Memory-based overload provides no performance benefit for this use case and this keeps the code consistent across all target frameworks.
 
                 await clientResponseStream.WriteAsync(bytes, 0, byteCount);
 
