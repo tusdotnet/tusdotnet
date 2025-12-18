@@ -6,9 +6,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class DeleteFileHandlerWithEvents : IntentHandlerWithEvents
+    internal class DeleteFileHandlerWithEvents : IntentHandlerWithEvents<DeleteFileHandler>
     {
-        public DeleteFileHandlerWithEvents(IntentHandler intentHandler)
+        public DeleteFileHandlerWithEvents(DeleteFileHandler intentHandler)
             : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()

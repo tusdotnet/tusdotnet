@@ -6,9 +6,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class CreateFileHandlerWithEvents : IntentHandlerWithEvents
+    internal class CreateFileHandlerWithEvents : IntentHandlerWithEvents<CreateFileHandler>
     {
-        public CreateFileHandlerWithEvents(IntentHandler handler)
+        public CreateFileHandlerWithEvents(CreateFileHandler handler)
             : base(handler) { }
 
         internal override async Task<ResultType> Authorize()

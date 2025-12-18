@@ -7,15 +7,11 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class ConcatenateFilesHandlerWithEvents : IntentHandlerWithEvents
+    internal class ConcatenateFilesHandlerWithEvents
+        : IntentHandlerWithEvents<ConcatenateFilesHandler>
     {
-        private readonly ConcatenateFilesHandler _concatenationHandler;
-
-        public ConcatenateFilesHandlerWithEvents(IntentHandler intentHandler)
-            : base(intentHandler)
-        {
-            _concatenationHandler = (ConcatenateFilesHandler)IntentHandler;
-        }
+        public ConcatenateFilesHandlerWithEvents(ConcatenateFilesHandler intentHandler)
+            : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
         {
@@ -24,14 +20,14 @@ namespace tusdotnet.Runners.Events
                 ctx =>
                 {
                     ctx.Intent = IntentType.ConcatenateFiles;
-                    ctx.FileConcatenation = _concatenationHandler.UploadConcat.Type;
+                    ctx.FileConcatenation = TypedIntentHandler.UploadConcat.Type;
                 }
             );
         }
 
         internal override async Task NotifyAfterAction()
         {
-            if (_concatenationHandler.UploadConcat.Type is FileConcatFinal fileConcatFinal)
+            if (TypedIntentHandler.UploadConcat.Type is FileConcatFinal fileConcatFinal)
             {
                 await EventHelper.Notify<CreateCompleteContext>(
                     Context,
@@ -56,7 +52,7 @@ namespace tusdotnet.Runners.Events
                         ctx.FileId = Context.FileId;
                         ctx.Metadata = Context.ParsedRequest.Metadata;
                         ctx.UploadLength = Context.Request.Headers.UploadLength;
-                        ctx.FileConcatenation = _concatenationHandler.UploadConcat.Type;
+                        ctx.FileConcatenation = TypedIntentHandler.UploadConcat.Type;
                         ctx.Context = Context;
                     }
                 );
@@ -71,7 +67,7 @@ namespace tusdotnet.Runners.Events
                 {
                     ctx.Metadata = Context.ParsedRequest.Metadata;
                     ctx.UploadLength = Context.Request.Headers.UploadLength;
-                    ctx.FileConcatenation = _concatenationHandler.UploadConcat.Type;
+                    ctx.FileConcatenation = TypedIntentHandler.UploadConcat.Type;
                 }
             );
         }

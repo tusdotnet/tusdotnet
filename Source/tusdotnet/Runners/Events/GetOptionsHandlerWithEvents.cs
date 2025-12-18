@@ -6,9 +6,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class GetOptionsHandlerWithEvents : IntentHandlerWithEvents
+    internal class GetOptionsHandlerWithEvents : IntentHandlerWithEvents<GetOptionsHandler>
     {
-        public GetOptionsHandlerWithEvents(IntentHandler intentHandler)
+        public GetOptionsHandlerWithEvents(GetOptionsHandler intentHandler)
             : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
