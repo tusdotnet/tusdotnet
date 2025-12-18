@@ -38,7 +38,7 @@ namespace tusdotnet.Runners.Events
                     ctx =>
                     {
                         ctx.FileId = Context.FileId;
-                        ctx.Metadata = Context.Cache.Metadata;
+                        ctx.Metadata = Context.ParsedRequest.Metadata;
                         ctx.UploadLength = Context.Request.Headers.UploadLength;
                         ctx.FileConcatenation = fileConcatFinal;
                         ctx.Context = Context;
@@ -54,7 +54,7 @@ namespace tusdotnet.Runners.Events
                     ctx =>
                     {
                         ctx.FileId = Context.FileId;
-                        ctx.Metadata = Context.Cache.Metadata;
+                        ctx.Metadata = Context.ParsedRequest.Metadata;
                         ctx.UploadLength = Context.Request.Headers.UploadLength;
                         ctx.FileConcatenation = _concatenationHandler.UploadConcat.Type;
                         ctx.Context = Context;
@@ -69,7 +69,7 @@ namespace tusdotnet.Runners.Events
                 Context,
                 ctx =>
                 {
-                    ctx.Metadata = Context.Cache.Metadata;
+                    ctx.Metadata = Context.ParsedRequest.Metadata;
                     ctx.UploadLength = Context.Request.Headers.UploadLength;
                     ctx.FileConcatenation = _concatenationHandler.UploadConcat.Type;
                 }

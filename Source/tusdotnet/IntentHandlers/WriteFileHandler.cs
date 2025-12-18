@@ -46,6 +46,12 @@ namespace tusdotnet.IntentHandlers
         private readonly ChecksumHelper _checksumHelper;
         private readonly bool _initiatedFromCreationWithUpload;
 
+        /// <summary>
+        /// The new upload offset after the write operation completes.
+        /// Only available after Invoke() has been called.
+        /// </summary>
+        public long? NewUploadOffset { get; private set; }
+
         public WriteFileHandler(ContextAdapter context, bool initiatedFromCreationWithUpload)
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
@@ -93,11 +99,10 @@ namespace tusdotnet.IntentHandlers
 
             var initialOffset = Request.Headers.UploadOffset;
             var newUploadOffset = initialOffset + bytesWritten;
+            NewUploadOffset = newUploadOffset;
 
             Response.SetHeader(HeaderConstants.TusResumable, HeaderConstants.TusResumableValue);
             Response.SetHeader(HeaderConstants.UploadOffset, newUploadOffset.ToString());
-
-            Context.Cache.UploadOffset = newUploadOffset;
 
             if (expires.HasValue)
             {

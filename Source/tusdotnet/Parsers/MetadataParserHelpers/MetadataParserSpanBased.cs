@@ -13,7 +13,7 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
         internal static MetadataParserResult ParseAndValidate(string uploadMetadataHeaderValue)
         {
             if (string.IsNullOrEmpty(uploadMetadataHeaderValue))
-                return MetadataParserResult.FromResult(new Dictionary<string, Metadata>());
+                return MetadataParserResult.FromResult([]);
 
             var span = uploadMetadataHeaderValue.AsSpan();
             var result = new Dictionary<string, Metadata>();
