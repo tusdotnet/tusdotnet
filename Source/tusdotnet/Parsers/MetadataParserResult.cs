@@ -36,11 +36,7 @@ namespace tusdotnet.Parsers
 
         internal static MetadataParserResult FromError(string errorMessage)
         {
-            return new MetadataParserResult(
-                success: false,
-                errorMessage,
-                new Dictionary<string, Metadata>()
-            );
+            return new MetadataParserResult(success: false, errorMessage, []);
         }
 
         internal static MetadataParserResult FromResult(Dictionary<string, Metadata> metadata)

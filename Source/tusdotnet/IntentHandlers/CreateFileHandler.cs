@@ -36,11 +36,7 @@ namespace tusdotnet.IntentHandlers
     internal class CreateFileHandler : IntentHandler
     {
         internal override Requirement[] Requires =>
-            new Requirement[]
-            {
-                new UploadLengthForCreateFileAndConcatenateFiles(),
-                new UploadMetadata(metadata => Context.Cache.Metadata = metadata),
-            };
+            [new UploadLengthForCreateFileAndConcatenateFiles(), new UploadMetadata()];
 
         private readonly ExpirationHelper _expirationHelper;
 

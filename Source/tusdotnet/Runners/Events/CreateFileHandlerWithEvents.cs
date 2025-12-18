@@ -30,7 +30,7 @@ namespace tusdotnet.Runners.Events
                 {
                     ctx.FileId = Context.FileId;
                     ctx.FileConcatenation = null;
-                    ctx.Metadata = Context.Cache.Metadata;
+                    ctx.Metadata = Context.ParsedRequest.Metadata;
                     ctx.UploadLength = Context.Request.Headers.UploadLength;
                     ctx.Context = Context;
                 }
@@ -52,7 +52,7 @@ namespace tusdotnet.Runners.Events
                 Context,
                 ctx =>
                 {
-                    ctx.Metadata = Context.Cache.Metadata;
+                    ctx.Metadata = Context.ParsedRequest.Metadata;
                     ctx.UploadLength = Context.Request.Headers.UploadLength;
                 }
             );

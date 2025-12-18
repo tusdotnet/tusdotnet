@@ -29,7 +29,7 @@ namespace tusdotnet.Adapters
         public IOwinContext OwinContext { get; }
 #endif
 
-        public ContextCache Cache { get; }
+        public ParsedRequestHeaders ParsedRequest { get; }
 
         public ClientDisconnectGuardWithTimeout ClientDisconnectGuard { get; private set; }
 
@@ -85,7 +85,7 @@ namespace tusdotnet.Adapters
             Configuration = config;
             HttpContext = httpContext;
 
-            Cache = new();
+            ParsedRequest = new ParsedRequestHeaders();
 
             if (httpContext is not null)
             {

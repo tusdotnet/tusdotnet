@@ -45,10 +45,10 @@ namespace tusdotnet.Models.PipeReaders
         {
             if (
                 context.StoreAdapter.Extensions.Checksum
-                && context.Cache.UploadChecksum?.IsValid == true
+                && context.ParsedRequest.UploadChecksum?.IsValid == true
             )
             {
-                reader = new ChecksumAwarePipeReader(reader, context.Cache.UploadChecksum);
+                reader = new ChecksumAwarePipeReader(reader, context.ParsedRequest.UploadChecksum);
             }
 
             return reader;

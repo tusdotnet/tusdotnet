@@ -38,13 +38,16 @@ namespace tusdotnet.IntentHandlers
     {
         internal override Requirement[] Requires => BuildListOfRequirements();
 
-        public UploadConcat UploadConcat => Context.Cache.UploadConcat;
+        public UploadConcat UploadConcat => Context.ParsedRequest.UploadConcat;
 
         public ConcatenateFilesHandler(ContextAdapter context)
             : base(context, IntentType.ConcatenateFiles, LockType.NoLock)
         {
-            Context.Cache.UploadConcat = ParseUploadConcatHeader();
+            // Parse UploadConcat header early as it's needed for requirement construction
+            Context.ParsedRequest.UploadConcat = ParseUploadConcatHeader();
+
             _expirationHelper = new ExpirationHelper(context);
+
             _isPartialFile = UploadConcat.Type is FileConcatPartial;
         }
 
@@ -94,11 +97,7 @@ namespace tusdotnet.IntentHandlers
                 );
             }
 
-            requirements.Add(
-                new Validation.Requirements.UploadMetadata(metadata =>
-                    Context.Cache.Metadata = metadata
-                )
-            );
+            requirements.Add(new Validation.Requirements.UploadMetadata());
 
             return requirements.ToArray();
         }

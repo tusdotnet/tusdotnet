@@ -20,15 +20,16 @@ namespace tusdotnet.Runners.Events
                 ctx =>
                 {
                     ctx.Intent = IntentType.WriteFile;
-                    ctx.FileConcatenation = Context.Cache?.UploadConcat?.Type;
+                    ctx.FileConcatenation = Context.ParsedRequest?.UploadConcat?.Type;
                 }
             );
         }
 
         internal override async Task NotifyAfterAction()
         {
+            var writeHandler = (WriteFileHandler)IntentHandler;
             var offset =
-                Context.Cache.UploadOffset
+                writeHandler.NewUploadOffset
                 ?? await Context.StoreAdapter.GetUploadOffsetAsync(
                     Context.FileId,
                     CancellationToken.None

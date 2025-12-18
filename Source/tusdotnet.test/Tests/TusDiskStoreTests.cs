@@ -370,7 +370,6 @@ namespace tusdotnet.test.Tests
             );
             length.ShouldBe(0);
         }
-
 #endif
 
         [Fact]

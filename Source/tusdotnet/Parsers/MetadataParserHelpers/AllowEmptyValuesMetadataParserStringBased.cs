@@ -17,7 +17,7 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 
         public MetadataParserResult GetResultForEmptyHeader()
         {
-            return MetadataParserResult.FromResult(new Dictionary<string, Metadata>());
+            return MetadataParserResult.FromResult([]);
         }
 
         public MetadataParserResult ParseSingleItem(

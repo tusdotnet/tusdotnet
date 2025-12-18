@@ -48,7 +48,7 @@ namespace tusdotnet.Helpers
                 _checksum = new Checksum(checksumHeader);
                 if (_checksum.IsValid)
                 {
-                    context.Cache.UploadChecksum = _checksum;
+                    context.ParsedRequest.UploadChecksum = _checksum;
                 }
             }
         }
