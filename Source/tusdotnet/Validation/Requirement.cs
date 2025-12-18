@@ -13,12 +13,6 @@ namespace tusdotnet.Validation
 
         public abstract Task Validate(ContextAdapter context);
 
-        public void Reset()
-        {
-            StatusCode = 0;
-            ErrorMessage = null;
-        }
-
         protected Task Conflict(string errorMessage)
         {
             return Error(HttpStatusCode.Conflict, errorMessage);

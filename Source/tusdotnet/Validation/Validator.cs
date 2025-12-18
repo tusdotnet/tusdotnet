@@ -23,7 +23,6 @@ namespace tusdotnet.Validation
 
             foreach (var spec in _requirements)
             {
-                spec.Reset();
                 await spec.Validate(context);
 
                 if (spec.StatusCode == 0)
