@@ -13,13 +13,23 @@ namespace tusdotnet.Runners.Events
 
         internal abstract Task NotifyAfterAction();
 
-        internal IntentHandler IntentHandler { get; }
+        internal abstract IntentHandler IntentHandler { get; }
 
         protected ContextAdapter Context => IntentHandler.Context;
+    }
 
-        public IntentHandlerWithEvents(IntentHandler intentHandler)
+    internal abstract class IntentHandlerWithEvents<T> : IntentHandlerWithEvents
+        where T : IntentHandler
+    {
+        private readonly T _typedIntentHandler;
+
+        internal override IntentHandler IntentHandler => _typedIntentHandler;
+
+        internal new T TypedIntentHandler => _typedIntentHandler;
+
+        public IntentHandlerWithEvents(T intentHandler)
         {
-            IntentHandler = intentHandler;
+            _typedIntentHandler = intentHandler;
         }
     }
 }
