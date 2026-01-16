@@ -264,6 +264,149 @@ Keep the simpler closure-based approach. The marginal gains on Stream operations
 
 ---
 
+## 7. FileStream Buffer Sizing: Matched vs Fixed 84KB Buffer
+
+**Proposed Change:**
+Dynamically size the FileStream buffer to match the application write buffer size (`Math.Min(_maxWriteBufferSize, 84KB)`) instead of using a fixed 84KB buffer, hypothesizing that aligned buffer sizes would reduce flush overhead.
+
+**Current Implementation:**
+```csharp
+private static async Task FlushToDisk(this FileStream stream, ReadOnlySequence<byte> buffer, CancellationToken cancellationToken)
+{
+    foreach (var segment in buffer)
+    {
+        await stream.WriteAsync(segment, cancellationToken).ConfigureAwait(false);
+    }
+    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+}
+
+// FileStream created with fixed 84KB buffer:
+new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 84 * 1024, useAsync: true)
+```
+
+**Benchmark Results:**
+
+| Write Buffer Size | FileStream Buffer | Mean (100MB) | Ratio | Allocated |
+|------------------|-------------------|--------------|-------|-----------|
+| 51,200 (50KB) | **84KB (Fixed)** | 174.57 ms | 1.00 | 40 KB |
+| 51,200 (50KB) | 50KB (Matched) | 204.97 ms | **1.17** | 40 KB |
+| 86,016 (84KB) | **84KB (Fixed)** | 158.47 ms | 1.00 | 40 KB |
+| 86,016 (84KB) | 84KB (Matched) | 158.53 ms | 1.00 | 40 KB |
+| 102,400 (100KB) | **84KB (Fixed)** | 187.17 ms | 1.00 | 40 KB |
+| 102,400 (100KB) | 84KB (Matched) | 172.64 ms | 0.92 | 40 KB |
+
+**Decision: NOT IMPLEMENTED**
+
+**Rationale:**
+
+1. **Mixed Results with High Variance:**
+   - 51KB write buffer: Matched is **17% SLOWER** (significant regression)
+   - 86KB write buffer: Essentially identical (0.04% difference is noise)
+   - 102KB write buffer: Matched is 8% faster, but write buffer exceeds LOH threshold anyway
+
+2. **No Consistent Improvement:**
+   - Only shows benefit when write buffer exceeds FileStream buffer (102KB case)
+   - But 102KB write buffer is already problematic (exceeds 85KB LOH threshold)
+   - Default configuration (51KB) shows significant performance degradation
+
+3. **FileStream Internals:**
+   - FileStream auto-flushes when its internal buffer fills regardless of application buffer size
+   - Matching buffer sizes doesn't eliminate flush operations, just changes their timing
+   - Fixed 84KB buffer performs well across all tested write buffer sizes
+
+4. **LOH Considerations:**
+   - 84KB buffer stays under 85KB LOH threshold (critical for avoiding Gen2 allocations)
+   - Matched buffer approach would vary buffer size, potentially crossing LOH boundary
+   - Fixed buffer guarantees predictable allocation behavior
+
+5. **Code Simplicity:**
+   - Fixed buffer size is simpler and more predictable
+   - No runtime calculation needed
+   - Easier to reason about memory usage
+
+**Key Finding:**
+Application-level batching (via `_maxWriteBufferSize`) is the primary performance driver, not FileStream buffer size. The fixed 84KB buffer provides consistent, good performance across all write buffer configurations.
+
+**Conclusion:**
+Keep the fixed 84KB FileStream buffer. It's simple, stays under the LOH threshold, and performs consistently well. Matching buffer sizes adds complexity without meaningful benefit.
+
+---
+
+## 8. RandomAccess.WriteAsync Scatter-Gather I/O for PipeReader Segments
+
+**Proposed Change:**
+Use `RandomAccess.WriteAsync(SafeFileHandle, IReadOnlyList<ReadOnlyMemory<byte>>)` to write all PipeReader segments in a single vectored I/O operation instead of iterating segments and calling `FileStream.WriteAsync` for each one.
+
+**Hypothesis:**
+Scatter-gather I/O would reduce syscall overhead by writing all segments in one operation, potentially improving throughput for fragmented PipeReader buffers.
+
+**Implementation Tested:**
+```csharp
+private static async Task FlushToDisk(this FileStream stream, ReadOnlySequence<byte> buffer, CancellationToken cancellationToken)
+{
+    if (buffer.IsSingleSegment)
+    {
+        await stream.WriteAsync(buffer.First, cancellationToken).ConfigureAwait(false);
+    }
+    else
+    {
+        var position = stream.Position;
+        var segments = buffer.ToArray();
+        await RandomAccess.WriteAsync(stream.SafeFileHandle, segments, position, cancellationToken).ConfigureAwait(false);
+        stream.Seek(position + buffer.Length, SeekOrigin.Begin);
+    }
+    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+}
+```
+
+**Benchmark Results:**
+
+| Method | Write Buffer | Mean (25MB) | Ratio | Allocated | Ratio |
+|--------|-------------|-------------|-------|-----------|-------|
+| **Buffered Flush** | 51,200 | 59.22 ms | 1.00 | 10 KB | 1.00 |
+| RandomAccess | 51,200 | 423.64 ms | **7.15** | 20 KB | **2.05** |
+| **Buffered Flush** | 86,016 | 53.12 ms | 1.00 | 10 KB | 1.00 |
+| RandomAccess | 86,016 | 277.51 ms | **5.22** | 50 KB | **5.13** |
+| **Buffered Flush** | 102,400 | 68.52 ms | 1.00 | 10 KB | 1.00 |
+| RandomAccess | 102,400 | 344.82 ms | **5.03** | 40 KB | **4.41** |
+
+**Decision: NOT IMPLEMENTED (CATASTROPHIC FAILURE)**
+
+**Rationale:**
+
+1. **Devastating Performance Regression:**
+   - **5-7x SLOWER** across all configurations
+   - 51KB buffer: 715% slower (7.15x)
+   - 86KB buffer: 522% slower (5.22x)
+   - 102KB buffer: 503% slower (5.03x)
+
+2. **Increased Memory Allocation:**
+   - **2-5x MORE memory allocated**
+   - `buffer.ToArray()` creates array of Memory<byte> for each segment
+   - Additional allocations in RandomAccess implementation
+   - Completely defeats optimization purpose
+
+3. **Why It Failed So Badly:**
+   - **Overhead Dominates:** RandomAccess vectored I/O has massive per-call overhead
+   - **Fast Path Bypassed:** FileStream optimizations for sequential writes are highly tuned
+   - **Segment Materialization:** Converting ReadOnlySequence to array is expensive
+   - **Position Management:** Manual seek adds overhead vs FileStream's internal tracking
+   - **No Benefit on Windows:** Modern async I/O is already efficient for sequential writes
+
+4. **Fundamental Misunderstanding:**
+   - Scatter-gather I/O is designed for scenarios with many small, scattered writes
+   - File uploads are sequential, streaming workloads - not scattered
+   - FileStream's segment iteration is negligible compared to I/O operation itself
+   - The "problem" we were trying to solve (segment iteration overhead) doesn't actually exist
+
+**Key Learning:**
+The frequency of `WriteAsync` calls matters for application-level batching (which is why we buffer in PipeReader), but once you're calling FileStream, segment iteration overhead is completely negligible. RandomAccess.WriteAsync is optimized for different use cases (random access to large files, not streaming uploads).
+
+**Conclusion:**
+A spectacular failure. Keep the simple `foreach (var segment in buffer) await stream.WriteAsync(segment)` pattern. It's fast, allocates minimally, and leverages FileStream's optimizations. Sometimes the obvious solution is obvious because it's correct.
+
+---
+
 ## Summary
 
 All evaluated optimizations were either benchmarked and found to be slower/worse, or determined to be premature optimization without evidence of actual performance issues. The current implementation prioritizes:
@@ -273,4 +416,8 @@ All evaluated optimizations were either benchmarked and found to be slower/worse
 3. **Real-world performance** (optimizing the critical path: file I/O, not micro-allocations)
 4. **Evidence-based optimization** (benchmark before implementing, don't assume struct < closure)
 
-Future optimization work should be driven by profiling data from production workloads showing actual bottlenecks.
+Notable catastrophic failures:
+- **RandomAccess.WriteAsync scatter-gather I/O:** 5-7x slower with 2-5x more allocations
+- **Matched FileStream buffers:** 17% slower for default configuration, no consistent benefit
+
+Future optimization work should be driven by profiling data from production workloads showing actual bottlenecks. And maybe don't assume vectored I/O is a silver bullet without benchmarking first.
