@@ -1,9 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Helpers;
-using tusdotnet.Models;
 using tusdotnet.Parsers;
 
 namespace tusdotnet.Validation.Requirements

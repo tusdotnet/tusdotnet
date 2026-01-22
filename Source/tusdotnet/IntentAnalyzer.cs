@@ -63,26 +63,36 @@ namespace tusdotnet
         {
             var httpMethod = GetHttpMethod(context.Request);
 
-            if (RequestRequiresTusResumableHeader(httpMethod))
-            {
-                if (context.Request.Headers.TusResumable == null)
-                {
-                    return IntentHandler.NotApplicable;
-                }
-            }
-
-            if (MethodRequiresFileIdUrl(httpMethod))
-            {
-                if (!context.UrlHelper.UrlMatchesFileIdUrl(context))
-                {
-                    return IntentHandler.NotApplicable;
-                }
-            }
-            else if (!context.UrlHelper.UrlMatchesUrlPath(context))
-            {
+            if (!IsValidTusRequest(httpMethod, context))
                 return IntentHandler.NotApplicable;
-            }
 
+            if (!IsValidUrl(httpMethod, context))
+                return IntentHandler.NotApplicable;
+
+            return DetermineHandlerForMethod(httpMethod, context);
+        }
+
+        private static bool IsValidTusRequest(string httpMethod, ContextAdapter context)
+        {
+            if (!RequestRequiresTusResumableHeader(httpMethod))
+                return true;
+
+            return context.Request.Headers.TusResumable != null;
+        }
+
+        private static bool IsValidUrl(string httpMethod, ContextAdapter context)
+        {
+            if (MethodRequiresFileIdUrl(httpMethod))
+                return context.UrlHelper.UrlMatchesFileIdUrl(context);
+
+            return context.UrlHelper.UrlMatchesUrlPath(context);
+        }
+
+        private static IntentHandler DetermineHandlerForMethod(
+            string httpMethod,
+            ContextAdapter context
+        )
+        {
             return httpMethod switch
             {
                 "post" => DetermineIntentForPost(context),

@@ -6,31 +6,16 @@ using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
 using tusdotnet.Models;
-#if trailingheaders
-
-using Microsoft.AspNetCore.Http;
-using tusdotnet.Extensions.Internal;
-
-#endif
 
 namespace tusdotnet.Helpers
 {
     internal class ChecksumHelper
     {
-        private ChecksumHelperResult Ok { get; } = new(HttpStatusCode.OK, null);
+        protected static readonly ChecksumHelperResult Ok = new(HttpStatusCode.OK, null);
 
-        private readonly ContextAdapter _context;
-        public Lazy<Task<List<string>>> _supportedAlgorithms;
-
-#if trailingheaders
-
-        private bool _checksumOriginatesFromTrailer;
-        private ChecksumHelperResult _checksumTrailerParseResult;
-        private Checksum _checksum;
-#else
-
-        private readonly Checksum _checksum;
-#endif
+        protected readonly ContextAdapter _context;
+        private Lazy<Task<List<string>>> _supportedAlgorithms;
+        protected Checksum _checksum;
 
         public ChecksumHelper(ContextAdapter context)
         {
@@ -40,17 +25,22 @@ namespace tusdotnet.Helpers
                 return;
 
             _supportedAlgorithms = new Lazy<Task<List<string>>>(LoadSupportAlgorithms);
+            _checksum = TryParseChecksumHeader(context);
+        }
 
-            var checksumHeader = _context.Request.Headers.UploadChecksum;
+        private Checksum TryParseChecksumHeader(ContextAdapter context)
+        {
+            var checksumHeader = context.Request.Headers.UploadChecksum;
+            if (checksumHeader == null)
+                return null;
 
-            if (checksumHeader != null)
+            var checksum = new Checksum(checksumHeader);
+            if (checksum.IsValid)
             {
-                _checksum = new Checksum(checksumHeader);
-                if (_checksum.IsValid)
-                {
-                    context.ParsedRequest.UploadChecksum = _checksum;
-                }
+                context.ParsedRequest.UploadChecksum = checksum;
             }
+
+            return checksum;
         }
 
         private async Task<List<string>> LoadSupportAlgorithms() =>
@@ -60,121 +50,52 @@ namespace tusdotnet.Helpers
 
         internal bool IsSupported() => _context.StoreAdapter.Extensions.Checksum;
 
-#if trailingheaders
+        internal virtual ChecksumHelperResult VerifyStateForChecksumTrailer() => Ok;
 
-        internal ChecksumHelperResult VerifyStateForChecksumTrailer()
-        {
-            var hasDeclaredChecksumTrailer = _context.HasDeclaredTrailingUploadChecksumHeader();
-            if (_checksum != null && hasDeclaredChecksumTrailer)
-            {
-                return new(
-                    HttpStatusCode.BadRequest,
-                    "Headers Upload-Checksum and trailing header Upload-Checksum are mutually exclusive and cannot be used in the same request"
-                );
-            }
+        internal virtual bool SupportsChecksumTrailer() => false;
 
-            if (hasDeclaredChecksumTrailer && !_context.HttpContext.Request.SupportsTrailers())
-            {
-                return new(
-                    HttpStatusCode.BadRequest,
-                    "Trailing header Upload-Checksum has been specified but http request does not support trailing headers"
-                );
-            }
-
-            return Ok;
-        }
-
-        private async Task SetChecksumFromTrailingHeader(bool clientDisconnected)
-        {
-            if (_checksum != null)
-                return;
-
-            if (!_context.StoreAdapter.Extensions.ChecksumTrailer)
-                return;
-
-            var checksumHeader = _context.GetTrailingUploadChecksumHeader();
-
-            if (string.IsNullOrEmpty(checksumHeader))
-            {
-                // Fallback to force the store to discard the chunk.
-                if (clientDisconnected && _context.HasDeclaredTrailingUploadChecksumHeader())
-                {
-                    _checksumOriginatesFromTrailer = true;
-                    _checksumTrailerParseResult = Ok;
-                    _checksum = ChecksumTrailerHelper.TrailingChecksumToUseIfRealTrailerIsFaulty;
-                }
-
-                return;
-            }
-
-            var tempChecksum = new Checksum(checksumHeader);
-
-            _checksumOriginatesFromTrailer = true;
-            _checksumTrailerParseResult = await VerifyHeader(tempChecksum);
-
-            // Fallback to force the store to discard the chunk.
-            if (_checksumTrailerParseResult.IsFailure())
-            {
-                tempChecksum = ChecksumTrailerHelper.TrailingChecksumToUseIfRealTrailerIsFaulty;
-            }
-
-            _checksumOriginatesFromTrailer = true;
-            _checksum = tempChecksum;
-        }
-
-        internal bool SupportsChecksumTrailer() => true;
-#else
-
-        internal ChecksumHelperResult VerifyStateForChecksumTrailer() => Ok;
-
-        internal bool SupportsChecksumTrailer() => false;
-#endif
-
-        internal async Task<ChecksumHelperResult> MatchChecksum(bool clientDisconnected)
+        internal virtual async Task<ChecksumHelperResult> MatchChecksum(bool clientDisconnected)
         {
             if (!_context.StoreAdapter.Extensions.Checksum)
             {
                 return Ok;
             }
 
-            var errorResponse = new ChecksumHelperResult(
-                (HttpStatusCode)460,
-                "Header Upload-Checksum does not match the checksum of the file"
-            );
-
-#if trailingheaders
-
-            await SetChecksumFromTrailingHeader(clientDisconnected);
-
-            if (_checksumOriginatesFromTrailer && _checksumTrailerParseResult.IsFailure())
-            {
-                errorResponse = _checksumTrailerParseResult;
-            }
-#endif
-
             if (_checksum == null)
             {
                 return Ok;
             }
 
-            var result = await _context.StoreAdapter.VerifyChecksumAsync(
-                _context.FileId,
-                _checksum.Algorithm,
-                _checksum.Hash,
-                _context.CancellationToken
-            );
-
-            if (!result)
+            var checksumMatches = await VerifyChecksumAgainstStore();
+            if (!checksumMatches)
             {
-                return errorResponse;
+                return CreateChecksumMismatchError();
             }
 
             return Ok;
         }
 
+        protected async Task<bool> VerifyChecksumAgainstStore()
+        {
+            return await _context.StoreAdapter.VerifyChecksumAsync(
+                _context.FileId,
+                _checksum.Algorithm,
+                _checksum.Hash,
+                _context.CancellationToken
+            );
+        }
+
+        protected static ChecksumHelperResult CreateChecksumMismatchError()
+        {
+            return new ChecksumHelperResult(
+                (HttpStatusCode)460,
+                "Header Upload-Checksum does not match the checksum of the file"
+            );
+        }
+
         internal Task<ChecksumHelperResult> VerifyLeadingHeader() => VerifyHeader(_checksum);
 
-        private async Task<ChecksumHelperResult> VerifyHeader(Checksum providedChecksum)
+        protected async Task<ChecksumHelperResult> VerifyHeader(Checksum providedChecksum)
         {
             if (providedChecksum == null)
             {
@@ -183,22 +104,38 @@ namespace tusdotnet.Helpers
 
             if (!providedChecksum.IsValid)
             {
-                return new(
-                    HttpStatusCode.BadRequest,
-                    $"Could not parse {HeaderConstants.UploadChecksum} header"
-                );
+                return CreateInvalidChecksumFormatError();
             }
 
-            var checksumAlgorithms = await _supportedAlgorithms.Value;
-            if (!checksumAlgorithms.Contains(providedChecksum.Algorithm))
+            if (!await IsAlgorithmSupported(providedChecksum.Algorithm))
             {
-                return new(
-                    HttpStatusCode.BadRequest,
-                    $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}"
-                );
+                return await CreateUnsupportedAlgorithmError(providedChecksum.Algorithm);
             }
 
             return Ok;
+        }
+
+        private static ChecksumHelperResult CreateInvalidChecksumFormatError()
+        {
+            return new(
+                HttpStatusCode.BadRequest,
+                $"Could not parse {HeaderConstants.UploadChecksum} header"
+            );
+        }
+
+        private async Task<bool> IsAlgorithmSupported(string algorithm)
+        {
+            var checksumAlgorithms = await _supportedAlgorithms.Value;
+            return checksumAlgorithms.Contains(algorithm);
+        }
+
+        private async Task<ChecksumHelperResult> CreateUnsupportedAlgorithmError(string algorithm)
+        {
+            var checksumAlgorithms = await _supportedAlgorithms.Value;
+            return new(
+                HttpStatusCode.BadRequest,
+                $"Unsupported checksum algorithm. Supported algorithms are: {string.Join(",", checksumAlgorithms)}"
+            );
         }
 
         internal struct ChecksumHelperResult
