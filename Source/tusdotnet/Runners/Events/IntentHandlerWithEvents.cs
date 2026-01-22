@@ -25,7 +25,7 @@ namespace tusdotnet.Runners.Events
 
         internal override IntentHandler IntentHandler => _typedIntentHandler;
 
-        internal new T TypedIntentHandler => _typedIntentHandler;
+        internal T TypedIntentHandler => _typedIntentHandler;
 
         public IntentHandlerWithEvents(T intentHandler)
         {

@@ -25,14 +25,12 @@ namespace tusdotnet.Validation
             {
                 await spec.Validate(context);
 
-                if (spec.StatusCode == 0)
+                if (spec.StatusCode != 0)
                 {
-                    continue;
+                    StatusCode = spec.StatusCode;
+                    ErrorMessage = spec.ErrorMessage;
+                    break;
                 }
-
-                StatusCode = spec.StatusCode;
-                ErrorMessage = spec.ErrorMessage;
-                break;
             }
         }
     }

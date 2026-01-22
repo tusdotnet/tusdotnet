@@ -93,12 +93,8 @@ namespace tusdotnet.Models
         /// <returns>A new <see cref="TusExtensions"/> object with the provided extension names disabled</returns>
         public TusExtensions Except(params TusExtensions[] extensions)
         {
-            var copy = new HashSet<string>(_extensionNamesInUse);
-            foreach (var item in extensions.SelectMany(x => x._extensionNamesInUse))
-            {
-                copy.Remove(item);
-            }
-
+            var itemsToRemove = extensions.SelectMany(x => x._extensionNamesInUse);
+            var copy = new HashSet<string>(_extensionNamesInUse.Except(itemsToRemove));
             return new TusExtensions(copy);
         }
     }

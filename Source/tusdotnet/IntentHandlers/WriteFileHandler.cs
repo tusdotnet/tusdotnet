@@ -55,7 +55,7 @@ namespace tusdotnet.IntentHandlers
         public WriteFileHandler(ContextAdapter context, bool initiatedFromCreationWithUpload)
             : base(context, IntentType.WriteFile, LockType.RequiresLock)
         {
-            _checksumHelper = new ChecksumHelper(Context);
+            _checksumHelper = ChecksumHelperFactory.Create(Context);
             _expirationHelper = new ExpirationHelper(Context);
             _initiatedFromCreationWithUpload = initiatedFromCreationWithUpload;
         }

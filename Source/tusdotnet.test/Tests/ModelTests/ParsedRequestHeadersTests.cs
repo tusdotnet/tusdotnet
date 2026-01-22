@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Shouldly;
 using tusdotnet.Adapters;
 using tusdotnet.Models;
