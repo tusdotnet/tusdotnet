@@ -95,6 +95,12 @@ namespace tusdotnet
 
                 await handler.NotifyAfterAction();
             }
+            catch (OperationCanceledException)
+                when (context.CancellationToken.IsCancellationRequested)
+            {
+                // Client disconnected - just stop execution without error response
+                return ResultType.StopExecution;
+            }
             catch (MaxReadSizeExceededException readSizeException)
             {
                 context.Response.Error(
