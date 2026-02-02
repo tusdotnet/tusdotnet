@@ -40,18 +40,18 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public Task<Dictionary<string, Metadata>> GetMetadataAsync(
+        public async Task<Dictionary<string, Metadata>> GetMetadataAsync(
             CancellationToken cancellationToken
         )
         {
-            var data = _metadata.ReadFirstLine(fileIsOptional: true);
+            var data = await _metadata.ReadTextAsync(fileIsOptional: true, cancellationToken);
 
             var parsedMetadata = MetadataParser.ParseAndValidate(
                 MetadataParsingStrategy.AllowEmptyValues,
                 data
             );
 
-            return Task.FromResult(parsedMetadata.Metadata);
+            return parsedMetadata.Metadata;
         }
     }
 }

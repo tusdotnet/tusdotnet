@@ -12,9 +12,9 @@ namespace tusdotnet.Stores
             CancellationToken _
         )
         {
-            _fileRepFactory
+            await _fileRepFactory
                 .UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .Write(uploadLength.ToString());
+                .WriteAsync(uploadLength.ToString());
         }
     }
 }
