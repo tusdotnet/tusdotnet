@@ -514,7 +514,13 @@ namespace tusdotnet.test.Tests
                 null,
                 CancellationToken.None
             );
-            using (var stream = new MemoryStream(buffer))
+            // Wrap stream with checksum metadata to match real TUS protocol flow
+            using (
+                var stream = new ChecksumAwareStream(
+                    new MemoryStream(buffer),
+                    new Checksum("sha1", Convert.FromBase64String(checksum))
+                )
+            )
             {
                 await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
             }
@@ -598,7 +604,7 @@ namespace tusdotnet.test.Tests
             foreach (var chunk in chunks)
             {
                 var data = chunk.Item1;
-                var checksum = chunk.Item2;
+                var checksum = Convert.FromBase64String(chunk.Item2);
                 var isValidChecksum = chunk.Item3;
                 var dataBuffer = encoding.GetBytes(data);
 
@@ -610,16 +616,18 @@ namespace tusdotnet.test.Tests
                 );
                 var token = clientDisconnectGuard.GuardedToken;
 
-                var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
-                    new MemoryStream(dataBuffer),
+                var checksumAwareStream = CreateRequestStream(
+                    checksum,
+                    dataBuffer,
                     clientDisconnectGuard
                 );
-                await _fixture.Store.AppendDataAsync(fileId, guardedStream, token);
+
+                await _fixture.Store.AppendDataAsync(fileId, checksumAwareStream, token);
 
                 var checksumOk = await _fixture.Store.VerifyChecksumAsync(
                     fileId,
                     "sha1",
-                    Convert.FromBase64String(checksum),
+                    checksum,
                     token
                 );
 
@@ -628,6 +636,24 @@ namespace tusdotnet.test.Tests
                 totalSize += isValidChecksum ? dataBuffer.Length : 0;
 
                 new FileInfo(filePath).Length.ShouldBe(totalSize);
+            }
+
+            static ChecksumAwareStream CreateRequestStream(
+                byte[] checksum,
+                byte[] dataBuffer,
+                ClientDisconnectGuardWithTimeout clientDisconnectGuard
+            )
+            {
+                var clientDisconnectGuardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                    new MemoryStream(dataBuffer),
+                    clientDisconnectGuard
+                );
+
+                var checksumAwareStream = new ChecksumAwareStream(
+                    clientDisconnectGuardedStream,
+                    new Checksum("sha1", checksum)
+                );
+                return checksumAwareStream;
             }
         }
 
@@ -704,8 +730,13 @@ namespace tusdotnet.test.Tests
                 cts.Token
             );
 
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+            // Wrap stream with checksum metadata to match real TUS protocol flow
+            var checksumAwareStream = new ChecksumAwareStream(
                 new MemoryStream(dataBuffer),
+                new Checksum("sha1", Convert.FromBase64String(checksum))
+            );
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                checksumAwareStream,
                 clientDisconnectGuard
             );
             await _fixture.Store.AppendDataAsync(

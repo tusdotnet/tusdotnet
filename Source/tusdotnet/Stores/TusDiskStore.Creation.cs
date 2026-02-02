@@ -19,16 +19,19 @@ namespace tusdotnet.Stores
             {
                 await SetUploadLengthAsync(fileId, uploadLength, CancellationToken.None);
             }
-            _fileRepFactory.Metadata(fileId).Write(metadata);
+            await _fileRepFactory.Metadata(fileId).WriteAsync(metadata);
             return fileId;
         }
 
         /// <inheritdoc />
-        public async Task<string> GetUploadMetadataAsync(string fileId, CancellationToken _)
+        public async Task<string> GetUploadMetadataAsync(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
-            var firstLine = _fileRepFactory
+            var firstLine = await _fileRepFactory
                 .Metadata(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .ReadFirstLine(true);
+                .ReadTextAsync(true, cancellationToken);
             return string.IsNullOrEmpty(firstLine) ? null : firstLine;
         }
     }

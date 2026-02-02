@@ -17,12 +17,16 @@ namespace tusdotnet.Stores
         }
 
         /// <inheritdoc />
-        public async Task<long?> GetUploadLengthAsync(string fileId, CancellationToken _)
+        public async Task<long?> GetUploadLengthAsync(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
-            var firstLine = _fileRepFactory
+            var value = await _fileRepFactory
                 .UploadLength(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .ReadFirstLine(true);
-            return firstLine == null ? null : long.Parse(firstLine);
+                .ReadTextAsLongAsync(true, long.MinValue, cancellationToken);
+
+            return value == long.MinValue ? null : value;
         }
 
         /// <inheritdoc />

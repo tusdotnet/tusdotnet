@@ -20,44 +20,59 @@ namespace tusdotnet.Stores
             CancellationToken _
         )
         {
-            _fileRepFactory
+            await _fileRepFactory
                 .Expiration(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .Write(expires.ToString("O"));
+                .WriteAsync(expires.ToString("O"));
         }
 
         /// <inheritdoc />
-        public async Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken _)
+        public async Task<DateTimeOffset?> GetExpirationAsync(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
-            var expiration = _fileRepFactory
+            var expiration = await _fileRepFactory
                 .Expiration(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .ReadFirstLine(true);
+                .ReadTextAsync(true, cancellationToken);
 
             return expiration == null ? null : DateTimeOffset.ParseExact(expiration, "O", null);
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken _)
+        public async Task<IEnumerable<string>> GetExpiredFilesAsync(
+            CancellationToken cancellationToken
+        )
         {
             var expiredFiles = new List<string>();
-            foreach (var file in Directory.EnumerateFiles(_directoryPath, "*.expiration"))
+            try
             {
-                var f = await InternalFileId.Parse(
-                    _fileIdProvider,
-                    Path.GetFileNameWithoutExtension(file)
-                );
-                if (FileHasExpired(f, _fileRepFactory) && FileIsIncomplete(f, _fileRepFactory))
+                foreach (var file in Directory.EnumerateFiles(_directoryPath, "*.expiration"))
                 {
-                    expiredFiles.Add(f);
+                    var f = await InternalFileId.Parse(
+                        _fileIdProvider,
+                        Path.GetFileNameWithoutExtension(file)
+                    );
+                    if (
+                        await FileHasExpired(f, _fileRepFactory, cancellationToken)
+                        && await FileIsIncomplete(f, _fileRepFactory, cancellationToken)
+                    )
+                    {
+                        expiredFiles.Add(f);
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // As this method is most likely called as a cleanup job just return what we've found so far rather than throwing.
             }
 
             return expiredFiles;
         }
 
         /// <inheritdoc />
-        public async Task<int> RemoveExpiredFilesAsync(CancellationToken _)
+        public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
         {
-            var expiredFiles = await GetExpiredFilesAsync(CancellationToken.None);
+            var expiredFiles = await GetExpiredFilesAsync(cancellationToken);
             var deleteFileTasks = expiredFiles
                 .Select(file => DeleteFileAsync(file, CancellationToken.None))
                 .ToList();
@@ -67,24 +82,32 @@ namespace tusdotnet.Stores
             return deleteFileTasks.Count;
         }
 
-        private static bool FileHasExpired(
+        private static async Task<bool> FileHasExpired(
             InternalFileId fileId,
-            InternalFileRep.FileRepFactory fileRepFactory
+            InternalFileRep.FileRepFactory fileRepFactory,
+            CancellationToken cancellationToken
         )
         {
-            var firstLine = fileRepFactory.Expiration(fileId).ReadFirstLine();
+            var firstLine = await fileRepFactory
+                .Expiration(fileId)
+                .ReadTextAsync(fileIsOptional: false, cancellationToken);
             return !string.IsNullOrWhiteSpace(firstLine)
                 && DateTimeOffset.ParseExact(firstLine, "O", null).HasPassed();
         }
 
-        private static bool FileIsIncomplete(
+        private static async Task<bool> FileIsIncomplete(
             InternalFileId fileId,
-            InternalFileRep.FileRepFactory fileRepFactory
+            InternalFileRep.FileRepFactory fileRepFactory,
+            CancellationToken cancellationToken
         )
         {
-            var uploadLength = fileRepFactory
+            var uploadLength = await fileRepFactory
                 .UploadLength(fileId)
-                .ReadFirstLineAsLong(fileIsOptional: true, defaultValue: long.MinValue);
+                .ReadTextAsLongAsync(
+                    fileIsOptional: true,
+                    defaultValue: long.MinValue,
+                    cancellationToken
+                );
 
             if (uploadLength == long.MinValue)
             {

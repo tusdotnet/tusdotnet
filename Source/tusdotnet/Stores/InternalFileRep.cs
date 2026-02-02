@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace tusdotnet.Stores
 {
@@ -24,19 +26,33 @@ namespace tusdotnet.Stores
             return File.Exists(Path);
         }
 
-        public void Write(string text)
+        public Task WriteAsync(string text)
         {
+#if NETCOREAPP3_0_OR_GREATER
+            return File.WriteAllTextAsync(Path, text);
+#else
             File.WriteAllText(Path, text);
+            return Task.FromResult(0);
+#endif
         }
 
-        public void Write(byte[] data)
+        public Task WriteAsync(byte[] data)
         {
+#if NETCOREAPP3_0_OR_GREATER
+            return File.WriteAllBytesAsync(Path, data);
+#else
             File.WriteAllBytes(Path, data);
+            return Task.FromResult(0);
+#endif
         }
 
-        public long ReadFirstLineAsLong(bool fileIsOptional = false, long defaultValue = -1)
+        public async Task<long> ReadTextAsLongAsync(
+            bool fileIsOptional = false,
+            long defaultValue = -1,
+            CancellationToken cancellationToken = default
+        )
         {
-            var content = ReadFirstLine(fileIsOptional);
+            var content = await ReadTextAsync(fileIsOptional, cancellationToken);
             if (long.TryParse(content, out var value))
             {
                 return value;
@@ -45,25 +61,42 @@ namespace tusdotnet.Stores
             return defaultValue;
         }
 
-        public byte[] ReadBytes()
+        public async Task<byte[]> ReadBytesAsync(
+            bool fileIsOptional = false,
+            CancellationToken cancellationToken = default
+        )
         {
-            using var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
-            var data = new byte[stream.Length];
-            stream.Read(data, 0, data.Length);
-
-            return data;
-        }
-
-        public string ReadFirstLine(bool fileIsOptional = false)
-        {
-            if (fileIsOptional && !File.Exists(Path))
+            try
+            {
+#if NETCOREAPP3_0_OR_GREATER
+                return await File.ReadAllBytesAsync(Path, cancellationToken);
+#else
+                return File.ReadAllBytes(Path);
+#endif
+            }
+            catch (FileNotFoundException) when (fileIsOptional)
             {
                 return null;
             }
+        }
 
-            using var stream = GetStream(FileMode.Open, FileAccess.Read, FileShare.Read);
-            using var sr = new StreamReader(stream);
-            return sr.ReadLine();
+        public async Task<string> ReadTextAsync(
+            bool fileIsOptional = false,
+            CancellationToken cancellationToken = default
+        )
+        {
+            try
+            {
+#if NETCOREAPP3_0_OR_GREATER
+                return await File.ReadAllTextAsync(Path, cancellationToken);
+#else
+                return File.ReadAllText(Path);
+#endif
+            }
+            catch (FileNotFoundException) when (fileIsOptional)
+            {
+                return null;
+            }
         }
 
         public FileStream GetStream(

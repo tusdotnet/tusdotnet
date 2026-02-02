@@ -9,11 +9,14 @@ namespace tusdotnet.Stores
     public partial class TusDiskStore
     {
         /// <inheritdoc />
-        public async Task<FileConcat> GetUploadConcatAsync(string fileId, CancellationToken _)
+        public async Task<FileConcat> GetUploadConcatAsync(
+            string fileId,
+            CancellationToken cancellationToken
+        )
         {
-            var firstLine = _fileRepFactory
+            var firstLine = await _fileRepFactory
                 .UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .ReadFirstLine(true);
+                .ReadTextAsync(true, cancellationToken);
             return string.IsNullOrWhiteSpace(firstLine) ? null : new UploadConcat(firstLine).Type;
         }
 
@@ -25,9 +28,9 @@ namespace tusdotnet.Stores
         )
         {
             var fileId = await CreateFileAsync(uploadLength, metadata, CancellationToken.None);
-            _fileRepFactory
+            await _fileRepFactory
                 .UploadConcat(await InternalFileId.Parse(_fileIdProvider, fileId))
-                .Write(new FileConcatPartial().GetHeader());
+                .WriteAsync(new FileConcatPartial().GetHeader());
             return fileId;
         }
 
@@ -73,9 +76,9 @@ namespace tusdotnet.Stores
             string[] partialFiles
         )
         {
-            _fileRepFactory
+            await _fileRepFactory
                 .UploadConcat(internalFileId)
-                .Write(new FileConcatFinal(partialFiles).GetHeader());
+                .WriteAsync(new FileConcatFinal(partialFiles).GetHeader());
         }
 
         private async Task ConcatenatePartialFiles(

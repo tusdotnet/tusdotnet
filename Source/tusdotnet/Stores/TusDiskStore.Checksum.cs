@@ -33,26 +33,33 @@ namespace tusdotnet.Stores
                 .Data(internalFileId)
                 .GetStream(FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
 
-            var chunkStartPosition = _fileRepFactory
+            var chunkStartPosition = await _fileRepFactory
                 .ChunkStartPosition(internalFileId)
-                .ReadFirstLineAsLong(true, 0);
+                .ReadTextAsLongAsync(true, 0, CancellationToken.None);
 
             var chunkCompleteFile = _fileRepFactory.ChunkComplete(internalFileId);
 
             // If the client has provided a faulty checksum-trailer we should just discard the chunk.
             // Otherwise only verify the checksum if the entire lastest chunk has been written.
             // If not, just discard the last chunk as it won't match the checksum anyway.
-            if (!ChecksumTrailerHelper.IsFallback(algorithm, checksum) && chunkCompleteFile.Exist())
+            if (!ChecksumTrailerHelper.IsFallback(algorithm, checksum))
             {
-                var calculatedChecksum = chunkCompleteFile.ReadBytes();
+                var calculatedChecksum = await chunkCompleteFile.ReadBytesAsync(
+                    fileIsOptional: true,
+                    CancellationToken.None
+                );
 
-                // If we don't have the optimized checksum file calculate it from the file stream.
-                if (calculatedChecksum is { Length: 1 })
+                // If file is null the chunk wasn't completed so there is no need to verify the checksum.
+                if (calculatedChecksum is not null)
                 {
-                    calculatedChecksum = dataStream.CalculateSha1(chunkStartPosition);
-                }
+                    // If we don't have the optimized checksum file calculate it from the file stream.
+                    if (calculatedChecksum is { Length: 1 })
+                    {
+                        calculatedChecksum = dataStream.CalculateSha1(chunkStartPosition);
+                    }
 
-                valid = checksum.SequenceEqual(calculatedChecksum);
+                    valid = checksum.SequenceEqual(calculatedChecksum);
+                }
             }
 
             if (!valid)
@@ -63,7 +70,7 @@ namespace tusdotnet.Stores
             return valid;
         }
 
-        private InternalFileRep InitializeChunk(
+        private async Task<InternalFileRep> InitializeChunkAndGetCompleteFile(
             InternalFileId internalFileId,
             long totalDiskFileLength
         )
@@ -71,16 +78,16 @@ namespace tusdotnet.Stores
             var chunkComplete = _fileRepFactory.ChunkComplete(internalFileId);
             chunkComplete.Delete();
 
-            _fileRepFactory
+            await _fileRepFactory
                 .ChunkStartPosition(internalFileId)
-                .Write(totalDiskFileLength.ToString());
+                .WriteAsync(totalDiskFileLength.ToString());
 
             return chunkComplete;
         }
 
-        private static void MarkChunkComplete(InternalFileRep chunkComplete, byte[] checksum)
+        private static async Task MarkChunkComplete(InternalFileRep chunkComplete, byte[] checksum)
         {
-            chunkComplete.Write(checksum ?? DefaultValueForChunkComplete);
+            await chunkComplete.WriteAsync(checksum ?? DefaultValueForChunkComplete);
         }
 
         // The string "1" due to backwards compatibility. Keep as static byte[] to not reallocate.

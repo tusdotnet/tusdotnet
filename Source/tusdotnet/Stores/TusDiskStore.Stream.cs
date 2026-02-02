@@ -48,11 +48,14 @@ namespace tusdotnet.Stores
                     return 0;
                 }
 
-                using var hasher = TusDiskStoreHasher.Create(
-                    stream.GetUploadChecksumInfo()?.Algorithm
-                );
+                var checksumInfo = stream.GetUploadChecksumInfo();
 
-                var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
+                using var hasher = TusDiskStoreHasher.Create(checksumInfo?.Algorithm);
+
+                var chunkCompleteFile = await InitializeChunkAndGetCompleteFile(
+                    internalFileId,
+                    totalDiskFileLength
+                );
 
                 int numberOfbytesReadFromClient;
                 var bytesWrittenThisRequest = 0L;
@@ -121,7 +124,7 @@ namespace tusdotnet.Stores
 
                 if (!clientDisconnectedDuringRead)
                 {
-                    MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
+                    await MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
                 }
 
                 return bytesWrittenThisRequest;
