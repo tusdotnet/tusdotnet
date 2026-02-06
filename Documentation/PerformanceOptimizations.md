@@ -219,6 +219,20 @@ return await _clientDisconnectGuard.Execute<ReadState, ReadResult>(
 );
 ```
 
+---
+
+## 7. Stream AppendDataAsync: Read Directly Into Write Buffer (Avoid Copy)
+
+**Proposed Change:**
+Avoid the extra `Array.Copy` by reading from the request stream directly into the file write buffer.
+
+**Decision: NOT IMPLEMENTED**
+
+**Rationale:**
+- Microbenchmarks showed mixed/unstable results (higher variance) and sometimes additional allocations.
+- Unclear impact on end-to-end upload latency with real HTTP streams; not worth the risk/complexity.
+
+
 **Benchmark Results:**
 
 | Method | Mean | Ratio | Allocated | Ratio |
