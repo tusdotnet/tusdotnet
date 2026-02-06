@@ -1170,41 +1170,6 @@ namespace tusdotnet.test.Tests
             uploadLength.ShouldBe(100);
         }
 
-#pragma warning disable xUnit1004 // Test methods should not be skipped - This test method should ;)
-        [Fact(Skip = "No need to run it each time")]
-#pragma warning restore xUnit1004 // Test methods should not be skipped
-        public async Task RemoveExpiredFilesAsync_PerformanceTest()
-        {
-            const int numberOfFilesToCreate = 100_000;
-
-            var ids = new List<string>(numberOfFilesToCreate);
-            for (var i = 0; i < numberOfFilesToCreate; i++)
-            {
-                var file = await _fixture.Store.CreateFileAsync(300, null, CancellationToken.None);
-                await _fixture.Store.SetExpirationAsync(
-                    file,
-                    i % 2 == 0 ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow.AddSeconds(-1),
-                    CancellationToken.None
-                );
-                ids.Add(file);
-            }
-
-            var watch = Stopwatch.StartNew();
-
-            await _fixture.Store.RemoveExpiredFilesAsync(CancellationToken.None);
-
-            watch.Stop();
-
-            var removed = ids.Where(f =>
-                    !_fixture.Store.FileExistAsync(f, CancellationToken.None).Result
-                )
-                .ToList();
-
-            _output.WriteLine(
-                $"Deleted {removed.Count} of {numberOfFilesToCreate} files in {watch.ElapsedMilliseconds} ms"
-            );
-        }
-
         [Theory]
         [InlineData("..\file.txt", false)]
         [InlineData("..\\file.txt", false)]

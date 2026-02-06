@@ -55,12 +55,15 @@ namespace tusdotnet.test.Tests
         [InlineData("/files/a/b/{TusFileId}/c")]
         public void Throws_Exception_If_TusFileId_Is_Included_In_Route_Pattern(string pattern)
         {
+            // TestServer will log a noisy "Application startup exception" when the endpoint configuration
+            // throws during startup. We only care that MapTus validates the pattern, so call it directly.
             Should.Throw<ArgumentException>(() =>
-            {
-                using var server = CreateTestServer(endpoints =>
-                    endpoints.MapTus(pattern, _ => Task.FromResult(CreateConfig()))
-                );
-            });
+                tusdotnet.EndpointConventionBuilderExtensions.MapTus(
+                    endpoints: null!,
+                    pattern: pattern,
+                    configFactory: _ => Task.FromResult(CreateConfig())
+                )
+            );
         }
 
         [Fact]
