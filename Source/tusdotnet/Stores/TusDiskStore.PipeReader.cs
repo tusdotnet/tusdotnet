@@ -76,7 +76,7 @@ namespace tusdotnet.Stores
 
                     if (result.Buffer.Length >= _maxWriteBufferSize)
                     {
-                        await diskFileStream.FlushToDisk(result.Buffer);
+                        await diskFileStream.WriteSequenceAsync(result.Buffer);
 
                         hasher.Append(result.Buffer);
 
@@ -105,7 +105,7 @@ namespace tusdotnet.Stores
                     );
 
                     bytesWrittenThisRequest += result.Buffer.Length;
-                    await diskFileStream.FlushToDisk(result.Buffer);
+                    await diskFileStream.WriteSequenceAsync(result.Buffer);
 
                     hasher.Append(result.Buffer);
                 }
