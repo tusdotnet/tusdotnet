@@ -87,8 +87,6 @@ namespace tusdotnet
 
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
-            // TODO: Implement support for custom responses by not writing if response has started
-
             if (context.RequestAborted.IsCancellationRequested)
             {
                 context.Abort();
