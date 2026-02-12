@@ -1,6 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿#nullable enable
+using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 
 namespace tusdotnet.Validation.Requirements
@@ -9,7 +11,12 @@ namespace tusdotnet.Validation.Requirements
     {
         public override async Task Validate(ContextAdapter context)
         {
-            var uploadLengthIsSet = await UploadLengthIsAlreadyPresent(context);
+            var fileUploadLength = await context.StoreAdapter.GetUploadLengthAsync(
+                context.FileId,
+                context.CancellationToken
+            );
+
+            var uploadLengthIsSet = fileUploadLength != null;
             var supportsUploadDeferLength = context.StoreAdapter.Extensions.CreationDeferLength;
 
             if (!supportsUploadDeferLength && !uploadLengthIsSet)
@@ -19,24 +26,51 @@ namespace tusdotnet.Validation.Requirements
                 );
             }
 
-            if (UploadLengthIsProvidedInRequest(context.Request) && uploadLengthIsSet)
+            if (!UploadLengthIsProvidedInRequest(context.Request))
+            {
+                return;
+            }
+
+            if (uploadLengthIsSet)
             {
                 await BadRequest($"{HeaderConstants.UploadLength} cannot be updated once set");
+                return;
             }
-        }
 
-        private static async Task<bool> UploadLengthIsAlreadyPresent(ContextAdapter context)
-        {
-            var fileUploadLength = await context.StoreAdapter.GetUploadLengthAsync(
-                context.FileId,
-                context.CancellationToken
-            );
-            return fileUploadLength != null;
+            await VerifyRequestUploadLength(context);
         }
 
         private static bool UploadLengthIsProvidedInRequest(RequestAdapter request)
         {
             return request.Headers.ContainsKey(HeaderConstants.UploadLength);
+        }
+
+        private Task VerifyRequestUploadLength(ContextAdapter context)
+        {
+            var request = context.Request;
+
+            if (
+                !long.TryParse(request.Headers[HeaderConstants.UploadLength], out long uploadLength)
+            )
+            {
+                return BadRequest($"Could not parse {HeaderConstants.UploadLength}");
+            }
+
+            if (uploadLength < 0)
+            {
+                return BadRequest(
+                    $"Header {HeaderConstants.UploadLength} must be a positive number"
+                );
+            }
+
+            if (uploadLength > context.Configuration.GetMaxAllowedUploadSizeInBytes())
+            {
+                return RequestEntityTooLarge(
+                    $"Header {HeaderConstants.UploadLength} exceeds the server's max file size."
+                );
+            }
+
+            return TaskHelper.Completed;
         }
     }
 }

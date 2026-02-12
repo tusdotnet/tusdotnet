@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -676,6 +677,172 @@ namespace tusdotnet.test.Tests
 
             response.StatusCode.ShouldBe(HttpStatusCode.Created);
             uploadIsDeferred.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSizeInBytesLong_And_Body_Is_A_Stream()
+        {
+            await Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSize_Internal(
+                false,
+                useInt32MaxSize: false
+            );
+        }
+
+#if pipelines
+        [Fact]
+        public async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSizeInBytesLong_And_Body_Is_A_PipeReader()
+        {
+            await Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSize_Internal(
+                true,
+                useInt32MaxSize: false
+            );
+        }
+#endif
+
+        [Fact]
+        public async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSizeInBytes_And_Body_Is_A_Stream()
+        {
+            await Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSize_Internal(
+                false,
+                useInt32MaxSize: true
+            );
+        }
+
+#if pipelines
+        [Fact]
+        public async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSizeInBytes_And_Body_Is_A_PipeReader()
+        {
+            await Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSize_Internal(
+                true,
+                useInt32MaxSize: true
+            );
+        }
+#endif
+
+        private static async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSize_Internal(
+            bool usePipelinesIfAvailable,
+            bool useInt32MaxSize
+        )
+        {
+            var fileId = Guid.NewGuid().ToString();
+
+#if pipelines
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore,
+                ITusPipelineStore
+            >();
+#else
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
+#endif
+            store.WithExistingFile(fileId, uploadLength: null, uploadOffset: 0);
+
+            var config = new DefaultTusConfiguration
+            {
+                Store = store,
+                UrlPath = "/files",
+#if pipelines
+                UsePipelinesIfAvailable = usePipelinesIfAvailable,
+#endif
+            };
+
+            var maxUploadSize = 100;
+            var uploadLengthSetByClient = 200;
+
+            if (useInt32MaxSize)
+            {
+                config.MaxAllowedUploadSizeInBytes = maxUploadSize;
+            }
+            else
+            {
+                config.MaxAllowedUploadSizeInBytesLong = maxUploadSize;
+            }
+
+            using var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ => config);
+            });
+
+            var response = await server
+                .CreateTusResumableRequest($"/files/{fileId}")
+                .AddHeader("Upload-Offset", "0")
+                .AddHeader("Upload-Length", uploadLengthSetByClient.ToString())
+                .And(message => message.AddBody())
+                .SendAsync("PATCH");
+
+            await response.ShouldBeErrorResponse(
+                HttpStatusCode.RequestEntityTooLarge,
+                "Header Upload-Length exceeds the server's max file size."
+            );
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(5)]
+        public async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Exceeds_Max_Regardless_Of_Which_Request_Sets_It(
+            int requestNumberThatSetsUploadLength
+        )
+        {
+            var fileId = Guid.NewGuid().ToString();
+            var currentOffset = 0;
+
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
+            store.WithExistingFile(fileId, uploadLength: null, uploadOffset: currentOffset);
+            store
+                .AppendDataAsync(fileId, Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+                .Returns(_ =>
+                {
+                    currentOffset += 10;
+                    return Task.FromResult(10L);
+                });
+            store
+                .GetUploadOffsetAsync(fileId, Arg.Any<CancellationToken>())
+                .Returns(_ => currentOffset);
+
+            using var server = TestServerFactory.Create(app =>
+            {
+                app.UseTus(_ => new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files",
+                    MaxAllowedUploadSizeInBytesLong = 100,
+#if pipelines
+                    UsePipelinesIfAvailable = false, // Disable it to simplify, it does not matter here.
+#endif
+                });
+            });
+
+            // Send N-1 requests without Upload-Length header
+            for (int i = 1; i < requestNumberThatSetsUploadLength; i++)
+            {
+                var response = await server
+                    .CreateTusResumableRequest($"/files/{fileId}")
+                    .AddHeader("Upload-Offset", currentOffset.ToString())
+                    .AddBody(10)
+                    .SendAsync("PATCH");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            }
+
+            // On the Nth request, send Upload-Length that exceeds max
+            var finalResponse = await server
+                .CreateTusResumableRequest($"/files/{fileId}")
+                .AddHeader("Upload-Offset", currentOffset.ToString())
+                .AddHeader("Upload-Length", "200")
+                .AddBody(10)
+                .SendAsync("PATCH");
+
+            await finalResponse.ShouldBeErrorResponse(
+                HttpStatusCode.RequestEntityTooLarge,
+                "Header Upload-Length exceeds the server's max file size."
+            );
         }
     }
 }
