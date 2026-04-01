@@ -85,9 +85,9 @@ namespace tusdotnet.Stores
             return chunkComplete;
         }
 
-        private static async Task MarkChunkComplete(InternalFileRep chunkComplete, byte[] checksum)
+        private static Task MarkChunkComplete(InternalFileRep chunkComplete, byte[] checksum)
         {
-            await chunkComplete.WriteAsync(checksum ?? DefaultValueForChunkComplete);
+            return chunkComplete.WriteAsync(checksum ?? DefaultValueForChunkComplete);
         }
 
         // The string "1" due to backwards compatibility. Keep as static byte[] to not reallocate.
