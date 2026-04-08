@@ -47,7 +47,7 @@ app.MapTus("/files", async httpContext => new()
     Store = new tusdotnet.Stores.TusDiskStore(@"C:\tusfiles\"),
     Events = new()
     {
-        // What to do when file is completely uploaded?
+        // What to do when the file is completely uploaded?
         OnFileCompleteAsync = async eventContext =>
         {
             tusdotnet.Interfaces.ITusFile file = await eventContext.GetFileAsync();
@@ -66,7 +66,7 @@ app.MapTus("/files", async httpContext => new()
  More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
 <details>
-<summary><h3>On older frameworks, use the tusdotnet middelware</h3></summary>
+<summary><h3>On older frameworks, use the tusdotnet middleware</h3></summary>
 
 Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies).  More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
