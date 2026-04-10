@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using tusdotnet.Adapters;
-using tusdotnet.Extensions;
 using tusdotnet.ExternalMiddleware.Core;
 using tusdotnet.Models;
 
@@ -15,7 +14,6 @@ namespace tusdotnet
     public class TusCoreMiddleware
     {
         private readonly RequestDelegate _next;
-
         private readonly Func<HttpContext, Task<DefaultTusConfiguration>> _configFactory;
 
         /// <summary>Creates a new instance of TusCoreMiddleware.</summary>
@@ -49,7 +47,7 @@ namespace tusdotnet
 
             var requestUri = DotnetCoreRequestUriFactory.GetRequestUri(httpContext);
 
-            if (!RequestIsForTusEndpoint(requestUri, config.UrlPath))
+            if (!requestUri.LocalPath.StartsWith(config.UrlPath, StringComparison.OrdinalIgnoreCase))
             {
                 await _next(httpContext);
                 return;
@@ -57,8 +55,8 @@ namespace tusdotnet
 
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(httpContext, requestUri);
 
-            // Note: When using the middleware one must prefix the UrlPath with the base path so no need to provide it here.
-            // This is done for backwards compatibility.
+            // Note: When using the middleware one must prefix the UrlPath with the base path so no need
+            // to provide requestPathBase here. This is done for backwards compatibility.
             var contextAdapter = new ContextAdapter(
                 config.UrlPath,
                 requestPathBase: null,
@@ -76,36 +74,11 @@ namespace tusdotnet
             }
             else
             {
-                await RespondToClient(contextAdapter.Response, httpContext);
+                await TusResponseWriter.WriteToResponse(
+                    TusHandleRequestResult.FromResponse(contextAdapter.Response),
+                    httpContext
+                );
             }
-        }
-
-        private static bool RequestIsForTusEndpoint(Uri requestUri, string urlPath)
-        {
-            return requestUri.LocalPath.StartsWith(urlPath, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
-        {
-            // TODO: Implement support for custom responses by not writing if response has started
-
-            if (context.RequestAborted.IsCancellationRequested)
-            {
-                context.Abort();
-                return;
-            }
-
-            context.Response.StatusCode = (int)response.Status;
-            foreach (var item in response.Headers)
-            {
-                context.Response.Headers[item.Key] = item.Value;
-            }
-
-            if (string.IsNullOrWhiteSpace(response.Message))
-                return;
-
-            context.Response.ContentType = "text/plain";
-            await response.WriteMessageToStream(context.Response.Body);
         }
     }
 }
