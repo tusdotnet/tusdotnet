@@ -1,4 +1,5 @@
-﻿using System.Threading;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ using tusdotnet.Models.Expiration;
 
 namespace AspNetCore_netcoreapp2_1_TestApp.Services
 {
-    public class ExpiredFilesCleanupService : IHostedService
+    public class ExpiredFilesCleanupService : BackgroundService
     {
         private readonly ITusExpirationStore _expirationStore;
         private readonly ExpirationBase _expiration;
@@ -24,7 +25,7 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Services
             _expiration = config.Expiration;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             if (_expiration == null)
             {
@@ -32,27 +33,29 @@ namespace AspNetCore_netcoreapp2_1_TestApp.Services
                 return;
             }
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await RunCleanup(cancellationToken);
-                await Task.Delay(_expiration.Timeout);
+                await RunCleanup(stoppingToken);
+                await Task.Delay(_expiration.Timeout, stoppingToken);
             }
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
         }
 
         private async Task RunCleanup(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Running cleanup job...");
-            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
-                cancellationToken
-            );
-            _logger.LogInformation(
-                $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
-            );
+            try
+            {
+                _logger.LogInformation("Running cleanup job...");
+                var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
+                    cancellationToken
+                );
+                _logger.LogInformation(
+                    $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
+                );
+            }
+            catch (Exception exc)
+            {
+                _logger.LogWarning("Failed to run cleanup job: " + exc.Message);
+            }
         }
     }
 }

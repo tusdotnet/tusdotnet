@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tusdotnet.performance", "tu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCore_net6.0_TestApp", "TestSites\AspNetCore_net6.0_TestApp\AspNetCore_net6.0_TestApp.csproj", "{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCore_net10.0_TestApp", "TestSites\AspNetCore_net10.0_TestApp\AspNetCore_net10.0_TestApp.csproj", "{B1CD0EFF-BD85-4A65-B03B-22D9786FEF39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,10 @@ Global
 		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1CD0EFF-BD85-4A65-B03B-22D9786FEF39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1CD0EFF-BD85-4A65-B03B-22D9786FEF39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1CD0EFF-BD85-4A65-B03B-22D9786FEF39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1CD0EFF-BD85-4A65-B03B-22D9786FEF39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -100,6 +106,7 @@ Global
 		{9C7B1F58-A750-4BBF-BC76-028EA08574A3} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 		{51AA47AB-05CE-48D9-8825-2F24F737589E} = {38F739AF-5933-4416-A148-33C126AB9021}
 		{A0BD0EEF-AD84-4A64-B02A-11C9675EF028} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
+		{B1CD0EFF-BD85-4A65-B03B-22D9786FEF39} = {90C4BEDA-24DD-4E2F-AE26-D909A9BEFE64}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B8AC21C3-0FBB-4B48-AB05-0523CCBAC8EC}

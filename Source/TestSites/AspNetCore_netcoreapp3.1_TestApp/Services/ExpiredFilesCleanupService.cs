@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -9,12 +9,11 @@ using tusdotnet.Models.Expiration;
 
 namespace AspNetCore_netcoreapp3_1_TestApp.Services
 {
-    public class ExpiredFilesCleanupService : IHostedService, IDisposable
+    public class ExpiredFilesCleanupService : BackgroundService
     {
         private readonly ITusExpirationStore _expirationStore;
         private readonly ExpirationBase _expiration;
         private readonly ILogger<ExpiredFilesCleanupService> _logger;
-        private Timer _timer;
 
         public ExpiredFilesCleanupService(
             ILogger<ExpiredFilesCleanupService> logger,
@@ -26,7 +25,7 @@ namespace AspNetCore_netcoreapp3_1_TestApp.Services
             _expiration = config.Expiration;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             if (_expiration == null)
             {
@@ -34,24 +33,13 @@ namespace AspNetCore_netcoreapp3_1_TestApp.Services
                 return;
             }
 
-            await RunCleanup(cancellationToken);
-            _timer = new Timer(
-                async (e) => await RunCleanup((CancellationToken)e),
-                cancellationToken,
-                TimeSpan.Zero,
-                _expiration.Timeout
-            );
-        }
+            await RunCleanup(stoppingToken);
 
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            _timer?.Change(Timeout.Infinite, 0);
-            return Task.CompletedTask;
-        }
-
-        public void Dispose()
-        {
-            _timer?.Dispose();
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(_expiration.Timeout, stoppingToken);
+                await RunCleanup(stoppingToken);
+            }
         }
 
         private async Task RunCleanup(CancellationToken cancellationToken)

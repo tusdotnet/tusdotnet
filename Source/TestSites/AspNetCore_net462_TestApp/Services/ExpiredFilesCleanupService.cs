@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using tusdotnet.Interfaces;
@@ -40,15 +41,22 @@ namespace AspNetCore_net462_TestApp.Services
                 {
                     while (!onAppDisposingToken.IsCancellationRequested)
                     {
-                        _logger.LogInformation("Running cleanup job...");
+                        try
+                        {
+                            _logger.LogInformation("Running cleanup job...");
 
-                        var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
-                            onAppDisposingToken
-                        );
+                            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
+                                onAppDisposingToken
+                            );
 
-                        _logger.LogInformation(
-                            $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
-                        );
+                            _logger.LogInformation(
+                                $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"
+                            );
+                        }
+                        catch (Exception exc)
+                        {
+                            _logger.LogWarning("Failed to run cleanup job: " + exc.Message);
+                        }
 
                         await Task.Delay(_expiration.Timeout, onAppDisposingToken);
                     }
