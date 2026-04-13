@@ -4,9 +4,7 @@
 
 >"Our aim is to solve the problem of unreliable file uploads once and for all. tus is a new open protocol for resumable uploads built on HTTP. It offers simple, cheap and reusable stacks for clients and servers. It supports any language, any platform and any network." - https://tus.io
 
-tusdotnet is a .NET server implementation of the tus.io protocol that runs on .NET Framework, .NET Standard, .NET6 and later.
-
-Comments, ideas, questions and PRs are welcome!
+tusdotnet is a .NET server implementation of the tus.io protocol that runs on .NET Framework, .NET Standard, .NET 6 and later.
 
 ## Features
 
@@ -15,24 +13,16 @@ Comments, ideas, questions and PRs are welcome!
 * Experimental support for IETF's [Resumable Uploads For Http](https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/) (see branch [POC/tus2](https://github.com/tusdotnet/tusdotnet/tree/POC/tus2))
 * Fast and reliable
 * Easy to configure
-* Customizable data storage
+* Customizable data storage with built-in disk storage (`TusDiskStore`) and community stores for [Azure Blob Storage](https://github.com/giometrix/Xtensible.TusDotNet.Azure) and [S3-compatible storage](https://github.com/bechtleav360/tusdotnet.Storage.S3) (AWS S3, MinIO, Cloudflare R2, etc.)
 * MIT licensed
 
-## Install
+## Getting started
 
-Visual Studio
+```
+dotnet add package tusdotnet
+```
 
-``PM> Install-Package tusdotnet``
-
-.NET CLI
-
-``> dotnet add package tusdotnet``
-
-## Configure
-
-On .NET6 and later:
 ```csharp
-
 using tusdotnet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,75 +40,26 @@ app.MapTus("/files", async httpContext => new()
         // What to do when the file is completely uploaded?
         OnFileCompleteAsync = async eventContext =>
         {
-            tusdotnet.Interfaces.ITusFile file = await eventContext.GetFileAsync();
-            Dictionary<string, tusdotnet.Models.Metadata> metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
-            using Stream content = await file.GetContentAsync(eventContext.CancellationToken);
+            var file = await eventContext.GetFileAsync();
 
-            await DoSomeProcessing(content, metadata);
+            await QueueForProcessing(file);
         }
     }
 });
-
 ```
 
- Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies). 
- 
- More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
+Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies).
 
-<details>
-<summary><h3>On older frameworks, use the tusdotnet middleware</h3></summary>
+More options, events and [middleware usage](https://github.com/tusdotnet/tusdotnet/wiki/Configure-tusdotnet#endpoint-routing-or-middleware) are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
 
-Create your Startup class as you would normally do. Add a using statement for `tusdotnet` and run `UseTus` on the app builder. Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies).  More options and events are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
+## Try it out
 
-```csharp
-
-app.UseTus(httpContext => new DefaultTusConfiguration
-{
-    // This method is called on each request so different configurations can be returned per user, domain, path etc.
-    // Return null to disable tusdotnet for the current request.
-
-    // c:\tusfiles is where to store files
-    Store = new TusDiskStore(@"C:\tusfiles\"),
-    // On what url should we listen for uploads?
-    UrlPath = "/files",
-    Events = new Events
-    {
-        OnFileCompleteAsync = async eventContext =>
-        {
-            ITusFile file = await eventContext.GetFileAsync();
-            Dictionary<string, Metadata> metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
-            using Stream content = await file.GetContentAsync(eventContext.CancellationToken);
-
-            await DoSomeProcessing(content, metadata);
-        }
-    }
-});
-
-```
-</details>
-
-## Test sites
-
-If you just want to play around with tusdotnet/the tus protocol, clone the repo and run one of the test sites. They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine. 
-
-Test sites are available for:
-
-* ASP.NET Core 6 (.NET 6.0)
-* ASP.NET Core 3.1 (.NET Core 3.1)
-* ASP.NET Core 3.0 (.NET Core 3.0)
-* ASP.NET Core 2.2 (.NET Core 2.2)
-* ASP.NET Core 2.2 (.NET Framework 4.6.2)
-* ASP.NET Core 2.1 (.NET Core 2.1)
-* OWIN (.NET Framework 4.5.2)
+Clone the repo and run one of the [test sites](https://github.com/tusdotnet/tusdotnet/tree/master/Source/TestSites). They each launch a small site running tusdotnet and the [official JS client](https://github.com/tus/tus-js-client) so that you can test the protocol on your own machine.
 
 ## Clients
 
-[tus.io](http://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
+[tus.io](https://tus.io/implementations.html) keeps a list of clients for a number of different platforms (Android, Java, JS, iOS etc). tusdotnet should work with all of them as long as they support version 1.0.0 of the protocol.
 
 ## License
 
 This project is licensed under the MIT license, see [LICENSE](LICENSE).
-
-## Want to know more?
-
-Check out the [wiki](https://github.com/tusdotnet/tusdotnet/wiki) or create an [issue](https://github.com/tusdotnet/tusdotnet/issues)
