@@ -1,0 +1,36 @@
+﻿
+progress {
+    padding-top: 1em;
+    width: 25%;
+    text-align: center;
+    vertical-align: middle;
+    height: 3em;
+    -webkit-appearance: none;
+    border: none;
+    position: relative;
+}
+
+    progress:before {
+        content: attr(data-label);
+        vertical-align: 0;
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+    }
+
+    progress::-webkit-progress-bar {
+        background-color: #c9c9c9;
+    }
+
+    progress::-webkit-progress-value {
+        background-color: #7cc4ff;
+    }
+
+    progress::-moz-progress-bar {
+        background-color: #7cc4ff;
+    }
+
+.uploadControl {
+    padding-top: 2em;
+}
