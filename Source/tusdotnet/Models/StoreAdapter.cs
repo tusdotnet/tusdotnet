@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -200,7 +199,10 @@ namespace tusdotnet.Models
 
             if (allowedExtensions != null)
             {
-                allowedExtensions.Disallowed.ToList().ForEach(Extensions.Disable);
+                foreach (var extension in allowedExtensions.Disallowed)
+                {
+                    Extensions.Disable(extension);
+                }
             }
         }
 

@@ -18,7 +18,7 @@ namespace tusdotnet.Adapters
 
         public Dictionary<string, Metadata> Metadata
         {
-            get => _metadata ?? [];
+            get => _metadata ??= [];
             set => SetOnce(ref _metadata, value, nameof(Metadata));
         }
 

@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Stores
 {
@@ -32,7 +33,7 @@ namespace tusdotnet.Stores
             return File.WriteAllTextAsync(Path, text);
 #else
             File.WriteAllText(Path, text);
-            return Task.FromResult(0);
+            return TaskHelper.Completed;
 #endif
         }
 
@@ -42,7 +43,7 @@ namespace tusdotnet.Stores
             return File.WriteAllBytesAsync(Path, data);
 #else
             File.WriteAllBytes(Path, data);
-            return Task.FromResult(0);
+            return TaskHelper.Completed;
 #endif
         }
 
