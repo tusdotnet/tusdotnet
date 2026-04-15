@@ -199,9 +199,9 @@ namespace tusdotnet.Models
 
             if (allowedExtensions != null)
             {
-                foreach (var item in allowedExtensions.Disallowed)
+                foreach (var extension in allowedExtensions.Disallowed)
                 {
-                    Extensions.Disable(item);
+                    Extensions.Disable(extension);
                 }
             }
         }

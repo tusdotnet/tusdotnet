@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using tusdotnet.Extensions;
 using tusdotnet.Extensions.Store;
 using tusdotnet.Models;
 using tusdotnet.Stores.Hashers;
@@ -48,11 +47,14 @@ namespace tusdotnet.Stores
                     return 0;
                 }
 
-                using var hasher = TusDiskStoreHasher.Create(
-                    stream.GetUploadChecksumInfo()?.Algorithm
-                );
+                var checksumInfo = stream.GetUploadChecksumInfo();
 
-                var chunkCompleteFile = InitializeChunk(internalFileId, totalDiskFileLength);
+                using var hasher = TusDiskStoreHasher.Create(checksumInfo?.Algorithm);
+
+                var chunkCompleteFile = await InitializeChunkAndGetCompleteFile(
+                    internalFileId,
+                    totalDiskFileLength
+                );
 
                 int numberOfbytesReadFromClient;
                 var bytesWrittenThisRequest = 0L;
@@ -90,9 +92,11 @@ namespace tusdotnet.Stores
                         > _maxWriteBufferSize
                     )
                     {
-                        await diskFileStream.FlushFileToDisk(
+                        await diskFileStream.WriteAsync(
                             fileWriteBuffer,
-                            writeBufferNextFreeIndex
+                            0,
+                            writeBufferNextFreeIndex,
+                            CancellationToken.None
                         );
 
                         hasher.Append(fileWriteBuffer, writeBufferNextFreeIndex);
@@ -112,16 +116,23 @@ namespace tusdotnet.Stores
                     bytesWrittenThisRequest += numberOfbytesReadFromClient;
                 } while (numberOfbytesReadFromClient != 0);
 
-                // Flush the remaining buffer to disk.
+                // Write the remaining buffer to disk.
                 if (writeBufferNextFreeIndex != 0)
                 {
-                    await diskFileStream.FlushFileToDisk(fileWriteBuffer, writeBufferNextFreeIndex);
+                    await diskFileStream.WriteAsync(
+                        fileWriteBuffer,
+                        0,
+                        writeBufferNextFreeIndex,
+                        CancellationToken.None
+                    );
                     hasher.Append(fileWriteBuffer, writeBufferNextFreeIndex);
                 }
 
+                await diskFileStream.FlushAsync(CancellationToken.None);
+
                 if (!clientDisconnectedDuringRead)
                 {
-                    MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
+                    await MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
                 }
 
                 return bytesWrittenThisRequest;

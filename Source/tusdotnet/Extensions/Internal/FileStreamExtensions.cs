@@ -48,31 +48,18 @@ namespace tusdotnet.Extensions
 #if pipelines
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static async Task FlushToDisk(this FileStream stream, ReadOnlySequence<byte> buffer)
+        public static async Task WriteSequenceAsync(
+            this FileStream stream,
+            ReadOnlySequence<byte> buffer
+        )
         {
             foreach (var segment in buffer)
             {
                 await stream.WriteAsync(segment);
             }
 
-            await stream.FlushAsync();
+            // Call FlushAsync() once at the end of all writes for better performance
         }
 #endif
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static async Task FlushFileToDisk(
-            this FileStream fileStream,
-            byte[] fileWriteBuffer,
-            int writeBufferNextFreeIndex
-        )
-        {
-            await fileStream.WriteAsync(
-                fileWriteBuffer,
-                0,
-                writeBufferNextFreeIndex,
-                CancellationToken.None
-            );
-            await fileStream.FlushAsync();
-        }
     }
 }

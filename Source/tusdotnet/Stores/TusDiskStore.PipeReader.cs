@@ -41,19 +41,25 @@ namespace tusdotnet.Stores
                 );
 
             var fileSizeOnDisk = diskFileStream.Length;
+
             if (fileUploadLengthProvidedDuringCreate == fileSizeOnDisk)
             {
                 return 0;
             }
 
-            var chunkCompleteFile = InitializeChunk(internalFileId, fileSizeOnDisk);
+            var checksumInfo = reader.GetUploadChecksumInfo();
+
+            var chunkCompleteFile = await InitializeChunkAndGetCompleteFile(
+                internalFileId,
+                fileSizeOnDisk
+            );
 
             var bytesWrittenThisRequest = 0L;
             ReadResult result = default;
             var latestDataHasBeenFlushedToDisk = false;
             var clientDisconnectedDuringRead = false;
 
-            using var hasher = TusDiskStoreHasher.Create(reader.GetUploadChecksumInfo()?.Algorithm);
+            using var hasher = TusDiskStoreHasher.Create(checksumInfo?.Algorithm);
 
             try
             {
@@ -70,7 +76,7 @@ namespace tusdotnet.Stores
 
                     if (result.Buffer.Length >= _maxWriteBufferSize)
                     {
-                        await diskFileStream.FlushToDisk(result.Buffer);
+                        await diskFileStream.WriteSequenceAsync(result.Buffer);
 
                         hasher.Append(result.Buffer);
 
@@ -99,10 +105,12 @@ namespace tusdotnet.Stores
                     );
 
                     bytesWrittenThisRequest += result.Buffer.Length;
-                    await diskFileStream.FlushToDisk(result.Buffer);
+                    await diskFileStream.WriteSequenceAsync(result.Buffer);
 
                     hasher.Append(result.Buffer);
                 }
+
+                await diskFileStream.FlushAsync(CancellationToken.None);
 
                 await reader.CompleteAsync();
             }
@@ -124,7 +132,7 @@ namespace tusdotnet.Stores
 
             if (!clientDisconnectedDuringRead)
             {
-                MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
+                await MarkChunkComplete(chunkCompleteFile, hasher.GetHashAndReset());
             }
 
             return bytesWrittenThisRequest;

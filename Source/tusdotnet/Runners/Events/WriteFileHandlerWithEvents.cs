@@ -8,9 +8,9 @@ using tusdotnet.Models.Configuration;
 
 namespace tusdotnet.Runners.Events
 {
-    internal class WriteFileHandlerWithEvents : IntentHandlerWithEvents
+    internal class WriteFileHandlerWithEvents : IntentHandlerWithEvents<WriteFileHandler>
     {
-        public WriteFileHandlerWithEvents(IntentHandler intentHandler)
+        public WriteFileHandlerWithEvents(WriteFileHandler intentHandler)
             : base(intentHandler) { }
 
         internal override async Task<ResultType> Authorize()
@@ -20,7 +20,7 @@ namespace tusdotnet.Runners.Events
                 ctx =>
                 {
                     ctx.Intent = IntentType.WriteFile;
-                    ctx.FileConcatenation = Context.Cache?.UploadConcat?.Type;
+                    ctx.FileConcatenation = Context.ParsedRequest?.UploadConcat?.Type;
                 }
             );
         }
@@ -28,7 +28,7 @@ namespace tusdotnet.Runners.Events
         internal override async Task NotifyAfterAction()
         {
             var offset =
-                Context.Cache.UploadOffset
+                TypedIntentHandler.NewUploadOffset
                 ?? await Context.StoreAdapter.GetUploadOffsetAsync(
                     Context.FileId,
                     CancellationToken.None

@@ -42,10 +42,10 @@ namespace tusdotnet.IntentHandlers
         {
             if (
                 context.StoreAdapter.Extensions.Checksum
-                && context.Cache.UploadChecksum?.IsValid == true
+                && context.ParsedRequest.UploadChecksum?.IsValid == true
             )
             {
-                stream = new ChecksumAwareStream(stream, context.Cache.UploadChecksum);
+                stream = new ChecksumAwareStream(stream, context.ParsedRequest.UploadChecksum);
             }
 
             return stream;

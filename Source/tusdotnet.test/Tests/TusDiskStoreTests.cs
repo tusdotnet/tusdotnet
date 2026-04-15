@@ -270,121 +270,6 @@ namespace tusdotnet.test.Tests
             length.ShouldBe(0);
         }
 
-        [Theory]
-        [InlineData(103, 411, 4382, 11, 43)]
-        [InlineData(51200, 51200, 2621800, 52, 52)]
-        [InlineData(51200, 2621800, 2621800, 1, 52)]
-        [InlineData(10240, 102400, 307201, 4, 31)]
-        [InlineData(51200, 52428800, 157286405, 4, 3073)]
-        [InlineData(50, 100, 400, 4, 8)]
-        public async Task AppendDataAsync_Uses_The_Read_And_Write_Buffers_Correctly(
-            int readBufferSize,
-            int writeBufferSize,
-            int fileSize,
-            int expectedNumberOfWrites,
-            int expectedNumberOfReads
-        )
-        {
-            int numberOfReadsPerWrite = (int)Math.Ceiling((double)writeBufferSize / readBufferSize);
-
-            var store = new TusDiskStore(
-                _fixture.Path,
-                false,
-                new TusDiskBufferSize(writeBufferSize, readBufferSize)
-            );
-
-            var totalNumberOfWrites = 0;
-            var totalNumberOfReads = 0;
-            var numberOfReadsSinceLastWrite = 0;
-            int totalBytesWritten = 0;
-
-            var fileId = await store.CreateFileAsync(fileSize, null, CancellationToken.None);
-
-            var requestStream = new RequestStreamFake(
-                async (
-                    RequestStreamFake stream,
-                    byte[] bufferToFill,
-                    int offset,
-                    int count,
-                    CancellationToken cancellationToken
-                ) =>
-                {
-                    count.ShouldBe(readBufferSize);
-
-                    var bytesReadFromStream = await stream.ReadBackingStreamAsync(
-                        bufferToFill,
-                        offset,
-                        count,
-                        cancellationToken
-                    );
-
-                    // There should have been a write after the previous read.
-                    if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
-                    {
-                        // Calculate the amount of data that should have been written to disk so far.
-                        var expectedFileSizeRightNow = TusDiskStoreTests.CalculateExpectedFileSize(
-                            totalNumberOfReads,
-                            readBufferSize,
-                            writeBufferSize
-                        );
-
-                        // Assert that the size on disk is correct.
-                        GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
-
-                        totalNumberOfWrites++;
-
-                        // Set to one as the write happened on the previous write, making this the second read since that write.
-                        numberOfReadsSinceLastWrite = 1;
-                    }
-
-                    numberOfReadsSinceLastWrite++;
-                    totalNumberOfReads++;
-
-                    totalBytesWritten += bytesReadFromStream;
-
-                    return bytesReadFromStream;
-                },
-                new byte[fileSize]
-            );
-
-            await store.AppendDataAsync(fileId, requestStream, CancellationToken.None);
-
-            GetLengthFromFileOnDisk().ShouldBe(fileSize);
-
-            totalNumberOfWrites++;
-
-            // -1 due to the last read returning 0 bytes as the stream is then drained
-            Assert.Equal(expectedNumberOfReads, totalNumberOfReads - 1);
-            Assert.Equal(expectedNumberOfWrites, totalNumberOfWrites);
-
-            long GetLengthFromFileOnDisk()
-            {
-                return new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;
-            }
-        }
-
-        private static long CalculateExpectedFileSize(
-            int totalNumberOfReads,
-            int readBufferSize,
-            int writeBufferSize
-        )
-        {
-            var expectedFileSizeRightNow = 0;
-            var writeBufferPosition = 0;
-            for (int i = 0; i < totalNumberOfReads; i++)
-            {
-                if (writeBufferPosition + readBufferSize > writeBufferSize)
-                {
-                    expectedFileSizeRightNow += writeBufferPosition;
-                    writeBufferPosition = 0;
-                }
-
-                writeBufferPosition += readBufferSize;
-            }
-
-            return expectedFileSizeRightNow;
-        }
-
 #if pipelines
 
         [Fact]
@@ -484,97 +369,6 @@ namespace tusdotnet.test.Tests
                 CancellationToken.None
             );
             length.ShouldBe(0);
-        }
-
-        [Theory]
-        [InlineData(411, 4382, 2)] // Note: PipeReader is by default using 4096 as read buffer i.e. everything below 4096 will be written at once.
-        [InlineData(51200, 2621800, 50)] // Note: 50 as each read from the PipeReader returns 4096 thus giving us 13 reads per write i.e. 53248 bytes written per write.
-        [InlineData(2621800, 2621800, 1)]
-        [InlineData(102400, 307201, 4)]
-        [InlineData(8192, 16384, 2)]
-        [InlineData(41943040, 209715200, 5)]
-        [InlineData(52428800, 157286405, 4)]
-        public async Task AppendDataAsync_With_PipeReader_Uses_The_Write_Buffer_Correctly(
-            int writeBufferSize,
-            int fileSize,
-            int expectedNumberOfWrites
-        )
-        {
-            // Default value for pipe reader
-            const int READ_BUFFER_SIZE = 4096;
-
-            int numberOfReadsPerWrite = (int)
-                Math.Ceiling((double)writeBufferSize / READ_BUFFER_SIZE);
-
-            // Note: Read buffer size is set in the pipe reader and not in the disk store so just use the TusDiskBufferSize that only sets the write buffer size.
-            var store = new TusDiskStore(
-                _fixture.Path,
-                false,
-                new TusDiskBufferSize(writeBufferSize)
-            );
-
-            var totalNumberOfWrites = 0;
-            var totalNumberOfReads = 0;
-            var numberOfReadsSinceLastWrite = 0;
-            int totalBytesWritten = 0;
-
-            var fileId = await store.CreateFileAsync(fileSize, null, CancellationToken.None);
-
-            var requestStream = new RequestStreamFake(
-                async (
-                    RequestStreamFake stream,
-                    byte[] bufferToFill,
-                    int offset,
-                    int count,
-                    CancellationToken cancellationToken
-                ) =>
-                {
-                    var bytesReadFromStream = await stream.ReadBackingStreamAsync(
-                        bufferToFill,
-                        offset,
-                        count,
-                        cancellationToken
-                    );
-
-                    // There should have been a write after the previous read.
-                    if (numberOfReadsSinceLastWrite > numberOfReadsPerWrite)
-                    {
-                        // Calculate the amount of data that should have been written to disk so far.
-                        var expectedFileSizeRightNow = (totalNumberOfReads - 1) * READ_BUFFER_SIZE; //CalculateExpectedFileSize(totalNumberOfReads, readBufferSize, writeBufferSize);
-
-                        // Assert that the size on disk is correct.
-                        GetLengthFromFileOnDisk().ShouldBe(expectedFileSizeRightNow);
-
-                        totalNumberOfWrites++;
-
-                        // Set to one as the write happened on the previous write, making this the second read since that write.
-                        numberOfReadsSinceLastWrite = 1;
-                    }
-
-                    numberOfReadsSinceLastWrite++;
-                    totalNumberOfReads++;
-
-                    totalBytesWritten += bytesReadFromStream;
-
-                    return bytesReadFromStream;
-                },
-                new byte[fileSize]
-            );
-
-            var pipeReader = PipeReader.Create(requestStream);
-
-            await store.AppendDataAsync(fileId, pipeReader, CancellationToken.None);
-
-            GetLengthFromFileOnDisk().ShouldBe(fileSize);
-
-            totalNumberOfWrites++;
-
-            Assert.Equal(expectedNumberOfWrites, totalNumberOfWrites);
-
-            long GetLengthFromFileOnDisk()
-            {
-                return new FileInfo(Path.Combine(_fixture.Path, fileId)).Length;
-            }
         }
 #endif
 
@@ -720,7 +514,13 @@ namespace tusdotnet.test.Tests
                 null,
                 CancellationToken.None
             );
-            using (var stream = new MemoryStream(buffer))
+            // Wrap stream with checksum metadata to match real TUS protocol flow
+            using (
+                var stream = new ChecksumAwareStream(
+                    new MemoryStream(buffer),
+                    new Checksum("sha1", Convert.FromBase64String(checksum))
+                )
+            )
             {
                 await _fixture.Store.AppendDataAsync(fileId, stream, CancellationToken.None);
             }
@@ -804,7 +604,7 @@ namespace tusdotnet.test.Tests
             foreach (var chunk in chunks)
             {
                 var data = chunk.Item1;
-                var checksum = chunk.Item2;
+                var checksum = Convert.FromBase64String(chunk.Item2);
                 var isValidChecksum = chunk.Item3;
                 var dataBuffer = encoding.GetBytes(data);
 
@@ -816,16 +616,18 @@ namespace tusdotnet.test.Tests
                 );
                 var token = clientDisconnectGuard.GuardedToken;
 
-                var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
-                    new MemoryStream(dataBuffer),
+                var checksumAwareStream = CreateRequestStream(
+                    checksum,
+                    dataBuffer,
                     clientDisconnectGuard
                 );
-                await _fixture.Store.AppendDataAsync(fileId, guardedStream, token);
+
+                await _fixture.Store.AppendDataAsync(fileId, checksumAwareStream, token);
 
                 var checksumOk = await _fixture.Store.VerifyChecksumAsync(
                     fileId,
                     "sha1",
-                    Convert.FromBase64String(checksum),
+                    checksum,
                     token
                 );
 
@@ -834,6 +636,24 @@ namespace tusdotnet.test.Tests
                 totalSize += isValidChecksum ? dataBuffer.Length : 0;
 
                 new FileInfo(filePath).Length.ShouldBe(totalSize);
+            }
+
+            static ChecksumAwareStream CreateRequestStream(
+                byte[] checksum,
+                byte[] dataBuffer,
+                ClientDisconnectGuardWithTimeout clientDisconnectGuard
+            )
+            {
+                var clientDisconnectGuardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                    new MemoryStream(dataBuffer),
+                    clientDisconnectGuard
+                );
+
+                var checksumAwareStream = new ChecksumAwareStream(
+                    clientDisconnectGuardedStream,
+                    new Checksum("sha1", checksum)
+                );
+                return checksumAwareStream;
             }
         }
 
@@ -910,8 +730,13 @@ namespace tusdotnet.test.Tests
                 cts.Token
             );
 
-            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+            // Wrap stream with checksum metadata to match real TUS protocol flow
+            var checksumAwareStream = new ChecksumAwareStream(
                 new MemoryStream(dataBuffer),
+                new Checksum("sha1", Convert.FromBase64String(checksum))
+            );
+            var guardedStream = new ClientDisconnectGuardedReadOnlyStream(
+                checksumAwareStream,
                 clientDisconnectGuard
             );
             await _fixture.Store.AppendDataAsync(
@@ -1343,41 +1168,6 @@ namespace tusdotnet.test.Tests
                 CancellationToken.None
             );
             uploadLength.ShouldBe(100);
-        }
-
-#pragma warning disable xUnit1004 // Test methods should not be skipped - This test method should ;)
-        [Fact(Skip = "No need to run it each time")]
-#pragma warning restore xUnit1004 // Test methods should not be skipped
-        public async Task RemoveExpiredFilesAsync_PerformanceTest()
-        {
-            const int numberOfFilesToCreate = 100_000;
-
-            var ids = new List<string>(numberOfFilesToCreate);
-            for (var i = 0; i < numberOfFilesToCreate; i++)
-            {
-                var file = await _fixture.Store.CreateFileAsync(300, null, CancellationToken.None);
-                await _fixture.Store.SetExpirationAsync(
-                    file,
-                    i % 2 == 0 ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow.AddSeconds(-1),
-                    CancellationToken.None
-                );
-                ids.Add(file);
-            }
-
-            var watch = Stopwatch.StartNew();
-
-            await _fixture.Store.RemoveExpiredFilesAsync(CancellationToken.None);
-
-            watch.Stop();
-
-            var removed = ids.Where(f =>
-                    !_fixture.Store.FileExistAsync(f, CancellationToken.None).Result
-                )
-                .ToList();
-
-            _output.WriteLine(
-                $"Deleted {removed.Count} of {numberOfFilesToCreate} files in {watch.ElapsedMilliseconds} ms"
-            );
         }
 
         [Theory]

@@ -95,6 +95,12 @@ namespace tusdotnet
 
                 await handler.NotifyAfterAction();
             }
+            catch (OperationCanceledException)
+                when (context.CancellationToken.IsCancellationRequested)
+            {
+                // Client disconnected - just stop execution without error response
+                return ResultType.StopExecution;
+            }
             catch (MaxReadSizeExceededException readSizeException)
             {
                 context.Response.Error(
@@ -124,12 +130,18 @@ namespace tusdotnet
         {
             return handler switch
             {
-                ConcatenateFilesHandler => new ConcatenateFilesHandlerWithEvents(handler),
-                CreateFileHandler => new CreateFileHandlerWithEvents(handler),
-                DeleteFileHandler => new DeleteFileHandlerWithEvents(handler),
-                GetFileInfoHandler => new GetFileInfoHandlerWithEvents(handler),
-                GetOptionsHandler => new GetOptionsHandlerWithEvents(handler),
-                WriteFileHandler => new WriteFileHandlerWithEvents(handler),
+                ConcatenateFilesHandler concatenateHandler => new ConcatenateFilesHandlerWithEvents(
+                    concatenateHandler
+                ),
+                CreateFileHandler createHandler => new CreateFileHandlerWithEvents(createHandler),
+                DeleteFileHandler deleteHandler => new DeleteFileHandlerWithEvents(deleteHandler),
+                GetFileInfoHandler getInfoHandler => new GetFileInfoHandlerWithEvents(
+                    getInfoHandler
+                ),
+                GetOptionsHandler getOptionsHandler => new GetOptionsHandlerWithEvents(
+                    getOptionsHandler
+                ),
+                WriteFileHandler writeHandler => new WriteFileHandlerWithEvents(writeHandler),
                 _ => throw new NotImplementedException(),
             };
         }
