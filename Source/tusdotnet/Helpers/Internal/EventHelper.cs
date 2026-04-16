@@ -9,7 +9,7 @@ namespace tusdotnet.Helpers
 {
     internal static class EventHelper
     {
-        internal static async Task<ResultType> Validate<T>(
+        internal static Task<ResultType> Validate<T>(
             ContextAdapter context,
             Action<T> configure = null
         )
@@ -18,8 +18,18 @@ namespace tusdotnet.Helpers
             var handler = GetHandlerFromEvents<T>(context.Configuration.Events);
 
             if (handler == null)
-                return ResultType.ContinueExecution;
+                return TaskHelper.ContinueExecution;
 
+            return ValidateCore(handler, context, configure);
+        }
+
+        private static async Task<ResultType> ValidateCore<T>(
+            Func<T, Task> handler,
+            ContextAdapter context,
+            Action<T> configure
+        )
+            where T : ValidationContext<T>, new()
+        {
             var eventContext = EventContext<T>.Create(context, configure);
 
             await handler(eventContext);
@@ -43,18 +53,25 @@ namespace tusdotnet.Helpers
             return ResultType.ContinueExecution;
         }
 
-        internal static async Task Notify<T>(ContextAdapter context, Action<T> configure = null)
+        internal static Task Notify<T>(ContextAdapter context, Action<T> configure = null)
             where T : EventContext<T>, new()
         {
             var handler = GetHandlerFromEvents<T>(context.Configuration.Events);
 
             if (handler == null)
-            {
-                return;
-            }
+                return TaskHelper.Completed;
 
+            return NotifyCore(handler, context, configure);
+        }
+
+        private static async Task NotifyCore<T>(
+            Func<T, Task> handler,
+            ContextAdapter context,
+            Action<T> configure
+        )
+            where T : EventContext<T>, new()
+        {
             var eventContext = EventContext<T>.Create(context, configure);
-
             await handler(eventContext);
         }
 

@@ -11,9 +11,9 @@ namespace tusdotnet.Runners.Events
         public GetOptionsHandlerWithEvents(GetOptionsHandler intentHandler)
             : base(intentHandler) { }
 
-        internal override async Task<ResultType> Authorize()
+        internal override Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(
+            return EventHelper.Validate<AuthorizeContext>(
                 Context,
                 ctx =>
                 {
@@ -29,7 +29,7 @@ namespace tusdotnet.Runners.Events
 
         internal override Task<ResultType> ValidateBeforeAction()
         {
-            return Task.FromResult(ResultType.ContinueExecution);
+            return TaskHelper.ContinueExecution;
         }
     }
 }

@@ -13,9 +13,9 @@ namespace tusdotnet.Runners.Events
         public WriteFileHandlerWithEvents(WriteFileHandler intentHandler)
             : base(intentHandler) { }
 
-        internal override async Task<ResultType> Authorize()
+        internal override Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(
+            return EventHelper.Validate<AuthorizeContext>(
                 Context,
                 ctx =>
                 {
@@ -54,9 +54,9 @@ namespace tusdotnet.Runners.Events
             await EventHelper.NotifyFileComplete(Context);
         }
 
-        internal override async Task<ResultType> ValidateBeforeAction()
+        internal override Task<ResultType> ValidateBeforeAction()
         {
-            return await EventHelper.Validate<BeforeWriteContext>(
+            return EventHelper.Validate<BeforeWriteContext>(
                 Context,
                 ctx =>
                 {

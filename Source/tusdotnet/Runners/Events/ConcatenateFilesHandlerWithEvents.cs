@@ -13,9 +13,9 @@ namespace tusdotnet.Runners.Events
         public ConcatenateFilesHandlerWithEvents(ConcatenateFilesHandler intentHandler)
             : base(intentHandler) { }
 
-        internal override async Task<ResultType> Authorize()
+        internal override Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(
+            return EventHelper.Validate<AuthorizeContext>(
                 Context,
                 ctx =>
                 {
@@ -59,9 +59,9 @@ namespace tusdotnet.Runners.Events
             }
         }
 
-        internal override async Task<ResultType> ValidateBeforeAction()
+        internal override Task<ResultType> ValidateBeforeAction()
         {
-            return await EventHelper.Validate<BeforeCreateContext>(
+            return EventHelper.Validate<BeforeCreateContext>(
                 Context,
                 ctx =>
                 {

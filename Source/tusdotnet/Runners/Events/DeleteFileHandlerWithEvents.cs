@@ -11,9 +11,9 @@ namespace tusdotnet.Runners.Events
         public DeleteFileHandlerWithEvents(DeleteFileHandler intentHandler)
             : base(intentHandler) { }
 
-        internal override async Task<ResultType> Authorize()
+        internal override Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(
+            return EventHelper.Validate<AuthorizeContext>(
                 Context,
                 ctx =>
                 {
@@ -22,14 +22,14 @@ namespace tusdotnet.Runners.Events
             );
         }
 
-        internal override async Task NotifyAfterAction()
+        internal override Task NotifyAfterAction()
         {
-            await EventHelper.Notify<DeleteCompleteContext>(Context);
+            return EventHelper.Notify<DeleteCompleteContext>(Context);
         }
 
-        internal override async Task<ResultType> ValidateBeforeAction()
+        internal override Task<ResultType> ValidateBeforeAction()
         {
-            return await EventHelper.Validate<BeforeDeleteContext>(Context);
+            return EventHelper.Validate<BeforeDeleteContext>(Context);
         }
     }
 }

@@ -11,9 +11,9 @@ namespace tusdotnet.Runners.Events
         public CreateFileHandlerWithEvents(CreateFileHandler handler)
             : base(handler) { }
 
-        internal override async Task<ResultType> Authorize()
+        internal override Task<ResultType> Authorize()
         {
-            return await EventHelper.Validate<AuthorizeContext>(
+            return EventHelper.Validate<AuthorizeContext>(
                 Context,
                 ctx =>
                 {
@@ -46,9 +46,9 @@ namespace tusdotnet.Runners.Events
             }
         }
 
-        internal override async Task<ResultType> ValidateBeforeAction()
+        internal override Task<ResultType> ValidateBeforeAction()
         {
-            var result = await EventHelper.Validate<BeforeCreateContext>(
+            return EventHelper.Validate<BeforeCreateContext>(
                 Context,
                 ctx =>
                 {
@@ -56,8 +56,6 @@ namespace tusdotnet.Runners.Events
                     ctx.UploadLength = Context.Request.Headers.UploadLength;
                 }
             );
-
-            return result;
         }
     }
 }

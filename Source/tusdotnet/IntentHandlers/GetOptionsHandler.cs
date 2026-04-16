@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Validation;
 
@@ -21,7 +22,7 @@ namespace tusdotnet.IntentHandlers
         public GetOptionsHandler(ContextAdapter context)
             : base(context, IntentType.GetOptions, LockType.NoLock) { }
 
-        internal override async Task Invoke()
+        internal override Task Invoke()
         {
             var response = Context.Response;
 
@@ -41,17 +42,24 @@ namespace tusdotnet.IntentHandlers
                 response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));
             }
 
-            if (Context.StoreAdapter.Extensions.Checksum)
+            if (!Context.StoreAdapter.Extensions.Checksum)
             {
-                var checksumAlgorithms = await Context.StoreAdapter.GetSupportedAlgorithmsAsync(
-                    Context.CancellationToken
-                );
-                response.SetHeader(
-                    HeaderConstants.TusChecksumAlgorithm,
-                    string.Join(",", checksumAlgorithms)
-                );
+                response.SetResponse(HttpStatusCode.NoContent);
+                return TaskHelper.Completed;
             }
 
+            return InvokeWithChecksum(response);
+        }
+
+        private async Task InvokeWithChecksum(ResponseAdapter response)
+        {
+            var checksumAlgorithms = await Context.StoreAdapter.GetSupportedAlgorithmsAsync(
+                Context.CancellationToken
+            );
+            response.SetHeader(
+                HeaderConstants.TusChecksumAlgorithm,
+                string.Join(",", checksumAlgorithms)
+            );
             response.SetResponse(HttpStatusCode.NoContent);
         }
     }
