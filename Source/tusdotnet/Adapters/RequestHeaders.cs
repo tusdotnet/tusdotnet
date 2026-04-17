@@ -40,7 +40,7 @@ namespace tusdotnet.Adapters
 
         public string this[string key]
         {
-            get { return _headers.ContainsKey(key) ? _headers[key] : null; }
+            get => _headers.TryGetValue(key, out var value) ? value : null;
             set { _headers[key] = value; }
         }
 

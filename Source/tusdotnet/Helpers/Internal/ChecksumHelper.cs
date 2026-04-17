@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
@@ -14,7 +13,7 @@ namespace tusdotnet.Helpers
         protected static readonly ChecksumHelperResult Ok = new(HttpStatusCode.OK, null);
 
         protected readonly ContextAdapter _context;
-        private Lazy<Task<List<string>>> _supportedAlgorithms;
+        private Lazy<Task<HashSet<string>>> _supportedAlgorithms;
         protected Checksum _checksum;
 
         public ChecksumHelper(ContextAdapter context)
@@ -24,7 +23,7 @@ namespace tusdotnet.Helpers
             if (!_context.StoreAdapter.Extensions.Checksum)
                 return;
 
-            _supportedAlgorithms = new Lazy<Task<List<string>>>(LoadSupportAlgorithms);
+            _supportedAlgorithms = new Lazy<Task<HashSet<string>>>(LoadSupportAlgorithms);
             _checksum = TryParseChecksumHeader(context);
         }
 
@@ -43,10 +42,11 @@ namespace tusdotnet.Helpers
             return checksum;
         }
 
-        private async Task<List<string>> LoadSupportAlgorithms() =>
-            (
-                await _context.StoreAdapter.GetSupportedAlgorithmsAsync(_context.CancellationToken)
-            ).ToList();
+        private async Task<HashSet<string>> LoadSupportAlgorithms()
+        {
+            var algorithms = await _context.StoreAdapter.GetSupportedAlgorithmsAsync(_context.CancellationToken);
+            return new HashSet<string>(algorithms, StringComparer.OrdinalIgnoreCase);
+        }
 
         internal bool IsSupported() => _context.StoreAdapter.Extensions.Checksum;
 
