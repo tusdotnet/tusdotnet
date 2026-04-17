@@ -42,8 +42,14 @@ namespace tusdotnet.Validation.Requirements
 
             if (filesExist.Any(f => !f))
             {
+                var missing = new List<string>(filesExist.Length);
+                for (var i = 0; i < filesExist.Length; i++)
+                {
+                    if (!filesExist[i])
+                        missing.Add(finalConcat.Files[i]);
+                }
                 await BadRequest(
-                    $"Could not find some of the files supplied for concatenation: {string.Join(", ", filesExist.Zip(finalConcat.Files, (b, s) => new { exist = b, name = s }).Where(f => !f.exist).Select(f => f.name))}"
+                    $"Could not find some of the files supplied for concatenation: {string.Join(", ", missing)}"
                 );
                 return;
             }
@@ -56,8 +62,14 @@ namespace tusdotnet.Validation.Requirements
 
             if (filesArePartial.Any(f => f is not FileConcatPartial))
             {
+                var notPartial = new List<string>(filesArePartial.Length);
+                for (var i = 0; i < filesArePartial.Length; i++)
+                {
+                    if (filesArePartial[i] is not FileConcatPartial)
+                        notPartial.Add(finalConcat.Files[i]);
+                }
                 await BadRequest(
-                    $"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", filesArePartial.Zip(finalConcat.Files, (s, s1) => new { partial = s is FileConcatPartial, name = s1 }).Where(f => !f.partial).Select(f => f.name))}"
+                    $"Some of the files supplied for concatenation are not marked as partial and can not be concatenated: {string.Join(", ", notPartial)}"
                 );
                 return;
             }

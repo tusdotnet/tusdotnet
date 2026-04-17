@@ -1,6 +1,4 @@
-﻿using System.Linq;
-
-namespace tusdotnet.Models.Concatenation
+﻿namespace tusdotnet.Models.Concatenation
 {
     /// <summary>
     /// Represents the "final" file concatenation type.
@@ -37,7 +35,11 @@ namespace tusdotnet.Models.Concatenation
         /// <param name="urlPath">The UrlPath property of the ITusConfiguration</param>
         internal void AddUrlPathToFiles(string urlPath)
         {
-            Files = Files.Select(file => $"{urlPath.TrimEnd('/')}/{file}").ToArray();
+            var trimmedPath = urlPath.TrimEnd('/');
+            for (var i = 0; i < Files.Length; i++)
+            {
+                Files[i] = $"{trimmedPath}/{Files[i]}";
+            }
         }
     }
 }

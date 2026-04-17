@@ -25,7 +25,7 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
             ICollection<string> existingKeys
         )
         {
-            var pairParts = metadataItem.Split(new[] { ' ' });
+            var pairParts = metadataItem.Split(' ');
 
             if (pairParts.Length != 2)
             {
