@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Constants;
@@ -93,15 +94,12 @@ namespace tusdotnet
             ContextAdapter context
         )
         {
-            return httpMethod switch
-            {
-                "post" => DetermineIntentForPost(context),
-                "patch" => DetermineIntentForPatch(context),
-                "head" => DetermineIntentForHead(context),
-                "options" => DetermineIntentForOptions(context),
-                "delete" => DetermineIntentForDelete(context),
-                _ => IntentHandler.NotApplicable,
-            };
+            if (string.Equals(httpMethod, "POST",    StringComparison.OrdinalIgnoreCase)) return DetermineIntentForPost(context);
+            if (string.Equals(httpMethod, "PATCH",   StringComparison.OrdinalIgnoreCase)) return DetermineIntentForPatch(context);
+            if (string.Equals(httpMethod, "HEAD",    StringComparison.OrdinalIgnoreCase)) return DetermineIntentForHead(context);
+            if (string.Equals(httpMethod, "OPTIONS", StringComparison.OrdinalIgnoreCase)) return DetermineIntentForOptions(context);
+            if (string.Equals(httpMethod, "DELETE",  StringComparison.OrdinalIgnoreCase)) return DetermineIntentForDelete(context);
+            return IntentHandler.NotApplicable;
         }
 
         /// <summary>
@@ -118,16 +116,14 @@ namespace tusdotnet
                 method = request.Method;
             }
 
-            return method.ToLower();
+            return method;
         }
 
         private static bool MethodRequiresFileIdUrl(string httpMethod)
         {
-            return httpMethod switch
-            {
-                "head" or "patch" or "delete" => true,
-                _ => false,
-            };
+            return string.Equals(httpMethod, "HEAD",   StringComparison.OrdinalIgnoreCase)
+                || string.Equals(httpMethod, "PATCH",  StringComparison.OrdinalIgnoreCase)
+                || string.Equals(httpMethod, "DELETE", StringComparison.OrdinalIgnoreCase);
         }
 
         private static IntentHandler DetermineIntentForOptions(ContextAdapter context)
@@ -175,7 +171,7 @@ namespace tusdotnet
 
         private static bool RequestRequiresTusResumableHeader(string httpMethod)
         {
-            return httpMethod != "options";
+            return !string.Equals(httpMethod, "OPTIONS", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
