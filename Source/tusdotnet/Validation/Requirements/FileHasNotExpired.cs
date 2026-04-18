@@ -9,7 +9,7 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            if (!context.StoreAdapter.Extensions.Expiration)
+            if (!context.StoreAdapter.Extensions.Expiration || context.Configuration.Expiration == null)
             {
                 return TaskHelper.Completed;
             }

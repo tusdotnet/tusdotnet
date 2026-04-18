@@ -10,6 +10,7 @@ using tusdotnet.Helpers;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Models.Expiration;
 using tusdotnet.test.Helpers;
 
 #endif
@@ -22,6 +23,7 @@ using Owin;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Models.Expiration;
 using tusdotnet.test.Helpers;
 
 #endif
@@ -139,7 +141,8 @@ namespace tusdotnet.test
             MetadataParsingStrategy metadataParsingStrategy =
                 MetadataParsingStrategy.AllowEmptyValues,
             TusExtensions allowedExtensions = null,
-            bool usePipelinesIfAvailable = false
+            bool usePipelinesIfAvailable = false,
+            ExpirationBase expiration = null
         )
         {
             return Create(
@@ -155,6 +158,7 @@ namespace tusdotnet.test
 #endif
                     ,
                     AllowedExtensions = allowedExtensions ?? TusExtensions.All,
+                    Expiration = expiration,
                 }
             );
         }
@@ -225,7 +229,8 @@ namespace tusdotnet.test
             Events events = null,
             MetadataParsingStrategy metadataParsingStrategy =
                 MetadataParsingStrategy.AllowEmptyValues,
-            TusExtensions allowedExtensions = null
+            TusExtensions allowedExtensions = null,
+            ExpirationBase expiration = null
         )
         {
             return Create(
@@ -236,6 +241,7 @@ namespace tusdotnet.test
                     Events = events,
                     MetadataParsingStrategy = metadataParsingStrategy,
                     AllowedExtensions = allowedExtensions ?? TusExtensions.All,
+                    Expiration = expiration,
                 }
             );
         }

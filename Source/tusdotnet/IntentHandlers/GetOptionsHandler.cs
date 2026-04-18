@@ -37,6 +37,9 @@ namespace tusdotnet.IntentHandlers
             }
 
             var extensions = Context.StoreAdapter.Extensions.ToList();
+            if (Context.Configuration.Expiration == null)
+                extensions.Remove("expiration");
+
             if (extensions.Count > 0)
             {
                 response.SetHeader(HeaderConstants.TusExtension, string.Join(",", extensions));

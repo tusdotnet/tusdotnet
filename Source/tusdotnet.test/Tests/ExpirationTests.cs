@@ -391,17 +391,21 @@ namespace tusdotnet.test.Tests
 
             foreach (var method in new[] { "PATCH", "DELETE", "HEAD" })
             {
-                var response = await server
+                var request = server
                     .CreateRequest("/files/expirationtestfile")
-                    .And(m => m.AddBody())
-                    .AddTusResumableHeader()
-                    .AddHeader("Upload-Offset", "0")
+                    .AddTusResumableHeader();
+
+                if (method == "PATCH")
+                    request = request.AddHeader("Upload-Offset", "0").AddBody();
+
+                var response = await request
                     .OverrideHttpMethodIfNeeded(method, methodToUse)
                     .SendAsync(methodToUse);
 
                 response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-                await expirationStore.ReceivedWithAnyArgs().GetExpirationAsync(default, default);
             }
+
+            await expirationStore.ReceivedWithAnyArgs().GetExpirationAsync(default, default);
         }
 
         [Theory, XHttpMethodOverrideData]
@@ -441,6 +445,83 @@ namespace tusdotnet.test.Tests
             await expirationStore
                 .DidNotReceiveWithAnyArgs()
                 .SetExpirationAsync(default, default, default);
+            await expirationStore.DidNotReceiveWithAnyArgs().GetExpirationAsync(default, default);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Requests_Do_Not_Return_404_For_Expired_File_If_Expiration_Is_Not_Configured(
+            string methodToUse
+        )
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusExpirationStore, ITusTerminationStore>();
+            store.WithExistingFile("expirationtestfile", 1, 0);
+
+            var expirationStore = (ITusExpirationStore)store;
+            expirationStore
+                .GetExpirationAsync(null, CancellationToken.None)
+                .ReturnsForAnyArgs(DateTimeOffset.UtcNow.AddSeconds(-1));
+
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    UrlPath = "/files",
+                    Store = store,
+                    Expiration = null,
+                }
+            );
+
+            foreach (var method in new[] { "PATCH", "DELETE", "HEAD" })
+            {
+                var request = server
+                    .CreateRequest("/files/expirationtestfile")
+                    .AddTusResumableHeader();
+
+                if (method == "PATCH")
+                    request = request.AddHeader("Upload-Offset", "0").AddBody();
+
+                var response = await request
+                    .OverrideHttpMethodIfNeeded(method, methodToUse)
+                    .SendAsync(methodToUse);
+
+                response.StatusCode.ShouldNotBe(HttpStatusCode.NotFound);
+            }
+
+            await expirationStore.DidNotReceiveWithAnyArgs().GetExpirationAsync(default, default);
+        }
+
+        [Theory, XHttpMethodOverrideData]
+        public async Task Patch_Requests_Do_Not_Contain_Upload_Expires_Header_If_Expiration_Is_Not_Configured(
+            string methodToUse
+        )
+        {
+            var store = MockStoreHelper
+                .CreateWithExtensions<ITusExpirationStore>()
+                .WithExistingFile("expirationtestfile", 10, 3);
+
+            var expirationStore = (ITusExpirationStore)store;
+            expirationStore
+                .GetExpirationAsync(null, CancellationToken.None)
+                .ReturnsForAnyArgs(DateTimeOffset.UtcNow.AddMinutes(8));
+
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files",
+                    Expiration = null,
+                }
+            );
+
+            var response = await server
+                .CreateRequest("/files/expirationtestfile")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Offset", "3")
+                .AddBody()
+                .OverrideHttpMethodIfNeeded("PATCH", methodToUse)
+                .SendAsync(methodToUse);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            response.ShouldNotContainHeaders("Upload-Expires");
             await expirationStore.DidNotReceiveWithAnyArgs().GetExpirationAsync(default, default);
         }
 

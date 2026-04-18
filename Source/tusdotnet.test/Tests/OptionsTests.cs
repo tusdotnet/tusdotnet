@@ -8,8 +8,10 @@ using Shouldly;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
+using tusdotnet.Models.Expiration;
 using tusdotnet.test.Data;
 using tusdotnet.test.Extensions;
+using tusdotnet.test.Helpers;
 using Xunit;
 #if netfull
 using Owin;
@@ -52,6 +54,7 @@ namespace tusdotnet.test.Tests
             {
                 Store = store,
                 UrlPath = "/files",
+                Expiration = new AbsoluteExpiration(TimeSpan.FromMinutes(5)),
                 Events = new Events
                 {
                     OnAuthorizeAsync = ctx =>
@@ -228,7 +231,11 @@ namespace tusdotnet.test.Tests
             var store = (ITusStore)
                 Substitute.For(new[] { typeof(ITusStore), storeInterfaceType }, null);
 
-            using var server = TestServerFactory.Create(store);
+            var expiration = storeInterfaceType == typeof(ITusExpirationStore)
+                ? new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+                : null;
+
+            using var server = TestServerFactory.Create(store, expiration: (ExpirationBase)expiration);
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 
@@ -306,6 +313,29 @@ namespace tusdotnet.test.Tests
                 response.ShouldContainHeader("Tus-Extension", expectedExtensions);
             else
                 response.ShouldNotContainHeaders("Tus-Extension");
+        }
+
+        [Fact]
+        public async Task Expiration_Extension_Is_Not_Advertised_If_Store_Supports_It_But_Expiration_Is_Not_Configured()
+        {
+            var store = MockStoreHelper.CreateWithExtensions<ITusExpirationStore>();
+
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    Store = store,
+                    UrlPath = "/files",
+                    Expiration = null,
+                }
+            );
+
+            var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            var extensionHeader = response.Headers.TryGetValues("Tus-Extension", out var values)
+                ? values.FirstOrDefault() ?? ""
+                : "";
+            extensionHeader.ShouldNotContain("expiration");
         }
 
         private static void AssertContainsDefaultSuccessfulHeaders(
