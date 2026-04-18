@@ -1,6 +1,6 @@
 
-$net6sdk = "6.0.404";
-$net10sdk = "10.0.102"
+$net6sdk = "6.0";
+$net10sdk = "10.0"
 $runtimesOnNet6 = "net452", "netcoreapp2.1", "netcoreapp2.2", "netcoreapp3.0", "netcoreapp3.1", "net6.0";
 $runtimesOnNet10 = "net7.0", "net8.0", "net9.0", "net10.0";
 
