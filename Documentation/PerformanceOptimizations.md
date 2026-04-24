@@ -1,6 +1,6 @@
 # Performance Optimizations - Analysis & Decisions
 
-This document tracks performance optimization ideas that were evaluated but not implemented, along with the rationale for each decision.
+This document tracks performance optimization ideas that were evaluated, along with the rationale for each decision (implemented or not implemented).
 
 ## 1. InMemoryFileLock: ConcurrentDictionary vs Lock + HashSet
 
@@ -421,9 +421,84 @@ A spectacular failure. Keep the simple `foreach (var segment in buffer) await st
 
 ---
 
+## 9. Base64FileIdProvider: `RandomNumberGenerator.Fill` vs `Create()+GetBytes`
+
+**Proposed Change:**
+Use `RandomNumberGenerator.Fill(key)` for `net6+` instead of creating/disposal of `RandomNumberGenerator` per call.
+
+**Benchmark Results (DefaultJob):**
+
+| Method | ByteLength | Mean | Ratio | Allocated |
+|--------|-----------:|-----:|------:|----------:|
+| **Create+GetBytes** | 16 | 186.4 ns | 1.00 | 184 B |
+| Fill | 16 | 267.7 ns | **1.44** | 184 B |
+| **Create+GetBytes** | 32 | 510.1 ns | 1.00 | 280 B |
+| Fill | 32 | 466.9 ns | 0.93 | 280 B |
+
+**Decision: NOT IMPLEMENTED (REVERTED)**
+
+**Rationale:**
+- No clear, consistent improvement across input sizes.
+- 16-byte case regressed significantly in this environment.
+- Same allocation profile; improvement is purely CPU-side and unstable.
+- Kept existing implementation to avoid introducing runtime-dependent behavior without clear upside.
+
+---
+
+## 10. Stream Path (`AppendDataAsync`): Memory-based async overloads
+
+**Proposed Change:**
+For `net6+`, use `ReadAsync(Memory<byte>)` / `WriteAsync(ReadOnlyMemory<byte>)` in the stream-based upload path.
+
+**Benchmark Results (DefaultJob):**
+
+| Payload | Buffer | Array Overloads | Memory Overloads | Ratio |
+|--------:|-------:|----------------:|-----------------:|------:|
+| 1 MB | 16 KB | 250.5 us | 256.4 us | **1.02** |
+| 1 MB | 64 KB | 293.3 us | 329.8 us | **1.13** |
+| 8 MB | 16 KB | 2,803.1 us | 3,104.1 us | **1.11** |
+| 8 MB | 64 KB | 2,958.8 us | 3,300.0 us | **1.12** |
+
+**Decision: NOT IMPLEMENTED (REVERTED)**
+
+**Rationale:**
+- No measured win in this benchmark; `Memory` overloads were consistently slower.
+- The stream path is no longer the primary upload path after PipeReader support was added.
+- Prioritize changes in the primary path; avoid extra complexity in legacy/non-primary code paths.
+
+---
+
+## 11. Metadata Parser (`netcoreapp3.1+`): `TryAdd` vs `ContainsKey` + `Add`
+
+**Proposed Change:**
+In `MetadataParserSpanBased`, replace duplicate-check pattern:
+- `ContainsKey(key)` + `Add(key, value)`
+with:
+- single `TryAdd(key, value)`.
+
+**Benchmark Results (DefaultJob):**
+
+| Keys | Duplicate At End | ContainsKey+Add | TryAdd | Ratio |
+|-----:|:----------------:|----------------:|-------:|------:|
+| 8 | No | 302.7 ns | 250.5 ns | 0.83 |
+| 8 | Yes | 303.1 ns | 257.4 ns | 0.85 |
+| 32 | No | 1,187.7 ns | 897.2 ns | 0.76 |
+| 32 | Yes | 1,202.9 ns | 623.7 ns | 0.53 |
+| 128 | No | 3,095.7 ns | 2,056.4 ns | 0.66 |
+| 128 | Yes | 3,050.3 ns | 2,047.3 ns | 0.67 |
+
+**Decision: IMPLEMENTED**
+
+**Rationale:**
+- Clear, repeated speedup across all tested sizes and duplicate/no-duplicate cases.
+- Same allocation profile in the real code path.
+- Simpler code with one dictionary operation instead of two.
+
+---
+
 ## Summary
 
-All evaluated optimizations were either benchmarked and found to be slower/worse, or determined to be premature optimization without evidence of actual performance issues. The current implementation prioritizes:
+Most evaluated optimizations were benchmarked and found slower/worse, or too unclear to justify complexity. One optimization (`TryAdd` in metadata parsing) showed clear gains and was implemented. The current approach prioritizes:
 
 1. **Code clarity and maintainability**
 2. **Proven performance patterns** (ArrayPool, mutable state with Reset)

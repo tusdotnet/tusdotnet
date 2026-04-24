@@ -54,13 +54,6 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
 
                 var keyString = key.ToString();
 
-                if (result.ContainsKey(keyString))
-                {
-                    return MetadataParserResult.FromError(
-                        MetadataParserErrorTexts.DUPLICATE_KEY_FOUND
-                    );
-                }
-
                 byte[] decodedValue = null;
                 if (!value.IsEmpty)
                 {
@@ -74,7 +67,12 @@ namespace tusdotnet.Parsers.MetadataParserHelpers
                     }
                 }
 
-                result.Add(keyString, Metadata.FromBytes(decodedValue));
+                if (!result.TryAdd(keyString, Metadata.FromBytes(decodedValue)))
+                {
+                    return MetadataParserResult.FromError(
+                        MetadataParserErrorTexts.DUPLICATE_KEY_FOUND
+                    );
+                }
 
                 span =
                     indexOfNextPair == -1
