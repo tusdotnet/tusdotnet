@@ -120,7 +120,10 @@ namespace tusdotnet
             }
             finally
             {
-                fileLock?.ReleaseIfHeld();
+                if (fileLock != null)
+                {
+                    await fileLock.ReleaseIfHeld();
+                }
             }
 
             return ResultType.ContinueExecution;
