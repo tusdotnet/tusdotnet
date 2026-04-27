@@ -62,7 +62,7 @@ namespace tusdotnet.IntentHandlers
 
         internal override async Task Invoke()
         {
-            await WriteUploadLengthIfDefered();
+            await WriteUploadLengthIfDeferred();
 
 #if pipelines
 
@@ -152,7 +152,7 @@ namespace tusdotnet.IntentHandlers
             return bytesWritten;
         }
 
-        private Task WriteUploadLengthIfDefered()
+        private Task WriteUploadLengthIfDeferred()
         {
             var uploadLengthHeader = Request.Headers[HeaderConstants.UploadLength];
             if (uploadLengthHeader != null && StoreAdapter.Extensions.CreationDeferLength)

@@ -68,7 +68,7 @@ namespace tusdotnet.Stores
                     result = await reader.ReadAsync(cancellationToken);
                     clientDisconnectedDuringRead = cancellationToken.IsCancellationRequested;
 
-                    AssertNotToMuchData(
+                    AssertNotTooMuchData(
                         fileSizeOnDisk,
                         result.Buffer.Length,
                         fileUploadLengthProvidedDuringCreate
@@ -98,7 +98,7 @@ namespace tusdotnet.Stores
 
                 if (!latestDataHasBeenFlushedToDisk && result.Buffer.Length > 0)
                 {
-                    AssertNotToMuchData(
+                    AssertNotTooMuchData(
                         fileSizeOnDisk,
                         result.Buffer.Length,
                         fileUploadLengthProvidedDuringCreate
@@ -150,7 +150,7 @@ namespace tusdotnet.Stores
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void AssertNotToMuchData(
+        private static void AssertNotTooMuchData(
             long originalDiskFileLength,
             long numberOfBytesReadFromClient,
             long? fileUploadLengthProvidedDuringCreate
