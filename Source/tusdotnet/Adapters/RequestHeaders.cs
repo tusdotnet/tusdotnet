@@ -20,16 +20,18 @@ namespace tusdotnet.Adapters
 
         public string UploadMetadata => this[HeaderConstants.UploadMetadata];
 
-        public long UploadOffset => long.Parse(this[HeaderConstants.UploadOffset]);
+        public long UploadOffset => _uploadOffset.Value;
 
         public string XHttpMethodOveride => this[HeaderConstants.XHttpMethodOveride];
 
         private readonly Lazy<long> _uploadLength;
+        private readonly Lazy<long> _uploadOffset;
         private readonly Dictionary<string, string> _headers;
 
         public RequestHeaders()
         {
             _uploadLength = new Lazy<long>(() => ParseUploadLength());
+            _uploadOffset = new Lazy<long>(() => long.Parse(this[HeaderConstants.UploadOffset]));
         }
 
         private RequestHeaders(Dictionary<string, string> headers)
