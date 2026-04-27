@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.Net;
 using System.Threading.Tasks;
@@ -124,14 +124,14 @@ namespace OwinTestApp
                             return Task.FromResult(true);
                         }
 
-                        if (!ctx.Metadata.ContainsKey("name") || ctx.Metadata["name"].HasEmptyValue)
+                        if (!ctx.Metadata.TryGetValue("name", out var nameMeta) || nameMeta.HasEmptyValue)
                         {
                             ctx.FailRequest("name metadata must be specified. ");
                         }
 
                         if (
-                            !ctx.Metadata.ContainsKey("contentType")
-                            || ctx.Metadata["contentType"].HasEmptyValue
+                            !ctx.Metadata.TryGetValue("contentType", out var contentTypeMeta)
+                            || contentTypeMeta.HasEmptyValue
                         )
                         {
                             ctx.FailRequest("contentType metadata must be specified. ");
@@ -178,3 +178,4 @@ namespace OwinTestApp
         }
     }
 }
+

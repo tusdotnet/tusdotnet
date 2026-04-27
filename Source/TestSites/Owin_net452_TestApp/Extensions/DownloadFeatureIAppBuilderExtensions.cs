@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using Owin;
@@ -68,8 +68,8 @@ namespace Owin_net452_TestApp.Extensions
                                 context.Request.CallCancelled
                             );
 
-                            context.Response.ContentType = metadata.ContainsKey("contentType")
-                                ? metadata["contentType"].GetString(Encoding.UTF8)
+                            context.Response.ContentType = metadata.TryGetValue("contentType", out var contentTypeMeta)
+                                ? contentTypeMeta.GetString(Encoding.UTF8)
                                 : "application/octet-stream";
 
                             context.Response.ContentLength = fileStream.Length;
@@ -136,3 +136,4 @@ namespace Owin_net452_TestApp.Extensions
         }
     }
 }
+

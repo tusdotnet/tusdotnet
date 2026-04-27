@@ -166,14 +166,14 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
                     return Task.CompletedTask;
                 }
 
-                if (!ctx.Metadata.ContainsKey("name") || ctx.Metadata["name"].HasEmptyValue)
+                if (!ctx.Metadata.TryGetValue("name", out var nameMeta) || nameMeta.HasEmptyValue)
                 {
                     ctx.FailRequest("name metadata must be specified. ");
                 }
 
                 if (
-                    !ctx.Metadata.ContainsKey("contentType")
-                    || ctx.Metadata["contentType"].HasEmptyValue
+                    !ctx.Metadata.TryGetValue("contentType", out var contentTypeMeta)
+                    || contentTypeMeta.HasEmptyValue
                 )
                 {
                     ctx.FailRequest("contentType metadata must be specified. ");
@@ -220,3 +220,4 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
 
     return Task.FromResult(config);
 }
+

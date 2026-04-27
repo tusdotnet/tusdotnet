@@ -152,15 +152,17 @@ namespace tusdotnet.Stores
 
             private InternalFileRep Create(InternalFileId fileId, string extension)
             {
-                string fileName = fileId;
-                if (!string.IsNullOrEmpty(extension))
+                if (string.IsNullOrEmpty(extension))
                 {
-                    fileName += "." + extension;
+                    return new InternalFileRep(
+                        fileId,
+                        System.IO.Path.Combine(_directoryPath, fileId)
+                    );
                 }
 
                 return new InternalFileRep(
                     fileId,
-                    System.IO.Path.Combine(_directoryPath, fileName)
+                    System.IO.Path.Combine(_directoryPath, string.Concat(fileId, ".", extension))
                 );
             }
         }

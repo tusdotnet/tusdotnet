@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -61,8 +61,8 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Middleware
                     var fileStream = await file.GetContentAsync(context.RequestAborted);
                     var metadata = await file.GetMetadataAsync(context.RequestAborted);
 
-                    context.Response.ContentType = metadata.ContainsKey("contentType")
-                        ? metadata["contentType"].GetString(Encoding.UTF8)
+                    context.Response.ContentType = metadata.TryGetValue("contentType", out var contentTypeMeta)
+                        ? contentTypeMeta.GetString(Encoding.UTF8)
                         : "application/octet-stream";
 
                     context.Response.ContentLength = fileStream.Length;
@@ -108,3 +108,4 @@ namespace AspNetCore_netcoreapp2_2_TestApp.Middleware
         }
     }
 }
+
