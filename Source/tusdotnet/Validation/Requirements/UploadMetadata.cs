@@ -10,7 +10,12 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadMetadata))
+            var hasHeader = context.Request.Headers.TryGetValue(
+                HeaderConstants.UploadMetadata,
+                out var uploadMetadataHeader
+            );
+
+            if (!hasHeader)
             {
                 context.ParsedRequest.Metadata = [];
                 return TaskHelper.Completed;
@@ -18,7 +23,7 @@ namespace tusdotnet.Validation.Requirements
 
             var metadataParserResult = MetadataParser.ParseAndValidate(
                 context.Configuration.MetadataParsingStrategy,
-                context.Request.Headers.UploadMetadata
+                uploadMetadataHeader
             );
 
             if (metadataParserResult.Success)

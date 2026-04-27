@@ -48,6 +48,9 @@ namespace tusdotnet.Adapters
 
         public bool ContainsKey(string key) => _headers.ContainsKey(key);
 
+        public bool TryGetValue(string key, out string value) =>
+            _headers.TryGetValue(key, out value);
+
         public void Remove(string key) => _headers.Remove(key);
 
         private long ParseUploadLength()

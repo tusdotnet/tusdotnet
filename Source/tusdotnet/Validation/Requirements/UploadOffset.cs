@@ -9,17 +9,17 @@ namespace tusdotnet.Validation.Requirements
     {
         public override Task Validate(ContextAdapter context)
         {
-            if (!context.Request.Headers.ContainsKey(HeaderConstants.UploadOffset))
+            var hasHeader = context.Request.Headers.TryGetValue(
+                HeaderConstants.UploadOffset,
+                out var uploadOffsetHeader
+            );
+
+            if (!hasHeader)
             {
                 return BadRequest($"Missing {HeaderConstants.UploadOffset} header");
             }
 
-            if (
-                !long.TryParse(
-                    context.Request.Headers[HeaderConstants.UploadOffset],
-                    out long requestOffset
-                )
-            )
+            if (!long.TryParse(uploadOffsetHeader, out long requestOffset))
             {
                 return BadRequest($"Could not parse {HeaderConstants.UploadOffset} header");
             }
