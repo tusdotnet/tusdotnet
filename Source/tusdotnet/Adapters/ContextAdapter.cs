@@ -11,7 +11,7 @@ namespace tusdotnet.Adapters
     /// <summary>
     /// Context adapter that handles different pipeline contexts.
     /// </summary>
-    internal sealed class ContextAdapter
+    internal sealed class ContextAdapter : IDisposable
     {
         public RequestAdapter Request { get; }
 
@@ -145,5 +145,12 @@ namespace tusdotnet.Adapters
                 tokenToMonitor.Value
             );
         }
+
+        public void Dispose()
+        {
+            ClientDisconnectGuard?.Dispose();
+        }
+
+        internal void CancelRequest() => ClientDisconnectGuard?.Cancel();
     }
 }

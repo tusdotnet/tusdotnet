@@ -28,6 +28,9 @@ namespace tusdotnet.Adapters
 
         internal HttpStatusCode Status { get; private set; }
 
+        /// <summary>True if a response has been set, false if the request was aborted without a response (e.g. client disconnect).</summary>
+        internal bool HasResponse => Status != 0;
+
         internal string? Message { get; private set; }
 
         internal Dictionary<string, string> Headers { get; }

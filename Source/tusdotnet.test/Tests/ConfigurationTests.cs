@@ -196,6 +196,27 @@ namespace tusdotnet.test.Tests
             lockProvider.ReleaseCount.ShouldBe(3);
         }
 
+        [Fact]
+        public void Throws_If_OngoingUploadManager_And_FileLockProvider_Are_Set()
+        {
+            using var server = TestServerFactory.Create(
+                new DefaultTusConfiguration
+                {
+                    UrlPath = "/files",
+                    Store = Substitute.For<ITusStore>(),
+                    OngoingUploadManager = Substitute.For<IOngoingUploadManager>(),
+                    FileLockProvider = new FileLockProviderForConfigurationTests(),
+                }
+            );
+
+            var ex = Should.Throw<TusConfigurationException>(async () =>
+            {
+                await server.CreateTusResumableRequest("/files").SendAsync("OPTIONS");
+            });
+
+            ex.Message.ShouldContain("FileLockProvider cannot be used together with OngoingUploadManager");
+        }
+
         private class FileLockProviderForConfigurationTests : ITusFileLockProvider
         {
             public int LockCount { get; set; }

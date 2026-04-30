@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Helpers
 {
-    internal partial class ClientDisconnectGuardWithTimeout
+    internal partial class ClientDisconnectGuardWithTimeout : IDisposable
     {
-        private readonly CancellationTokenSource _cts;
+        private CancellationTokenSource _cts;
         private readonly TimeSpan _executionTimeout;
 
-        internal CancellationToken GuardedToken { get; }
+        internal CancellationToken GuardedToken { get; private set; }
 
         internal ClientDisconnectGuardWithTimeout(
             TimeSpan executionTimeout,
@@ -20,6 +20,13 @@ namespace tusdotnet.Helpers
             _executionTimeout = executionTimeout;
 
             GuardedToken = _cts.Token;
+        }
+
+        internal void Cancel() => _cts.Cancel();
+
+        public void Dispose()
+        {
+            _cts.Dispose();
         }
 
 #if pipelines

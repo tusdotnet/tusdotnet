@@ -105,7 +105,10 @@ namespace tusdotnet.test
             // Clear UrlPath as it's not used by endpoint routing.
             var urlPath = config.UrlPath;
             config.UrlPath = null;
-            config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
+            if (config.OngoingUploadManager == null)
+            {
+                config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
+            }
             return Create(app =>
                 app.UseEndpoints(endpoints =>
                     endpoints.MapTus(urlPath, _ => Task.FromResult(config))
@@ -130,7 +133,10 @@ namespace tusdotnet.test
 
         public static TestServer Create(DefaultTusConfiguration config)
         {
-            config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
+            if (config.OngoingUploadManager == null)
+            {
+                config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
+            }
             return Create(app => app.UseTus(_ => config));
         }
 #endif
@@ -174,7 +180,10 @@ namespace tusdotnet.test
 
         public static TestServer Create(DefaultTusConfiguration config)
         {
-            config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
+            if (config.OngoingUploadManager == null)
+            {
+                config.FileLockProvider ??= new TestServerInMemoryFileLockProvider();
+            }
             return Create(app => app.UseTus(_ => config));
         }
 

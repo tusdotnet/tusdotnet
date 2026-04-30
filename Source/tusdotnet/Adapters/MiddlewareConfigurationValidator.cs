@@ -36,6 +36,13 @@ namespace tusdotnet.Adapters
                     $"{nameof(MetadataParsingStrategy)} is not a valid value."
                 );
             }
+
+            if (configuration.OngoingUploadManager != null && configuration.FileLockProvider != null)
+            {
+                throw new TusConfigurationException(
+                    "FileLockProvider cannot be used together with OngoingUploadManager."
+                );
+            }
         }
     }
 }

@@ -46,6 +46,12 @@ namespace tusdotnet.Models
         public virtual ITusFileLockProvider FileLockProvider { get; set; }
 
         /// <summary>
+        /// Upload manager used for inverted locking where newer requests preempt older requests for the same upload id.
+        /// If set, this takes precedence over <see cref="FileLockProvider"/> for PATCH, HEAD and DELETE.
+        /// </summary>
+        public virtual IOngoingUploadManager OngoingUploadManager { get; set; }
+
+        /// <summary>
         /// Callbacks to run during different stages of the tusdotnet pipeline.
         /// </summary>
         public virtual Events Events { get; set; }

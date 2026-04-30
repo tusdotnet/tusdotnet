@@ -59,7 +59,7 @@ namespace tusdotnet
 
             // Note: When using the middleware one must prefix the UrlPath with the base path so no need to provide it here.
             // This is done for backwards compatibility.
-            var contextAdapter = new ContextAdapter(
+            using var contextAdapter = new ContextAdapter(
                 config.UrlPath,
                 requestPathBase: null,
                 MiddlewareUrlHelper.Instance,
@@ -87,7 +87,7 @@ namespace tusdotnet
 
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
-            if (context.RequestAborted.IsCancellationRequested)
+            if (!response.HasResponse)
             {
                 context.Abort();
                 return;

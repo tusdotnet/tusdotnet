@@ -68,7 +68,7 @@ namespace tusdotnet
                 RequestUri = context.Request.Uri,
             };
 
-            var contextAdapter = new ContextAdapter(
+            using var contextAdapter = new ContextAdapter(
                 config.UrlPath,
                 MiddlewareUrlHelper.Instance,
                 request,
@@ -95,6 +95,14 @@ namespace tusdotnet
 
         private async Task RespondToClient(ResponseAdapter response, IOwinContext context)
         {
+            if (!response.HasResponse)
+            {
+                // Client disconnected or request was aborted. OWIN has no Abort() equivalent
+                // so set 500 to prevent the host from sending a default 200 OK.
+                context.Response.StatusCode = 500;
+                return;
+            }
+
             context.Response.StatusCode = (int)response.Status;
             foreach (var item in response.Headers)
             {

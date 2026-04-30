@@ -37,7 +37,7 @@ namespace tusdotnet
                 ? context.Request.PathBase.Value
                 : null;
 
-            var contextAdapter = new ContextAdapter(
+            using var contextAdapter = new ContextAdapter(
                 urlPath,
                 pathBase,
                 EndpointUrlHelper.Instance,
@@ -60,7 +60,7 @@ namespace tusdotnet
 
         private static async Task RespondToClient(ResponseAdapter response, HttpContext context)
         {
-            if (context.RequestAborted.IsCancellationRequested)
+            if (!response.HasResponse)
             {
                 context.Abort();
                 return;
