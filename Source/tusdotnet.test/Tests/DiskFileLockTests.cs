@@ -70,6 +70,57 @@ namespace tusdotnet.test.Tests
             (await fileLock3.Lock()).ShouldBeFalse();
         }
 
+        [Theory]
+        [InlineData("../../../testfile_traversal", ".._.._.._testfile_traversal")]
+        [InlineData("..\\..\\..\\testfile_traversal", ".._.._.._testfile_traversal")]
+        [InlineData("subfolder/testfile_traversal", "subfolder_testfile_traversal")]
+        [InlineData("subfolder\\another\\file", "subfolder_another_file")]
+        public async Task Lock_Sanitizes_Invalid_Paths_In_FileId(
+            string maliciousId,
+            string expectedFileName
+        )
+        {
+            var uniqueId = Guid.NewGuid().ToString();
+            maliciousId += uniqueId;
+            expectedFileName += uniqueId;
+
+            var maliciousLock = GetFileLock(maliciousId);
+            // Lock should succeed because the malicious path gets sanitized
+            (await maliciousLock.Lock()).ShouldBeTrue();
+
+            // Try to lock with the sanitized filename - should fail because first lock has it
+            var sanitizedLock = GetFileLock(expectedFileName);
+            (await sanitizedLock.Lock()).ShouldBeFalse();
+
+            // Release the malicious lock
+            await maliciousLock.ReleaseIfHeld();
+
+            // Now the sanitized one should succeed
+            (await sanitizedLock.Lock()).ShouldBeTrue();
+            await sanitizedLock.ReleaseIfHeld();
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task Lock_Returns_False_For_Empty_FileId_After_Sanitization(string maliciousId)
+        {
+            var lockFolderLocation = Path.Combine(Path.GetTempPath(), "tempfilelocks_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(lockFolderLocation);
+            try
+            {
+                var fileLock = new DiskFileLock(lockFolderLocation, maliciousId);
+                (await fileLock.Lock()).ShouldBeFalse();
+            }
+            finally
+            {
+                if (Directory.Exists(lockFolderLocation))
+                {
+                    Directory.Delete(lockFolderLocation, true);
+                }
+            }
+        }
+
         private DiskFileLock GetFileLock(string fileId)
         {
             return (DiskFileLock)_fixture.Provider.AquireLock(fileId).Result;
@@ -79,19 +130,23 @@ namespace tusdotnet.test.Tests
     public sealed class DiskFileLockTestsFixture : IDisposable
     {
         public DiskFileLockProvider Provider { get; set; }
+        private readonly string _diskPath;
 
         public DiskFileLockTestsFixture()
         {
-            var diskPath = Path.Combine(Path.GetTempPath(), "tempfilelocks");
-            if (!Directory.Exists(diskPath))
-                Directory.CreateDirectory(diskPath);
+            _diskPath = Path.Combine(Path.GetTempPath(), "tempfilelocks_" + Guid.NewGuid().ToString("N"));
+            if (!Directory.Exists(_diskPath))
+                Directory.CreateDirectory(_diskPath);
 
-            Provider = new(diskPath);
+            Provider = new(_diskPath);
         }
 
         public void Dispose()
         {
-            Directory.Delete(Path.Combine(Path.GetTempPath(), "tempfilelocks"), recursive: true);
+            if (Directory.Exists(_diskPath))
+            {
+                Directory.Delete(_diskPath, recursive: true);
+            }
         }
     }
 }

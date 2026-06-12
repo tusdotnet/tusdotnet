@@ -15,12 +15,27 @@ namespace tusdotnet.FileLocks
         /// <inheritdoc />
         public DiskFileLock(string lockFolderLocation, string fileId)
         {
-            _fileLockDiskLocation = Path.Combine(lockFolderLocation, fileId + ".lock");
+            // Sanitize fileId by extracting only the filename portion, removing any path components.
+            // Normalize backslashes to forward slashes to ensure cross-platform compatibility,
+            // since Path.GetFileName only treats \ as a separator on Windows.
+            var normalizedFileId = fileId?.Replace('\\', '/') ?? "";
+            var safeFileId = Path.GetFileName(normalizedFileId);
+
+            // If sanitization results in an empty string, _fileLockDiskLocation remains null.
+            if (!string.IsNullOrEmpty(safeFileId))
+            {
+                _fileLockDiskLocation = Path.Combine(lockFolderLocation, safeFileId + ".lock");
+            }
         }
 
         /// <inheritdoc />
         public Task<bool> Lock()
         {
+            if (_fileLockDiskLocation == null)
+            {
+                return Task.FromResult(false);
+            }
+
             if (_hasLock)
             {
                 return Task.FromResult(true);
@@ -42,7 +57,7 @@ namespace tusdotnet.FileLocks
         /// <inheritdoc />
         public Task ReleaseIfHeld()
         {
-            if (_hasLock)
+            if (_hasLock && _fileLockDiskLocation != null)
             {
                 File.Delete(_fileLockDiskLocation);
             }
