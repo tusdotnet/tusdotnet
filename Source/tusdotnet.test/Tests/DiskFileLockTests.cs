@@ -71,10 +71,11 @@ namespace tusdotnet.test.Tests
         }
 
         [Theory]
-        [InlineData("../../../testfile_traversal", ".._.._.._testfile_traversal")]
-        [InlineData("..\\..\\..\\testfile_traversal", ".._.._.._testfile_traversal")]
-        [InlineData("subfolder/testfile_traversal", "subfolder_testfile_traversal")]
-        [InlineData("subfolder\\another\\file", "subfolder_another_file")]
+        [InlineData("../../../testfile_traversal", "testfile_traversal")]
+        [InlineData("..\\..\\..\\testfile_traversal", "testfile_traversal")]
+        [InlineData("subfolder/testfile_traversal", "testfile_traversal")]
+        [InlineData("subfolder\\another\\file", "file")]
+        [InlineData("/file", "file")]
         public async Task Lock_Sanitizes_Invalid_Paths_In_FileId(
             string maliciousId,
             string expectedFileName
@@ -105,7 +106,10 @@ namespace tusdotnet.test.Tests
         [InlineData("")]
         public async Task Lock_Returns_False_For_Empty_FileId_After_Sanitization(string maliciousId)
         {
-            var lockFolderLocation = Path.Combine(Path.GetTempPath(), "tempfilelocks_" + Guid.NewGuid().ToString("N"));
+            var lockFolderLocation = Path.Combine(
+                Path.GetTempPath(),
+                "tempfilelocks_" + Guid.NewGuid().ToString("N")
+            );
             Directory.CreateDirectory(lockFolderLocation);
             try
             {
@@ -134,7 +138,10 @@ namespace tusdotnet.test.Tests
 
         public DiskFileLockTestsFixture()
         {
-            _diskPath = Path.Combine(Path.GetTempPath(), "tempfilelocks_" + Guid.NewGuid().ToString("N"));
+            _diskPath = Path.Combine(
+                Path.GetTempPath(),
+                "tempfilelocks_" + Guid.NewGuid().ToString("N")
+            );
             if (!Directory.Exists(_diskPath))
                 Directory.CreateDirectory(_diskPath);
 
