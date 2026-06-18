@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using tusdotnet.Interfaces;
@@ -67,26 +68,32 @@ namespace tusdotnet.Stores.FileIdProviders
         /// <inheritdoc />
         public virtual Task<bool> ValidateId(string fileId)
         {
-            // add length of padding chars
-            int realIdLength;
-            switch (fileId.Length % 4)
+            // Base64 encodes 3 bytes as 4 characters, so the unpadded length mod 4 determines padding needed
+            var remainder = fileId.Length % 4;
+            var paddedLength = remainder switch
             {
-                case 0:
-                    realIdLength = fileId.Length + 0;
-                    break;
-                case 2:
-                    realIdLength = fileId.Length + 2;
-                    break;
-                case 3:
-                    realIdLength = fileId.Length + 1;
-                    break;
-                default:
-                    return Task.FromResult(false);
-            }
+                0 => fileId.Length,
+                2 => fileId.Length + 2,
+                3 => fileId.Length + 1,
+                _ => -1,
+            };
 
-            if (realIdLength != _idLength)
+            if (paddedLength != _idLength)
                 return Task.FromResult(false);
+
+            if (!fileId.All(IsValidBase64UrlChar))
+                return Task.FromResult(false);
+
             return Task.FromResult(true);
+        }
+
+        private static bool IsValidBase64UrlChar(char ch)
+        {
+            return (ch >= 'A' && ch <= 'Z')
+                || (ch >= 'a' && ch <= 'z')
+                || (ch >= '0' && ch <= '9')
+                || ch == '-'
+                || ch == '_';
         }
     }
 }
