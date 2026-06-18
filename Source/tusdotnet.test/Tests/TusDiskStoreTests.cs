@@ -1,6 +1,8 @@
-﻿using System;
+﻿#pragma warning disable IDE0079 // Remove unnecessary suppression
+#pragma warning disable CA2022
+
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,7 +18,6 @@ using tusdotnet.Models.Streams;
 using tusdotnet.Stores;
 using tusdotnet.test.Helpers;
 using Xunit;
-using Xunit.Abstractions;
 #if pipelines
 using System.IO.Pipelines;
 #endif
@@ -26,12 +27,10 @@ namespace tusdotnet.test.Tests
     public class TusDiskStoreTests : IClassFixture<TusDiskStoreFixture>, IDisposable
     {
         private readonly TusDiskStoreFixture _fixture;
-        private readonly ITestOutputHelper _output;
 
-        public TusDiskStoreTests(TusDiskStoreFixture fixture, ITestOutputHelper output)
+        public TusDiskStoreTests(TusDiskStoreFixture fixture)
         {
             _fixture = fixture;
-            _output = output;
         }
 
         [Fact]
@@ -97,7 +96,7 @@ namespace tusdotnet.test.Tests
 
             await store.AppendDataAsync(
                 fileId,
-                new MemoryStream(new[] { (byte)1 }),
+                new MemoryStream([(byte)1]),
                 CancellationToken.None
             );
 
@@ -428,9 +427,7 @@ namespace tusdotnet.test.Tests
             metadata["key"].GetString(new UTF8Encoding()).ShouldBe("¶ÀĚŧ̳");
             // Wrong encoding just to test that the result is different.
             metadata["key"].GetString(new ASCIIEncoding()).ShouldBe("??????????");
-            metadata["key"]
-                .GetBytes()
-                .ShouldBe(new byte[] { 194, 182, 195, 128, 196, 154, 197, 167, 204, 179 });
+            metadata["key"].GetBytes().ShouldBe([194, 182, 195, 128, 196, 154, 197, 167, 204, 179]);
         }
 
         [Fact]
@@ -824,7 +821,7 @@ namespace tusdotnet.test.Tests
                 fileId,
                 CancellationToken.None
             );
-            uploadConcat.ShouldBeOfType(typeof(FileConcatPartial));
+            uploadConcat.ShouldBeOfType<FileConcatPartial>();
         }
 
         [Fact]
@@ -855,7 +852,7 @@ namespace tusdotnet.test.Tests
 
             // Create final file
             var finalFileId = await _fixture.Store.CreateFinalFileAsync(
-                new[] { partial1Id, partial2Id },
+                [partial1Id, partial2Id],
                 null,
                 CancellationToken.None
             );
@@ -903,19 +900,19 @@ namespace tusdotnet.test.Tests
             await Task.WhenAll(
                 _fixture.Store.AppendDataAsync(
                     partial1Id,
-                    new MemoryStream(new byte[] { 1 }),
+                    new MemoryStream([1]),
                     CancellationToken.None
                 ),
                 _fixture.Store.AppendDataAsync(
                     partial2Id,
-                    new MemoryStream(new byte[] { 1 }),
+                    new MemoryStream([1]),
                     CancellationToken.None
                 )
             );
 
             // Create final file with no metadata
             var finalId = await _fixture.Store.CreateFinalFileAsync(
-                new[] { partial1Id, partial2Id },
+                [partial1Id, partial2Id],
                 null,
                 CancellationToken.None
             );
@@ -927,7 +924,7 @@ namespace tusdotnet.test.Tests
             metadata.ShouldBeNull();
 
             finalId = await _fixture.Store.CreateFinalFileAsync(
-                new[] { partial1Id, partial2Id },
+                [partial1Id, partial2Id],
                 "finalkey c29tZWZpbmFsbWV0YWRhdGE=",
                 CancellationToken.None
             );
@@ -952,18 +949,10 @@ namespace tusdotnet.test.Tests
             var p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
             var p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
 
-            await store.AppendDataAsync(
-                p1,
-                new MemoryStream(new byte[] { 1 }),
-                CancellationToken.None
-            );
-            await store.AppendDataAsync(
-                p2,
-                new MemoryStream(new byte[] { 2 }),
-                CancellationToken.None
-            );
+            await store.AppendDataAsync(p1, new MemoryStream([1]), CancellationToken.None);
+            await store.AppendDataAsync(p2, new MemoryStream([2]), CancellationToken.None);
 
-            _ = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
+            _ = await store.CreateFinalFileAsync([p1, p2], null, CancellationToken.None);
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
             (await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
 
@@ -973,18 +962,10 @@ namespace tusdotnet.test.Tests
             p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
             p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
 
-            await store.AppendDataAsync(
-                p1,
-                new MemoryStream(new byte[] { 1 }),
-                CancellationToken.None
-            );
-            await store.AppendDataAsync(
-                p2,
-                new MemoryStream(new byte[] { 2 }),
-                CancellationToken.None
-            );
+            await store.AppendDataAsync(p1, new MemoryStream([1]), CancellationToken.None);
+            await store.AppendDataAsync(p2, new MemoryStream([2]), CancellationToken.None);
 
-            _ = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
+            _ = await store.CreateFinalFileAsync([p1, p2], null, CancellationToken.None);
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeFalse();
             (await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeFalse();
 
@@ -1001,18 +982,10 @@ namespace tusdotnet.test.Tests
             p1 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
             p2 = await store.CreatePartialFileAsync(1, null, CancellationToken.None);
 
-            await store.AppendDataAsync(
-                p1,
-                new MemoryStream(new byte[] { 1 }),
-                CancellationToken.None
-            );
-            await store.AppendDataAsync(
-                p2,
-                new MemoryStream(new byte[] { 2 }),
-                CancellationToken.None
-            );
+            await store.AppendDataAsync(p1, new MemoryStream([1]), CancellationToken.None);
+            await store.AppendDataAsync(p2, new MemoryStream([2]), CancellationToken.None);
 
-            _ = await store.CreateFinalFileAsync(new[] { p1, p2 }, null, CancellationToken.None);
+            _ = await store.CreateFinalFileAsync([p1, p2], null, CancellationToken.None);
             (await store.FileExistAsync(p1, CancellationToken.None)).ShouldBeTrue();
             (await store.FileExistAsync(p2, CancellationToken.None)).ShouldBeTrue();
         }
@@ -1022,15 +995,11 @@ namespace tusdotnet.test.Tests
         {
             var p1 = await _fixture.Store.CreatePartialFileAsync(1, null, CancellationToken.None);
             var nonexistingfileid = Guid.NewGuid().ToString("n");
-            await _fixture.Store.AppendDataAsync(
-                p1,
-                new MemoryStream(new byte[] { 0 }),
-                CancellationToken.None
-            );
+            await _fixture.Store.AppendDataAsync(p1, new MemoryStream([0]), CancellationToken.None);
 
             var exception = await Should.ThrowAsync<TusStoreException>(async () =>
                 await _fixture.Store.CreateFinalFileAsync(
-                    new[] { p1, nonexistingfileid },
+                    [p1, nonexistingfileid],
                     null,
                     CancellationToken.None
                 )
@@ -1092,7 +1061,7 @@ namespace tusdotnet.test.Tests
             var file4 = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
             await _fixture.Store.AppendDataAsync(
                 file4,
-                new MemoryStream(new byte[] { 1 }),
+                new MemoryStream([1]),
                 CancellationToken.None
             );
             expires = DateTimeOffset.UtcNow.AddSeconds(-10);
@@ -1125,7 +1094,7 @@ namespace tusdotnet.test.Tests
             var file4 = await _fixture.Store.CreateFileAsync(1, null, CancellationToken.None);
             await _fixture.Store.AppendDataAsync(
                 file4,
-                new MemoryStream(new byte[] { 1 }),
+                new MemoryStream([1]),
                 CancellationToken.None
             );
             expires = DateTimeOffset.UtcNow.AddSeconds(-10);
@@ -1196,11 +1165,7 @@ namespace tusdotnet.test.Tests
                     )
                 ),
                 AssertFileIdForMethod(() =>
-                    _fixture.Store.CreateFinalFileAsync(
-                        new[] { fileId },
-                        null,
-                        CancellationToken.None
-                    )
+                    _fixture.Store.CreateFinalFileAsync([fileId], null, CancellationToken.None)
                 ),
                 AssertFileIdForMethod(() =>
                     _fixture.Store.DeleteFileAsync(fileId, CancellationToken.None)
@@ -1237,12 +1202,7 @@ namespace tusdotnet.test.Tests
                     _fixture.Store.SetUploadLengthAsync(fileId, 1, CancellationToken.None)
                 ),
                 AssertFileIdForMethod(() =>
-                    _fixture.Store.VerifyChecksumAsync(
-                        fileId,
-                        "sha1",
-                        new byte[] { 1 },
-                        CancellationToken.None
-                    )
+                    _fixture.Store.VerifyChecksumAsync(fileId, "sha1", [1], CancellationToken.None)
                 ),
             };
 

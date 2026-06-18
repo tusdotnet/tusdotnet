@@ -3,6 +3,8 @@
 // Project-level suppressions either have no target or are given
 // a specific target and scoped to a namespace, type, member, etc.
 
+using System.Diagnostics.CodeAnalysis;
+
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(
     "Design",
     "RCS1090:Call 'ConfigureAwait(false)'."
@@ -18,3 +20,5 @@
     Scope = "member",
     Target = "~M:tusdotnet.test.Tests.WriteFileStreamsTests.Handles_Abrupt_Disconnects_Gracefully(System.String)~System.Threading.Tasks.Task"
 )]
+[assembly: SuppressMessage("Style", "IDE0305:Simplify collection initialization")]
+[assembly: SuppressMessage("Style", "IDE0290:Use primary constructor")]
