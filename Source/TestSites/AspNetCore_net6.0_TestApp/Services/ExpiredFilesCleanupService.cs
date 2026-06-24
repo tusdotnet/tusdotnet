@@ -16,9 +16,11 @@ public sealed class ExpiredFilesCleanupService : BackgroundService
     )
     {
         _logger = logger;
-        _expirationStore = config.Store as ITusExpirationStore
+        _expirationStore =
+            config.Store as ITusExpirationStore
             ?? throw new InvalidOperationException(
-                $"The store {config.Store.GetType().Name} does not implement ITusExpirationStore.");
+                $"The store {config.Store.GetType().Name} does not implement ITusExpirationStore."
+            );
         _expiration = config.Expiration;
     }
 

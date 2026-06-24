@@ -453,7 +453,10 @@ namespace tusdotnet.test.Tests
             string methodToUse
         )
         {
-            var store = MockStoreHelper.CreateWithExtensions<ITusExpirationStore, ITusTerminationStore>();
+            var store = MockStoreHelper.CreateWithExtensions<
+                ITusExpirationStore,
+                ITusTerminationStore
+            >();
             store.WithExistingFile("expirationtestfile", 1, 0);
 
             var expirationStore = (ITusExpirationStore)store;

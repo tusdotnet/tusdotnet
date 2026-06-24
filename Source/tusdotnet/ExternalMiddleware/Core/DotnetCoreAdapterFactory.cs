@@ -11,7 +11,9 @@ namespace tusdotnet
         {
             return new RequestAdapter()
             {
-                Headers = RequestHeaders.FromDictionary(BuildHeaderDictionary(context.Request.Headers)),
+                Headers = RequestHeaders.FromDictionary(
+                    BuildHeaderDictionary(context.Request.Headers)
+                ),
                 Body = context.Request.Body,
 #if pipelines
                 BodyReader = context.Request.BodyReader,
@@ -23,7 +25,10 @@ namespace tusdotnet
 
         private static Dictionary<string, string> BuildHeaderDictionary(IHeaderDictionary headers)
         {
-            var dict = new Dictionary<string, string>(headers.Count, StringComparer.OrdinalIgnoreCase);
+            var dict = new Dictionary<string, string>(
+                headers.Count,
+                StringComparer.OrdinalIgnoreCase
+            );
             foreach (var kvp in headers)
             {
                 dict[kvp.Key] = kvp.Value[0];

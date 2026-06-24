@@ -44,7 +44,9 @@ namespace tusdotnet.Helpers
 
         private async Task<HashSet<string>> LoadSupportAlgorithms()
         {
-            var algorithms = await _context.StoreAdapter.GetSupportedAlgorithmsAsync(_context.CancellationToken);
+            var algorithms = await _context.StoreAdapter.GetSupportedAlgorithmsAsync(
+                _context.CancellationToken
+            );
             return new HashSet<string>(algorithms, StringComparer.OrdinalIgnoreCase);
         }
 

@@ -45,9 +45,8 @@ namespace AspNetCore_net462_TestApp.Services
                         {
                             _logger.LogInformation("Running cleanup job...");
 
-                            var numberOfRemovedFiles = await _expirationStore.RemoveExpiredFilesAsync(
-                                onAppDisposingToken
-                            );
+                            var numberOfRemovedFiles =
+                                await _expirationStore.RemoveExpiredFilesAsync(onAppDisposingToken);
 
                             _logger.LogInformation(
                                 $"Removed {numberOfRemovedFiles} expired files. Scheduled to run again in {_expiration.Timeout.TotalMilliseconds} ms"

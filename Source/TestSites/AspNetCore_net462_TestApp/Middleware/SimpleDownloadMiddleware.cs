@@ -61,7 +61,10 @@ namespace AspNetCore_net462_TestApp.Middleware
                     var fileStream = await file.GetContentAsync(context.RequestAborted);
                     var metadata = await file.GetMetadataAsync(context.RequestAborted);
 
-                    context.Response.ContentType = metadata.TryGetValue("contentType", out var contentTypeMeta)
+                    context.Response.ContentType = metadata.TryGetValue(
+                        "contentType",
+                        out var contentTypeMeta
+                    )
                         ? contentTypeMeta.GetString(Encoding.UTF8)
                         : "application/octet-stream";
 
@@ -108,4 +111,3 @@ namespace AspNetCore_net462_TestApp.Middleware
         }
     }
 }
-

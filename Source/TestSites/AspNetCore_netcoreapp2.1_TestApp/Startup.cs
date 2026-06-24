@@ -76,7 +76,10 @@ namespace AspNetCore_netcoreapp2_1_TestApp
                             return Task.CompletedTask;
                         }
 
-                        if (!ctx.Metadata.TryGetValue("name", out var nameMeta) || nameMeta.HasEmptyValue)
+                        if (
+                            !ctx.Metadata.TryGetValue("name", out var nameMeta)
+                            || nameMeta.HasEmptyValue
+                        )
                         {
                             ctx.FailRequest("name metadata must be specified. ");
                         }
@@ -130,4 +133,3 @@ namespace AspNetCore_netcoreapp2_1_TestApp
         }
     }
 }
-

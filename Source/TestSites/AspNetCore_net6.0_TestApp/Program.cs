@@ -220,4 +220,3 @@ static Task<DefaultTusConfiguration> TusConfigurationFactory(HttpContext httpCon
 
     return Task.FromResult(config);
 }
-

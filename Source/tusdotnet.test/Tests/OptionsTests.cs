@@ -231,11 +231,15 @@ namespace tusdotnet.test.Tests
             var store = (ITusStore)
                 Substitute.For(new[] { typeof(ITusStore), storeInterfaceType }, null);
 
-            var expiration = storeInterfaceType == typeof(ITusExpirationStore)
-                ? new AbsoluteExpiration(TimeSpan.FromMinutes(5))
-                : null;
+            var expiration =
+                storeInterfaceType == typeof(ITusExpirationStore)
+                    ? new AbsoluteExpiration(TimeSpan.FromMinutes(5))
+                    : null;
 
-            using var server = TestServerFactory.Create(store, expiration: (ExpirationBase)expiration);
+            using var server = TestServerFactory.Create(
+                store,
+                expiration: (ExpirationBase)expiration
+            );
 
             var response = await server.CreateRequest("/files").SendAsync("OPTIONS");
 

@@ -124,7 +124,10 @@ namespace OwinTestApp
                             return Task.FromResult(true);
                         }
 
-                        if (!ctx.Metadata.TryGetValue("name", out var nameMeta) || nameMeta.HasEmptyValue)
+                        if (
+                            !ctx.Metadata.TryGetValue("name", out var nameMeta)
+                            || nameMeta.HasEmptyValue
+                        )
                         {
                             ctx.FailRequest("name metadata must be specified. ");
                         }
@@ -178,4 +181,3 @@ namespace OwinTestApp
         }
     }
 }
-
