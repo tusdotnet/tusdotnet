@@ -258,6 +258,7 @@ nugetbuild/
 
 # Code coverage
 Tools/coverage.*.xml
+Tools/*.exe
 
 # Temp files when running tusdotnet
 **/App_Data/tusfiles

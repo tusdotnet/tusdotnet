@@ -1,5 +1,5 @@
 # Framework to use when generating coverage. Must be a "real" framework, i.e. not netstandard.
-$framework = "net8.0";
+$framework = "net10.0";
 # The file path passed to coverlet...
 $coverletWantedOutput = "$PSScriptRoot\coverage.xml";
 # ...which will result in the following filename.
@@ -15,4 +15,8 @@ $key = Read-Host -Prompt 'Input Codecov key'
 if(-not (Test-Path $coverletActualOutput)) {
 	throw "$coverletActualOutput was not found";
 }
-./codecov.sh -t $key
+
+# Run the CLI tool from the root of the repo to get the file lists correctly
+Push-Location ..
+.\Tools\codecov.exe --verbose upload-process --fail-on-error --token $key -f $coverletActualOutput
+Pop-Location
