@@ -680,6 +680,49 @@ namespace tusdotnet.test.Tests
         }
 
         [Fact]
+        public async Task Returns_400_BadRequest_If_Upload_Length_Set_Via_Patch_Is_Unparsable()
+        {
+            await Returns_400_BadRequest_If_Upload_Length_Set_Via_Patch_Is_Faulty_Internal(
+                "helloworld",
+                "Could not parse Upload-Length"
+            );
+        }
+
+        [Fact]
+        public async Task Returns_400_BadRequest_If_Upload_Length_Set_Via_Patch_Is_Negative()
+        {
+            await Returns_400_BadRequest_If_Upload_Length_Set_Via_Patch_Is_Faulty_Internal(
+                "-1",
+                "Header Upload-Length must be a positive number"
+            );
+        }
+
+        private static async Task Returns_400_BadRequest_If_Upload_Length_Set_Via_Patch_Is_Faulty_Internal(
+            string uploadLengthValue,
+            string expectedErrorMessage
+        )
+        {
+            var fileId = Guid.NewGuid().ToString();
+            var store = Substitute.For<
+                ITusStore,
+                ITusCreationStore,
+                ITusCreationDeferLengthStore
+            >();
+            store.WithExistingFile(fileId, null, 0);
+
+            using var server = TestServerFactory.Create(store);
+
+            var response = await server
+                .CreateRequest($"/files/{fileId}")
+                .AddTusResumableHeader()
+                .AddHeader("Upload-Length", uploadLengthValue)
+                .And(m => m.AddBody())
+                .SendAsync("PATCH");
+
+            await response.ShouldBeErrorResponse(HttpStatusCode.BadRequest, expectedErrorMessage);
+        }
+
+        [Fact]
         public async Task Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSizeInBytesLong_And_Body_Is_A_Stream()
         {
             await Returns_413_RequestEntityTooLarge_If_Upload_Length_Set_Via_Patch_Exceeds_MaxAllowedUploadSize_Internal(
