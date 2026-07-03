@@ -17,7 +17,7 @@ function uploadFile() {
 
     upload = new tus.Upload(file,
         {
-            endpoint: 'files/',
+            endpoint: 'files-controller/',
             onError: onTusError,
             onProgress: onTusProgress,
             onSuccess: onTusSuccess,

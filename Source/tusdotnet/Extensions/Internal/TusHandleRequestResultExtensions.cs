@@ -3,9 +3,10 @@ using System.Threading.Tasks;
 
 namespace tusdotnet.Extensions
 {
-    internal static class TusHandleRequestResultExtensions
+    // TODO should probably not be public, but is used in tusdotnet.ExternalMiddleware.Core.TusResponseWriter
+    public static class TusHandleRequestResultExtensions
     {
-        internal static Task WriteMessageToStream(
+        public static Task WriteMessageToStream(
             this TusHandleRequestResult result,
             Stream clientResponseStream
         ) => MessageStreamWriter.WriteAsync(result.Message, clientResponseStream);

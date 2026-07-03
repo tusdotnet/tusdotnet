@@ -25,6 +25,17 @@ builder.Services.AddHostedService<ExpiredFilesCleanupService>();
 
 AddAuthorization(builder);
 
+builder
+    .Services.AddTus()
+    .Configure(provider => new DefaultTusConfiguration
+    {
+        Store = new TusDiskStore(
+            provider.GetRequiredService<TusDiskStorageOptionHelper>().StorageDiskPath
+        ),
+    });
+
+builder.Services.AddMvc();
+
 var app = builder.Build();
 
 app.UseAuthorization();
@@ -32,6 +43,9 @@ app.UseAuthentication();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+app.MapControllers();
 
 // Handle downloads (must be set before MapTus)
 app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
