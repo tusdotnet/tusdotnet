@@ -11,15 +11,19 @@ namespace Owin_net452_TestApp.Extensions
         {
             var corsPolicy = new System.Web.Cors.CorsPolicy
             {
-                AllowAnyHeader = true,
-                AllowAnyMethod = true,
+                AllowAnyHeader = false,
+                AllowAnyMethod = false,
                 AllowAnyOrigin = true,
             };
 
-            corsPolicy
-                .GetType()
-                .GetProperty(nameof(corsPolicy.ExposedHeaders))
-                .SetValue(corsPolicy, CorsHelper.GetExposedHeaders());
+            foreach (var header in CorsHelper.GetAllowedHeaders())
+                corsPolicy.Headers.Add(header);
+
+            foreach (var method in CorsHelper.GetAllowedMethods())
+                corsPolicy.Methods.Add(method);
+
+            foreach (var header in CorsHelper.GetExposedHeaders())
+                corsPolicy.ExposedHeaders.Add(header);
 
             app.UseCors(
                 new CorsOptions

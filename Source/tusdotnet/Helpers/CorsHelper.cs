@@ -1,4 +1,6 @@
-﻿namespace tusdotnet.Helpers
+﻿using tusdotnet.Constants;
+
+namespace tusdotnet.Helpers
 {
     /// <summary>
     /// Helper class for setting upp cross origin resource sharing (CORS).
@@ -6,26 +8,55 @@
     public static class CorsHelper
     {
         /// <summary>
-        /// Returns the headers needed for the tus protocol to work over CORS.
+        /// Returns response headers that a browser-based tus client needs to read cross-origin.
         /// </summary>
-        /// <returns>The headers needed for the tus protocol to work over CORS</returns>
+        /// <returns>Response headers to expose using Access-Control-Expose-Headers</returns>
         public static string[] GetExposedHeaders()
         {
             return new[]
             {
-                "Location",
-                "Tus-Resumable",
-                "Tus-Version",
-                "Tus-Extension",
-                "Tus-Max-Size",
-                "Tus-Checksum-Algorithm",
-                "Upload-Length",
-                "Upload-Offset",
-                "Upload-Metadata",
-                "Upload-Checksum",
-                "Upload-Concat",
-                "Upload-Expires",
+                HeaderConstants.Location,
+                HeaderConstants.TusResumable,
+                HeaderConstants.TusVersion,
+                HeaderConstants.TusExtension,
+                HeaderConstants.TusMaxSize,
+                HeaderConstants.TusChecksumAlgorithm,
+                HeaderConstants.UploadLength,
+                HeaderConstants.UploadDeferLength,
+                HeaderConstants.UploadOffset,
+                HeaderConstants.UploadMetadata,
+                HeaderConstants.UploadConcat,
+                HeaderConstants.UploadExpires,
             };
+        }
+
+        /// <summary>
+        /// Returns request headers that a browser-based tus client may send cross-origin.
+        /// </summary>
+        /// <returns>Request headers to allow using Access-Control-Allow-Headers</returns>
+        public static string[] GetAllowedHeaders()
+        {
+            return new[]
+            {
+                HeaderConstants.TusResumable,
+                HeaderConstants.UploadLength,
+                HeaderConstants.UploadDeferLength,
+                HeaderConstants.UploadOffset,
+                HeaderConstants.UploadMetadata,
+                HeaderConstants.UploadChecksum,
+                HeaderConstants.UploadConcat,
+                HeaderConstants.ContentType,
+                HeaderConstants.XHttpMethodOveride,
+            };
+        }
+
+        /// <summary>
+        /// Returns HTTP methods used by the tus protocol.
+        /// </summary>
+        /// <returns>HTTP methods to allow using Access-Control-Allow-Methods</returns>
+        public static string[] GetAllowedMethods()
+        {
+            return new[] { "OPTIONS", "POST", "HEAD", "PATCH", "DELETE" };
         }
     }
 }

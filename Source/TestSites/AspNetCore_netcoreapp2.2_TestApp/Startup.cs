@@ -60,8 +60,8 @@ namespace AspNetCore_netcoreapp2_2_TestApp
 
             app.UseCors(builder =>
                 builder
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
+                    .WithHeaders(CorsHelper.GetAllowedHeaders())
+                    .WithMethods(CorsHelper.GetAllowedMethods())
                     .AllowAnyOrigin()
                     .WithExposedHeaders(CorsHelper.GetExposedHeaders())
             );

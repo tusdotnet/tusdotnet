@@ -34,8 +34,8 @@ namespace AspNetCore_Net462_TestApp
 
             app.UseCors(builder =>
                 builder
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
+                    .WithHeaders(CorsHelper.GetAllowedHeaders())
+                    .WithMethods(CorsHelper.GetAllowedMethods())
                     .AllowAnyOrigin()
                     .WithExposedHeaders(CorsHelper.GetExposedHeaders())
             );

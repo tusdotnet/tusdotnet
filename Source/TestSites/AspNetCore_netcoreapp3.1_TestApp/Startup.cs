@@ -81,8 +81,8 @@ namespace AspNetCore_netcoreapp3._1_TestApp
 
             app.UseCors(builder =>
                 builder
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
+                    .WithHeaders(CorsHelper.GetAllowedHeaders())
+                    .WithMethods(CorsHelper.GetAllowedMethods())
                     .AllowAnyOrigin()
                     .WithExposedHeaders(CorsHelper.GetExposedHeaders())
             );
