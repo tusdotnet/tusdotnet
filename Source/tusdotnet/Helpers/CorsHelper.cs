@@ -13,8 +13,8 @@ namespace tusdotnet.Helpers
         /// <returns>Response headers to expose using Access-Control-Expose-Headers</returns>
         public static string[] GetExposedHeaders()
         {
-            return new[]
-            {
+            return
+            [
                 HeaderConstants.Location,
                 HeaderConstants.TusResumable,
                 HeaderConstants.TusVersion,
@@ -27,7 +27,7 @@ namespace tusdotnet.Helpers
                 HeaderConstants.UploadMetadata,
                 HeaderConstants.UploadConcat,
                 HeaderConstants.UploadExpires,
-            };
+            ];
         }
 
         /// <summary>
@@ -36,8 +36,8 @@ namespace tusdotnet.Helpers
         /// <returns>Request headers to allow using Access-Control-Allow-Headers</returns>
         public static string[] GetAllowedHeaders()
         {
-            return new[]
-            {
+            return
+            [
                 HeaderConstants.TusResumable,
                 HeaderConstants.UploadLength,
                 HeaderConstants.UploadDeferLength,
@@ -47,7 +47,7 @@ namespace tusdotnet.Helpers
                 HeaderConstants.UploadConcat,
                 HeaderConstants.ContentType,
                 HeaderConstants.XHttpMethodOveride,
-            };
+            ];
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace tusdotnet.Helpers
         /// <returns>HTTP methods to allow using Access-Control-Allow-Methods</returns>
         public static string[] GetAllowedMethods()
         {
-            return new[] { "OPTIONS", "POST", "HEAD", "PATCH", "DELETE" };
+            return ["OPTIONS", "POST", "HEAD", "PATCH", "DELETE"];
         }
     }
 }
