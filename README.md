@@ -13,7 +13,7 @@ tusdotnet is a .NET server implementation of the tus.io protocol that runs on .N
 * Experimental support for IETF's [Resumable Uploads For Http](https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/) (see branch [POC/tus2](https://github.com/tusdotnet/tusdotnet/tree/POC/tus2))
 * Fast and reliable
 * Easy to configure
-* Customizable data storage — see [Storage](#storage)
+* Customizable data storage (see [Storage](#storage))
 * MIT licensed
 
 ## Getting started
@@ -59,6 +59,8 @@ More options, events and [middleware usage](https://github.com/tusdotnet/tusdotn
 | [TusDiskStore](https://github.com/tusdotnet/tusdotnet/wiki/Configure-tusdiskstore) | Built-in | Saves files to a local directory |
 | [Xtensible.TusDotNet.Azure](https://github.com/giometrix/Xtensible.TusDotNet.Azure) | Community | Azure Blob Storage |
 | [tusdotnet.Storage.S3](https://github.com/bechtleav360/tusdotnet.Storage.S3) | Community | S3-compatible storage (AWS S3, MinIO, Cloudflare R2, etc.) |
+
+You can also [write your own store](https://github.com/tusdotnet/tusdotnet/wiki/Custom-data-store).
 
 ## Try it out
 
