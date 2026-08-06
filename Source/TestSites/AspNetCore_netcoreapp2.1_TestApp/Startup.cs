@@ -21,7 +21,17 @@ namespace AspNetCore_netcoreapp2_1_TestApp
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddCors();
+            services.AddCors(a =>
+                a.AddPolicy(
+                    "DefaultCorsPolicy",
+                    builder =>
+                        builder
+                            .WithHeaders(CorsHelper.GetAllowedHeaders())
+                            .WithMethods(CorsHelper.GetAllowedMethods())
+                            .AllowAnyOrigin()
+                            .WithExposedHeaders(CorsHelper.GetExposedHeaders())
+                )
+            );
             services.AddSingleton(CreateTusConfiguration);
             services.AddHostedService<ExpiredFilesCleanupService>();
         }
@@ -32,13 +42,7 @@ namespace AspNetCore_netcoreapp2_1_TestApp
             app.UseDefaultFiles();
             app.UseStaticFiles();
 
-            app.UseCors(builder =>
-                builder
-                    .WithHeaders(CorsHelper.GetAllowedHeaders())
-                    .WithMethods(CorsHelper.GetAllowedMethods())
-                    .AllowAnyOrigin()
-                    .WithExposedHeaders(CorsHelper.GetExposedHeaders())
-            );
+            app.UseCors("DefaultCorsPolicy");
 
             app.UseSimpleExceptionHandler();
 

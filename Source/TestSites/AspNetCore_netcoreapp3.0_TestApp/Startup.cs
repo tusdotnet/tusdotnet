@@ -36,7 +36,17 @@ namespace AspNetCore_netcoreapp3._0_TestApp
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddCors();
+            services.AddCors(a =>
+                a.AddPolicy(
+                    "DefaultCorsPolicy",
+                    builder =>
+                        builder
+                            .WithHeaders(CorsHelper.GetAllowedHeaders())
+                            .WithMethods(CorsHelper.GetAllowedMethods())
+                            .AllowAnyOrigin()
+                            .WithExposedHeaders(CorsHelper.GetExposedHeaders())
+                )
+            );
             services.AddSingleton(CreateTusConfiguration);
             services.AddHostedService<ExpiredFilesCleanupService>();
 
@@ -76,13 +86,7 @@ namespace AspNetCore_netcoreapp3._0_TestApp
 
             app.UseHttpsRedirection();
 
-            app.UseCors(builder =>
-                builder
-                    .WithHeaders(CorsHelper.GetAllowedHeaders())
-                    .WithMethods(CorsHelper.GetAllowedMethods())
-                    .AllowAnyOrigin()
-                    .WithExposedHeaders(CorsHelper.GetExposedHeaders())
-            );
+            app.UseCors("DefaultCorsPolicy");
 
             // httpContext parameter can be used to create a tus configuration based on current user, domain, host, port or whatever.
             // In this case we just return the same configuration for everyone.
