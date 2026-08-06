@@ -13,7 +13,7 @@ tusdotnet is a .NET server implementation of the tus.io protocol that runs on .N
 * Experimental support for IETF's [Resumable Uploads For Http](https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/) (see branch [POC/tus2](https://github.com/tusdotnet/tusdotnet/tree/POC/tus2))
 * Fast and reliable
 * Easy to configure
-* Customizable data storage with built-in disk storage (`TusDiskStore`) and community stores for [Azure Blob Storage](https://github.com/giometrix/Xtensible.TusDotNet.Azure) and [S3-compatible storage](https://github.com/bechtleav360/tusdotnet.Storage.S3) (AWS S3, MinIO, Cloudflare R2, etc.)
+* Customizable data storage — see [Storage](#storage)
 * MIT licensed
 
 ## Getting started
@@ -50,7 +50,15 @@ app.MapTus("/files", async httpContext => new()
 
 Depending on your infrastructure you might also need to [configure Kestrel](https://github.com/tusdotnet/tusdotnet/wiki/Configure-Kestrel), [IIS](https://github.com/tusdotnet/tusdotnet/wiki/Configure-IIS) or [other reverse proxies](https://github.com/tusdotnet/tusdotnet/wiki/Configure-other-reverse-proxies).
 
-More options, events and [middleware usage](https://github.com/tusdotnet/tusdotnet/wiki/Configure-tusdotnet#endpoint-routing-or-middleware) are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configuration).
+More options, events and [middleware usage](https://github.com/tusdotnet/tusdotnet/wiki/Configure-tusdotnet#endpoint-routing-or-middleware) are available on the [wiki](https://github.com/tusdotnet/tusdotnet/wiki/Configure-tusdotnet).
+
+## Storage
+
+| Store | Type | Description |
+|-------|------|-------------|
+| [TusDiskStore](https://github.com/tusdotnet/tusdotnet/wiki/Configure-tusdiskstore) | Built-in | Saves files to a local directory |
+| [Xtensible.TusDotNet.Azure](https://github.com/giometrix/Xtensible.TusDotNet.Azure) | Community | Azure Blob Storage |
+| [tusdotnet.Storage.S3](https://github.com/bechtleav360/tusdotnet.Storage.S3) | Community | S3-compatible storage (AWS S3, MinIO, Cloudflare R2, etc.) |
 
 ## Try it out
 
