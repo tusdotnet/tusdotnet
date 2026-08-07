@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using tusdotnet;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Concatenation;
 using tusdotnet.Models.Configuration;
@@ -25,6 +26,18 @@ builder.Services.AddHostedService<ExpiredFilesCleanupService>();
 
 AddAuthorization(builder);
 
+builder.Services.AddCors(a =>
+    a.AddPolicy(
+        "DefaultCorsPolicy",
+        builder =>
+            builder
+                .WithHeaders(CorsHelper.GetAllowedHeaders())
+                .WithMethods(CorsHelper.GetAllowedMethods())
+                .AllowAnyOrigin()
+                .WithExposedHeaders(CorsHelper.GetExposedHeaders())
+    )
+);
+
 var app = builder.Build();
 
 app.UseAuthorization();
@@ -32,6 +45,7 @@ app.UseAuthentication();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseHttpsRedirection();
+app.UseCors("DefaultCorsPolicy");
 
 // Handle downloads (must be set before MapTus)
 app.MapGet("/files/{fileId}", DownloadFileEndpoint.HandleRoute);
