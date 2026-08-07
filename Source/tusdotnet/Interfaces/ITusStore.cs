@@ -26,7 +26,7 @@ namespace tusdotnet.Interfaces
         );
 
         /// <summary>
-        /// Check if a file exist.
+        /// Check if a file exists.
         /// </summary>
         /// <param name="fileId">The id of the file to check</param>
         /// <param name="cancellationToken">Cancellation token to use when cancelling</param>

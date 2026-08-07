@@ -53,7 +53,7 @@ namespace tusdotnet.Models
         /// <summary>
         /// The maximum upload size to allow. Exceeding this limit will return a "413 Request Entity Too Large" error to the client.
         /// Set to null to allow any size. The size might still be restricted by the web server or operating system.
-        /// This property will be preceded by <see cref="MaxAllowedUploadSizeInBytesLong" />.
+        /// This property will be overridden by <see cref="MaxAllowedUploadSizeInBytesLong" /> if that is also set.
         /// </summary>
         public virtual int? MaxAllowedUploadSizeInBytes { get; set; }
 
@@ -77,7 +77,7 @@ namespace tusdotnet.Models
         /// Set an expiration time where incomplete files can no longer be updated.
         /// This value can either be <c>AbsoluteExpiration</c> or <c>SlidingExpiration</c>.
         /// Absolute expiration will be saved per file when the file is created.
-        /// Sliding expiration will be saved per file when the file is created and updated on each time the file is updated.
+        /// Sliding expiration will be saved per file when the file is created and updated each time the file is updated.
         /// Setting this property to null will disable file expiration.
         /// </summary>
         public virtual ExpirationBase Expiration { get; set; }
@@ -89,7 +89,7 @@ namespace tusdotnet.Models
         public virtual MetadataParsingStrategy MetadataParsingStrategy { get; set; }
 
         /// <summary>
-        /// Tus extensions allowed to use by the client. Defaults to <see cref="TusExtensions.All" />.
+        /// Tus extensions that the client is allowed to use. Defaults to <see cref="TusExtensions.All" />.
         /// In addition to being in this list the extension must also be supported by the store provided in <see cref="DefaultTusConfiguration.Store"/> to be accessible for the client.
         /// </summary>
         public TusExtensions AllowedExtensions { get; set; }
@@ -100,7 +100,7 @@ namespace tusdotnet.Models
         /// The timeout is applied from the moment the store starts reading from the client until it has filled its internal read buffer.
         /// Once the buffer is filled, the timeout is reset and restarted on the next read.
         /// When <see cref="UsePipelinesIfAvailable" /> is enabled, the internal read buffer is always 4 KiB. When false, it is determined by the store.
-        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abrubtly disconnects due to network loss or similar.
+        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abruptly disconnects due to network loss or similar.
         /// The default value is 60 seconds.
         /// </summary>
 #else
@@ -108,7 +108,7 @@ namespace tusdotnet.Models
         /// Timeout to wait for data from the client.
         /// The timeout is applied from the moment the store starts reading from the client until it has filled its internal read buffer.
         /// Once the buffer is filled, the timeout is reset and restarted on the next read. The buffer size is determined by the store.
-        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abrubtly disconnects due to network loss or similar.
+        /// A higher value will make tusdotnet wait longer for data, but will also result in locks not being released as fast which can be an issue if the client abruptly disconnects due to network loss or similar.
         /// The default value is 60 seconds.
         /// </summary>
 #endif

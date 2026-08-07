@@ -49,8 +49,8 @@ namespace tusdotnet.Models.Configuration
         public Func<DeleteCompleteContext, Task> OnDeleteCompleteAsync { get; set; }
 
         /// <summary>
-        /// Callback that will run before the request is being handled. This callback can be used to authorize the current request.
-        /// Calling the <see cref="ValidationContext{TSelf}.FailRequest(string)" /> method on the context will return a 400 Bad Request to the client.
+        /// Callback that will run before the request is handled. This callback can be used to authorize the current request.
+        /// Calling the <see cref="ValidationContext{TSelf}.FailRequest(System.Net.HttpStatusCode)" /> method on the context will reject the request with the provided HTTP status code.
         /// </summary>
         public Func<AuthorizeContext, Task> OnAuthorizeAsync { get; set; }
     }
