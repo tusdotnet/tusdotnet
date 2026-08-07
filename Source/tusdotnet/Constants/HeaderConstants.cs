@@ -23,7 +23,7 @@
 
         public const string CacheControl = "Cache-Control";
         public const string NoStore = "no-store";
-        public const string Location = "location";
+        public const string Location = "Location";
 
         public const string ContentType = "Content-Type";
     }
