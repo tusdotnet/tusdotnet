@@ -151,13 +151,20 @@ namespace tusdotnet.test.Tests
 
             var config = new DefaultTusConfiguration { Store = store, UrlPath = "/files" };
 
+            var httpContext = new DefaultHttpContext();
+            ITrailingHeaderHelper trailingHeaderHelper = null;
+#if trailingheaders
+            trailingHeaderHelper = new HttpContextTrailingHeaderHelper(httpContext);
+#endif
+
             var context = new ContextAdapter(
                 "/files",
                 requestPathBase: null,
                 MiddlewareUrlHelper.Instance,
+                trailingHeaderHelper,
                 request,
                 config,
-                new DefaultHttpContext()
+                httpContext
             );
 
             await TusV1EventRunner.Invoke(context);

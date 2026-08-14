@@ -333,6 +333,7 @@ namespace tusdotnet.test.Tests
                 "/files",
                 requestPathBase: null,
                 MiddlewareUrlHelper.Instance,
+                null,
                 request,
                 config,
                 httpContext

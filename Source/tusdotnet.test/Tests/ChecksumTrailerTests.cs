@@ -286,6 +286,7 @@ namespace tusdotnet.test.Tests
                 "/files",
                 requestPathBase: null,
                 MiddlewareUrlHelper.Instance,
+                new HttpContextTrailingHeaderHelper(httpContext),
                 request,
                 config,
                 httpContext

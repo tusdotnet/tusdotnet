@@ -32,7 +32,9 @@ namespace tusdotnet
             EndpointConfigurationValidator.Instance.Validate(config);
 
             var urlPath = GetUrlPath(context);
-            var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : null;
+            var pathBase = context.Request.PathBase.HasValue
+                ? context.Request.PathBase.Value
+                : null;
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(
                 context,
                 DotnetCoreRequestUriFactory.GetRequestUri(context)
@@ -42,6 +44,7 @@ namespace tusdotnet
                 urlPath,
                 pathBase,
                 EndpointUrlHelper.Instance,
+                new HttpContextTrailingHeaderHelper(context),
                 request,
                 config,
                 context

@@ -47,7 +47,9 @@ namespace tusdotnet
 
             var requestUri = DotnetCoreRequestUriFactory.GetRequestUri(httpContext);
 
-            if (!requestUri.LocalPath.StartsWith(config.UrlPath, StringComparison.OrdinalIgnoreCase))
+            if (
+                !requestUri.LocalPath.StartsWith(config.UrlPath, StringComparison.OrdinalIgnoreCase)
+            )
             {
                 await _next(httpContext);
                 return;
@@ -55,12 +57,18 @@ namespace tusdotnet
 
             var request = DotnetCoreAdapterFactory.CreateRequestAdapter(httpContext, requestUri);
 
+            ITrailingHeaderHelper trailingHeaderHelper = null;
+#if trailingheaders
+            trailingHeaderHelper = new HttpContextTrailingHeaderHelper(httpContext);
+#endif
+
             // Note: When using the middleware one must prefix the UrlPath with the base path so no need
             // to provide requestPathBase here. This is done for backwards compatibility.
             var contextAdapter = new ContextAdapter(
                 config.UrlPath,
                 requestPathBase: null,
                 MiddlewareUrlHelper.Instance,
+                trailingHeaderHelper,
                 request,
                 config,
                 httpContext

@@ -104,6 +104,7 @@ namespace tusdotnet.test.Tests.ModelTests
                 "/files",
                 requestPathBase: null,
                 MiddlewareUrlHelper.Instance,
+                null,
                 request,
                 config,
                 new DefaultHttpContext()

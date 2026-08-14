@@ -1,5 +1,6 @@
 ﻿#nullable enable
 
+using System;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.FileLocks;
@@ -23,24 +24,16 @@ namespace tusdotnet.Extensions.Internal
 
 #if trailingheaders
 
+        [Obsolete("Use context method directly")]
         internal static string? GetTrailingUploadChecksumHeader(this ContextAdapter context)
         {
-            var httpRequest = context.HttpContext.Request;
-
-            if (!httpRequest.SupportsTrailers() || !httpRequest.CheckTrailersAvailable())
-                return null;
-
-            if (!context.HasDeclaredTrailingUploadChecksumHeader())
-                return null;
-
-            return httpRequest.GetTrailer(HeaderConstants.UploadChecksum).FirstOrDefault();
+            return context.TrailingHeaderHelper.GetTrailingUploadChecksumHeader();
         }
 
+        [Obsolete("Use context method directly")]
         internal static bool HasDeclaredTrailingUploadChecksumHeader(this ContextAdapter context)
         {
-            return context
-                .HttpContext.Request.GetDeclaredTrailers()
-                .Any(x => x == HeaderConstants.UploadChecksum);
+            return context.TrailingHeaderHelper.HasDeclaredTrailingUploadChecksumHeader();
         }
 #endif
 

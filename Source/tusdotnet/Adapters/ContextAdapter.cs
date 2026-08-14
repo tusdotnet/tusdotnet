@@ -69,15 +69,19 @@ namespace tusdotnet.Adapters
 
         public IUrlHelper UrlHelper { get; }
 
+        public ITrailingHeaderHelper TrailingHeaderHelper { get; set; }
+
         public ContextAdapter(
             string configUrlPath,
             string requestPathBase,
             IUrlHelper urlHelper,
+            ITrailingHeaderHelper trailingHeaderHelper,
             RequestAdapter request,
             DefaultTusConfiguration config,
             HttpContext httpContext
         )
         {
+            TrailingHeaderHelper = trailingHeaderHelper;
             _configUrlPath = configUrlPath;
             _requestPathBase = requestPathBase;
             UrlHelper = urlHelper;
@@ -94,6 +98,32 @@ namespace tusdotnet.Adapters
             }
         }
 
+        public ContextAdapter(
+            string configUrlPath,
+            string requestPathBase,
+            IUrlHelper urlHelper,
+            ITrailingHeaderHelper trailingHeaderHelper,
+            RequestAdapter request,
+            DefaultTusConfiguration config,
+            CancellationToken cancellationToken
+        )
+        {
+            TrailingHeaderHelper = trailingHeaderHelper;
+            _configUrlPath = configUrlPath;
+            _requestPathBase = requestPathBase;
+            UrlHelper = urlHelper;
+            Request = request;
+            Configuration = config;
+            HttpContext = null;
+
+            Cache = new();
+
+            if (cancellationToken != default)
+            {
+                SetupClientDisconnectGuard(cancellationToken, config.ClientReadTimeout);
+            }
+        }
+
 #if netfull
 
         public ContextAdapter(
@@ -107,6 +137,7 @@ namespace tusdotnet.Adapters
                 configUrlPath,
                 requestPathBase: null,
                 urlHelper,
+                null,
                 request,
                 config,
                 null as HttpContext
