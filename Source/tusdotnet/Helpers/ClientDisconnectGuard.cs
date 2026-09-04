@@ -54,31 +54,6 @@ namespace tusdotnet.Helpers
             }
         }
 
-        internal static async Task<ClientDisconnectGuardReadStreamAsyncResult> ReadStreamAsync(
-            Stream stream,
-            byte[] buffer,
-            int offset,
-            int count,
-            CancellationToken cancellationToken
-        )
-        {
-            try
-            {
-                var bytesRead = await stream.ReadAsync(buffer, offset, count, cancellationToken);
-                return new ClientDisconnectGuardReadStreamAsyncResult(false, bytesRead);
-            }
-            catch (Exception exc) when (ClientDisconnected(exc, cancellationToken))
-            {
-                return new ClientDisconnectGuardReadStreamAsyncResult(true, 0);
-            }
-        }
-
-        /// <summary>
-        /// Returns true if the client disconnected, otherwise false.
-        /// </summary>
-        /// <param name="exception">The exception retrieved from the operation that might have been caused by a client disconnect</param>
-        /// <param name="cancellationToken">The client's request cancellation token</param>
-        /// <returns>True if the client disconnected, otherwise false</returns>
         internal static bool ClientDisconnected(
             Exception exception,
             CancellationToken cancellationToken

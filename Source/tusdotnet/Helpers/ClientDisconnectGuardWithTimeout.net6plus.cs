@@ -8,21 +8,6 @@ namespace tusdotnet.Helpers
 {
     internal partial class ClientDisconnectGuardWithTimeout
     {
-        private void ExecuteWithTimeout(Action guardFromClientDisconnect)
-        {
-            _cts.CancelAfter(_executionTimeout);
-            guardFromClientDisconnect();
-            _cts.TryReset();
-        }
-
-        private async Task<T> ExecuteWithTimeout<T>(Func<Task<T>> guardFromClientDisconnect)
-        {
-            _cts.CancelAfter(_executionTimeout);
-            var res = await guardFromClientDisconnect();
-            _cts.TryReset();
-            return res;
-        }
-
         private async Task<TResult> ExecuteWithTimeout<TState, TResult>(
             TState state,
             Func<TState, CancellationToken, Task<TResult>> operation,
@@ -48,9 +33,20 @@ namespace tusdotnet.Helpers
             return res;
         }
 
-        private void ExecuteWithTimeout<TState, TResult>(
+        private TResult ExecuteWithTimeout<TState, TResult>(
             TState state,
             Func<TState, TResult> operation
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            var res = operation(state);
+            _cts.TryReset();
+            return res;
+        }
+
+        private void ExecuteWithTimeout<TState>(
+            TState state,
+            Action<TState> operation
         )
         {
             _cts.CancelAfter(_executionTimeout);

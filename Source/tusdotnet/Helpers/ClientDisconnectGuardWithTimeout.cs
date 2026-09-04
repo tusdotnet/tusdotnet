@@ -22,46 +22,7 @@ namespace tusdotnet.Helpers
             GuardedToken = _cts.Token;
         }
 
-#if pipelines
-
-        internal bool Execute(Action guardFromClientDisconnect, CancellationToken guardedToken)
-        {
-            try
-            {
-                ExecuteWithTimeout(guardFromClientDisconnect);
-                return false;
-            }
-            catch (Exception ex) when (ClientDisconnected(ex, guardedToken))
-            {
-                return true;
-            }
-        }
-#endif
-
-        internal async Task<T> Execute<T>(
-            Func<Task<T>> guardFromClientDisconnect,
-            Func<T> getDefaultValue,
-            CancellationToken guardedToken
-        )
-        {
-            try
-            {
-                return await ExecuteWithTimeout(guardFromClientDisconnect);
-            }
-            catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
-            {
-                return getDefaultValue();
-            }
-        }
-
-        /// <summary>
-        /// Reduced-allocation overload for async Task-returning operations. Accepts static
-        /// delegates together with a captured <paramref name="state"/> value so that no
-        /// closure class is allocated on each call. The backing <c>Task&lt;TResult&gt;</c>
-        /// itself still allocates (Stream APIs do not support <c>ValueTask</c>), but the
-        /// two delegate wrappers and their captures are eliminated.
-        /// </summary>
-        internal async Task<TResult> ExecuteAsync<TState, TResult>(
+        internal async Task<TResult> ExecuteTask<TState, TResult>(
             TState state,
             Func<TState, CancellationToken, Task<TResult>> operation,
             Func<TState, TResult> getDefaultValue,
@@ -79,12 +40,8 @@ namespace tusdotnet.Helpers
         }
 
 #if pipelines
-        /// <summary>
-        /// Allocation-free overload for async operations. The static-lambda calling convention
-        /// means <paramref name="operation"/> and <paramref name="getDefaultValue"/> are compiled
-        /// to singleton delegates — no closure class is allocated on each call.
-        /// </summary>
-        internal async ValueTask<TResult> Execute<TState, TResult>(
+
+        internal async ValueTask<TResult> ExecuteValueTask<TState, TResult>(
             TState state,
             Func<TState, CancellationToken, ValueTask<TResult>> operation,
             Func<TState, TResult> getDefaultValue,
@@ -101,34 +58,37 @@ namespace tusdotnet.Helpers
             }
         }
 
-        /// <summary>
-        /// Allocation-free overload for synchronous operations. Use a dummy return value (e.g.
-        /// <c>false</c>) for void-style callers such as <c>AdvanceTo</c> and <c>Complete</c>.
-        /// </summary>
-        internal TResult Execute<TState, TResult>(
+        internal void Execute<TState>(
             TState state,
-            Func<TState, TResult> operation,
+            Action<TState> operation,
             CancellationToken guardedToken
         )
         {
             try
             {
                 ExecuteWithTimeout(state, operation);
-                return default;
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken)) { }
+        }
+
+        internal TResult Execute<TState, TResult>(
+            TState state,
+            Func<TState, TResult> operation,
+            Func<TState, TResult> getDefaultValue,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                return ExecuteWithTimeout(state, operation);
             }
             catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
             {
-                return default;
+                return getDefaultValue(state);
             }
         }
 #endif
 
-        /// <summary>
-        /// Returns true if the client disconnected, otherwise false.
-        /// </summary>
-        /// <param name="exception">The exception retrieved from the operation that might have been caused by a client disconnect</param>
-        /// <param name="cancellationToken">The client's request cancellation token</param>
-        /// <returns>True if the client disconnected, otherwise false</returns>
         private bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -139,7 +99,6 @@ namespace tusdotnet.Helpers
             var exceptionFullName = exception.GetType().FullName;
 
             // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1).
-            // Instead the exception below is thrown.
             if (exceptionFullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException")
             {
                 _cts.Cancel();

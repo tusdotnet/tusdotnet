@@ -53,8 +53,9 @@ namespace tusdotnet.Models.PipeReaders
         public override void AdvanceTo(SequencePosition consumed)
         {
             _unconsumedBuffer = _unconsumedBuffer.Slice(consumed);
-            _clientDisconnectGuard.Execute(
-                () => _backingReader.AdvanceTo(consumed),
+            _clientDisconnectGuard.Execute<(PipeReader reader, SequencePosition pos)>(
+                state: (_backingReader, consumed),
+                operation: static s => s.reader.AdvanceTo(s.pos),
                 _clientDisconnectGuard.GuardedToken
             );
         }
@@ -62,8 +63,13 @@ namespace tusdotnet.Models.PipeReaders
         public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
         {
             _unconsumedBuffer = _unconsumedBuffer.Slice(consumed);
-            _clientDisconnectGuard.Execute(
-                () => _backingReader.AdvanceTo(consumed, examined),
+            _clientDisconnectGuard.Execute<(
+                PipeReader reader,
+                SequencePosition consumed,
+                SequencePosition examined
+            )>(
+                state: (_backingReader, consumed, examined),
+                operation: static s => s.reader.AdvanceTo(s.consumed, s.examined),
                 _clientDisconnectGuard.GuardedToken
             );
         }
@@ -76,22 +82,22 @@ namespace tusdotnet.Models.PipeReaders
         public override void Complete(Exception exception = null)
         {
             _unconsumedBuffer = new();
-            _clientDisconnectGuard.Execute(
-                () => _backingReader.Complete(exception),
-                _clientDisconnectGuard.GuardedToken
-            );
+            _backingReader.Complete(exception);
         }
 
         public override async ValueTask<ReadResult> ReadAsync(
             CancellationToken cancellationToken = default
         )
         {
-            var readResult = await _clientDisconnectGuard.Execute(
-                guardFromClientDisconnect: async () =>
-                    await _backingReader.ReadAsync(cancellationToken),
-                getDefaultValue: () =>
-                    new ReadResult(_unconsumedBuffer, isCanceled: true, isCompleted: false),
-                cancellationToken
+            var readResult = await _clientDisconnectGuard.ExecuteValueTask(
+                state: this,
+                operation: static (self, ct) => self._backingReader.ReadAsync(ct),
+                getDefaultValue: static self => new ReadResult(
+                    self._unconsumedBuffer,
+                    isCanceled: true,
+                    isCompleted: false
+                ),
+                guardedToken: cancellationToken
             );
 
             _unconsumedBuffer = readResult.Buffer;
@@ -101,11 +107,17 @@ namespace tusdotnet.Models.PipeReaders
 
         public override bool TryRead(out ReadResult result)
         {
-            var hasData = false;
-            var capturedResult = default(ReadResult);
-
-            var disconnected = _clientDisconnectGuard.Execute(
-                () => hasData = _backingReader.TryRead(out capturedResult),
+            var (disconnected, hasData, capturedResult) = _clientDisconnectGuard.Execute(
+                state: _backingReader,
+                operation: static reader =>
+                {
+                    var hasData = reader.TryRead(out var r);
+                    return (disconnected: false, hasData, r);
+                },
+                getDefaultValue: static _ =>
+                {
+                    return (disconnected: true, hasData: false, default(ReadResult));
+                },
                 _clientDisconnectGuard.GuardedToken
             );
 
