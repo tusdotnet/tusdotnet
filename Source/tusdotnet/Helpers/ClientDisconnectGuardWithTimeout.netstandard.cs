@@ -38,6 +38,42 @@ namespace tusdotnet.Helpers
 
             return res;
         }
+
+        private async Task<TResult> ExecuteWithTimeout<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            var res = await operation(state, cancellationToken);
+            _cts.CancelAfter(Timeout.Infinite);
+            return res;
+        }
+
+#if pipelines
+        private async ValueTask<TResult> ExecuteWithTimeout<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, ValueTask<TResult>> operation,
+            CancellationToken cancellationToken
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            var res = await operation(state, cancellationToken);
+            _cts.CancelAfter(Timeout.Infinite);
+            return res;
+        }
+
+        private void ExecuteWithTimeout<TState, TResult>(
+            TState state,
+            Func<TState, TResult> operation
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            operation(state);
+            _cts.CancelAfter(Timeout.Infinite);
+        }
+#endif
     }
 }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Running;
 using tusdotnet.benchmark.Benchmarks;
 
 namespace tusdotnet.benchmark
@@ -9,22 +10,42 @@ namespace tusdotnet.benchmark
     {
         public static async Task Main(string[] args)
         {
-            // --quick uses 10ms delay for fast verification; default uses 1s to simulate 49 KB/s
-            var quick = args.Length > 0 && args[0] == "--quick";
+            // Usage:
+            //   dotnet run -c Release -- alloc          → BenchmarkDotNet PipeReader allocation benchmark
+            //   dotnet run -c Release -- stream         → BenchmarkDotNet Stream allocation benchmark
+            //   dotnet run -c Release -- buffering       → wall-clock buffering benchmark (1s/chunk)
+            //   dotnet run -c Release -- buffering quick → buffering benchmark (10ms/chunk, fast)
 
-            var bench = new ClientDisconnectBufferingBenchmark(
-                chunkDelayMs: quick ? 10 : 1000
-            );
+            var mode = args.Length > 0 ? args[0].ToLowerInvariant() : "alloc";
+
+            if (mode == "alloc")
+            {
+                BenchmarkRunner.Run<ReadAsyncAllocationBenchmark>();
+                return;
+            }
+
+            if (mode == "stream")
+            {
+                BenchmarkRunner.Run<StreamReadAsyncAllocationBenchmark>();
+                return;
+            }
+
+            // ── legacy buffering benchmark ───────────────────────────────────────
+            var quick = args.Length > 1 && args[1] == "quick";
+            var bench = new ClientDisconnectBufferingBenchmark(chunkDelayMs: quick ? 10 : 1000);
             bench.Setup();
 
             try
             {
                 const int runs = 3;
-                var mode = quick ? "quick (10ms/chunk)" : "1s/chunk (~49 KB/s)";
-                Console.WriteLine($"Running {runs} runs each. File: 10 MB, chunk: 49 KB, delay: {mode}.");
+                var delayMode = quick ? "quick (10ms/chunk)" : "1s/chunk (~49 KB/s)";
+                Console.WriteLine(
+                    $"Running {runs} runs each. File: 10 MB, chunk: 49 KB, delay: {delayMode}."
+                );
                 Console.WriteLine();
 
-                long oldTotal = 0, newTotal = 0;
+                long oldTotal = 0,
+                    newTotal = 0;
 
                 for (int i = 1; i <= runs; i++)
                 {
@@ -50,7 +71,9 @@ namespace tusdotnet.benchmark
                 Console.WriteLine("=== Results ===");
                 Console.WriteLine($"[OLD] avg: {oldTotal / runs} ms");
                 Console.WriteLine($"[NEW] avg: {newTotal / runs} ms");
-                Console.WriteLine($"Saved:     {(oldTotal - newTotal) / runs} ms/upload on average");
+                Console.WriteLine(
+                    $"Saved:     {(oldTotal - newTotal) / runs} ms/upload on average"
+                );
             }
             finally
             {

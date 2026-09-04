@@ -55,6 +55,75 @@ namespace tusdotnet.Helpers
         }
 
         /// <summary>
+        /// Reduced-allocation overload for async Task-returning operations. Accepts static
+        /// delegates together with a captured <paramref name="state"/> value so that no
+        /// closure class is allocated on each call. The backing <c>Task&lt;TResult&gt;</c>
+        /// itself still allocates (Stream APIs do not support <c>ValueTask</c>), but the
+        /// two delegate wrappers and their captures are eliminated.
+        /// </summary>
+        internal async Task<TResult> ExecuteAsync<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, Task<TResult>> operation,
+            Func<TState, TResult> getDefaultValue,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                return await ExecuteWithTimeout(state, operation, guardedToken);
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
+            {
+                return getDefaultValue(state);
+            }
+        }
+
+#if pipelines
+        /// <summary>
+        /// Allocation-free overload for async operations. The static-lambda calling convention
+        /// means <paramref name="operation"/> and <paramref name="getDefaultValue"/> are compiled
+        /// to singleton delegates — no closure class is allocated on each call.
+        /// </summary>
+        internal async ValueTask<TResult> Execute<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, ValueTask<TResult>> operation,
+            Func<TState, TResult> getDefaultValue,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                return await ExecuteWithTimeout(state, operation, guardedToken);
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
+            {
+                return getDefaultValue(state);
+            }
+        }
+
+        /// <summary>
+        /// Allocation-free overload for synchronous operations. Use a dummy return value (e.g.
+        /// <c>false</c>) for void-style callers such as <c>AdvanceTo</c> and <c>Complete</c>.
+        /// </summary>
+        internal TResult Execute<TState, TResult>(
+            TState state,
+            Func<TState, TResult> operation,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                ExecuteWithTimeout(state, operation);
+                return default;
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
+            {
+                return default;
+            }
+        }
+#endif
+
+        /// <summary>
         /// Returns true if the client disconnected, otherwise false.
         /// </summary>
         /// <param name="exception">The exception retrieved from the operation that might have been caused by a client disconnect</param>
