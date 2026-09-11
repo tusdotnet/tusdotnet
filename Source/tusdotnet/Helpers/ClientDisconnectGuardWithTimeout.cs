@@ -22,44 +22,73 @@ namespace tusdotnet.Helpers
             GuardedToken = _cts.Token;
         }
 
-#if pipelines
-
-        internal bool Execute(Action guardFromClientDisconnect, CancellationToken guardedToken)
-        {
-            try
-            {
-                ExecuteWithTimeout(guardFromClientDisconnect);
-                return false;
-            }
-            catch (Exception ex) when (ClientDisconnected(ex, guardedToken))
-            {
-                return true;
-            }
-        }
-#endif
-
-        internal async Task<T> Execute<T>(
-            Func<Task<T>> guardFromClientDisconnect,
-            Func<T> getDefaultValue,
+        internal async Task<TResult> ExecuteTask<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, Task<TResult>> operation,
+            Func<TState, TResult> getDefaultValue,
             CancellationToken guardedToken
         )
         {
             try
             {
-                return await ExecuteWithTimeout(guardFromClientDisconnect);
+                return await ExecuteWithTimeout(state, operation, guardedToken);
             }
             catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
             {
-                return getDefaultValue();
+                return getDefaultValue(state);
             }
         }
 
-        /// <summary>
-        /// Returns true if the client disconnected, otherwise false.
-        /// </summary>
-        /// <param name="exception">The exception retrieved from the operation that might have been caused by a client disconnect</param>
-        /// <param name="cancellationToken">The client's request cancellation token</param>
-        /// <returns>True if the client disconnected, otherwise false</returns>
+#if pipelines
+
+        internal async ValueTask<TResult> ExecuteValueTask<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, ValueTask<TResult>> operation,
+            Func<TState, TResult> getDefaultValue,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                return await ExecuteWithTimeout(state, operation, guardedToken);
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
+            {
+                return getDefaultValue(state);
+            }
+        }
+
+        internal void Execute<TState>(
+            TState state,
+            Action<TState> operation,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                ExecuteWithTimeout(state, operation);
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken)) { }
+        }
+
+        internal TResult Execute<TState, TResult>(
+            TState state,
+            Func<TState, TResult> operation,
+            Func<TState, TResult> getDefaultValue,
+            CancellationToken guardedToken
+        )
+        {
+            try
+            {
+                return ExecuteWithTimeout(state, operation);
+            }
+            catch (Exception exc) when (ClientDisconnected(exc, guardedToken))
+            {
+                return getDefaultValue(state);
+            }
+        }
+#endif
+
         private bool ClientDisconnected(Exception exception, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -70,7 +99,6 @@ namespace tusdotnet.Helpers
             var exceptionFullName = exception.GetType().FullName;
 
             // IsCancellationRequested is false when connecting directly to Kestrel in ASP.NET Core 1.1 (on netcoreapp1_1).
-            // Instead the exception below is thrown.
             if (exceptionFullName == "Microsoft.AspNetCore.Server.Kestrel.BadHttpRequestException")
             {
                 _cts.Cancel();

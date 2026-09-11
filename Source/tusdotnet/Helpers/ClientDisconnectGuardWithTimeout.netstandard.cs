@@ -16,28 +16,52 @@ namespace tusdotnet.Helpers
 
     internal partial class ClientDisconnectGuardWithTimeout
     {
-#if pipelines
-
-        private void ExecuteWithTimeout(Action guardFromClientDisconnect)
+        private async Task<TResult> ExecuteWithTimeout<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken
+        )
         {
             _cts.CancelAfter(_executionTimeout);
+            var res = await operation(state, cancellationToken);
+            _cts.CancelAfter(Timeout.Infinite);
+            return res;
+        }
 
-            guardFromClientDisconnect();
+#if pipelines
+        private async ValueTask<TResult> ExecuteWithTimeout<TState, TResult>(
+            TState state,
+            Func<TState, CancellationToken, ValueTask<TResult>> operation,
+            CancellationToken cancellationToken
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            var res = await operation(state, cancellationToken);
+            _cts.CancelAfter(Timeout.Infinite);
+            return res;
+        }
 
+        private TResult ExecuteWithTimeout<TState, TResult>(
+            TState state,
+            Func<TState, TResult> operation
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            var res = operation(state);
+            _cts.CancelAfter(Timeout.Infinite);
+            return res;
+        }
+
+        private void ExecuteWithTimeout<TState>(
+            TState state,
+            Action<TState> operation
+        )
+        {
+            _cts.CancelAfter(_executionTimeout);
+            operation(state);
             _cts.CancelAfter(Timeout.Infinite);
         }
 #endif
-
-        private async Task<T> ExecuteWithTimeout<T>(Func<Task<T>> guardFromClientDisconnect)
-        {
-            _cts.CancelAfter(_executionTimeout);
-
-            var res = await guardFromClientDisconnect();
-
-            _cts.CancelAfter(Timeout.Infinite);
-
-            return res;
-        }
     }
 }
 
