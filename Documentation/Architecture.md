@@ -164,6 +164,12 @@ tusdotnet provides hooks into the upload lifecycle:
 
 The library includes a locking mechanism (`ITusFileLockProvider`) to handle concurrent access to the same file. The default implementation uses in-memory locks, but custom implementations can be provided for distributed scenarios.
 
+A distributed lock can be lost while a request holds it, e.g. when its lease expires during a process pause or the lock backend fails over. Another request can then acquire the lock while the first one is still writing. Locks that can be lost implement `ITusLeasedFileLock`, which exposes a `LockLostToken`. Stores read it in `AppendDataAsync` with `GetFileLockLostToken()` on the `Stream` or `PipeReader` they receive.
+
+The token tells the store that the lock is gone. It cannot stop a write that already passed its check. Only the store can reject a stale write, ideally with a conditional write against the storage (e.g. an ETag precondition). To reject a write, the store throws `TusUploadConflictException` or lets an `OperationCanceledException` caused by the lock-lost token propagate. Both result in `409 Conflict`, and the client then sends HEAD and resumes from the committed offset.
+
+The lock-lost token is separate from the request's cancellation token on purpose. Stores treat a cancelled request as a client disconnect and persist the data received so far, which is the wrong reaction to a lost lock.
+
 ## Performance Features
 
 - **Pipeline Support** - On .NET Core 3.1+ / .NET 6+, uses `System.IO.Pipelines` for high-performance I/O (enabled by default on .NET 6+)
@@ -183,7 +189,7 @@ tusdotnet returns appropriate HTTP status codes:
 | 400 Bad Request | Invalid headers or request format |
 | 403 Forbidden | Unauthorized or PATCH on final concatenation |
 | 404 Not Found | File doesn't exist |
-| 409 Conflict | Upload offset mismatch |
+| 409 Conflict | Upload offset mismatch, or the upload was modified by another request (`TusUploadConflictException`, lost file lock) |
 | 410 Gone | Expired file |
 | 412 Precondition Failed | Unsupported protocol version |
 | 413 Request Entity Too Large | File exceeds max size |

@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions.Internal;
+using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Streams;
 
@@ -18,6 +19,8 @@ namespace tusdotnet.IntentHandlers
 
             guardedStream = await WrapWithMaxSize(guardedStream, context);
             guardedStream = WrapWithChecksumInfo(guardedStream, context);
+
+            FileLockLostTokenRegistry.Register(guardedStream, context.FileLockLostToken);
 
             return guardedStream;
         }

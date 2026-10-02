@@ -72,6 +72,11 @@ namespace tusdotnet
                     context.Response.Locked();
                     return ResultType.StopExecution;
                 }
+
+                if (fileLock is ITusLeasedFileLock leasedFileLock)
+                {
+                    context.FileLockLostToken = leasedFileLock.LockLostToken;
+                }
             }
 
             try
@@ -101,6 +106,21 @@ namespace tusdotnet
                 // Client disconnected - just stop execution without error response
                 return ResultType.StopExecution;
             }
+            catch (OperationCanceledException)
+                when (context.FileLockLostToken.IsCancellationRequested)
+            {
+                // The store stopped because the lock was lost. Another request may own the file now,
+                // so the client must re-read the offset instead of trusting what this request wrote.
+                context.Response.UploadConflict(
+                    "The file lock was lost while the file was being updated. Please try again"
+                );
+                return ResultType.StopExecution;
+            }
+            catch (TusUploadConflictException conflictException)
+            {
+                context.Response.UploadConflict(conflictException.Message);
+                return ResultType.StopExecution;
+            }
             catch (MaxReadSizeExceededException readSizeException)
             {
                 context.Response.Error(
@@ -122,6 +142,8 @@ namespace tusdotnet
             {
                 if (fileLock != null)
                 {
+                    // The context is reused by the next intent (e.g. creation-with-upload) which acquires its own lock.
+                    context.FileLockLostToken = default;
                     await fileLock.ReleaseIfHeld();
                 }
             }

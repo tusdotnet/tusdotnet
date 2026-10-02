@@ -4,6 +4,7 @@ using System.IO.Pipelines;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions.Internal;
+using tusdotnet.Helpers;
 
 namespace tusdotnet.Models.PipeReaders
 {
@@ -18,6 +19,8 @@ namespace tusdotnet.Models.PipeReaders
 
             reader = await WrapWithMaxSize(reader, context);
             reader = WrapWithChecksumInfo(reader, context);
+
+            FileLockLostTokenRegistry.Register(reader, context.FileLockLostToken);
 
             return reader;
         }

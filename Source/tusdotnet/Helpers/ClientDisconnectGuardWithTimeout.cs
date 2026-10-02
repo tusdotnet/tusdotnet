@@ -11,6 +11,11 @@ namespace tusdotnet.Helpers
 
         internal CancellationToken GuardedToken { get; }
 
+        /// <summary>
+        /// Cancelled when the file lock held by the current intent is lost. Set through <see cref="Adapters.ContextAdapter.FileLockLostToken"/>.
+        /// </summary>
+        internal CancellationToken FileLockLostToken { get; set; }
+
         internal ClientDisconnectGuardWithTimeout(
             TimeSpan executionTimeout,
             CancellationToken tokenToMonitor
@@ -93,7 +98,9 @@ namespace tusdotnet.Helpers
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                return true;
+                // A store that cancels its read because the lock was lost must see the exception so that
+                // the runner answers 409. Swallowing it would look like end of body and persist a partial write.
+                return _cts.IsCancellationRequested || !FileLockLostToken.IsCancellationRequested;
             }
 
             var exceptionFullName = exception.GetType().FullName;
