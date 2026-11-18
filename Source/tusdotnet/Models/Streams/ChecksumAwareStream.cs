@@ -14,6 +14,8 @@ namespace tusdotnet.Models.Streams
 
         public Checksum Checksum { get; }
 
+        public Stream InnerStream => BackingStream;
+
         public override Task<int> ReadAsync(
             byte[] buffer,
             int offset,

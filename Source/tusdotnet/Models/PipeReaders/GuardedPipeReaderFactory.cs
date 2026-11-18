@@ -4,7 +4,6 @@ using System.IO.Pipelines;
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions.Internal;
-using tusdotnet.Helpers;
 
 namespace tusdotnet.Models.PipeReaders
 {
@@ -17,18 +16,17 @@ namespace tusdotnet.Models.PipeReaders
                 context.ClientDisconnectGuard
             );
 
-            reader = WrapWithFileLockLost(reader, context);
             reader = await WrapWithMaxSize(reader, context);
+            reader = WrapWithFileLockLost(reader, context);
             reader = WrapWithChecksumInfo(reader, context);
-
-            FileLockLostTokenRegistry.Register(reader, context.FileLockLostToken);
 
             return reader;
         }
 
         private static PipeReader WrapWithFileLockLost(PipeReader reader, ContextAdapter context)
         {
-            // Wrap the disconnect guard directly, so the store and every outer guard see a lost lock as an exception.
+            // Only the checksum wrapper may sit outside this guard. GetFileLockLostToken() looks through that one
+            // wrapper and no other, because GetUploadChecksumInfo() needs the checksum wrapper outermost.
             return context.FileLockLostToken.CanBeCanceled
                 ? new FileLockLostGuardedPipeReader(reader, context.FileLockLostToken)
                 : reader;

@@ -19,6 +19,8 @@ namespace tusdotnet.Models.PipeReaders
 
         public Checksum Checksum { get; }
 
+        public PipeReader InnerReader => _backingReader;
+
         public override void AdvanceTo(SequencePosition consumed)
         {
             _backingReader.AdvanceTo(consumed);

@@ -12,16 +12,16 @@ namespace tusdotnet.Models
     /// </summary>
     internal class FileLockLostGuardedReadOnlyStream : ReadOnlyStream
     {
-        private readonly CancellationToken _lockLostToken;
-
         public FileLockLostGuardedReadOnlyStream(
             Stream backingStream,
             CancellationToken lockLostToken
         )
             : base(backingStream)
         {
-            _lockLostToken = lockLostToken;
+            LockLostToken = lockLostToken;
         }
+
+        public CancellationToken LockLostToken { get; }
 
         public override async Task<int> ReadAsync(
             byte[] buffer,
@@ -39,7 +39,7 @@ namespace tusdotnet.Models
             using (
                 var cts = CancellationTokenSource.CreateLinkedTokenSource(
                     cancellationToken,
-                    _lockLostToken
+                    LockLostToken
                 )
             )
             {
@@ -47,7 +47,7 @@ namespace tusdotnet.Models
                 {
                     read = await BackingStream.ReadAsync(buffer, offset, count, cts.Token);
                 }
-                catch (OperationCanceledException) when (_lockLostToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (LockLostToken.IsCancellationRequested)
                 {
                     throw new FileLockLostException();
                 }
@@ -61,7 +61,7 @@ namespace tusdotnet.Models
 
         private void ThrowIfLockLost()
         {
-            if (_lockLostToken.IsCancellationRequested)
+            if (LockLostToken.IsCancellationRequested)
             {
                 throw new FileLockLostException();
             }

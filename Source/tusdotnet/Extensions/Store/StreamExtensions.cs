@@ -1,7 +1,7 @@
 ﻿#nullable enable
 using System.IO;
 using System.Threading;
-using tusdotnet.Helpers;
+using tusdotnet.Models;
 using tusdotnet.Models.Streams;
 
 namespace tusdotnet.Extensions.Store
@@ -31,7 +31,8 @@ namespace tusdotnet.Extensions.Store
         /// persist this request's data. Throw a <see cref="Models.TusUploadConflictException"/>, or let an
         /// <see cref="System.OperationCanceledException"/> caused by this token propagate, to answer 409 Conflict.
         /// Returns <see cref="CancellationToken.None"/> unless the lock implements <see cref="Interfaces.ITusLeasedFileLock"/>.
-        /// Call it on the Stream passed to AppendDataAsync, not on a wrapper around it: a wrapper returns
+        /// Call it on the Stream passed to AppendDataAsync, not on a wrapper the store creates around it: tusdotnet
+        /// cannot see through that wrapper, so it returns
         /// <see cref="CancellationToken.None"/>.
         /// </summary>
         /// <remarks>
@@ -44,7 +45,14 @@ namespace tusdotnet.Extensions.Store
         /// <returns>The token that is cancelled when the file lock is lost, or <see cref="CancellationToken.None"/></returns>
         public static CancellationToken GetFileLockLostToken(this Stream stream)
         {
-            return FileLockLostTokenRegistry.Get(stream);
+            // The checksum wrapper is the only one the factory puts outside the lock-lost guard.
+            var inner = stream is ChecksumAwareStream checksumStream
+                ? checksumStream.InnerStream
+                : stream;
+
+            return inner is FileLockLostGuardedReadOnlyStream guard
+                ? guard.LockLostToken
+                : CancellationToken.None;
         }
     }
 }

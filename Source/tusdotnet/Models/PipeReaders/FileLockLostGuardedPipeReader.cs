@@ -15,7 +15,6 @@ namespace tusdotnet.Models.PipeReaders
     internal class FileLockLostGuardedPipeReader : PipeReader
     {
         private readonly PipeReader _backingReader;
-        private readonly CancellationToken _lockLostToken;
 
         public FileLockLostGuardedPipeReader(
             PipeReader backingReader,
@@ -23,16 +22,22 @@ namespace tusdotnet.Models.PipeReaders
         )
         {
             _backingReader = backingReader;
-            _lockLostToken = lockLostToken;
+            LockLostToken = lockLostToken;
         }
 
+        public CancellationToken LockLostToken { get; }
+
+        // A store that commits after AdvanceTo on the last read would otherwise not notice a lock lost after that
+        // read returned.
         public override void AdvanceTo(SequencePosition consumed)
         {
+            ThrowIfLockLost();
             _backingReader.AdvanceTo(consumed);
         }
 
         public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
         {
+            ThrowIfLockLost();
             _backingReader.AdvanceTo(consumed, examined);
         }
 
@@ -59,7 +64,7 @@ namespace tusdotnet.Models.PipeReaders
             using (
                 var cts = CancellationTokenSource.CreateLinkedTokenSource(
                     cancellationToken,
-                    _lockLostToken
+                    LockLostToken
                 )
             )
             {
@@ -67,7 +72,7 @@ namespace tusdotnet.Models.PipeReaders
                 {
                     result = await _backingReader.ReadAsync(cts.Token);
                 }
-                catch (OperationCanceledException) when (_lockLostToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (LockLostToken.IsCancellationRequested)
                 {
                     throw new FileLockLostException();
                 }
@@ -92,7 +97,7 @@ namespace tusdotnet.Models.PipeReaders
 
         private void ThrowIfLockLost()
         {
-            if (_lockLostToken.IsCancellationRequested)
+            if (LockLostToken.IsCancellationRequested)
             {
                 throw new FileLockLostException();
             }

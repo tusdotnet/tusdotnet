@@ -3,8 +3,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
+using tusdotnet.Extensions.Store;
 using tusdotnet.Helpers;
 using tusdotnet.Models;
+using tusdotnet.Models.Streams;
 using Xunit;
 #if pipelines
 using System.IO.Pipelines;
@@ -79,6 +81,24 @@ namespace tusdotnet.test.Tests.ModelTests
             (await WithinTimeout(read)).ShouldBe(0);
         }
 
+        [Fact]
+        public void Stream_GetFileLockLostToken_Finds_The_Guard_Under_The_Checksum_Wrapper()
+        {
+            // Same order as GuardedStreamFactory.
+            var (_, lockLostCts, guard) = CreateDisconnectGuard();
+            Stream stream = new MaxReadSizeGuardedReadOnlyStream(
+                new ClientDisconnectGuardedReadOnlyStream(new MemoryStream(), guard),
+                0,
+                10,
+                MaxReadSizeExceededException.SizeSourceType.UploadLength
+            );
+            stream = new FileLockLostGuardedReadOnlyStream(stream, lockLostCts.Token);
+            stream = new ChecksumAwareStream(stream, new Checksum("sha1", new byte[20]));
+
+            stream.GetFileLockLostToken().ShouldBe(lockLostCts.Token);
+            stream.GetUploadChecksumInfo().ShouldNotBeNull();
+        }
+
 #if pipelines
 
         [Fact]
@@ -130,6 +150,26 @@ namespace tusdotnet.test.Tests.ModelTests
         }
 
         [Fact]
+        public async Task PipeReader_AdvanceTo_Throws_When_The_Lock_Is_Lost_After_The_Read()
+        {
+            var pipe = new Pipe();
+            await pipe.Writer.WriteAsync(Encoding.UTF8.GetBytes("ABCDEF"));
+            var (requestCts, lockLostCts, guard) = CreateDisconnectGuard();
+            var reader = new FileLockLostGuardedPipeReader(
+                new ClientDisconnectGuardedPipeReader(pipe.Reader, guard),
+                lockLostCts.Token
+            );
+
+            var result = await reader.ReadAsync(requestCts.Token);
+            lockLostCts.Cancel();
+
+            Should.Throw<FileLockLostException>(() => reader.AdvanceTo(result.Buffer.End));
+            Should.Throw<FileLockLostException>(() =>
+                reader.AdvanceTo(result.Buffer.Start, result.Buffer.End)
+            );
+        }
+
+        [Fact]
         public async Task PipeReader_Returns_Data_While_The_Lock_Is_Held()
         {
             var pipe = new Pipe();
@@ -163,6 +203,24 @@ namespace tusdotnet.test.Tests.ModelTests
             requestCts.Cancel();
 
             (await WithinTimeout(read)).IsCanceled.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void PipeReader_GetFileLockLostToken_Finds_The_Guard_Under_The_Checksum_Wrapper()
+        {
+            // Same order as GuardedPipeReaderFactory.
+            var (_, lockLostCts, guard) = CreateDisconnectGuard();
+            PipeReader reader = new MaxReadSizeGuardedPipeReader(
+                new ClientDisconnectGuardedPipeReader(new Pipe().Reader, guard),
+                0,
+                10,
+                MaxReadSizeExceededException.SizeSourceType.UploadLength
+            );
+            reader = new FileLockLostGuardedPipeReader(reader, lockLostCts.Token);
+            reader = new ChecksumAwarePipeReader(reader, new Checksum("sha1", new byte[20]));
+
+            reader.GetFileLockLostToken().ShouldBe(lockLostCts.Token);
+            reader.GetUploadChecksumInfo().ShouldNotBeNull();
         }
 #endif
 

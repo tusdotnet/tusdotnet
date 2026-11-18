@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using tusdotnet.Adapters;
 using tusdotnet.Extensions.Internal;
-using tusdotnet.Helpers;
 using tusdotnet.Models;
 using tusdotnet.Models.Streams;
 
@@ -17,18 +16,17 @@ namespace tusdotnet.IntentHandlers
                 context.ClientDisconnectGuard
             );
 
-            guardedStream = WrapWithFileLockLost(guardedStream, context);
             guardedStream = await WrapWithMaxSize(guardedStream, context);
+            guardedStream = WrapWithFileLockLost(guardedStream, context);
             guardedStream = WrapWithChecksumInfo(guardedStream, context);
-
-            FileLockLostTokenRegistry.Register(guardedStream, context.FileLockLostToken);
 
             return guardedStream;
         }
 
         private static Stream WrapWithFileLockLost(Stream stream, ContextAdapter context)
         {
-            // Wrap the disconnect guard directly, so the store and every outer guard see a lost lock as an exception.
+            // Only the checksum wrapper may sit outside this guard. GetFileLockLostToken() looks through that one
+            // wrapper and no other, because GetUploadChecksumInfo() needs the checksum wrapper outermost.
             return context.FileLockLostToken.CanBeCanceled
                 ? new FileLockLostGuardedReadOnlyStream(stream, context.FileLockLostToken)
                 : stream;
