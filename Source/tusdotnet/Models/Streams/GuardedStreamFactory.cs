@@ -17,9 +17,19 @@ namespace tusdotnet.IntentHandlers
             );
 
             guardedStream = await WrapWithMaxSize(guardedStream, context);
+            guardedStream = WrapWithFileLockLost(guardedStream, context);
             guardedStream = WrapWithChecksumInfo(guardedStream, context);
 
             return guardedStream;
+        }
+
+        private static Stream WrapWithFileLockLost(Stream stream, ContextAdapter context)
+        {
+            // Only the checksum wrapper may sit outside this guard. GetFileLockLostToken() looks through that one
+            // wrapper and no other, because GetUploadChecksumInfo() needs the checksum wrapper outermost.
+            return context.FileLockLostToken.CanBeCanceled
+                ? new FileLockLostGuardedReadOnlyStream(stream, context.FileLockLostToken)
+                : stream;
         }
 
         private static async Task<Stream> WrapWithMaxSize(Stream stream, ContextAdapter context)

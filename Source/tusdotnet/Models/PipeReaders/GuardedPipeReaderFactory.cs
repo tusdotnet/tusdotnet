@@ -17,9 +17,19 @@ namespace tusdotnet.Models.PipeReaders
             );
 
             reader = await WrapWithMaxSize(reader, context);
+            reader = WrapWithFileLockLost(reader, context);
             reader = WrapWithChecksumInfo(reader, context);
 
             return reader;
+        }
+
+        private static PipeReader WrapWithFileLockLost(PipeReader reader, ContextAdapter context)
+        {
+            // Only the checksum wrapper may sit outside this guard. GetFileLockLostToken() looks through that one
+            // wrapper and no other, because GetUploadChecksumInfo() needs the checksum wrapper outermost.
+            return context.FileLockLostToken.CanBeCanceled
+                ? new FileLockLostGuardedPipeReader(reader, context.FileLockLostToken)
+                : reader;
         }
 
         private static async Task<PipeReader> WrapWithMaxSize(
