@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 using tusdotnet;
 using tusdotnet.Interfaces;
 using tusdotnet.Platforms.Mvc;
@@ -10,8 +11,11 @@ namespace AspNetCore_net6._0_TestApp.Controllers
     public class FilesController : Controller
     {
         private readonly ITusProtocolHandler _tusHandler;
+        private readonly TusEndpointConfiguration _endpoint = new("/files-controller");
 
-        public FilesController(ITusProtocolHandler tusHandler)
+        public FilesController(
+            ITusProtocolHandler tusHandler
+        )
         {
             _tusHandler = tusHandler;
         }
@@ -19,21 +23,21 @@ namespace AspNetCore_net6._0_TestApp.Controllers
         [HttpPost("")]
         public async Task<IActionResult> CreateUpload()
         {
-            var result = await _tusHandler.HandleAsync(TusContext.From(HttpContext));
+            var result = await _tusHandler.HandleAsync(HttpContext, _endpoint);
             return result.ToActionResult();
         }
 
         [HttpPatch("{fileId}")]
         public async Task<IActionResult> UploadData(string fileId)
         {
-            var result = await _tusHandler.HandleAsync(TusContext.From(HttpContext));
+            var result = await _tusHandler.HandleAsync(HttpContext, _endpoint);
             return result.ToActionResult();
         }
 
         [HttpOptions, HttpHead("{fileId}"), HttpDelete("{fileId}")]
         public async Task<IActionResult> HandleOtherStuff(string? fileId)
         {
-            var result = await _tusHandler.HandleAsync(TusContext.From(HttpContext));
+            var result = await _tusHandler.HandleAsync(HttpContext, _endpoint);
             return result.ToActionResult();
         }
     }

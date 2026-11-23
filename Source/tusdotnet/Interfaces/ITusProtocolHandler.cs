@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
@@ -15,12 +16,19 @@ namespace tusdotnet.Interfaces
         /// Processes the incoming tus request. Does not write anything to <see cref="HttpResponse"/> —
         /// the caller is responsible for applying <see cref="TusHandleRequestResult"/> to the response.
         /// </summary>
-        /// <param name="context">The current tus context.</param>
+        /// <param name="httpContext">The current ASP.NET Core HttpContext.</param>
+        /// <param name="endpointConfiguration">Configuration for the specific tus endpoint, e.g. <see cref="TusEndpointConfiguration.UrlPath"/>.</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>
         /// A <see cref="TusHandleRequestResult"/> with the status code, headers and optional message
         /// to return to the client. If <see cref="TusHandleRequestResult.IsHandled"/> is <c>false</c>
         /// the request did not match the tus endpoint and the caller should continue processing.
         /// </returns>
-        Task<TusHandleRequestResult> HandleAsync(TusContext context);
+        Task<TusHandleRequestResult> HandleAsync(
+            HttpContext httpContext,
+            TusEndpointConfiguration endpointConfiguration,
+            CancellationToken cancellationToken = default
+        );
     }
 }
+

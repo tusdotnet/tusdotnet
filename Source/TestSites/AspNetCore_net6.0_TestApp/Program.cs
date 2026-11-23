@@ -34,6 +34,10 @@ builder
         ),
     });
 
+builder.Services.AddSingleton(
+    new TusEndpointConfiguration("/files-controller/")
+);
+
 builder.Services.AddMvc();
 
 var app = builder.Build();

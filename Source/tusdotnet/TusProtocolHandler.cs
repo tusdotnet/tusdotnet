@@ -10,86 +10,12 @@ using tusdotnet.Interfaces;
 using tusdotnet.Models;
 #if pipelines
 using System.IO.Pipelines;
-#endif
+#endif
 
 namespace tusdotnet
 {
-    public class TusContext
-    {
-        public Uri BaseUri { get; set; }
-
-        public string FileId { get; set; }
-
-        public Dictionary<string, string> Headers { get; set; }
-
-        public string HttpMethod { get; set; }
-
-        public Stream Body { get; set; }
-
-        public CancellationToken CancellationToken { get; set; }
-
-#if pipelines
-        public PipeReader BodyReader { get; set; }
-#endif
-
-#if trailingheaders
-
-        public bool SupportsTrailingHeaders { get; set; }
-
-        public Func<bool> CheckTrailingHeadersAvailable { get; set; }
-
-        public Func<string, string> GetTrailingHeader { get; set; }
-#endif
-
-        public static TusContext From(HttpContext httpContext)
-        {
-            return new()
-            {
-                Body = httpContext.Request.Body,
-#if pipelines
-                BodyReader = httpContext.Request.BodyReader,
-#endif
-                CancellationToken = httpContext.RequestAborted,
-
-#if trailingheaders
-                CheckTrailingHeadersAvailable = httpContext.Request.CheckTrailersAvailable,
-                GetTrailingHeader = (header) =>
-                    httpContext.Request.GetTrailer(header).FirstOrDefault(),
-                SupportsTrailingHeaders = httpContext.Request.SupportsTrailers(),
-#endif
-                Headers = GetHeaders(httpContext),
-                HttpMethod = httpContext.Request.Method,
-                BaseUri = GetBaseUri(httpContext),
-                FileId = GetFileId(httpContext),
-            };
-        }
-
-        private static Uri GetBaseUri(HttpContext httpContext)
-        {
-            // TODO: Must probably be changed so that it doesn't include the file id in the base uri.
-            return new Uri(
-                $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}{httpContext.Request.Path}"
-            );
-        }
-
-        private static Dictionary<string, string> GetHeaders(HttpContext httpContext)
-        {
-            return httpContext.Request.Headers.ToDictionary(
-                h => h.Key,
-                h => h.Value.ToString(),
-                StringComparer.OrdinalIgnoreCase
-            );
-        }
-
-        private static string GetFileId(HttpContext httpContext)
-        {
-            // TODO: Make it better
-            return httpContext.Request.Path.Value.Split('/').LastOrDefault();
-        }
-    }
-
     /// <summary>
-    /// Default implementation of <see cref="ITusProtocolHandler"/>.
+    /// Default implementation of <see cref="Interfaces.ITusProtocolHandler"/>.
     /// </summary>
     internal sealed class TusProtocolHandler : ITusProtocolHandler
     {
@@ -102,38 +28,72 @@ namespace tusdotnet
         }
 
         /// <inheritdoc />
-        public async Task<TusHandleRequestResult> HandleAsync(TusContext context)
+        public async Task<TusHandleRequestResult> HandleAsync(
+            HttpContext httpContext,
+            TusEndpointConfiguration endpointConfiguration,
+            CancellationToken cancellationToken = default
+        )
         {
-            AssertContext(context);
+            AssertContext();
 
-            var endpointUrlString = context.BaseUri.ToString();
-            var requestUri = context.BaseUri;
+            if (string.IsNullOrWhiteSpace(endpointConfiguration.UrlPath))
+            {
+                throw new TusConfigurationException(
+                    $"{nameof(endpointConfiguration.UrlPath)} cannot be empty."
+                );
+            }
+
+            // Link the caller supplied cancellation token with the request's abort token so
+            // that either source can cancel the operation. This must happen before the
+            // ContextAdapter (and its client disconnect guard) is created so that the guard
+            // monitors the linked token.
+            using var linkedCancellationTokenSource = cancellationToken.CanBeCanceled
+                ? CancellationTokenSource.CreateLinkedTokenSource(
+                    httpContext.RequestAborted,
+                    cancellationToken
+                )
+                : null;
+
+            if (linkedCancellationTokenSource is not null)
+            {
+                httpContext.RequestAborted = linkedCancellationTokenSource.Token;
+            }
+
+            var urlPath = endpointConfiguration.UrlPath;
+            var requestPathBase = httpContext.Request.PathBase.Value;
+            var requestUri = GetRequestUri(httpContext);
 
             var request = new RequestAdapter
             {
-                Headers = RequestHeaders.FromDictionary(context.Headers),
-                Body = context.Body,
+                Headers = RequestHeaders.FromDictionary(
+                    httpContext.Request.Headers.ToDictionary(
+                        h => h.Key,
+                        h => h.Value.ToString(),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                ),
+                Body = httpContext.Request.Body,
 #if pipelines
-                BodyReader = context.BodyReader,
+                BodyReader = httpContext.Request.BodyReader,
 #endif
-                Method = context.HttpMethod,
+                Method = httpContext.Request.Method,
                 RequestUri = requestUri,
             };
 
             ITrailingHeaderHelper trailingHeaderHelper = null;
 
 #if trailingheaders
-            trailingHeaderHelper = new TusContextTrailingHeaderHelper(context);
+            trailingHeaderHelper = new HttpContextTrailingHeaderHelper(httpContext);
 #endif
 
             var contextAdapter = new ContextAdapter(
-                endpointUrlString,
-                requestPathBase: null,
-                new ProtocolHandlerUrlHelper(context),
+                urlPath,
+                requestPathBase: requestPathBase,
+                new ProtocolHandlerUrlHelper(httpContext),
                 trailingHeaderHelper,
                 request,
                 _configuration,
-                context.CancellationToken
+                httpContext
             );
 
             var result = await TusV1EventRunner.Invoke(contextAdapter);
@@ -144,13 +104,15 @@ namespace tusdotnet
             return TusHandleRequestResult.FromResponse(contextAdapter.Response);
         }
 
-        private void AssertContext(TusContext context)
+        private Uri GetRequestUri(HttpContext httpContext)
         {
-            if (context == null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
+            return new Uri(
+                $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}{httpContext.Request.Path}"
+            );
+        }
 
+        private void AssertContext()
+        {
             if (_configuration.Store == null)
             {
                 throw new TusConfigurationException(
@@ -172,3 +134,4 @@ namespace tusdotnet
         }
     }
 }
+
